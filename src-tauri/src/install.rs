@@ -9,7 +9,8 @@ use tauri::ipc::Channel;
 const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
 
 #[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase", tag = "event")]
+// `rename_all` renames only the variants; the fields need `rename_all_fields` to reach the interface as camelCase.
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
 pub enum InstallEvent {
     Step { step: Step },
     Log { line: String, stderr: bool },
@@ -283,6 +284,14 @@ fn path_hint(extra: &[std::path::PathBuf]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn events_reach_the_interface_in_camel_case() {
+        let done = InstallEvent::Done { version: "0.91.0".into(), path: "~/bin/tg".into(), shadowed_by: None };
+        let json = serde_json::to_value(&done).unwrap();
+        assert_eq!(json["event"], "done");
+        assert!(json.get("shadowedBy").is_some(), "{json}");
+    }
 
     #[test]
     fn classifies_npm_failures() {

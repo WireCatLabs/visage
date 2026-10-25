@@ -233,7 +233,7 @@ pub fn offer() -> Result<Offer, String> {
 }
 
 #[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase", tag = "event")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
 pub enum NodeEvent {
     Step { step: Step },
     Progress { received: u64, total: Option<u64> },

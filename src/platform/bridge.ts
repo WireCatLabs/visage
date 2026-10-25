@@ -28,7 +28,20 @@ const call = async <S extends v.GenericSchema>(schema: S, cmd: string, args?: Re
 
 function events(onEvent: (e: v.InferOutput<typeof InstallEventSchema>) => void) {
   const channel = new Channel<unknown>()
-  channel.onmessage = (raw) => onEvent(v.parse(InstallEventSchema, raw))
+  channel.onmessage = (raw) => {
+    const parsed = v.safeParse(InstallEventSchema, raw)
+    // A dropped event would leave the step spinning forever; say so instead.
+    onEvent(
+      parsed.success
+        ? parsed.output
+        : {
+            event: "failed",
+            reason: "failed",
+            message: "The app could not read the installer's last answer.",
+            hint: "Press Check again to see what is installed now.",
+          },
+    )
+  }
   return channel
 }
 
