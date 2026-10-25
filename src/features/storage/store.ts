@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { StoreInfo } from "@/platform/archive-schemas"
+import type { StoreCheck, StoreInfo, TableList } from "@/platform/archive-schemas"
 import { platform } from "@/platform/bridge"
 import type { StorageArea, StorageFolder } from "@/platform/schemas"
 
@@ -10,6 +10,19 @@ type StorageState = {
   info: StoreInfo | null | undefined
   infoError: string | null
   loadInfo(): Promise<void>
+  /** `undefined` while asking; sizes stay from the last measurement until the list is asked for again. */
+  tables: TableList | null | undefined
+  tablesError: string | null
+  /** When a size measurement started, while it runs; and how long the last one took. */
+  measuring: number | null
+  measuredIn: number | null
+  loadTables(): Promise<void>
+  measureSizes(): Promise<void>
+  checking: number | null
+  check: StoreCheck | null | undefined
+  checkedIn: number | null
+  checkError: string | null
+  runCheck(): Promise<void>
   clearing: string | null
   load(): Promise<void>
   clear(id: string): Promise<void>
@@ -26,6 +39,50 @@ export const useStorage = create<StorageState>((set, get) => ({
   clearing: null,
   info: undefined,
   infoError: null,
+  tables: undefined,
+  tablesError: null,
+  measuring: null,
+  measuredIn: null,
+  checking: null,
+  check: undefined,
+  checkedIn: null,
+  checkError: null,
+
+  async loadTables() {
+    if (get().measuring !== null) return
+    set({ tables: undefined, tablesError: null })
+    try {
+      set({ tables: await platform.storeTables(false) })
+    } catch (e) {
+      set({ tables: null, tablesError: message(e) })
+    }
+  },
+
+  async measureSizes() {
+    if (get().measuring !== null) return
+    const started = Date.now()
+    set({ measuring: started, tablesError: null })
+    try {
+      set({ tables: await platform.storeTables(true), measuredIn: Date.now() - started })
+    } catch (e) {
+      set({ tablesError: message(e) })
+    } finally {
+      set({ measuring: null })
+    }
+  },
+
+  async runCheck() {
+    if (get().checking !== null) return
+    const started = Date.now()
+    set({ checking: started, checkError: null })
+    try {
+      set({ check: await platform.storeCheck(), checkedIn: Date.now() - started })
+    } catch (e) {
+      set({ checkError: message(e) })
+    } finally {
+      set({ checking: null })
+    }
+  },
 
   async loadInfo() {
     set({ info: undefined, infoError: null })

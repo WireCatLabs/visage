@@ -24,6 +24,7 @@ export function StoragePage() {
   useEffect(() => {
     load()
     useStorage.getState().loadInfo()
+    useStorage.getState().loadTables()
   }, [load])
 
   const leftovers = (areas ?? []).filter((a) => a.folders.length > 0 && a.usedBy.length === 0)

@@ -1,6 +1,6 @@
 import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
-import { storeInfoMock } from "./mock-archive"
+import { storeCheckMock, storeInfoMock, storeTablesMock } from "./mock-archive"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
@@ -151,6 +151,7 @@ export function createMock(os: Platform["os"]): Platform {
         ? [["tg", "0.88.0"]]
         : [],
   )
+  const asksArchive = () => ["tg", "wa", "max"].find((id) => installed.has(id)) ?? null
   let cancelled = false
   const MB = 1024 * 1024
   const NODE = { version: "24.22.1", bytes: 58_290_700, dir: "~/.local/share/dev.wirecat.desktop/node/v24.22.1" }
@@ -465,7 +466,9 @@ export function createMock(os: Platform["os"]): Platform {
       dataSize[id] = 0
     },
     async openFolder() {},
-    storeInfo: () => storeInfoMock(["tg", "wa", "max"].find((id) => installed.has(id)) ?? null),
+    storeInfo: () => storeInfoMock(asksArchive()),
+    storeTables: (sizes) => storeTablesMock(asksArchive(), sizes),
+    storeCheck: () => storeCheckMock(asksArchive()),
     ...agentsMock((id) => installed.get(id)),
     async cancelInstall() {
       cancelled = true

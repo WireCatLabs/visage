@@ -28,6 +28,11 @@ pub struct Tool {
     pub name: String,
     /// `store info` of the shared archive; any messenger CLI answers it for the whole store.
     pub store_info: Option<Vec<String>>,
+    /// `store tables list`: every table with its kind and rows; `store_table_sizes` adds sizes and reads the whole file.
+    pub store_tables: Option<Vec<String>>,
+    pub store_table_sizes: Option<Vec<String>>,
+    /// `store check`: integrity and the other health checks; a minute or more on a large archive.
+    pub store_check: Option<Vec<String>>,
 }
 
 /// The tool's own skill commands; `{target}` is a validated install place.

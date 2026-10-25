@@ -1,5 +1,5 @@
 import type { Agent, SkillReport, Target } from "./agents-schemas"
-import type { StoreInfo } from "./archive-schemas"
+import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
 import type {
@@ -44,6 +44,10 @@ export type Platform = {
   openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
   /** What the shared archive holds, from the first installed messenger tool; null when none is installed. */
   storeInfo(): Promise<StoreInfo | null>
+  /** Every table with its kind and rows; `sizes` reads the whole file, from seconds to minutes. */
+  storeTables(sizes: boolean): Promise<TableList | null>
+  /** The archive's integrity and health checks; a minute or more on a large archive. */
+  storeCheck(): Promise<StoreCheck | null>
   /** Every known agent; `foundBy` is null for the ones not on this computer. */
   detectAgents(): Promise<Agent[]>
   skillStatus(id: string): Promise<SkillReport>

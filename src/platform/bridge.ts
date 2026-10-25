@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
 import { AgentsSchema, SkillReportSchema, SkillWrittenSchema } from "./agents-schemas"
-import { StoreInfoSchema } from "./archive-schemas"
+import { StoreCheckSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { createMock } from "./mock"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
 import { RunDetailSchema, RunsPageSchema } from "./runs-schemas"
@@ -63,6 +63,8 @@ function createTauri(): Platform {
     clearStorage: (id) => invoke("clear_storage", { id }),
     openFolder: (id, kind) => invoke("open_folder", { id, kind }),
     storeInfo: () => call(StoreInfoSchema, "store_info"),
+    storeTables: (sizes) => call(TableListSchema, "store_tables", { sizes }),
+    storeCheck: () => call(StoreCheckSchema, "store_check"),
     detectAgents: () => call(AgentsSchema, "detect_agents"),
     skillStatus: (id) => call(SkillReportSchema, "skill_status", { id }),
     skillInstall: (id, target) => call(SkillWrittenSchema, "skill_install", { id, target }),

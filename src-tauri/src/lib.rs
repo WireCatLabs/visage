@@ -161,6 +161,16 @@ async fn store_info() -> Result<Option<archive::StoreInfo>, String> {
 }
 
 #[tauri::command]
+async fn store_tables(sizes: bool) -> Result<Option<archive::TableList>, String> {
+    blocking(move || archive::tables(sizes)).await?
+}
+
+#[tauri::command]
+async fn store_check() -> Result<Option<archive::Check>, String> {
+    blocking(archive::check).await?
+}
+
+#[tauri::command]
 async fn detect_agents() -> Result<Vec<skills::Agent>, String> {
     blocking(skills::agents).await
 }
@@ -264,6 +274,8 @@ pub fn run() {
             clear_storage,
             open_folder,
             store_info,
+            store_tables,
+            store_check,
             detect_agents,
             skill_status,
             skill_install,

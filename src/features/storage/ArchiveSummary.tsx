@@ -5,7 +5,9 @@ import { formatBytes } from "@/domain/format"
 import type { StoreInfo } from "@/platform/archive-schemas"
 import { cx } from "@/ui/cx"
 import { Skeleton } from "@/ui/Skeleton"
+import { DatabaseFacts } from "./DatabaseFacts"
 import { useStorage } from "./store"
+import { TablesExplorer } from "./TablesExplorer"
 
 const n = (x: number) => x.toLocaleString("en-US")
 
@@ -52,6 +54,16 @@ export function ArchiveSummary() {
           <Contents info={info} />
         )}
       </div>
+      {info?.exists && !info.problem && (
+        <>
+          <div className="border-line border-t px-[1.3rem] py-[1.1rem]">
+            <DatabaseFacts info={info} />
+          </div>
+          <div className="border-line border-t px-[1.3rem] py-[1.1rem]">
+            <TablesExplorer answeredBy={info.answeredBy} />
+          </div>
+        </>
+      )}
     </section>
   )
 }

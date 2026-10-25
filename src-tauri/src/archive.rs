@@ -60,12 +60,92 @@ pub struct StoreInfo {
     pub file_bytes: u64,
     pub wal_bytes: u64,
     pub schema: Option<u64>,
+    /// The newest schema the answering tool knows.
+    pub speaks: Option<u64>,
     pub writable: Option<bool>,
     /// Row counts per table, whichever tables this store version has.
     pub rows: BTreeMap<String, u64>,
     pub search_ready: Option<bool>,
     /// Absent from tools older than the breakdown in `store info`.
     pub breakdown: Option<Breakdown>,
+    /// Absent from tools older than the file facts in `store info`.
+    pub facts: Option<FileFacts>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Migration {
+    pub version: u64,
+    pub min_compatible: u64,
+    pub applied_at: String,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Backup {
+    pub at: String,
+    pub file: Option<String>,
+    pub checked: Option<String>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileFacts {
+    pub journal_mode: String,
+    pub page_size: u64,
+    pub page_count: u64,
+    pub free_pages: u64,
+    pub migrations: Vec<Migration>,
+    /// From the marker a backup job leaves beside the store; `None` when there is none.
+    pub backup: Option<Backup>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Table {
+    pub name: String,
+    pub kind: String,
+    pub rows: Option<u64>,
+    /// Only when sizes were measured; `None` too for a search index, whose parts hold its pages.
+    pub bytes: Option<u64>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TableList {
+    pub answered_by: String,
+    /// False when the installed tool predates `store tables list`.
+    pub available: bool,
+    pub measured: bool,
+    pub tables: Vec<Table>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Check {
+    pub answered_by: String,
+    /// The command word the fixes start with, such as `tg`.
+    pub bin: String,
+    pub ok: bool,
+    /// Set when the file is there but could not be opened.
+    pub problem: Option<String>,
+    pub schema: Option<u64>,
+    pub min_compatible: Option<u64>,
+    pub speaks: Option<u64>,
+    pub writable: Option<bool>,
+    /// Each check by name: schema, integrity, foreign keys, search indexes, disk.
+    pub checks: BTreeMap<String, bool>,
+    /// `SQLite`'s own lines when the integrity check is not `ok`, at most twenty.
+    pub integrity: Vec<String>,
+    pub foreign_key_violations: u64,
+    pub broken_indexes: Vec<String>,
+    pub disk_free: u64,
+    pub disk_needed: u64,
+    /// Counts only: the chats themselves are personal.
+    pub chats_behind: u64,
+    pub orphan_pointers: u64,
+    /// Command lines the tool itself suggests next.
+    pub fixes: Vec<String>,
 }
 
 fn num(v: &Value, key: &str) -> u64 {
@@ -124,6 +204,7 @@ fn shape(answered_by: &str, item: &Value) -> StoreInfo {
         file_bytes: num(&item["bytes"], "file"),
         wal_bytes: num(&item["bytes"], "wal"),
         schema: item["schema"]["version"].as_u64(),
+        speaks: item["schema"]["speaks"].as_u64(),
         writable: item["schema"]["writable"].as_bool(),
         rows: item["rows"]
             .as_object()
@@ -133,31 +214,153 @@ fn shape(answered_by: &str, item: &Value) -> StoreInfo {
             .collect(),
         search_ready: item["word_index"]["ready"].as_bool(),
         breakdown: breakdown(item),
+        facts: facts(item),
     }
 }
 
-fn asked() -> Option<(&'static Tool, &'static [String])> {
-    ASKED_IN_ORDER.iter().find_map(|id| {
-        let tool = catalog::tool(id).ok()?;
-        let args = tool.store_info.as_deref()?;
-        paths::find(&tool.bin).map(|_| (tool, args))
+fn facts(item: &Value) -> Option<FileFacts> {
+    item.get("migrations")?;
+    let backup = &item["backup"];
+    Some(FileFacts {
+        journal_mode: item["journal_mode"].as_str().unwrap_or("unknown").into(),
+        page_size: num(&item["pages"], "size"),
+        page_count: num(&item["pages"], "count"),
+        free_pages: num(&item["pages"], "free"),
+        migrations: list(item, "migrations")
+            .map(|m| Migration {
+                version: num(m, "version"),
+                min_compatible: num(m, "min_compatible"),
+                applied_at: m["applied_at"].as_str().unwrap_or("").into(),
+            })
+            .collect(),
+        backup: backup["at"].as_str().map(|at| Backup {
+            at: at.into(),
+            file: backup["file"].as_str().map(redact::text),
+            checked: backup["checked"].as_str().map(redact::text),
+        }),
     })
 }
 
-/// `None` when no messenger tool is installed to ask.
-pub fn info() -> Result<Option<StoreInfo>, String> {
-    let Some((tool, args)) = asked() else { return Ok(None) };
+fn tables_of(answered_by: &str, items: &[Value], measured: bool) -> TableList {
+    TableList {
+        answered_by: answered_by.into(),
+        available: true,
+        measured,
+        tables: items
+            .iter()
+            .map(|t| Table {
+                name: t["name"].as_str().unwrap_or("").into(),
+                kind: t["kind"].as_str().unwrap_or("data").into(),
+                rows: t["rows"].as_u64(),
+                bytes: t["bytes"].as_u64(),
+            })
+            .collect(),
+    }
+}
+
+/// Keeps counts and names of checks, never the chats behind or the pointers' rows.
+fn check_of(tool: &Tool, envelope: &Value) -> Check {
+    let item = envelope.get("item").unwrap_or(envelope);
+    let integrity: Vec<String> = list(item, "integrity").filter_map(Value::as_str).map(redact::text).collect();
+    Check {
+        answered_by: tool.id.clone(),
+        bin: tool.bin.clone(),
+        ok: item["ok"].as_bool().unwrap_or(false),
+        problem: item["error"].as_str().map(redact::text),
+        schema: item["schema"]["version"].as_u64(),
+        min_compatible: item["schema"]["min_compatible"].as_u64(),
+        speaks: item["schema"]["speaks"].as_u64(),
+        writable: item["schema"]["writable"].as_bool(),
+        checks: item["checks"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter_map(|(k, v)| v.as_bool().map(|b| (k.clone(), b)))
+            .collect(),
+        integrity: if integrity == ["ok"] { Vec::new() } else { integrity },
+        foreign_key_violations: num(item, "foreign_key_violations"),
+        broken_indexes: item["search_indexes"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter(|(_, state)| state.as_str() != Some("ok"))
+            .map(|(name, _)| name.clone())
+            .collect(),
+        disk_free: num(&item["disk"], "free"),
+        disk_needed: num(&item["disk"], "needed"),
+        chats_behind: list(item, "chats_behind").count() as u64,
+        orphan_pointers: list(item, "orphan_pointers").map(|p| num(p, "count")).sum(),
+        fixes: list(envelope, "next")
+            .filter(|step| step["command"].as_str().is_some_and(|c| c.starts_with("store ")))
+            .filter_map(|step| step["line"].as_str().map(str::to_string))
+            .collect(),
+    }
+}
+
+type Template = fn(&Tool) -> Option<&Vec<String>>;
+
+/// The first installed messenger tool, as long as it has a store; it answers for the whole shared archive.
+fn asked() -> Option<&'static Tool> {
+    ASKED_IN_ORDER.iter().find_map(|id| {
+        let tool = catalog::tool(id).ok()?;
+        tool.store_info.as_ref()?;
+        paths::find(&tool.bin).map(|_| tool)
+    })
+}
+
+enum Answer {
+    Envelope(Value),
+    /// The tool is older than the command.
+    Unknown,
+}
+
+fn ask(tool: &Tool, template: Template, timeout: Duration) -> Result<Answer, String> {
+    let Some(args) = template(tool) else { return Ok(Answer::Unknown) };
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_secs(30)).map_err(|e| e.to_string())?;
+    let out = run::run(&bin, &refs, Some(&paths::search_path()), timeout).map_err(|e| e.to_string())?;
     let json = out.json();
     match json {
-        Some(v) if out.code == Some(0) => Ok(Some(shape(&tool.id, v.get("item").unwrap_or(&v)))),
+        Some(v) if v["error"]["message"].as_str().is_some_and(|m| m.starts_with("unknown command")) => {
+            Ok(Answer::Unknown)
+        }
+        Some(v) if out.code == Some(0) && v.get("error").is_none() => Ok(Answer::Envelope(v)),
         Some(v) if v["error"]["message"].is_string() => Err(redact::text(v["error"]["message"].as_str().unwrap_or(""))),
         _ => {
             let line = out.stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("the tool gave no answer");
             Err(redact::text(line.trim()))
         }
+    }
+}
+
+/// `None` when no messenger tool is installed to ask.
+pub fn info() -> Result<Option<StoreInfo>, String> {
+    let Some(tool) = asked() else { return Ok(None) };
+    match ask(tool, |t| t.store_info.as_ref(), Duration::from_secs(30))? {
+        Answer::Envelope(v) => Ok(Some(shape(&tool.id, v.get("item").unwrap_or(&v)))),
+        Answer::Unknown => Err("the tool does not know `store info`".into()),
+    }
+}
+
+/// Without sizes this counts rows only, a few seconds at most; sizes read every page of the file.
+pub fn tables(sizes: bool) -> Result<Option<TableList>, String> {
+    let Some(tool) = asked() else { return Ok(None) };
+    let template: Template = if sizes { |t| t.store_table_sizes.as_ref() } else { |t| t.store_tables.as_ref() };
+    let timeout = Duration::from_mins(if sizes { 10 } else { 2 });
+    Ok(Some(match ask(tool, template, timeout)? {
+        Answer::Envelope(v) => tables_of(&tool.id, v["items"].as_array().map_or(&[], Vec::as_slice), sizes),
+        Answer::Unknown => {
+            TableList { answered_by: tool.id.clone(), available: false, measured: false, tables: Vec::new() }
+        }
+    }))
+}
+
+/// Runs `SQLite`'s integrity check over the whole file: a minute or two on a large archive.
+pub fn check() -> Result<Option<Check>, String> {
+    let Some(tool) = asked() else { return Ok(None) };
+    match ask(tool, |t| t.store_check.as_ref(), Duration::from_mins(10))? {
+        Answer::Envelope(v) => Ok(Some(check_of(tool, &v))),
+        Answer::Unknown => Err("the tool does not know `store check`".into()),
     }
 }
 
@@ -217,6 +420,67 @@ mod tests {
         let info = shape("wa", &json!({"path": "/x/wirecat.db", "exists": true, "opens": false, "error": "locked"}));
         assert_eq!(info.problem.as_deref(), Some("locked"));
         assert!(info.rows.is_empty());
+    }
+
+    #[test]
+    fn reads_the_file_facts_when_the_tool_has_them() {
+        let mut item = plain();
+        assert!(shape("tg", &item).facts.is_none());
+        item["journal_mode"] = json!("wal");
+        item["pages"] = json!({"size": 4096, "count": 1000, "free": 25});
+        item["migrations"] = json!([{"version": 1, "min_compatible": 1, "applied_at": "2026-09-01T10:00:00.000Z"}]);
+        item["backup"] =
+            json!({"at": "2026-10-18T02:16:29.000Z", "file": "wirecat.db.zst", "checked": "quick_check ok"});
+        let info = shape("tg", &item);
+        assert_eq!(info.speaks, Some(29));
+        let facts = info.facts.unwrap();
+        assert_eq!((facts.journal_mode.as_str(), facts.free_pages), ("wal", 25));
+        assert_eq!(facts.migrations[0].applied_at, "2026-09-01T10:00:00.000Z");
+        assert_eq!(facts.backup.unwrap().checked.as_deref(), Some("quick_check ok"));
+        item["backup"] = Value::Null;
+        assert!(shape("tg", &item).facts.unwrap().backup.is_none());
+    }
+
+    #[test]
+    fn lists_tables_with_rows_and_only_measured_sizes() {
+        let items = [
+            json!({"name": "messages", "kind": "data", "rows": 12, "bytes": 8192}),
+            json!({"name": "messages_fts", "kind": "search_index", "rows": null, "bytes": null}),
+        ];
+        let list = tables_of("tg", &items, true);
+        assert_eq!(list.tables[0].rows, Some(12));
+        assert_eq!(list.tables[0].bytes, Some(8192));
+        assert_eq!(list.tables[1].rows, None);
+        assert!(list.available && list.measured);
+    }
+
+    #[test]
+    fn a_check_keeps_counts_and_store_fixes_never_the_chats() {
+        let tool = catalog::tool("tg").unwrap();
+        let envelope = json!({
+            "item": {
+                "ok": false,
+                "checks": {"schema": false, "integrity": true, "search_indexes": false},
+                "schema": {"version": 29, "min_compatible": 1, "speaks": 33, "writable": true},
+                "integrity": ["ok"],
+                "foreign_key_violations": 0,
+                "search_indexes": {"messages_fts": "ok", "message_words": "database disk image is malformed"},
+                "disk": {"free": 10, "needed": 5},
+                "chats_behind": [{"provider": "telegram", "chat": "77", "title": "Family"}],
+                "orphan_pointers": [{"table": "taggings", "count": 3}, {"table": "links", "count": 2}]
+            },
+            "next": [
+                {"kind": "command", "step": "store.migrate", "command": "store migrate", "line": "tg store migrate"},
+                {"kind": "command", "step": "messages.sync", "command": "messages sync", "line": "tg personal messages sync --chat 77"}
+            ]
+        });
+        let check = check_of(tool, &envelope);
+        assert!(!check.ok);
+        assert_eq!(check.broken_indexes, ["message_words"]);
+        assert!(check.integrity.is_empty());
+        assert_eq!((check.chats_behind, check.orphan_pointers), (1, 5));
+        assert_eq!(check.fixes, ["tg store migrate"]);
+        assert!(!serde_json::to_string(&check).unwrap().contains("Family"));
     }
 
     /// `cargo test -- --ignored real_store_info`: counts and keys only, never paths or names.

@@ -35,6 +35,9 @@ const ToolSchema = v.object({
     }),
   ),
   storeInfo: v.nullable(v.array(v.string())),
+  storeTables: v.nullable(v.array(v.string())),
+  storeTableSizes: v.nullable(v.array(v.string())),
+  storeCheck: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),
   settings: v.nullable(
     v.object({

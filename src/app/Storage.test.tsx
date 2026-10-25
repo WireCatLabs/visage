@@ -23,4 +23,24 @@ describe("Storage", () => {
     const tg = await screen.findByRole("list", { name: "What Telegram keeps" }, { timeout: 4000 })
     expect(within(tg).getByText(/Credentials: size only/)).toBeInTheDocument()
   }, 15000)
+
+  it("lists the database's tables, measures their sizes and checks its health", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole("button", { name: /Storage/ }))
+
+    const tables = await screen.findByRole("table", { name: "Tables" }, { timeout: 4000 })
+    expect(within(tables).getByRole("rowheader", { name: "messages" })).toBeInTheDocument()
+    expect(screen.getByText(/Search index tables \(30\)/)).toBeInTheDocument()
+    expect(screen.getByText(/The backup job has not finished since/)).toBeInTheDocument()
+
+    await user.type(screen.getByRole("searchbox", { name: "Find a table" }), "email")
+    expect(within(screen.getByRole("table", { name: "Tables" })).getAllByRole("row")).toHaveLength(4)
+
+    await user.click(screen.getByRole("button", { name: "Measure sizes" }))
+    expect(await screen.findByText(/Measured in/, {}, { timeout: 5000 })).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Check health" }))
+    expect(await screen.findByText("No problems found", {}, { timeout: 6000 })).toBeInTheDocument()
+  }, 20000)
 })
