@@ -42,6 +42,13 @@ export function UpgradeWarning() {
         {namesOf(warning.locksOut)} can't read schema {warning.to}. They stop working with storage the next time {name}{" "}
         runs, which may be soon if it runs in the background.
       </p>
+      {warning.mayLockOut.length > 0 && (
+        <p className="mt-2">
+          {namesOf(warning.mayLockOut)} can't say which schema{" "}
+          {warning.mayLockOut.length === 1 ? "it reads" : "they read"}, so{" "}
+          {warning.mayLockOut.length === 1 ? "it" : "they"} may stop too.
+        </p>
+      )}
       {stuck.length > 0 && (
         <p className="mt-2">
           No newer {namesOf(stuck)} is out yet, so updating can't fix {stuck.length === 1 ? "it" : "them"} today.

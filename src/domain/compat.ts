@@ -44,8 +44,9 @@ export function storeFile(compat: StoreCompat): (Schema & { exists: boolean }) |
   const answered = compat.tools
     .filter((t) => t.outcome === "answered" && t.exists !== null)
     .sort((a, b) => (b.speaks ?? 0) - (a.speaks ?? 0))[0]
-  if (answered)
-    return answered.file ? { ...answered.file, exists: true } : { version: 0, minCompatible: 0, exists: false }
+  if (answered?.exists === false) return { version: 0, minCompatible: 0, exists: false }
+  // A file that is there but did not open says nothing about which tools read it.
+  if (answered) return answered.file ? { ...answered.file, exists: true } : null
   for (const t of compat.tools) {
     const refusal = parseRefusal(t.problem)
     if (refusal?.schema != null) return { version: refusal.schema, minCompatible: refusal.needs, exists: true }

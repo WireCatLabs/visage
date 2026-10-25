@@ -127,4 +127,13 @@ describe("fits", () => {
     }
     expect(Object.values(fits(compat, installed))).toEqual([{ kind: "reads" }, { kind: "reads" }])
   })
+
+  it("can't say for anyone when the file is there but did not open", () => {
+    const compat: StoreCompat = {
+      tools: [view("tg", { file: null }), view("wa", { speaks: 29, file: null })],
+      clients: [],
+    }
+    expect(storeFile(compat)).toBeNull()
+    expect(Object.values(fits(compat, installed))).toEqual([{ kind: "unknown" }, { kind: "unknown" }])
+  })
 })

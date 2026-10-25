@@ -5,7 +5,7 @@ import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
 
 /** An install that will move the shared store to a schema other installed tools cannot read. */
-export type UpgradeWarning = { id: string; to: number; locksOut: string[] }
+export type UpgradeWarning = { id: string; to: number; locksOut: string[]; mayLockOut: string[] }
 
 type CompatState = {
   /** `undefined` while asking, `null` when the tools could not be asked. */
@@ -35,9 +35,11 @@ export const useCompat = create<CompatState>((set, get) => ({
     await get().load()
     const compat = get().compat
     if (!compat) return
-    const fit: Fit | undefined = fits(compat, installed())[id]
+    const all = fits(compat, installed())
+    const fit: Fit | undefined = all[id]
+    const mayLockOut = Object.keys(all).filter((other) => all[other]?.kind === "unknown")
     if (fit?.kind === "upgrades" && fit.locksOut.length > 0)
-      set({ warning: { id, to: fit.to, locksOut: fit.locksOut } })
+      set({ warning: { id, to: fit.to, locksOut: fit.locksOut, mayLockOut } })
   },
 
   dismiss: () => set({ warning: null }),
