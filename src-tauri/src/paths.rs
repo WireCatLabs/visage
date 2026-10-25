@@ -36,7 +36,24 @@ fn build_search_path(extra: &[PathBuf]) -> OsString {
 
     let mut seen = std::collections::HashSet::new();
     dirs.retain(|d| !d.as_os_str().is_empty() && seen.insert(d.clone()));
+    if let Some(found) = crate::node::installed() {
+        place_managed(&mut dirs, crate::node::bin_dir(&found.dir));
+    }
     std::env::join_paths(dirs).unwrap_or_default()
+}
+
+/// The app's Node.js goes first only when the user's own setup cannot install tools, so a working nvm, Volta or
+/// Homebrew Node keeps winning. It still stays on the path, so tools installed with it are found either way.
+fn place_managed(dirs: &mut Vec<PathBuf>, bin: PathBuf) {
+    let canonical = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let ours = canonical(&bin);
+    dirs.retain(|d| canonical(d) != ours);
+    let own = std::env::join_paths(dirs.iter()).unwrap_or_default();
+    if crate::system::own_setup_usable(&own) {
+        dirs.push(bin);
+    } else {
+        dirs.insert(0, bin);
+    }
 }
 
 #[derive(Default)]

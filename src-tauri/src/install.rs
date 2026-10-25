@@ -1,5 +1,5 @@
 use crate::catalog::Tool;
-use crate::{paths, redact, run, system, tools};
+use crate::{node, paths, redact, run, system, tools};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -43,13 +43,13 @@ pub enum Reason {
 pub struct Running(Mutex<HashSet<String>>);
 
 impl Running {
-    fn start(&self, id: &str) -> bool {
+    pub fn start(&self, id: &str) -> bool {
         self.0.lock().unwrap().insert(id.to_string())
     }
-    fn finish(&self, id: &str) {
+    pub fn finish(&self, id: &str) {
         self.0.lock().unwrap().remove(id);
     }
-    fn is_running(&self, id: &str) -> bool {
+    pub fn is_running(&self, id: &str) -> bool {
         self.0.lock().unwrap().contains(id)
     }
     pub fn cancel(&self, id: &str) {
@@ -99,7 +99,10 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
         return Err(Failure(
             Reason::Requirements,
             format!("Node.js {}.", ready.node.problem.as_deref().unwrap_or("is missing")),
-            Some("Install Node.js 22.16 or newer (24 recommended), then check again.".into()),
+            Some(
+                "Let WireCat set up Node.js for you, or install Node.js 22.16 or newer (24 recommended) yourself."
+                    .into(),
+            ),
         ));
     }
     let existing = tools::detect(tool).installs.into_iter().next();
@@ -121,7 +124,7 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
         return Err(Failure(
             Reason::Permission,
             format!("npm installs into {}, which needs administrator rights.", ready.npm_prefix.unwrap_or_default()),
-            Some("Point npm at a folder in your home: npm config set prefix ~/.npm-global, add ~/.npm-global/bin to PATH, then try again.".into()),
+            Some("Let WireCat set up its own Node.js in your home folder, or point npm at one: npm config set prefix ~/.npm-global.".into()),
         ));
     }
 
@@ -209,6 +212,9 @@ fn run_manager(
     let mut cmd = run::command(program, args, Some(&paths::search_path()));
     if let Some(home) = paths::pnpm_home() {
         cmd.env("PNPM_HOME", home);
+    }
+    if let Some(runtime) = node::owner_of(program) {
+        cmd.env("npm_config_prefix", runtime);
     }
     let code = run::stream(
         cmd,

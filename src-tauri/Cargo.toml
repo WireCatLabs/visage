@@ -28,6 +28,10 @@ which = "7"
 regex = "1"
 semver = "1"
 ureq = { version = "3", features = ["json"] }
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -40,6 +44,10 @@ strip = true
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"
+
+[target."cfg(windows)".dependencies]
+winreg = "0.56"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
 
 [lints.rust]
 unsafe_code = "deny"

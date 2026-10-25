@@ -1,6 +1,8 @@
 mod catalog;
 mod install;
+mod node;
 mod paths;
+mod profile;
 mod redact;
 mod report;
 mod run;
@@ -24,6 +26,72 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> 
 #[tauri::command]
 async fn readiness() -> Result<system::Readiness, String> {
     blocking(system::readiness).await
+}
+
+#[tauri::command]
+async fn node_offer() -> Result<node::Offer, String> {
+    blocking(node::offer).await?
+}
+
+#[tauri::command]
+async fn setup_node(running: State<'_, Arc<Running>>, on_event: Channel<node::NodeEvent>) -> Result<(), String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        let send = |e: node::NodeEvent| {
+            let _ = on_event.send(e);
+        };
+        if !running.start(node::OPERATION) {
+            return send(node::NodeEvent::Failed {
+                reason: install::Reason::Failed,
+                message: "Node.js setup is already running.".into(),
+                hint: None,
+            });
+        }
+        let result = match node::root() {
+            Some(root) => node::setup(&root, &send, &|| !running.is_running(node::OPERATION)),
+            None => Err(node::Failure::no_home()),
+        };
+        running.finish(node::OPERATION);
+        paths::refresh(&[]);
+        send(match result {
+            Ok(done) => node::NodeEvent::Done {
+                version: done.version.to_string(),
+                path: paths::tilde(&done.dir.to_string_lossy()),
+            },
+            Err(f) => f.into(),
+        });
+    })
+    .await
+}
+
+#[tauri::command]
+fn cancel_node_setup(running: State<'_, Arc<Running>>) {
+    running.cancel(node::OPERATION);
+}
+
+#[tauri::command]
+async fn remove_node() -> Result<(), String> {
+    blocking(node::remove).await?
+}
+
+/// What "Add to PATH" would write and where, for the app's own Node.js.
+#[tauri::command]
+async fn node_path() -> Result<profile::PathPlan, String> {
+    blocking(|| {
+        let found = node::installed().ok_or("WireCat has not set up Node.js on this computer.")?;
+        Ok(profile::plan(&node::bin_dir(&found.dir)))
+    })
+    .await?
+}
+
+#[tauri::command]
+async fn set_node_path(add: bool) -> Result<profile::PathPlan, String> {
+    blocking(move || {
+        let found = node::installed().ok_or("WireCat has not set up Node.js on this computer.")?;
+        let bin = node::bin_dir(&found.dir);
+        if add { profile::add(&bin) } else { profile::remove(&bin) }
+    })
+    .await?
 }
 
 #[tauri::command]
@@ -153,6 +221,12 @@ pub fn run() {
         .manage(Arc::new(Running::default()))
         .invoke_handler(tauri::generate_handler![
             readiness,
+            node_offer,
+            setup_node,
+            cancel_node_setup,
+            remove_node,
+            node_path,
+            set_node_path,
             detect_tools,
             latest_versions,
             list_profiles,

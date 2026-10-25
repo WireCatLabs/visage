@@ -5,7 +5,12 @@ use std::process::{Command, Stdio};
 /// Setup flows (QR codes, phone codes, browser sign-in) belong to the CLI, so we open them
 /// in the user's terminal instead of re-implementing them.
 pub fn open(bin: &Path, args: &[String]) -> Result<(), String> {
-    let line = format!("{} {}", quote(&bin.to_string_lossy()), args.join(" "));
+    let mut line = format!("{} {}", quote(&bin.to_string_lossy()), args.join(" "));
+    // The new terminal reads the user's own PATH, where an older Node may come first; a tool installed with
+    // WireCat's Node.js would then start under it and fail. `env` works the same from sh, zsh and fish.
+    if cfg!(unix) && crate::node::in_use().is_some() {
+        line = format!("env PATH={} {line}", quote(&paths::search_path().to_string_lossy()));
+    }
     launch(&line).map_err(|_| {
         format!(
             "Could not open a terminal. Run this yourself: {} {}",
