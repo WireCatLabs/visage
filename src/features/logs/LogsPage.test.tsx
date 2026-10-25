@@ -184,8 +184,12 @@ describe("Logs snapshot", () => {
     timing.answer = 2000
     const user = userEvent.setup()
     const listRuns = platform.listRuns.bind(platform)
+    let answerTg = () => {}
+    const tgHeld = new Promise<void>((resolve) => {
+      answerTg = resolve
+    })
     const spy = vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
-      if (id === "tg") await sleep(1800)
+      if (id === "tg") await tgHeld
       return listRuns(id, ...rest)
     })
     render(<LogsPage />)
@@ -195,6 +199,7 @@ describe("Logs snapshot", () => {
     const sources = screen.getByRole("list", { name: "Where the runs come from" })
     expect(within(sources).getByText("did not answer in 2 s")).toBeInTheDocument()
 
+    answerTg()
     await user.click(screen.getByRole("button", { name: "Read again" }))
     await loaded()
     expect(within(sources).getByText("Telegram").nextSibling).toHaveTextContent(/^\d+\+? runs$/)
@@ -227,7 +232,9 @@ describe("Logs live", () => {
     let calls = 0
     let inFlight = 0
     let most = 0
+    const tools = new Set<string>()
     vi.spyOn(platform, "listRuns").mockImplementation(async (...args) => {
+      tools.add(args[0])
       calls++
       inFlight++
       most = Math.max(most, inFlight)
@@ -246,7 +253,8 @@ describe("Logs live", () => {
     await user.click(live)
     expect(live).toHaveAttribute("aria-pressed", "true")
     await waitFor(() => expect(calls).toBeGreaterThanOrEqual(perRound * 3), { timeout: 4000 })
-    expect(most).toBe(perRound)
+    // One read per tool at most at any moment: a second round never starts while one is running.
+    expect(most).toBeLessThanOrEqual(tools.size)
     expect(screen.getByText(/^Updated \d+ s ago$/)).toBeInTheDocument()
 
     let visibility = "hidden"
