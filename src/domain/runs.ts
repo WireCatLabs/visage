@@ -1,0 +1,324 @@
+// The Logs explorer's query language, facets and grouping, over runs already fetched from the tools.
+// Syntax, close to the WireCat search language: `status:failed command:sync* -profile:work duration_ms:>1000 timeout`.
+// Terms are ANDed, except that several plain values of one field mean "any of them", so facet clicks add up.
+
+export type Run = {
+  tool: string
+  run_id: string
+  command: string
+  status: string
+  started_at: string
+  profile?: string
+  duration_ms?: number
+  error_code?: string
+  [key: string]: unknown
+}
+
+export type Op = "=" | ">" | "<" | ">=" | "<="
+export type Term =
+  | { kind: "field"; field: string; value: string; op: Op; negate: boolean; start: number; end: number; raw: string }
+  | { kind: "text"; value: string; negate: boolean; start: number; end: number; raw: string }
+
+export type QueryProblem = { start: number; end: number; message: string }
+export type Parsed = { terms: Term[]; problems: QueryProblem[] }
+
+/** The fields a facet column shows, in order. */
+export const FACETS = ["tool", "status", "command", "error_code", "profile"] as const
+export const FACET_LABELS: Record<string, string> = {
+  tool: "Tool",
+  status: "Status",
+  command: "Command",
+  error_code: "Error code",
+  profile: "Profile",
+  cli_version: "Version",
+}
+
+const ALIASES: Record<string, string> = { operation: "operations", code: "codes", duration: "duration_ms" }
+const FIELD = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i
+const TEXT_FIELDS = [
+  "tool",
+  "run_id",
+  "command",
+  "profile",
+  "status",
+  "error_code",
+  "operations",
+  "codes",
+  "provider_error",
+  "cli_version",
+]
+
+type Token = { raw: string; start: number; end: number; unclosed: boolean }
+
+function tokenize(query: string): Token[] {
+  const tokens: Token[] = []
+  let i = 0
+  while (i < query.length) {
+    if (/\s/.test(query[i] as string)) {
+      i++
+      continue
+    }
+    const start = i
+    let quoted = false
+    while (i < query.length && (quoted || !/\s/.test(query[i] as string))) {
+      if (query[i] === '"') quoted = !quoted
+      i++
+    }
+    tokens.push({ raw: query.slice(start, i), start, end: i, unclosed: quoted })
+  }
+  return tokens
+}
+
+const unquote = (s: string) => (s.length >= 2 && s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s)
+
+export function parseQuery(query: string): Parsed {
+  const terms: Term[] = []
+  const problems: QueryProblem[] = []
+  for (const t of tokenize(query)) {
+    const { raw, start, end } = t
+    if (t.unclosed) {
+      problems.push({ start, end, message: "A quote is not closed." })
+      continue
+    }
+    const negate = raw.startsWith("-") && raw.length > 1
+    const body = negate ? raw.slice(1) : raw
+    const colon = body.indexOf(":")
+    const name = colon > 0 ? body.slice(0, colon) : ""
+    if (colon > 0 && FIELD.test(name)) {
+      let rest = body.slice(colon + 1)
+      const op = (/^(>=|<=|>|<)/.exec(rest)?.[0] ?? "=") as Op
+      rest = rest.slice(op === "=" ? 0 : op.length)
+      const value = unquote(rest)
+      if (!value) {
+        problems.push({ start, end, message: `${name}: needs a value, like ${name}:something.` })
+        continue
+      }
+      if (op !== "=" && Number.isNaN(Number(value))) {
+        problems.push({ start, end, message: `${op} compares numbers; "${value}" is not one.` })
+        continue
+      }
+      const field = ALIASES[name.toLowerCase()] ?? name.toLowerCase()
+      terms.push({ kind: "field", field, value, op, negate, start, end, raw })
+    } else {
+      terms.push({ kind: "text", value: unquote(body), negate, start, end, raw })
+    }
+  }
+  return { terms, problems }
+}
+
+/** Every scalar at a dotted path; arrays on the way are walked, so `codes` or `partial.failures.stage` match any. */
+export function valuesAt(run: Run, path: string): string[] {
+  let current: unknown[] = [run]
+  for (const key of path.split(".")) {
+    const next: unknown[] = []
+    for (const c of current) {
+      const v = c && typeof c === "object" && !Array.isArray(c) ? (c as Record<string, unknown>)[key] : undefined
+      if (Array.isArray(v)) for (const x of v) next.push(x)
+      else if (v !== undefined && v !== null) next.push(v)
+    }
+    current = next
+  }
+  return current.filter((v) => typeof v !== "object").map(String)
+}
+
+const globCache = new Map<string, RegExp>()
+function glob(pattern: string, anchored: boolean): RegExp {
+  const key = `${anchored}:${pattern}`
+  let re = globCache.get(key)
+  if (!re) {
+    const body = pattern
+      .split("*")
+      .map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+      .join(".*")
+    re = new RegExp(anchored ? `^${body}$` : body, "i")
+    globCache.set(key, re)
+  }
+  return re
+}
+
+function fieldMatches(run: Run, term: Extract<Term, { kind: "field" }>): boolean {
+  const values = valuesAt(run, term.field)
+  if (term.op === "=") return values.some((v) => glob(term.value, true).test(v))
+  const limit = Number(term.value)
+  return values.some((v) => {
+    const n = Number(v)
+    if (Number.isNaN(n)) return false
+    return term.op === ">" ? n > limit : term.op === "<" ? n < limit : term.op === ">=" ? n >= limit : n <= limit
+  })
+}
+
+function textMatches(run: Run, value: string): boolean {
+  const re = glob(value, false)
+  return TEXT_FIELDS.some((f) => valuesAt(run, f).some((v) => re.test(v)))
+}
+
+/** A matcher for the whole query; `skipField` leaves that field's terms out, for facet counts. */
+export function matcher(terms: Term[], skipField?: string): (run: Run) => boolean {
+  const active = terms.filter((t) => !(t.kind === "field" && t.field === skipField))
+  const anyOf = new Map<string, Extract<Term, { kind: "field" }>[]>()
+  const each: Term[] = []
+  for (const t of active) {
+    if (t.kind === "field" && t.op === "=" && !t.negate) anyOf.set(t.field, [...(anyOf.get(t.field) ?? []), t])
+    else each.push(t)
+  }
+  return (run) => {
+    for (const group of anyOf.values()) if (!group.some((t) => fieldMatches(run, t))) return false
+    for (const t of each) {
+      const hit = t.kind === "field" ? fieldMatches(run, t) : textMatches(run, t.value)
+      if (hit === t.negate) return false
+    }
+    return true
+  }
+}
+
+export type Count = { value: string; count: number }
+
+export function countValues(runs: Run[], field: string): Count[] {
+  const counts = new Map<string, number>()
+  for (const run of runs) {
+    const values = new Set(valuesAt(run, field))
+    if (values.size === 0) values.add("")
+    for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1)
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+}
+
+/** Counts per value of a facet among runs that match everything else in the query. */
+export function facetCounts(runs: Run[], terms: Term[], field: string): Count[] {
+  return countValues(runs.filter(matcher(terms, field)), field)
+}
+
+export type Group = { value: string; count: number; failed: number; last: string }
+
+export function groupRuns(runs: Run[], field: string): Group[] {
+  const groups = new Map<string, Group>()
+  for (const run of runs) {
+    const values = new Set(valuesAt(run, field))
+    if (values.size === 0) values.add("")
+    for (const value of values) {
+      const g = groups.get(value) ?? { value, count: 0, failed: 0, last: "" }
+      g.count++
+      if (run.status === "failed") g.failed++
+      if (run.started_at > g.last) g.last = run.started_at
+      groups.set(value, g)
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+}
+
+export type TermState = "include" | "exclude" | null
+
+export function termState(terms: Term[], field: string, value: string): TermState {
+  const t = terms.find((t) => t.kind === "field" && t.op === "=" && t.field === field && t.value === value)
+  return t ? (t.negate ? "exclude" : "include") : null
+}
+
+const quote = (value: string) => (/[\s"():]/.test(value) || value === "" ? `"${value.replace(/"/g, "")}"` : value)
+export const termText = (field: string, value: string, negate = false) => `${negate ? "-" : ""}${field}:${quote(value)}`
+
+/** Adds `field:value` (or `-field:value`), or removes it when the same term is already there. */
+export function toggleTerm(query: string, field: string, value: string, negate = false): string {
+  const { terms } = parseQuery(query)
+  const same = (t: Term) => t.kind === "field" && t.op === "=" && t.field === field && t.value === value
+  const existing = terms.find(same)
+  const kept = tokenize(query)
+    .filter((tok) => !terms.some((t) => same(t) && t.start === tok.start))
+    .map((tok) => tok.raw)
+  if (existing?.kind === "field" && existing.negate === negate) return kept.join(" ")
+  return [...kept, termText(field, value, negate)].join(" ")
+}
+
+/** Problems a parse cannot see: a field no fetched run has at all. */
+export function unknownFields(parsed: Parsed, runs: Run[]): QueryProblem[] {
+  return parsed.terms.flatMap((t) =>
+    t.kind === "field" && runs.length > 0 && !runs.some((r) => valuesAt(r, t.field).length > 0)
+      ? [{ start: t.start, end: t.end, message: `No run has a field named ${t.field}.` }]
+      : [],
+  )
+}
+
+export type Suggestion = { label: string; insert: string; hint: string }
+export type Suggestions = { from: number; to: number; items: Suggestion[] }
+
+export function suggest(query: string, cursor: number, runs: Run[], fields: readonly string[]): Suggestions {
+  const tok = tokenize(query).find((t) => t.start <= cursor && cursor <= t.end)
+  const from = tok?.start ?? cursor
+  const to = tok?.end ?? cursor
+  const raw = tok?.raw ?? ""
+  const negate = raw.startsWith("-") ? "-" : ""
+  const body = raw.slice(negate.length)
+  const colon = body.indexOf(":")
+  if (colon < 0) {
+    const prefix = body.toLowerCase()
+    const items = fields
+      .filter((f) => f.startsWith(prefix) && f !== prefix)
+      .map((f) => ({ label: `${f}:`, insert: `${negate}${f}:`, hint: FACET_LABELS[f] ?? "field" }))
+    return { from, to, items }
+  }
+  const field = ALIASES[body.slice(0, colon).toLowerCase()] ?? body.slice(0, colon).toLowerCase()
+  const typed = unquote(body.slice(colon + 1)).toLowerCase()
+  const items = countValues(runs, field)
+    .filter((c) => c.value !== "" && c.value.toLowerCase().startsWith(typed) && c.value.toLowerCase() !== typed)
+    .slice(0, 8)
+    .map((c) => ({ label: c.value, insert: termText(field, c.value, negate === "-"), hint: String(c.count) }))
+  return { from, to, items }
+}
+
+export const RANGES = [
+  { id: "1h", label: "1h", ms: 3_600_000 },
+  { id: "24h", label: "24h", ms: 86_400_000 },
+  { id: "7d", label: "7d", ms: 7 * 86_400_000 },
+  { id: "30d", label: "30d", ms: 30 * 86_400_000 },
+  { id: "all", label: "All", ms: Number.POSITIVE_INFINITY },
+] as const
+export type RangeId = (typeof RANGES)[number]["id"]
+
+export function inRange(runs: Run[], range: RangeId, now: number): Run[] {
+  const ms = RANGES.find((r) => r.id === range)?.ms ?? Number.POSITIVE_INFINITY
+  if (!Number.isFinite(ms)) return runs
+  const since = now - ms
+  return runs.filter((r) => Date.parse(r.started_at) >= since)
+}
+
+export const newestFirst = (a: Run, b: Run) => (a.started_at < b.started_at ? 1 : a.started_at > b.started_at ? -1 : 0)
+
+export type Tone = "ok" | "warn" | "bad" | "busy" | "idle"
+export const statusTone = (status: string): Tone =>
+  status === "success"
+    ? "ok"
+    : status === "failed"
+      ? "bad"
+      : status === "partial"
+        ? "warn"
+        : status === "running"
+          ? "busy"
+          : "idle"
+
+export function formatDuration(ms: number | undefined): string {
+  if (ms === undefined) return "—"
+  if (ms < 1000) return `${Math.round(ms)} ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`
+  return `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`
+}
+
+const pad = (n: number) => String(n).padStart(2, "0")
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/** Local time: "14:05:12" today, "Yesterday 14:05", "3 Oct 14:05" otherwise. */
+export function formatWhen(iso: string, now: Date): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((day(now) - day(d)) / 86_400_000)
+  if (days === 0) return `${hm}:${pad(d.getSeconds())}`
+  if (days === 1) return `Yesterday ${hm}`
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${hm}`
+}
+
+export const formatDay = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
