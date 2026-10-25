@@ -366,8 +366,8 @@ pub fn info() -> Result<Option<StoreInfo>, String> {
         return Ok(Some(shape(&tool.id, v.get("item").unwrap_or(v))));
     }
     Err(answers
-        .into_iter()
-        .find_map(|(_, answer)| answer.err())
+        .iter()
+        .find_map(|(_, answer)| answer.as_ref().err().cloned())
         .unwrap_or_else(|| "no installed tool knows `store info` yet".into()))
 }
 

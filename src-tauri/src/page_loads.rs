@@ -3,7 +3,7 @@
 //! never names, paths or values.
 
 use crate::catalog::Tool;
-use crate::{archive, paths, run, runs, settings, skills, storage, system, tasks, tools};
+use crate::{archive, compat, paths, run, runs, settings, skills, storage, system, tasks, tools};
 use std::time::Instant;
 
 type Job<'a> = Box<dyn FnOnce() + Send + 'a>;
@@ -56,6 +56,7 @@ fn storage_page(visit: &str) {
         Box::new(|| drop(storage::report())),
         Box::new(|| drop(archive::info())),
         Box::new(|| drop(archive::tables(false))),
+        Box::new(|| drop(compat::compat())),
     ]);
     report("Storage", visit, done.into_iter().max().unwrap_or(0), before, started);
 }

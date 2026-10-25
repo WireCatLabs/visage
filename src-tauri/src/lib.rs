@@ -133,7 +133,9 @@ async fn install_tool(
 ) -> Result<(), String> {
     let tool = catalog::owner(catalog::tool(&id)?);
     let running = Arc::clone(&running);
-    blocking(move || install::install(tool, &running, &on_event)).await
+    let done = blocking(move || install::install(tool, &running, &on_event)).await;
+    compat::forget();
+    done
 }
 
 #[tauri::command]
@@ -144,7 +146,9 @@ async fn uninstall_tool(
 ) -> Result<(), String> {
     let tool = catalog::owner(catalog::tool(&id)?);
     let running = Arc::clone(&running);
-    blocking(move || install::uninstall(tool, &running, &on_event)).await
+    let done = blocking(move || install::uninstall(tool, &running, &on_event)).await;
+    compat::forget();
+    done
 }
 
 #[tauri::command]

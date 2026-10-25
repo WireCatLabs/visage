@@ -3,7 +3,8 @@ use crate::catalog::{self, Tool};
 use crate::paths;
 use serde::Serialize;
 use serde_json::Value;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 #[derive(Serialize, Debug, PartialEq, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -108,8 +109,33 @@ fn installed() -> Vec<&'static Tool> {
         .collect()
 }
 
+pub(crate) type Answers = Vec<(&'static Tool, Result<Answer, String>)>;
+
+/// Storage asks for the summary and the compatibility at once; both read the same answers, so the second caller waits
+/// for the first and takes its result instead of starting every tool again.
+const SHARED_FOR: Duration = Duration::from_secs(5);
+
+static LAST: Mutex<Option<(Instant, Arc<Answers>)>> = Mutex::new(None);
+
+pub(crate) fn probe() -> Arc<Answers> {
+    let mut last = LAST.lock().unwrap();
+    if let Some((at, answers)) = last.as_ref()
+        && at.elapsed() < SHARED_FOR
+    {
+        return Arc::clone(answers);
+    }
+    let answers = Arc::new(ask_all());
+    *last = Some((Instant::now(), Arc::clone(&answers)));
+    answers
+}
+
+/// An install or uninstall changes who answers and what they say.
+pub fn forget() {
+    *LAST.lock().unwrap() = None;
+}
+
 /// Asks every installed tool at once: each answer is one `node` start and a read of the file.
-pub(crate) fn probe() -> Vec<(&'static Tool, Result<Answer, String>)> {
+fn ask_all() -> Answers {
     let tools = installed();
     std::thread::scope(|scope| {
         let handles: Vec<_> = tools
