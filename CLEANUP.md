@@ -9,3 +9,4 @@
 - 2026-10-25 · .claude/worktrees/agent-a24b178491f765965 and branch worktree-agent-a24b178491f765965 — merged (437b5e8)
 - 2026-10-25 · bin/free-build-space — one-off disk cleanup helper; remove once worktrees are cleaned up
 - 2026-10-25 · .claude/worktrees/agent-a317c0ca880693474 and its branch — merged
+- 2026-10-25 · .claude/worktrees/store-compat and branch feat/store-compat — merged
