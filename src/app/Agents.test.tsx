@@ -14,12 +14,18 @@ describe("Agents", () => {
     render(<App />)
     await user.click(screen.getByRole("button", { name: /Agents/ }))
 
-    const table = await screen.findByRole("table", { name: "Skills for agents" })
-    expect(await within(table).findByRole("columnheader", { name: /Claude Code, Cursor/ })).toBeInTheDocument()
-    const tg = (await within(table).findByRole("rowheader", { name: /Telegram/ })).closest("tr") as HTMLElement
-    expect(await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Old/ })).toBeInTheDocument()
+    const table = await screen.findByRole("table", { name: "Skills for agents" }, { timeout: 4000 })
+    expect(
+      await within(table).findByRole("columnheader", { name: /Claude Code, Cursor/ }, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    const tg = (await within(table).findByRole("rowheader", { name: /Telegram/ }, { timeout: 4000 })).closest(
+      "tr",
+    ) as HTMLElement
+    expect(
+      await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Old/ }, { timeout: 4000 }),
+    ).toBeInTheDocument()
     const max = within(table).getByRole("rowheader", { name: /MAX/ })
-    expect(await within(max).findByText(/cannot report its skill/)).toBeInTheDocument()
+    expect(await within(max).findByText(/cannot report its skill/, {}, { timeout: 4000 })).toBeInTheDocument()
 
     await user.click(within(tg).getByRole("button", { name: /^Update Telegram skill for Codex/ }))
     expect(

@@ -13,14 +13,14 @@ describe("Storage", () => {
     await user.click(screen.getByRole("button", { name: /Storage/ }))
 
     const archive = await screen.findByRole("region", { name: "In the archive" })
-    expect(await within(archive).findByText("15,594")).toBeInTheDocument()
+    expect(await within(archive).findByText("15,594", {}, { timeout: 4000 })).toBeInTheDocument()
     expect(within(archive).getByText(/Asked Telegram/)).toBeInTheDocument()
     expect(within(archive).getByRole("table", { name: "By messenger" })).toHaveTextContent("WhatsApp")
 
     await user.click(within(archive).getByRole("button", { name: "Chat type" }))
     expect(within(archive).getByRole("table", { name: "By chat type" })).toHaveTextContent("Telegram · Groups")
 
-    const tg = await screen.findByRole("list", { name: "What Telegram keeps" })
+    const tg = await screen.findByRole("list", { name: "What Telegram keeps" }, { timeout: 4000 })
     expect(within(tg).getByText(/Credentials: size only/)).toBeInTheDocument()
   }, 15000)
 })

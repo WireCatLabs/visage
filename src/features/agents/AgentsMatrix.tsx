@@ -9,6 +9,7 @@ import {
   skillCell,
   TARGET_FOLDER,
 } from "@/domain/skills"
+import { isNewer } from "@/domain/status"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -33,6 +34,11 @@ const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
 /** Everything the matrix shows, so the page can offer "Update all" over the same cells. */
 export function useSkillMatrix() {
   const installs = useTools((s) => s.installs)
+  const latest = useTools((s) => s.latest)
+  const latestOf = (id: string, current: string | null) => {
+    const l = latest?.[id]
+    return l && current && isNewer(l, current) ? l : null
+  }
   const { agents, skills, written, busy, failures } = useAgents()
   const detected = Object.keys(installs).length > 0
   const installed = catalogTools.filter((t) => (installs[t.id]?.length ?? 0) > 0)
@@ -46,6 +52,7 @@ export function useSkillMatrix() {
       tool,
       cliVersion,
       source: skill?.report?.source ?? null,
+      newer: latestOf(tool.id, cliVersion),
       cells: targets.map((target) => {
         const key = cellKey(tool.id, target)
         return {
@@ -165,7 +172,10 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
                       </div>
                       {r.source === "none" && (
                         <p className="mt-1.5 max-w-[34ch] text-[0.8rem] leading-snug text-ink-soft">
-                          This version cannot report its skill. Update {r.tool.name} on the Tools page to see it.
+                          This version cannot report its skill.{" "}
+                          {r.newer
+                            ? `Update ${r.tool.name} to ${r.newer} on the Tools page to see it.`
+                            : "A coming release will."}
                         </p>
                       )}
                     </th>
