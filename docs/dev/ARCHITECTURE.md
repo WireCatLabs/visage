@@ -122,7 +122,7 @@ it starts, the folder's disk needs one and a half times the store free. `VACUUM 
 progress is the copy's size against the store's; compressing reports each percent. Cancel kills the tool's process
 group and removes both partial files. Events travel on a `Channel` (`BackupEvent`).
 
-**Clear storage** runs `store reset --no-backup --allow-dangerous` (`storeReset`). The button stays off until the tool
+**Clear storage** runs `store reset --no-backup --yes` (`storeReset`). The button stays off until the tool
 answers `store reset --dry-run` with its `tables`; an older tool asks for a profile there, or does not know the option.
 The dialog lists the store's files and every table with its rows from that preview, says what stays, warns when the
 preview says a sync holds the file, and needs the word `clear` typed. "Back up first" is on by default and runs the

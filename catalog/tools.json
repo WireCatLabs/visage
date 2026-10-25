@@ -50,7 +50,7 @@
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
-      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
         "app": "tg-cli",
         "env": "TG"
@@ -131,7 +131,7 @@
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
-      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
         "app": "max-cli",
         "env": "MAX"
@@ -211,7 +211,7 @@
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
-      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
         "app": "whatsapp-cli",
         "env": "WA"
