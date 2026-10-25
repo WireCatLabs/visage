@@ -10,9 +10,10 @@ const controls: { action: WindowAction; label: string; icon: ReactNode }[] = [
 
 // The window has no system title bar on Linux and Windows, so this strip is where it is dragged from.
 // macOS keeps its own traffic lights over the sidebar.
-export function TopBar() {
+export function TopBar({ children }: { children?: ReactNode }) {
   return (
     <header data-tauri-drag-region className="flex h-[3.3rem] shrink-0 justify-end border-line border-b">
+      {children && <div className="flex h-full items-center px-[0.6rem]">{children}</div>}
       {platform.os !== "macos" && (
         <div className="flex h-full">
           {controls.map((c) => (

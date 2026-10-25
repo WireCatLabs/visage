@@ -43,7 +43,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const showInstallPanel = Boolean(session)
 
   return (
-    <li className="border-line border-b last:border-b-0">
+    <li data-tour="tool" className="border-line border-b last:border-b-0">
       <div className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
         <Lamp tone={lampTone[status.kind]} label={lampLabel(status)} />
         <ToolIcon id={tool.id} className="size-[1.6rem] text-ink xl:size-[1.75rem]" />
@@ -61,7 +61,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
         </button>
         <Version status={status} installed={installs?.[0]?.version ?? null} />
-        <div className="flex justify-end">
+        <div data-tour="tool-action" className="flex justify-end">
           <Action
             status={status}
             expanded={expanded}

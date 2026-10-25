@@ -1,4 +1,5 @@
-import { Monitor, Moon, Sun } from "lucide-react"
+import { ListChecks, Monitor, Moon, Sun } from "lucide-react"
+import { useOnboarding } from "@/features/onboarding/store"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
 import { Pill } from "@/ui/Pill"
@@ -14,6 +15,7 @@ const themeOptions = [
 
 export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
   const theme = useTheme()
+  const postponed = useOnboarding((s) => s.status === "later")
   return (
     <aside
       className="flex w-[12rem] shrink-0 xl:w-[13.5rem] flex-col border-line border-r bg-wall"
@@ -30,6 +32,7 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
             <button
               key={s.id}
               type="button"
+              data-tour={`nav-${s.id}`}
               disabled={!ready}
               aria-current={current ? "page" : undefined}
               onClick={() => onSelect(s.id)}
@@ -57,7 +60,17 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
           )
         })}
       </nav>
-      <div className="mt-auto flex items-center justify-between px-[1.4rem] pb-[1.6rem]">
+      {postponed && (
+        <button
+          type="button"
+          onClick={() => useOnboarding.getState().reopen()}
+          className="mx-[1rem] mt-auto mb-[1rem] flex items-center gap-[0.7rem] rounded-[0.4rem] border border-line-strong bg-app px-[0.8rem] py-[0.6rem] text-left text-[0.95rem] text-ink hover:border-brand/50"
+        >
+          <ListChecks className="size-[1.1rem] shrink-0 text-brand" strokeWidth={1.8} aria-hidden />
+          Finish setup
+        </button>
+      )}
+      <div className={cx("flex items-center justify-between px-[1.4rem] pb-[1.6rem]", !postponed && "mt-auto")}>
         <span className="text-[0.95rem] text-ink-dim">{__APP_VERSION__}</span>
         <Segmented label="Theme" value={theme.choice} options={themeOptions} onChange={theme.set} />
       </div>

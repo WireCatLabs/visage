@@ -39,6 +39,7 @@ export function ToolsPage() {
         </div>
         <button
           type="button"
+          data-tour="check-again"
           onClick={() => useTools.getState().refresh()}
           disabled={refreshing}
           className="inline-flex items-center gap-1.5 rounded-[0.35rem] px-2 py-1 text-[0.875rem] text-ink-dim transition-colors hover:bg-app-3 hover:text-ink disabled:opacity-60"

@@ -120,7 +120,7 @@ function ProfileList(props: {
   )
 }
 
-function NewProfile({ tool }: { tool: CatalogTool }) {
+export function NewProfile({ tool }: { tool: CatalogTool }) {
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const valid = isValidProfile(name)
