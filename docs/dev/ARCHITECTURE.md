@@ -8,7 +8,7 @@ the machine and runs the tools. Nothing here duplicates what a CLI already does.
 ```text
 src/
   app/          shell: window frame, sidebar, sections, theme. May import everything below.
-  features/     one folder per area (tools/, system/, logs/, config/, onboarding/, report/). Data, state and screens for that area.
+  features/     one folder per area (tools/, agents/, system/, logs/, config/, storage/, onboarding/, report/).
   ui/           presentational parts: Button, Lamp, Stepper… Props in, events out.
   platform/     the only door to Rust. Validates every answer with valibot. Has a browser mock.
   domain/       plain TypeScript: catalog, tool status, doctor summaries. No React, no Tauri.
@@ -22,7 +22,9 @@ src-tauri/src/
   install.rs    install, update and uninstall with progress events, verification, failure reasons.
   runs.rs       run logs, read through each tool's own `runs list` / `runs show`.
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
-  storage.rs    each tool's data folders, their sizes, and deleting them once nothing uses them.
+  storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
+  archive.rs    what the shared archive holds, from a messenger tool's `store info`; the database is never opened.
+  skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `skill install`.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
@@ -70,6 +72,19 @@ the shared archive until no tool is installed. Before `remove_dir_all`, each pat
 components deep, not the home folder, and named for the tool. A store moved with `MESSAGING_STORE` and sign-in
 tokens in the system keyring are never touched. After the last tool is uninstalled the app offers, once, to delete
 everything that is left.
+
+## Skills and the archive
+
+Each tool writes its skill (`SKILL.md`) to `~/.claude/skills` and `~/.agents/skills` with its own
+`skill install --for claude|agents`; the catalog's `skill` templates hold those commands and `skill status`. The app
+never reads a `SKILL.md`. A tool from before `skill status` answers "unknown command" and its cells show "unknown";
+memo falls back to the skill list in `doctor --json`. Agents are found by program on PATH or by their settings
+folder (`skills.rs`); which folder each agent reads comes from the agents' own docs.
+
+The shared archive is described by `store info --json` of the first installed of tg, wa and max (`storeInfo` in the
+catalog). `archive.rs` picks known fields by name, because the generic masker would hide counts called `accounts`
+or `emails`. The breakdown is read only when the tool prints `by_provider`. Folder entries on the Storage page are
+names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`.
 
 ## Profiles and diagnostics
 
