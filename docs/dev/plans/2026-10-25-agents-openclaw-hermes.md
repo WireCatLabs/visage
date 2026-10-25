@@ -1,115 +1,154 @@
-# OpenClaw and Hermes as agents, and publishing the connectors
+# OpenClaw and Hermes as agents, and publishing the skills
 
 Status: **draft for the owner's review** (journal TASK-8). Nothing here is built yet.
+Revised 2026-10-25 after the owner's review: the command line comes first, MCP is not pushed.
 
-A *connector* here is what one WireCat tool gives an agent: its skill (SKILL.md) and its MCP server
-(`<bin> <profile> mcp`; memo has no profile: `memo mcp`).
+## The rule this plan follows
 
-## What the research found
+An agent uses a WireCat tool by running it, the way it runs any program. The tool's **skill** (SKILL.md) teaches the
+agent the commands. That is all a local agent needs, and it is the better way:
 
-The full notes, with a source for every claim, were written by three research agents. They are not in the repository;
-the parts that matter are below.
+- it is faster
+- it is easier to debug, since the owner can run the same command
+- the permissions and run logs are the same as in a terminal
+
+MCP is for clients that cannot run programs: chat apps, and agents on another machine. So:
+
+- **Connecting an agent means: install the skill, and make sure the tool is on the agent's PATH.** No MCP server is
+  added.
+- **The desktop app does not promote MCP.** It stays readable for owners who set it up themselves (Agents → an
+  agent's details → "Advanced: MCP"), and is never listed as something to fix.
+- **No new MCP clients for Hermes or OpenClaw** in cli-base's `mcp add`. `mcp add` exists so a tool can write its
+  server into an agent's own settings, and each agent keeps them differently:
+  - Claude Code: `claude mcp add`
+  - Codex: `codex mcp add`
+  - Hermes: a YAML file, and its own add command asks questions
+  - OpenClaw: `openclaw mcp add`, refused while its background service runs
+
+  A new "client" is one more agent whose settings `mcp add` can write. With MCP not pushed, that work has no buyer.
+
+## The two agents
 
 | | Hermes Agent (Nous Research) | OpenClaw |
 | --- | --- | --- |
 | Found by | `hermes` on PATH, or `~/.hermes` (`HERMES_HOME`) | `openclaw` on PATH, or `~/.openclaw` |
-| Reads skills from | `~/.hermes/skills`, plus folders listed in `skills.external_dirs` in `config.yaml` (empty by default). Never `~/.agents/skills` or `~/.claude/skills` on its own | `~/.agents/skills` already, so `skill install --for agents` reaches it today |
-| MCP servers kept in | `~/.hermes/config.yaml`, key `mcp_servers.<name>` (`command`, `args`, `env`, `enabled`) | `~/.openclaw/openclaw.json` (JSON5), key `mcp.servers.<name>` |
-| Add a server | `hermes mcp add` asks questions and starts the server; no `--yes`. Writing the YAML is the dependable way | `openclaw mcp add <name> --command … --arg …` (`--no-probe` to not start it). **Refused while OpenClaw's background service runs**, which is almost always |
-| List without starting servers | read the YAML keys (`hermes mcp list` prints a table only) | `openclaw mcp list --json` (shape not yet seen) |
-| Marks its commands with | `AI_AGENT=hermes-agent`, `HERMES_AGENT=true`, `HERMES_SESSION_ID` (local terminal) | `OPENCLAW_SHELL=exec`; from a chat also `OPENCLAW_CHANNEL_CONTEXT`; no session id found |
-| MCP server environment | only PATH, HOME, locale and the entry's own `env` | the service's own plus the entry's `env` |
-| Skill registry | installs from GitHub, a URL, skills.sh, ClawHub, or `/.well-known/skills/index.json` | ClawHub (`clawhub skill publish`), automatic security scans, every skill MIT-0 |
+| Reads skills from | `~/.hermes/skills`, and folders listed in `skills.external_dirs` in `config.yaml` (empty by default) | `~/.agents/skills`, so `skill install --for agents` reaches it today |
+| How we give it the skills | `hermes config set skills.external_dirs '["~/.agents/skills"]'` once (Hermes's own command; keep entries already there). Fallback: copy into `~/.hermes/skills/<app>` (NEED-31) | nothing to do |
+| Runs our commands with | a `bash -l` snapshot of PATH: an npm folder added only in `~/.zshrc` is missing | its background service's PATH, which may lack npm's global folder (`tools.exec.pathPrepend` fixes it) |
+| Marks its commands with | `AI_AGENT=hermes-agent`, `HERMES_SESSION_ID` | `OPENCLAW_SHELL=exec`; no session id |
+| Driven from chats | its gateway (Telegram etc.), set up on this machine | its channels |
 
-Where to publish, ranked by reach for the effort:
+## Their ecosystems: where people find skills, and what we publish there
 
-1. **The official MCP Registry** (registry.modelcontextprotocol.io). Add `mcpName` to each `package.json` and a
-   `server.json`, and run `mcp-publisher` in release CI. It can declare a required profile argument with no default.
-   PulseMCP and probably Glama read from it. GitHub's registry (and so VS Code's gallery) takes an email nomination.
-2. **Our own Claude Code plugin marketplace**: a `WireCatLabs/claude-plugins` repo with one plugin per tool (skill
-   plus MCP server, profile asked at enable). No review, so it is live the day it is pushed.
-3. **skills.sh**: `npx skills add WireCatLabs/<repo>` already works. **Hermes**: a `wirecat.dev/.well-known/skills/index.json`
-   the docs build generates. **ClawHub**: `clawhub skill publish` from CI with a token.
-4. Later: Anthropic's directory (inside a plugin, a paid claude.ai plan, six reviews, and local servers never run in
-   claude.ai chat), Cursor's marketplace.
-5. Not a fit: `.mcpb` desktop bundles (no longer accepted, ~500 MB per OS), Docker's catalog (container, away from
-   the sign-in and store), Codex's directory (remote servers only), mcp.so (paid to skip review).
+**OpenClaw → ClawHub** (clawhub.ai, OpenClaw's skill registry):
+
+- **What people do:** `openclaw skills install @wirecat/tg` (add `--global` for every workspace), and
+  `openclaw skills update --all`. OpenClaw also shows ClawHub skills in its own UI.
+- **What we publish:**
+  - one skill per tool, the same SKILL.md, plus `metadata.openclaw.requires.bins: [tg]`
+  - an install entry `{kind: node, package: "@wirecat/tg", bins: [tg]}`, so OpenClaw offers to install the tool when it
+    is missing
+- **How:**
+  - a ClawHub account (GitHub sign-in) and a claim on the `wirecat` namespace
+  - then `clawhub skill publish` from each tool's release CI with a `CLAWHUB_TOKEN` secret (ClawHub ships a reusable
+    workflow)
+- **Rules:**
+  - New versions stay hidden until automatic security scans pass: VirusTotal, ClawScan, static analysis.
+  - Every ClawHub skill is MIT-0.
+  - Every program and variable the skill uses must be declared.
+- **Plugins:** ClawHub also lists OpenClaw *plugins* (`openclaw.plugin.json`). A plugin adds code inside OpenClaw. We
+  don't need one: the skill plus the tool covers it.
+
+**Hermes → skill sources** (Hermes has no single store; it searches several):
+
+- **What people do:**
+  - `hermes skills install <source>`, where the source is a GitHub path (`WireCatLabs/tg-cli/skills/tg-cli`), a
+    URL, skills.sh, ClawHub, or a site's skill index
+  - `hermes skills tap add WireCatLabs/skills` adds our repo as a standing source
+  - `hermes skills search wirecat` searches a daily index built from skills.sh, ClawHub, taps and the official set
+- **What we publish:**
+  1. A skill index on our site, `https://wirecat.dev/.well-known/skills/index.json`, generated by the docs build. Then
+     `hermes skills install well-known:https://wirecat.dev` works.
+  2. Presence on ClawHub and skills.sh, which feeds Hermes search within about a day.
+  3. Later, a PR to Nous to list WireCat as "trusted" or "official". It's reviewed by them.
+- **Plugins and MCP catalog:** Hermes plugins run code inside Hermes, which we don't need. Its MCP catalog is
+  MCP-only, so we skip it.
+
+**Everyone else:**
+
+- **skills.sh** (Vercel): `npx skills add WireCatLabs/<repo>` works now with our skill folders. Nothing to publish,
+  only to check.
+- **Claude Code plugin marketplace:** a `WireCatLabs/claude-plugins` repo with one plugin per tool. **Skill only**,
+  with no MCP server. `/plugin marketplace add WireCatLabs/claude-plugins`, then install. No review.
+- **The official MCP Registry:** only if we keep MCP as an option for remote and chat clients (NEED-42). The namespace
+  `dev.wirecat` and the key (`bin/setup-mcp-registry-key`) are ready if we do.
 
 ## The work, cut for subagents
 
-Wave 1 runs three agents in parallel, each in its own worktree. Wave 2 waits for NEED-29 and NEED-30.
+### W1 · cli-base and cli-core (one agent)
 
-### W1 · cli-base and cli-core: the two agents as clients (one agent)
+- **cli-base `skill/index.ts`.** A new `skill install --for hermes`:
+  - It writes to `~/.agents/skills/<app>`, then makes sure Hermes reads that folder by running
+    `hermes config set skills.external_dirs`, adding to the list rather than replacing it.
+  - If Hermes is missing or the command fails, it falls back to a copy in `$HERMES_HOME/skills/<app>`, and says which
+    it did (NEED-31).
+  - `skill status` reports the hermes target.
+- **cli-core `cli/author.ts` and `runs/run-context.ts`.** `OPENCLAW_SHELL` means `openclaw`. `HERMES_SESSION_ID`
+  becomes the session, like Claude Code's. A chat-started OpenClaw run records that it came from a chat, but not who
+  sent it.
+- **The SKILL.md of each tool** gains the `metadata.openclaw` block (requires.bins, node install entry).
+- Done when each repo's own check passes, plus tests against a temporary home folder.
 
-- **cli-base `mcp/index.ts`.** `McpClient` gains `hermes` and `openclaw`. Hermes is added and removed by editing
-  `mcp_servers` in `$HERMES_HOME/config.yaml` with a YAML library that keeps comments (`yaml`'s Document API), never
-  by `hermes mcp add`. OpenClaw goes through `openclaw mcp add … --no-probe` and `openclaw mcp unset`. When the
-  service refuses, it fails with a clear error: stop the service and run it again, or add it in OpenClaw's own
-  settings. It never stops the service itself. Every entry gets `AI_AGENT=<kind>` in its `env`, so MCP runs are
-  attributed. The command is the absolute path of the installed binary, because Hermes runs commands from a
-  `bash -l` snapshot and OpenClaw from its service's PATH.
-- **cli-base `skill/index.ts`.** A new target `hermes` (choice NEED-31).
-- **cli-core `cli/author.ts` and `runs/run-context.ts`** (the run-context PR #1963). `OPENCLAW_SHELL` means
-  `openclaw`. `HERMES_SESSION_ID` becomes the session, like Claude Code's. A chat-started OpenClaw run records that it
-  came from a chat, but not the sender ids.
-- Done when each repo's own check passes, plus a test for each client against a temporary home folder.
+### W2 · wirecat-desktop (one agent, mocks until W1 ships)
 
-### W2 · wirecat-desktop: detection, connection and activation (one agent, mocks until W1 ships)
+- **Detection:**
+  - Hermes and OpenClaw in `src-tauri/src/skills.rs` (`AGENTS`), in `src/domain/agents.ts` (`AGENT_KIND`,
+    `KNOWN_AGENTS`), with icons.
+  - Their markers go into `AGENT_ENV` in `src-tauri/src/run.rs`.
+- **Connect:** one "Connect WireCat to <agent>" flow on the agent's card:
+  1. Choose the tools. Nothing is preselected.
+  2. The app installs each skill with the tool's own `skill install --for <target>`.
+  3. It checks that a new terminal of that agent finds each tool (the existing PATH check). For OpenClaw it offers the
+     `tools.exec.pathPrepend` fix; for Hermes, the shell-profile fix.
+  4. It shows each step's result. "Disconnect" removes the skills again.
+- **MCP stays out of the way:** it is not part of Connect. It shows only in "Advanced: MCP" inside an agent's
+  details, read-only, for servers the owner added themselves.
+- **Chat-driven agents** (Hermes gateway, OpenClaw channels): connecting shows a warning that anyone the bot accepts
+  can run the tools, and offers "read only" for the chosen profiles (NEED-32). The owner chooses.
 
-- **Detection and links.** Hermes and OpenClaw rows in `src-tauri/src/skills.rs` (`AGENTS`). Their MCP lists in
-  `src-tauri/src/mcp.rs`: Hermes reads `mcp_servers` keys from YAML (a small YAML crate, only the key names leave),
-  and OpenClaw runs `openclaw mcp list --json`. Their markers go into `AGENT_ENV` in `src-tauri/src/run.rs`, and
-  their kinds (`hermes-agent`, `openclaw`) into `AGENT_KIND` in `src/domain/agents.ts`. Icons are added too.
-- **Activation.** One "Connect WireCat to <agent>" flow per agent on the Agents page:
-  1. Choose tools and, for each, the profile. Nothing is preselected.
-  2. The app installs the skill and adds the MCP server, using only the tools' own commands.
-  3. It runs the check and shows each step's result.
-  4. "Disconnect" removes both again.
-  For OpenClaw, if its service holds the lock, the step says so and offers "Try again".
-- **Chat-driven agents.** Hermes's gateway and OpenClaw's chat channels let anyone that bot accepts drive the tools.
-  When the agent has one set up, connecting shows a warning and the profile's permission choice (NEED-32).
-- Done when `pnpm check` passes and the capture script shows the flow in light and dark.
+### W3 · cli-docs (one agent)
 
-### W3 · cli-docs: the pages (one agent)
-
-- `content/docs/agents.mdx` (and `.es`, `.ru`): a section each for Hermes and OpenClaw, covering:
-  - skill and MCP setup
-  - the OpenClaw service lock
-  - the Hermes `bash -l` PATH note
-  - the chat-driven warning
-- A "Connectors" page: one table of every tool × agent, the commands, and where each is published (filled in W5).
+- `content/docs/agents.mdx` (and `.es`, `.ru`): a section each for Hermes and OpenClaw: install the skill, the PATH
+  notes, the chat-driven warning. MCP moves to one "For chat apps and remote agents" section at the end.
+- A "Where to get WireCat skills" page: ClawHub, Hermes (well-known index, tap), skills.sh, the Claude Code
+  marketplace, each with its one command.
 - The build generates `/.well-known/skills/index.json` from each tool's published SKILL.md.
 
-### Wave 2 — publishing (after NEED-29 and NEED-30)
+### Wave 2 — publishing (one agent per channel, after W1)
 
-- **W4 · the registry from release CI.** Each tool repo gets `mcpName` and a `server.json`. A shared workflow in
-  `WireCatLabs/.github` runs after `npm publish`: it writes the version into `server.json`, then logs in and runs
-  `mcp-publisher publish`. Plus a `glama.json` in each repo to claim the Glama listing.
-- **W5 · the marketplace and ClawHub.** A new `WireCatLabs/claude-plugins` repo with plugins `wirecat-tg` …
-  `wirecat-memo`, checked with `claude plugin validate --strict` in CI. The SKILL.md files gain
-  `metadata.openclaw.requires.bins` and an `install` entry, and CI publishes them to ClawHub with a token.
-- **W6 · the desktop shows where each connector is published.** "Also in: Claude Code marketplace, MCP Registry",
-  with links, on each tool's agent row. This can wait.
+- **W4 · ClawHub** from each tool's release CI (needs the owner's ClawHub account and token).
+- **W5 · the Claude Code plugin marketplace**, skill-only plugins `wirecat-tg` … `wirecat-memo`, validated in CI.
+- **W6 · the MCP Registry**, only if NEED-42 says so.
 
 ### What the owner does by hand, once
 
-- Choose the namespace (NEED-29). For `dev.wirecat` this means one DNS TXT record at Hetzner DNS, and a key stored as
-  an org secret by a `bin/` script; the key never passes through the chat.
-- The GitHub registry nomination email to partnerships@github.com. A draft will be ready; sending it is the owner's.
-- A ClawHub account (GitHub sign-in) and its token as an org secret.
+- Create a ClawHub account (GitHub sign-in) and claim `wirecat`. Its token goes into the org secrets through a
+  `bin/` script; it never passes through the chat.
+- Later, if wanted: the Nous "trusted source" PR is reviewed by them.
 
 ## Risks
 
-- **RISK-6 · npx and the global install are two copies.** Most catalogs start a server with `npx`, but the sign-in
-  and the store belong to the global install. `mcp add` already refuses to run from npx's cache. A listing that says
-  `npx @wirecat/tg` would run a second copy at a different version. See NEED-30.
-- **RISK-7 · ClawHub's trust problem.** In February 2026, 341 of 2,857 ClawHub skills were found to be malware. Every
-  install step and variable must be declared, or the scan hides the skill. Owners will read our install steps closely.
+- **RISK-7 · ClawHub's trust problem.** In February 2026, 341 of 2,857 ClawHub skills were found to be malware.
+  Every install step and variable must be declared, or the scan hides the skill. Owners will read our install steps
+  closely.
+- **PATH inside the agents.** Both agents run commands with a PATH that may not include npm's global folder. Connect
+  must check it, not assume it.
 
-## Decisions (journal NEED-29 … NEED-33)
+## Decisions (journal)
 
-- NEED-29: namespace — **answered `dev.wirecat/*`**. Key from `bin/setup-mcp-registry-key`; TXT record in Cloudflare, where wirecat.dev's DNS lives
-- NEED-30: launch command — **answered the bare program**, with "install globally first" in each listing
-- NEED-31: how Hermes gets the skills — **answered A, with B as fallback**: add `~/.agents/skills` to `skills.external_dirs`; if that edit fails, copy the skill into `~/.hermes/skills/<app>`
-- NEED-32: what connecting a chat-driven agent does to permissions — **answered A**: warn and offer read-only, the owner chooses
-- NEED-33: whether to submit to Anthropic's directory now
+- NEED-29: namespace `dev.wirecat/*` — answered; used only if W6 happens
+- NEED-30: launch command, the bare program — answered
+- NEED-31: Hermes skills through `external_dirs`, copy as fallback — answered A with B
+- NEED-32: chat-driven agents: warn and offer read-only — answered A
+- NEED-33: Anthropic's directory — open
+- NEED-42: keep MCP as an option (listed in the MCP Registry, readable in the app), or drop it from the product
