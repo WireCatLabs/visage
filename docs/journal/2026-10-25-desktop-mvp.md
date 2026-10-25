@@ -361,6 +361,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 
 - **UX-6 · Строки «Keep every run…» в Logs длинные и странные.** Слава: «mb make smaller blocks for each cli with name and color for status or smth and a dropdown toggle to switch to keep all etc». Передано агенту Logs: компактные плашки (значок, имя, цветная точка состояния) с выпадающим списком «Failed runs only» / «Every run»; «только неудачные» по-прежнему через `config unset --defaults record` (BUG-3).
 
+- **UX-7 · Tools — домашняя страница, но не объясняет, что это и что делать.** Слава: «since Tools is homepage I'd first say smth like what this page is about, what the tool does, what the CLIs are and what to do here, and event more info here on first launch and/or when there are not tools installed etc or offer to install more». Передано агенту раунда интерфейса: короткое вступление (скрываемое), полное пустое состояние с кнопкой «Choose tools to install», предложение установить остальные инструменты.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
