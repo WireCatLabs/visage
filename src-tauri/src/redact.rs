@@ -27,9 +27,9 @@ pub fn json(value: &mut Value) {
     match value {
         Value::Object(map) => {
             for (k, v) in map.iter_mut() {
-                if sensitive_key().is_match(k) && matches!(v, Value::String(_) | Value::Number(_)) {
-                    *v = Value::String("•••".into());
-                } else if sensitive_key().is_match(k) && matches!(v, Value::Array(_)) && is_scalar_list(v) {
+                if sensitive_key().is_match(k)
+                    && (matches!(v, Value::String(_) | Value::Number(_)) || is_scalar_list(v))
+                {
                     *v = Value::String("•••".into());
                 } else {
                     json(v);
@@ -56,7 +56,6 @@ pub fn text(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
 
     #[test]

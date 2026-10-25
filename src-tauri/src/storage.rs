@@ -79,7 +79,7 @@ fn size(path: &Path) -> u64 {
         .flatten()
         .map(|e| match e.file_type() {
             Ok(t) if t.is_dir() => size(&e.path()),
-            Ok(_) => e.metadata().map(|m| m.len()).unwrap_or(0),
+            Ok(_) => e.metadata().map_or(0, |m| m.len()),
             Err(_) => 0,
         })
         .sum()
@@ -109,10 +109,10 @@ pub fn clear(id: &str) -> Result<(), String> {
         std::fs::remove_dir_all(&path)
             .map_err(|e| format!("Could not delete {}: {e}", paths::tilde(&path.to_string_lossy())))?;
         // Windows keeps Config/Data/Cache under one folder per app; drop it once it is empty.
-        if cfg!(windows) {
-            if let Some(parent) = path.parent() {
-                let _ = std::fs::remove_dir(parent);
-            }
+        if cfg!(windows)
+            && let Some(parent) = path.parent()
+        {
+            let _ = std::fs::remove_dir(parent);
         }
     }
     Ok(())
