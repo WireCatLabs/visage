@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# One-off (NEED-29 A): the key that proves to the official MCP Registry that WireCat owns the dev.wirecat/* names.
+# Prints the public DNS record to add; the private key goes to the OS keyring and the WireCatLabs org secret
+# MCP_REGISTRY_PRIVATE_KEY, and is never printed.
+set -euo pipefail
+
+domain="wirecat.dev"
+service="wirecat"
+account="mcp-registry"
+secret="MCP_REGISTRY_PRIVATE_KEY"
+
+if secret-tool lookup service "$service" account "$account" >/dev/null 2>&1; then
+  echo "A key is already in the keyring (service $service, account $account). Remove it first to make a new one." >&2
+  exit 1
+fi
+
+dir="$(mktemp -d "${XDG_RUNTIME_DIR:-$HOME}/mcp-key.XXXXXX")"
+chmod 700 "$dir"
+trap 'rm -rf "$dir"' EXIT
+
+openssl genpkey -algorithm Ed25519 -out "$dir/key.pem" 2>/dev/null
+public="$(openssl pkey -in "$dir/key.pem" -pubout -outform DER | tail -c 32 | base64)"
+private="$(openssl pkey -in "$dir/key.pem" -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
+
+printf '%s' "$private" | secret-tool store --label "MCP Registry key for $domain" service "$service" account "$account"
+printf '%s' "$private" | gh secret set "$secret" --org WireCatLabs --visibility all >/dev/null
+unset private
+
+echo "Saved the private key to the keyring and to the WireCatLabs org secret $secret."
+echo
+echo "Add this TXT record in Cloudflare (wirecat.dev → DNS → Records → Add record):"
+echo "  Type:    TXT"
+echo "  Name:    @"
+echo "  Content: v=MCPv1; k=ed25519; p=$public"
+echo
+echo "Check it with:  dig +short TXT $domain"

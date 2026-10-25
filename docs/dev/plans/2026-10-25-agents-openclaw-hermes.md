@@ -108,8 +108,8 @@ Wave 1 runs three agents in parallel, each in its own worktree. Wave 2 waits for
 
 ## Decisions (journal NEED-29 … NEED-33)
 
-- NEED-29: namespace `dev.wirecat/*` or `io.github.wirecatlabs/*`
-- NEED-30: launch command in listings, the bare program or a pinned `npx`
+- NEED-29: namespace — **answered `dev.wirecat/*`**. Key from `bin/setup-mcp-registry-key`; TXT record in Cloudflare, where wirecat.dev's DNS lives
+- NEED-30: launch command — **answered the bare program**, with "install globally first" in each listing
 - NEED-31: how Hermes gets the skills — **answered A, with B as fallback**: add `~/.agents/skills` to `skills.external_dirs`; if that edit fails, copy the skill into `~/.hermes/skills/<app>`
 - NEED-32: what connecting a chat-driven agent does to permissions — **answered A**: warn and offer read-only, the owner chooses
 - NEED-33: whether to submit to Anthropic's directory now
