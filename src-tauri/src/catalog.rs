@@ -11,6 +11,7 @@ pub struct Catalog {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Tool {
     pub id: String,
     pub bin: String,
@@ -21,6 +22,19 @@ pub struct Tool {
     pub setup: Option<Vec<String>>,
     pub storage: Storage,
     pub settings: Option<SettingsSource>,
+    pub skill: SkillSource,
+    /// `store info` of the shared archive; any messenger CLI answers it for the whole store.
+    pub store_info: Option<Vec<String>>,
+}
+
+/// The tool's own skill commands; `{target}` is a validated install place.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSource {
+    pub status: Vec<String>,
+    pub install: Vec<String>,
+    /// A doctor whose JSON lists `item.skills[]`, asked when the CLI has no `skill status` yet.
+    pub doctor_skills: Option<Vec<String>>,
 }
 
 /// The tool's own run-log commands; `{run}` is a validated run id.

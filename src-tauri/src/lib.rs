@@ -1,3 +1,4 @@
+mod archive;
 mod catalog;
 mod install;
 mod node;
@@ -8,6 +9,7 @@ mod report;
 mod run;
 mod runs;
 mod settings;
+mod skills;
 mod storage;
 mod system;
 mod terminal;
@@ -154,6 +156,29 @@ async fn open_folder(id: String, kind: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn store_info() -> Result<Option<archive::StoreInfo>, String> {
+    blocking(archive::info).await?
+}
+
+#[tauri::command]
+async fn detect_agents() -> Result<Vec<skills::Agent>, String> {
+    blocking(skills::agents).await
+}
+
+#[tauri::command]
+async fn skill_status(id: String) -> Result<skills::SkillReport, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || skills::status(tool)).await?
+}
+
+#[tauri::command]
+async fn skill_install(id: String, target: String) -> Result<Option<String>, String> {
+    let tool = catalog::tool(&id)?;
+    skills::validate_target(&target)?;
+    blocking(move || skills::install(tool, &target)).await?
+}
+
+#[tauri::command]
 async fn list_runs(id: String, query: Option<String>, limit: u32, page: u32) -> Result<serde_json::Value, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || runs::list(tool, query.as_deref(), limit, page)).await?
@@ -237,6 +262,10 @@ pub fn run() {
             storage_report,
             clear_storage,
             open_folder,
+            store_info,
+            detect_agents,
+            skill_status,
+            skill_install,
             report_context,
             send_report,
             list_runs,

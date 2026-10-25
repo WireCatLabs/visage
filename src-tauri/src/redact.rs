@@ -17,6 +17,7 @@ fn sensitive_text() -> &'static [(Regex, &'static str)] {
             (Regex::new(r"[\w.+-]+@[\w-]+\.[\w.-]+").unwrap(), "[email]"),
             (Regex::new(r"\+\d[\d\s-]{7,}\d").unwrap(), "[number]"),
             (Regex::new(r"\b\d{6,}:[\w-]{30,}\b").unwrap(), "[bot token]"),
+            (Regex::new(r"\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com").unwrap(), "[client id]"),
         ]
     })
 }
@@ -91,5 +92,13 @@ mod tests {
             assert_eq!(v[key], "•••", "{key}");
         }
         assert_eq!(v["limit"], 20);
+    }
+
+    #[test]
+    fn masks_google_client_ids_in_file_names() {
+        assert_eq!(
+            super::text("client_secret_1234567-abc9def.apps.googleusercontent.com.json"),
+            "client_secret_[client id].json"
+        );
     }
 }

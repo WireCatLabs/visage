@@ -23,6 +23,11 @@
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"]
+      },
+      "storeInfo": ["store", "info", "--json"],
       "storage": {
         "app": "tg-cli",
         "env": "TG"
@@ -62,6 +67,11 @@
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"]
+      },
+      "storeInfo": ["store", "info", "--json"],
       "storage": {
         "app": "max-cli",
         "env": "MAX"
@@ -101,6 +111,11 @@
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"]
+      },
+      "storeInfo": ["store", "info", "--json"],
       "storage": {
         "app": "whatsapp-cli",
         "env": "WA"
@@ -137,6 +152,11 @@
       "doctor": ["{profile}", "session", "status", "--json"],
       "runs": null,
       "setup": ["{profile}", "session", "start"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"]
+      },
+      "storeInfo": null,
       "storage": {
         "app": "zm",
         "env": "ZM"
@@ -179,6 +199,11 @@
       "doctor": ["{profile}", "status", "--json"],
       "runs": null,
       "setup": ["{profile}", "session", "start"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"]
+      },
+      "storeInfo": null,
       "storage": {
         "app": "drive-cli",
         "env": "DRIVE"
@@ -212,6 +237,12 @@
       "doctor": ["doctor", "--json"],
       "runs": null,
       "setup": null,
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "doctorSkills": ["doctor", "--json"]
+      },
+      "storeInfo": null,
       "storage": {
         "app": "cli-memo",
         "env": "MEMO"

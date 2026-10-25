@@ -1,5 +1,5 @@
 use crate::catalog::{self, Storage};
-use crate::{paths, tools};
+use crate::{paths, redact, tools};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -11,7 +11,20 @@ pub struct Folder {
     pub kind: &'static str,
     pub path: String,
     pub bytes: u64,
+    /// The folder's own entries, largest first, so the interface can say what each one is.
+    pub entries: Vec<Entry>,
 }
+
+/// Names and sizes only: nothing inside is opened, so sign-in sessions stay unread.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Entry {
+    pub name: String,
+    pub dir: bool,
+    pub bytes: u64,
+}
+
+const MAX_ENTRIES: usize = 40;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,7 +81,24 @@ fn existing(s: &Storage) -> Vec<Folder> {
     folders(s)
         .into_iter()
         .filter(|(_, p)| p.is_dir())
-        .map(|(kind, p)| Folder { kind, bytes: size(&p), path: paths::tilde(&p.to_string_lossy()) })
+        .map(|(kind, p)| {
+            let mut entries = entries(&p);
+            let bytes = entries.iter().map(|e| e.bytes).sum();
+            entries.sort_by_key(|e| std::cmp::Reverse(e.bytes));
+            entries.truncate(MAX_ENTRIES);
+            Folder { kind, bytes, entries, path: paths::tilde(&p.to_string_lossy()) }
+        })
+        .collect()
+}
+
+fn entries(path: &Path) -> Vec<Entry> {
+    let Ok(read) = std::fs::read_dir(path) else { return Vec::new() };
+    read.flatten()
+        .filter_map(|e| {
+            let t = e.file_type().ok()?;
+            let bytes = if t.is_dir() { size(&e.path()) } else { e.metadata().map_or(0, |m| m.len()) };
+            Some(Entry { name: redact::text(&e.file_name().to_string_lossy()), dir: t.is_dir(), bytes })
+        })
         .collect()
 }
 
