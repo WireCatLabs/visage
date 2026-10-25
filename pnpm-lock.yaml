@@ -46,8 +46,8 @@ importers:
         specifier: 2.5.15
         version: 2.5.15
       '@cspell/dict-en-gb':
-        specifier: 5.0.34
-        version: 5.0.34
+        specifier: 5.0.38
+        version: 5.0.38
       '@cspell/dict-es-es':
         specifier: 3.0.9
         version: 3.0.9
@@ -298,8 +298,8 @@ packages:
   '@cspell/dict-en-gb-mit@3.1.32':
     resolution: {integrity: sha512-bEASyTAzXLowmFWrZIJjeAeCpY9g3jcYDO3tVyFDL/UaAuz0UvCVgOEyg+Ym7bclijqvXmj0xXOD/cW2XWG8iw==}
 
-  '@cspell/dict-en-gb@5.0.34':
-    resolution: {integrity: sha512-TZPIuJue7G8F9aWpZsDQd/IxU4iOI3/HsAYJrvZ71ZtRbzWhH4dnD+QWdMbfjKS6LZttxFYXE4OqBNxV8c4TFQ==}
+  '@cspell/dict-en-gb@5.0.38':
+    resolution: {integrity: sha512-xLuoDSM5tzEF2fpQWNE4QXxZCNdjkZbdRQ7xTjrjqJGHwOjNlSLvZoh/GYQsQ1ROLe/jXPENbQn5M5DhjrSaDg==}
 
   '@cspell/dict-en_us@4.4.43':
     resolution: {integrity: sha512-RK0zfFXSPi0G/zmV9YgUhS2xw9eTV/8DtQ+ouLIiRZ8ejWRt2zhAonu5di+qmIhzhQ62fg7d3tMz3WwRy82yJA==}
@@ -2170,7 +2170,7 @@ snapshots:
 
   '@cspell/dict-en-gb-mit@3.1.32': {}
 
-  '@cspell/dict-en-gb@5.0.34': {}
+  '@cspell/dict-en-gb@5.0.38': {}
 
   '@cspell/dict-en_us@4.4.43': {}
 
