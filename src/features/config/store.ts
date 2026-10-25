@@ -29,6 +29,8 @@ type ConfigState = {
   steps: Step[]
   saving: boolean
   rows: Record<string, RowState>
+  /** Opens the last tool and view the owner used, or the first installed tool's defaults. */
+  start(installed: readonly string[]): Promise<void>
   chooseTool(id: string): Promise<void>
   chooseTarget(target: Target): Promise<void>
   setTab(tab: Tab): void
@@ -38,6 +40,24 @@ type ConfigState = {
   revert(): void
   saveDraft(): Promise<void>
   apply(row: SettingRow, value: unknown): Promise<void>
+}
+
+// Only what the owner picked last time; a profile is never chosen for them, the shared defaults are.
+const LAST = "wirecat.config.last"
+type Last = { tool?: string; targets?: Record<string, string | null> }
+function readLast(): Last {
+  try {
+    return JSON.parse(localStorage.getItem(LAST) ?? "{}") as Last
+  } catch {
+    return {}
+  }
+}
+function remember(f: (last: Last) => Last) {
+  try {
+    localStorage.setItem(LAST, JSON.stringify(f(readLast())))
+  } catch {
+    // Without storage the page simply opens on the defaults next time.
+  }
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -105,8 +125,17 @@ export const useConfig = create<ConfigState>((set, get) => {
     saving: false,
     ...fresh,
 
+    async start(installed) {
+      if (get().tool) return
+      const usable = installed.filter((id) => sourceOf(id))
+      const last = readLast().tool
+      const id = last && usable.includes(last) ? last : usable[0]
+      if (id) await get().chooseTool(id)
+    },
+
     async chooseTool(id) {
       const src = sourceOf(id)
+      remember((l) => ({ ...l, tool: id }))
       generation++
       set({ tool: id, target: null, profiles: undefined, profilesError: null, loading: false, ...fresh })
       if (!src) return
@@ -116,14 +145,21 @@ export const useConfig = create<ConfigState>((set, get) => {
         return
       }
       try {
-        const profiles = await platform.listProfiles(id)
-        if (get().tool === id) set({ profiles: profiles ?? [] })
+        const profiles = (await platform.listProfiles(id)) ?? []
+        if (get().tool !== id) return
+        set({ profiles })
+        const last = readLast().targets?.[id]
+        const stillThere = last === null ? src.defaults : profiles.some((p) => p.name === last)
+        const target = last !== undefined && stillThere ? { profile: last } : src.defaults ? { profile: null } : null
+        if (target && !get().target) await get().chooseTarget(target)
       } catch (e) {
         if (get().tool === id) set({ profiles: [], profilesError: message(e) })
       }
     },
 
     async chooseTarget(target) {
+      const tool = get().tool
+      if (tool) remember((l) => ({ ...l, targets: { ...l.targets, [tool]: target.profile } }))
       set({ target, ...fresh })
       await load()
     },

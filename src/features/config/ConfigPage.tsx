@@ -1,5 +1,5 @@
 import { AlignLeft, Check, LoaderCircle, Search, Undo2, X } from "lucide-react"
-import { type ReactNode, useId, useMemo, useState } from "react"
+import { type ReactNode, useEffect, useId, useMemo, useState } from "react"
 import { tools } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -24,6 +24,15 @@ export function ConfigPage() {
   const dirty = isDirty(st)
   const tool = configurable.find((t) => t.id === st.tool) ?? null
   const src = sourceOf(st.tool)
+
+  const detected = Object.keys(installs).length > 0
+  useEffect(() => {
+    if (!detected) return
+    const installed = Object.entries(useTools.getState().installs)
+      .filter(([, copies]) => copies.length > 0)
+      .map(([id]) => id)
+    useConfig.getState().start(installed)
+  }, [detected])
 
   const go = (s: Switch) => (s.kind === "tool" ? st.chooseTool(s.id) : st.chooseTarget(s.target))
   const request = (s: Switch) => (dirty ? setPending(s) : go(s))

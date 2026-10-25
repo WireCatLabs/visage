@@ -1,10 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
+import { useTools } from "../tools/store"
 import { ConfigPage } from "./ConfigPage"
 import { useConfig } from "./store"
 
-beforeEach(() => useConfig.setState(useConfig.getInitialState(), true))
+beforeEach(() => {
+  useConfig.setState(useConfig.getInitialState(), true)
+  localStorage.clear()
+})
 
 const edit = (text: string, change: (doc: Record<string, unknown>) => void) => {
   const doc = JSON.parse(text)
@@ -12,7 +16,22 @@ const edit = (text: string, change: (doc: Record<string, unknown>) => void) => {
   return JSON.stringify(doc, null, 2)
 }
 
+const installed = { tg: [{ path: "~/bin/tg", version: "0.88.0", manager: "pnpm", problem: null }], zm: [] }
+
 describe("Config", () => {
+  it("opens on the first installed tool's defaults, then on the view chosen last", async () => {
+    const user = userEvent.setup()
+    useTools.setState({ installs: installed })
+    const { unmount } = render(<ConfigPage />)
+    expect(await screen.findByRole("radio", { name: "Defaults (all profiles)" })).toBeChecked()
+    await user.click(await screen.findByRole("radio", { name: "work" }))
+    unmount()
+
+    useConfig.setState(useConfig.getInitialState(), true)
+    render(<ConfigPage />)
+    await waitFor(() => expect(screen.getByRole("radio", { name: "work" })).toBeChecked())
+  })
+
   it("saves JSON edits through config set and stops at the first value the tool refuses", async () => {
     const user = userEvent.setup()
     render(<ConfigPage />)

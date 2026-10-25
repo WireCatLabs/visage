@@ -83,6 +83,15 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 **ASK-9 · «for storage I still didnt see the database explorer»**
 Ещё строится агентом Agents/Storage; CLI-разбивки готовы на ветке cli-core (FIND-8).
 
+**ASK-10 · «for config page I'd show the default right away (and show the last seelcted one maybe)… move Storage, Logs and Config at the bottom of menu»**
+Config открывается на последнем выбранном инструменте и виде, иначе — на «Defaults (all profiles)» первого
+установленного. Профиль сам не выбирается (правило 3): только общие настройки или то, что выбрал владелец. Storage,
+Logs, Config — внизу боковой панели.
+
+**ASK-11 · «for logs search we need a docs page and I'd link to it after It does not mean everything is broken.»**
+Страница `https://wirecat.dev/en/docs/desktop/logs` (en/es/ru) в cli-docs; ссылку ставит агент Logs. Текст
+пишется после слияния Logs по итоговому синтаксису.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**

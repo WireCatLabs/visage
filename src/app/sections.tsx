@@ -11,15 +11,17 @@ export type Section = {
   icon: ComponentType<SVGProps<SVGSVGElement>>
   /** Absent while the section is announced but not built yet. */
   page?: ComponentType
+  /** `system` sections sit at the bottom of the sidebar, apart from the everyday ones. */
+  group?: "system"
 }
 
 // A new area of the app (accounts, memory, people, projects…) is one entry here and one folder in features/.
 export const sections: readonly Section[] = [
   { id: "tools", label: "Tools", icon: Wrench, page: ToolsPage },
   { id: "agents", label: "Agents", icon: Bot },
-  { id: "config", label: "Config", icon: SlidersHorizontal, page: ConfigPage },
-  { id: "storage", label: "Storage", icon: HardDrive, page: StoragePage },
-  { id: "logs", label: "Logs", icon: ScrollText, page: LogsPage },
   { id: "accounts", label: "Accounts", icon: UserRound },
   { id: "memory", label: "Memory", icon: Brain },
+  { id: "storage", label: "Storage", icon: HardDrive, page: StoragePage, group: "system" },
+  { id: "logs", label: "Logs", icon: ScrollText, page: LogsPage, group: "system" },
+  { id: "config", label: "Config", icon: SlidersHorizontal, page: ConfigPage, group: "system" },
 ]
