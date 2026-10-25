@@ -4,6 +4,7 @@ import raw from "../../catalog/tools.json"
 const ToolSchema = v.object({
   id: v.pipe(v.string(), v.regex(/^[a-z]+$/)),
   name: v.string(),
+  tagline: v.pipe(v.string(), v.maxLength(55)),
   bin: v.string(),
   package: v.pipe(v.string(), v.startsWith("@wirecat/")),
   summary: v.string(),

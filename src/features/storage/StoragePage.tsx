@@ -28,7 +28,7 @@ export function StoragePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-[2.85rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
-          <p className="mt-3 max-w-[46rem] text-[0.95rem] text-ink-soft">
+          <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
             What WireCat tools keep on this computer: settings, sessions, message archives and caches. A tool's data can
             be deleted once the tool is uninstalled. Sign-in tokens in your system keyring are not touched.
           </p>
@@ -48,7 +48,7 @@ export function StoragePage() {
 
       <ul
         aria-label="Data on this computer"
-        className="overflow-hidden rounded-[0.55rem] border border-line bg-app shadow-panel"
+        className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app"
       >
         {areas === null
           ? [0, 1, 2].map((i) => (
@@ -99,7 +99,7 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
       )}
       <div className="min-w-0">
         <h3 className="text-[1.1rem] font-semibold leading-tight">{areaName(area.id)}</h3>
-        <p className={`mt-1 text-[0.9rem] ${!empty && !inUse ? "text-warn" : "text-ink-soft"}`}>{status}</p>
+        <p className={`mt-1 text-[0.9rem] ${!empty && !inUse ? "text-warn-ink" : "text-ink-soft"}`}>{status}</p>
         {!empty && (
           <ul className="mt-1.5 flex flex-col gap-0.5">
             {area.folders.map((f) => (

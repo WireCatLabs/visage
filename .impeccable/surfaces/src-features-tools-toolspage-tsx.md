@@ -23,7 +23,7 @@ something can be installed. Unbounded for the page title, Onest for everything e
 
 STORY: see readiness first, scan six rows, act on the one that is not green, watch it verify inline.
 
-FIRST VIEWPORT: sidebar with logo, Tools, Accounts and Memory (Soon), version and theme switch; window controls
+FIRST VIEWPORT: sidebar with logo, Tools, Storage, Accounts and Memory (Soon), version and theme switch; window controls
 top right; "Your computer" lamps; Tools heading; the rack with all six rows; an install opens a four-step panel
 under its row.
 
@@ -37,3 +37,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 2. Rows carry the real catalog descriptions, not the comp's placeholder lines, and real states (Memo shows its
    update, not a placeholder "Fix").
 3. "Check again" beside the heading: detection must be re-runnable after the user installs Node.js by hand.
+4. Storage section, uninstall and the delete-data offer: owner request, 2026-10-25, quoted: "we need to allow
+   uninstall … also allow clearing storage somehow, mb inside another menu or smth".
+5. Theme switch in the sidebar footer: owner request, quoted: "add dark/light themes and other important ui things
+   from start".
+6. Rows show a short tagline from the catalog; the full summary is in the Manage panel (finish review fix 1).

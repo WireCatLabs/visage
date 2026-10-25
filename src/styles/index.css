@@ -23,6 +23,7 @@
   --brand-soft: #e8e9fd;
   --ok: #1f9a55;
   --warn: #d08a12;
+  --warn-ink: #8a5a00;
   --bad: #cf4a2f;
   --idle: #a9b5ae;
   --shadow: 0 1px 2px rgb(24 40 34 / 6%), 0 8px 24px rgb(24 40 34 / 5%);
@@ -45,6 +46,7 @@
   --brand-soft: #262a52;
   --ok: #5cc98a;
   --warn: #e6b04a;
+  --warn-ink: #e6b04a;
   --bad: #f07a5f;
   --idle: #4c5659;
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
@@ -66,6 +68,7 @@
   --color-brand-soft: var(--brand-soft);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
   --color-bad: var(--bad);
   --color-idle: var(--idle);
   --font-display: "Unbounded Variable", "Unbounded", system-ui, sans-serif;
@@ -84,6 +87,11 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 body {

@@ -31,7 +31,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
         <Stepper steps={stepStates(session)} />
       </div>
 
-      <div className="mt-[1.4rem] flex flex-wrap items-center gap-x-4 gap-y-3" aria-live="polite">
+      <div className="mt-[0.9rem] flex flex-wrap items-center gap-x-4 gap-y-3" aria-live="polite">
         {session.step === "queued" && !outcome && (
           <p className="text-[0.95rem] text-ink-soft">Waiting for the operation in progress to finish.</p>
         )}
@@ -59,7 +59,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
           </div>
         )}
         {outcome?.event === "done" && outcome.shadowedBy && (
-          <p className="w-full text-[0.9rem] text-warn">
+          <p className="w-full text-[0.9rem] text-warn-ink">
             Another copy at <code className="font-mono">{outcome.shadowedBy}</code> runs first in a terminal.
           </p>
         )}
@@ -68,7 +68,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
           type="button"
           onClick={() => setShowLog((v) => !v)}
           aria-expanded={showLog}
-          className="text-[0.95rem] font-medium text-brand hover:text-brand-hover"
+          className="text-[1.05rem] font-medium text-brand hover:text-brand-hover"
         >
           {showLog ? "Hide log" : "Show log"}
         </button>

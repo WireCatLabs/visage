@@ -44,10 +44,7 @@ export function ToolsPage() {
         </p>
       )}
 
-      <ul
-        aria-label="WireCat tools"
-        className="overflow-hidden rounded-[0.55rem] border border-line bg-app shadow-panel"
-      >
+      <ul aria-label="WireCat tools" className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
         {tools.map((t) => (
           <ToolRow key={t.id} tool={t} />
         ))}

@@ -1,4 +1,3 @@
-import { ChevronDown } from "lucide-react"
 import type { CatalogTool } from "@/domain/catalog"
 import { type ToolStatus, toolStatus } from "@/domain/status"
 import { Button } from "@/ui/Button"
@@ -52,14 +51,13 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           onClick={() => toggle(tool.id)}
           aria-expanded={expanded}
           aria-controls={panelId}
-          title={tool.summary}
           className="group min-w-0 py-4 text-left"
         >
           <h3 className="flex items-baseline gap-[0.6rem] text-[1.18rem] font-semibold leading-tight group-hover:text-brand">
             {tool.name}
             <span className="font-mono text-[0.95rem] font-normal text-ink-soft">{tool.bin}</span>
           </h3>
-          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.summary}</p>
+          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
         </button>
         <Version status={status} installed={installs?.[0]?.version ?? null} />
         <div className="flex justify-end">
@@ -144,7 +142,6 @@ function Action({ status, expanded, disabled, disabledReason, controls, onInstal
       className="min-w-[7.6rem]"
     >
       {status.kind === "broken" ? "Fix" : "Manage"}
-      <ChevronDown className={cx("size-4 transition-transform duration-200", expanded && "rotate-180")} aria-hidden />
     </Button>
   )
 }

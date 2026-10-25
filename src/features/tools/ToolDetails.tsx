@@ -58,6 +58,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
   return (
     <div className="grid gap-x-[2.4rem] gap-y-6 border-line border-t bg-app-2/60 px-[1.3rem] py-[1.4rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
       <section aria-label={`About ${tool.name}`} className="flex flex-col gap-4">
+        <p className="max-w-[70ch] text-[0.95rem] leading-relaxed text-ink-soft">{tool.summary}</p>
         <div className="flex gap-5">
           <ExternalLinkButton href={tool.docs}>Documentation</ExternalLinkButton>
           <ExternalLinkButton href={tool.repo}>GitHub</ExternalLinkButton>

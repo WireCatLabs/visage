@@ -7,6 +7,7 @@
     {
       "id": "tg",
       "name": "Telegram",
+      "tagline": "Your Telegram account, for the terminal and AI agents",
       "bin": "tg",
       "package": "@wirecat/tg-cli",
       "summary": "A Telegram client for the terminal and for AI agents, on your own account.",
@@ -26,6 +27,7 @@
     {
       "id": "max",
       "name": "MAX",
+      "tagline": "MAX bots and your personal account, from the terminal",
       "bin": "max",
       "package": "@wirecat/max-cli",
       "summary": "MAX Messenger from the terminal: bots through the official Bot API, and your personal account.",
@@ -45,6 +47,7 @@
     {
       "id": "wa",
       "name": "WhatsApp",
+      "tagline": "Your WhatsApp account as a linked device",
       "bin": "wa",
       "package": "@wirecat/whatsapp-cli",
       "summary": "Your WhatsApp account from the terminal, as a linked device, for agents and scripts.",
@@ -64,6 +67,7 @@
     {
       "id": "zm",
       "name": "Zoom",
+      "tagline": "Zoom transcripts and recordings, searchable",
       "bin": "zm",
       "package": "@wirecat/zoom-cli",
       "summary": "Keep Zoom transcripts and recordings, search meeting evidence and give your agent context for the next call.",
@@ -83,6 +87,7 @@
     {
       "id": "drive",
       "name": "Google Drive",
+      "tagline": "Google Drive folders as local, searchable text",
       "bin": "drive",
       "package": "@wirecat/drive-cli",
       "summary": "Import selected Google folders, search documents locally and keep tags, notes and source-backed memories.",
@@ -102,6 +107,7 @@
     {
       "id": "memo",
       "name": "Memo",
+      "tagline": "Notes, mail and messages in one place for your agent",
       "bin": "memo",
       "package": "@wirecat/cli-memo",
       "summary": "Your notes, mail and messages in one place for your AI agent: search, tags, people and memories, on your computer.",
