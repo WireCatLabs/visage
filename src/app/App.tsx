@@ -1,4 +1,6 @@
 import { Bug } from "lucide-react"
+import { useState } from "react"
+import { AboutDialog } from "@/features/about/AboutDialog"
 import { useNav } from "@/features/nav"
 import { HelpMenu } from "@/features/onboarding/HelpMenu"
 import { Onboarding, SetupSteps } from "@/features/onboarding/Onboarding"
@@ -31,6 +33,7 @@ export function App() {
     useTour.getState().start()
   }
   const toTools = () => setActive("tools")
+  const [about, setAbout] = useState(false)
 
   return (
     <div className="flex h-full">
@@ -48,7 +51,11 @@ export function App() {
               >
                 Report a problem
               </Button>
-              <HelpMenu onTour={startTour} onWelcome={() => useOnboarding.getState().reopen("welcome")} />
+              <HelpMenu
+                onTour={startTour}
+                onWelcome={() => useOnboarding.getState().reopen("welcome")}
+                onAbout={() => setAbout(true)}
+              />
             </>
           )}
         </TopBar>
@@ -70,6 +77,7 @@ export function App() {
           </>
         )}
         <ClearDataOffer />
+        <AboutDialog open={about} onClose={() => setAbout(false)} />
         <ReportDialog />
       </div>
       <Tour />

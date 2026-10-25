@@ -4,7 +4,11 @@ import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   plugins: [react()],
-  define: { __APP_VERSION__: JSON.stringify("0.0.0-test") },
+  define: {
+    __APP_VERSION__: JSON.stringify("0.0.0-test"),
+    __BUILD_COMMIT__: JSON.stringify("abc1234"),
+    __BUILD_DATE__: JSON.stringify("2026-10-26"),
+  },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],

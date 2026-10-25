@@ -78,7 +78,7 @@ describe("Help", () => {
     render(<App />)
 
     await user.click(screen.getByRole("button", { name: "Help" }))
-    await user.click(screen.getByRole("button", { name: "Show the welcome again" }))
+    await user.click(screen.getByRole("menuitem", { name: "Show the welcome again" }))
     expect(screen.getByRole("heading", { level: 1, name: "Welcome to WireCat" })).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Set up later" }))
 
@@ -93,7 +93,7 @@ describe("Help", () => {
 
     const help = screen.getByRole("button", { name: "Help" })
     await user.click(help)
-    await user.click(screen.getByRole("button", { name: "Take the tour" }))
+    await user.click(screen.getByRole("menuitem", { name: "Take the tour" }))
 
     const first = await screen.findByRole("dialog", { name: "Your computer" })
     expect(within(first).getByRole("button", { name: "Next" })).toHaveFocus()
