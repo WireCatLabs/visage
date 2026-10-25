@@ -299,6 +299,13 @@ export function countValues(runs: Run[], field: string): Count[] {
     .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
 }
 
+/** Adds the values that have no runs, at count 0 after the rest, so a facet can list every known value. */
+export function withZeros(counts: Count[], values: readonly string[]): Count[] {
+  const seen = new Set(counts.map((c) => c.value))
+  const missing = values.filter((v) => !seen.has(v)).sort((a, b) => a.localeCompare(b))
+  return [...counts, ...missing.map((value) => ({ value, count: 0 }))]
+}
+
 /** Counts per value of a facet among runs that match everything else in the query. */
 export function facetCounts(runs: Run[], terms: Term[], field: string): Count[] {
   return countValues(runs.filter(matcher(terms, field)), field)

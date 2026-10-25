@@ -19,6 +19,7 @@ import {
   termState,
   toggleTerm,
   unknownFields,
+  withZeros,
 } from "./runs"
 
 const run = (over: Partial<Run>): Run => ({
@@ -217,6 +218,16 @@ describe("what newer CLIs record about a run", () => {
     expect(facetCounts(all, [], "agent")).toEqual([
       { value: "", count: 1 },
       { value: "claude-code", count: 1 },
+    ])
+  })
+})
+
+describe("withZeros", () => {
+  it("lists values with no runs after the rest, at zero", () => {
+    expect(withZeros([{ value: "tg", count: 3 }], ["tg", "memo", "email"])).toEqual([
+      { value: "tg", count: 3 },
+      { value: "email", count: 0 },
+      { value: "memo", count: 0 },
     ])
   })
 })

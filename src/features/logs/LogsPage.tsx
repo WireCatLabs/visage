@@ -1,5 +1,6 @@
 import { ArrowUp, ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
+import { tools } from "@/domain/catalog"
 import {
   FACET_LABELS,
   FACETS,
@@ -16,6 +17,7 @@ import {
   type Run,
   toggleTerm,
   unknownFields,
+  withZeros,
 } from "@/domain/runs"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
@@ -51,6 +53,11 @@ export function LogsPage() {
   }, [load])
 
   const list = useMemo(() => Object.values(sources), [sources])
+  // A tool with no runs yet, Email among them until memo records a mail command, is still a choice in the filter.
+  const toolIds = useMemo(() => {
+    const owners = Object.keys(sources)
+    return [...owners, ...tools.filter((t) => t.partOf && owners.includes(t.partOf)).map((t) => t.id)]
+  }, [sources])
   const older = list.filter((s) => s.state === "loading")
   const withLogs = list.filter((s) => s.state !== "none" && s.state !== "missing")
   const firstLoad = loadedAt === null
@@ -90,8 +97,14 @@ export function LogsPage() {
     return newest ? rows : rows.reverse()
   }, [ranged, parsed, newest])
   const counts = useMemo(
-    () => Object.fromEntries(FACETS.map((f) => [f, facetCounts(ranged, parsed.terms, f)])),
-    [ranged, parsed],
+    () =>
+      Object.fromEntries(
+        FACETS.map((f) => {
+          const c = facetCounts(ranged, parsed.terms, f)
+          return [f, f === "tool" ? withZeros(c, toolIds) : c]
+        }),
+      ),
+    [ranged, parsed, toolIds],
   )
   const groups = useMemo(() => (groupBy ? groupRuns(matched, groupBy) : []), [matched, groupBy])
   const bareHidden = useMemo(() => {
