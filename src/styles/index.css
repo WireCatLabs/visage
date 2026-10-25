@@ -83,7 +83,7 @@
 
 /* The interface scales with the window, as a native app's content does at different display sizes. */
 html {
-  font-size: clamp(13.5px, 0.6rem + 0.45vw, 16.5px);
+  font-size: clamp(11.5px, 0.5rem + 0.35vw, 13.5px);
 }
 
 html,
@@ -116,6 +116,27 @@ body {
 :focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+@layer base {
+  button:not(:disabled),
+  a[href],
+  summary,
+  [role="button"],
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  /* A default fade for anything interactive; components that set their own transition keep it. */
+  button,
+  a[href],
+  summary,
+  input,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-quart);
+  }
 }
 
 .selectable {

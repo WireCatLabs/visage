@@ -43,17 +43,17 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
 
   return (
     <li className="border-line border-b last:border-b-0">
-      <div className="grid min-h-[5.75rem] grid-cols-[1.5rem_2.4rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[2.6rem_3.6rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
+      <div className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
         <Lamp tone={lampTone[status.kind]} label={lampLabel(status)} />
-        <ToolIcon id={tool.id} className="size-[2rem] text-ink xl:size-[2.4rem]" />
+        <ToolIcon id={tool.id} className="size-[1.6rem] text-ink xl:size-[1.75rem]" />
         <button
           type="button"
           onClick={() => toggle(tool.id)}
           aria-expanded={expanded}
           aria-controls={panelId}
-          className="group min-w-0 py-4 text-left"
+          className="group min-w-0 py-3 text-left"
         >
-          <h3 className="flex items-baseline gap-[0.6rem] text-[1.18rem] font-semibold leading-tight group-hover:text-brand">
+          <h3 className="flex items-baseline gap-[0.6rem] text-[1.08rem] font-semibold leading-tight group-hover:text-brand">
             {tool.name}
             <span className="font-mono text-[0.95rem] font-normal text-ink-soft">{tool.bin}</span>
           </h3>

@@ -20,7 +20,7 @@ export function ToolsPage() {
   return (
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div className="flex items-end justify-between gap-4">
-        <h1 className="font-display text-[2.85rem] font-extrabold leading-none tracking-[-0.035em]">Tools</h1>
+        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Tools</h1>
         <button
           type="button"
           onClick={() => useTools.getState().refresh()}

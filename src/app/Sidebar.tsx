@@ -16,13 +16,13 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
   const theme = useTheme()
   return (
     <aside
-      className="flex w-[13.5rem] shrink-0 xl:w-[16.6rem] flex-col border-line border-r bg-wall"
+      className="flex w-[12rem] shrink-0 xl:w-[13.5rem] flex-col border-line border-r bg-wall"
       data-tauri-drag-region
     >
-      <div className="flex h-[11.6rem] items-center px-[1.5rem] pb-[0.6rem]" data-tauri-drag-region>
-        <Logo className="flex h-[2.75rem] items-center gap-[0.9rem] [&>svg:last-child]:h-[40%]" />
+      <div className="flex h-[7rem] items-center px-[1.5rem] pb-[0.6rem]" data-tauri-drag-region>
+        <Logo className="flex h-[2.3rem] items-center gap-[0.75rem] [&>svg:last-child]:h-[40%]" />
       </div>
-      <nav aria-label="Sections" className="flex flex-col gap-[0.85rem]">
+      <nav aria-label="Sections" className="flex flex-col gap-[0.3rem]">
         {sections.map((s) => {
           const ready = Boolean(s.page)
           const current = s.id === active
@@ -34,7 +34,7 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
               aria-current={current ? "page" : undefined}
               onClick={() => onSelect(s.id)}
               className={cx(
-                "relative flex h-[3.1rem] items-center gap-[1rem] px-[1.5rem] text-left text-[1.15rem] transition-colors",
+                "relative flex h-[2.6rem] items-center gap-[0.8rem] px-[1.5rem] text-left text-[1rem] transition-colors",
                 current ? "font-semibold text-ink" : "text-ink-soft hover:text-ink",
                 !ready && "cursor-default text-ink-dim/80 hover:text-ink-dim/80",
               )}
@@ -47,7 +47,7 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
                 )}
               />
               <s.icon
-                className={cx("size-[1.55rem] shrink-0", current ? "text-brand" : "text-current")}
+                className={cx("size-[1.2rem] shrink-0", current ? "text-brand" : "text-current")}
                 strokeWidth={1.6}
                 aria-hidden
               />

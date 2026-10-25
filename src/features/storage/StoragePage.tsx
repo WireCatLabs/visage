@@ -27,7 +27,7 @@ export function StoragePage() {
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-[2.85rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
+          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
             What WireCat tools keep on this computer: settings, sessions, message archives and caches. A tool's data can
             be deleted once the tool is uninstalled. Sign-in tokens in your system keyring are not touched.
@@ -91,14 +91,14 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
       : "Left behind after uninstalling"
 
   return (
-    <li className="grid min-h-[5.75rem] grid-cols-[2.4rem_minmax(0,1fr)_7rem_9.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-4 last:border-b-0">
+    <li className="grid min-h-[4.5rem] grid-cols-[1.8rem_minmax(0,1fr)_7rem_9.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-4 last:border-b-0">
       {area.id === "shared" ? (
-        <Database className="size-[2rem] text-ink" strokeWidth={1.75} aria-hidden />
+        <Database className="size-[1.6rem] text-ink" strokeWidth={1.75} aria-hidden />
       ) : (
-        <ToolIcon id={area.id} className="size-[2rem] text-ink" />
+        <ToolIcon id={area.id} className="size-[1.6rem] text-ink" />
       )}
       <div className="min-w-0">
-        <h3 className="text-[1.18rem] font-semibold leading-tight">{areaName(area.id)}</h3>
+        <h3 className="text-[1.08rem] font-semibold leading-tight">{areaName(area.id)}</h3>
         <p className={`mt-1 text-[0.9rem] ${!empty && !inUse ? "text-warn-ink" : "text-ink-soft"}`}>{status}</p>
         {!empty && (
           <ul className="mt-1.5 flex flex-col gap-0.5">
