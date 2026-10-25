@@ -92,6 +92,20 @@ Logs, Config — внизу боковой панели.
 Страница `https://wirecat.dev/en/docs/desktop/logs` (en/es/ru) в cli-docs; ссылку ставит агент Logs. Текст
 пишется после слияния Logs по итоговому синтаксису.
 
+**ASK-12 · «can we set an agent session id for the run logs? is it hard?»**
+Нет, не сложно: Claude Code передаёт `CLAUDE_CODE_SESSION_ID` дочерним процессам (видно в окружении этой сессии).
+Писать его должен cli-core в run.json; агент `feat/run-context` в cli-core, затем колонка «Agent» в Logs.
+
+**ASK-13 · «track full commands and separately all arguments… more info on what went wrong… endpoint, http code… error class… backtrace»**
+Сейчас run.json хранит путь команды, профиль, код ошибки, число запросов — без аргументов и без деталей ошибки;
+для нераспознанной команды пишется просто `max`. Тот же агент: `argv` с маскировкой содержимого, `error` {class,
+message, http, provider, stack, cause}, затем блок «What went wrong» в Logs.
+
+**ASK-14 · «database info in Storage - migration version, any issues… I asked you before to provide table data»**
+Признаю: в Storage ушли итоги и разбивки, но не список таблиц, не миграции и не проверка здоровья. Агент
+`feat/store-tables` в cli-core (список таблиц, история миграций, quick_check, свободное место, бэкап), затем блоки
+Database и Tables в Storage.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -145,6 +159,10 @@ wirecat.dev — статика на Cloudflare Pages; GitHub App нет; ток�
 Не отправлены. До пользователей дойдут цепочкой выпусков: cli-base → cli-core (с 0.53 через 0.55) → tg/max.
 `store info` теперь открывает базу только на чтение. В базе есть провайдер `chat` с 4 сообщениями — похоже на
 тестовые данные, не тронуто.
+
+**BUG-3 · «Keep failed runs only» ставил `record false`, а это выключает и логи упавших запусков**
+`cli-core/src/cli/settings.ts:521`: упавшие хранятся, только когда `record` true или по умолчанию. Исправлено на
+`config unset --defaults record` (коммит после `f2c8159`). Нашёл агент документации, подтверждено по коду.
 
 ## 4. Вопросы к Славе
 
