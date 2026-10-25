@@ -6,7 +6,7 @@ export const STEPS = [
   { id: "computer", label: "Your computer" },
   { id: "choose", label: "Choose tools" },
   { id: "install", label: "Install" },
-  { id: "agents", label: "Connect agents" },
+  { id: "agents", label: "Agents" },
   { id: "signin", label: "Sign in" },
   { id: "done", label: "Done" },
 ] as const

@@ -63,13 +63,13 @@ export function Computer() {
       label: "Node.js",
       value: !r ? "…" : (r.node.version ?? "Not found"),
       tone: !r ? "idle" : r.node.ok ? "ok" : "bad",
-      note: r?.node.problem,
+      note: r?.node.version ? r.node.problem : null,
     },
     {
       label: "npm",
       value: !r ? "…" : (r.npm.version ?? "Not found"),
       tone: !r ? "idle" : r.npm.ok ? "ok" : "bad",
-      note: r?.npm.problem,
+      note: r?.npm.version ? r.npm.problem : null,
     },
   ]
   const ready = r?.node.ok && r.npm.ok && r.npmPrefixWritable !== false

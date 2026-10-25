@@ -16,7 +16,8 @@ The repository is `visage`; the product is **WireCat**. The name `visage` never 
 | Screenshot the browser build | `node scripts/capture.mjs out.png "?state=fresh" [--dark] [--width 1280]` |
 
 Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install=<tool>`, `?hold=<tool>`,
-`?fail=<tool>`, `?state=one` (only Telegram installed; see `src/platform/mock.ts`).
+`?fail=<tool>`, `?state=one` (only Telegram installed; see `src/platform/mock.ts`). A fresh browser shows the first-run
+setup; `?onboarding=off` hides it for one load, `?onboarding=<step>` (`choose`, `install`, `signin`…) opens that step.
 
 ## Rules
 

@@ -36,7 +36,7 @@ export function HelpMenu({ onTour, onWelcome }: Props) {
   }
 
   const item =
-    "flex h-[2.4rem] w-full items-center gap-[0.7rem] rounded-[0.35rem] px-[0.7rem] text-left text-[0.95rem] text-ink hover:bg-app-3"
+    "flex h-[2.4rem] w-full items-center gap-[0.7rem] rounded-[0.35rem] px-[0.7rem] pr-[1rem] text-left text-[0.95rem] whitespace-nowrap text-ink hover:bg-app-3"
 
   return (
     <div ref={root} className="relative flex h-full items-center">
@@ -59,7 +59,7 @@ export function HelpMenu({ onTour, onWelcome }: Props) {
       {open && (
         <div
           id={listId}
-          className="absolute top-[calc(100%-0.3rem)] right-0 z-30 flex w-[15rem] flex-col rounded-[0.6rem] border border-line bg-app p-[0.3rem] shadow-panel"
+          className="absolute top-[calc(100%-0.3rem)] right-0 z-30 flex w-max min-w-[14rem] flex-col rounded-[0.6rem] border border-line bg-app p-[0.3rem] shadow-panel"
         >
           <button type="button" data-item className={item} onClick={pick(onTour)}>
             <Compass className="size-[1.1rem] text-ink-soft" strokeWidth={1.8} aria-hidden />

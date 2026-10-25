@@ -87,7 +87,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
                   <span
                     aria-hidden
                     className={cx(
-                      "grid size-[1.2rem] shrink-0 place-items-center rounded-full font-mono text-[0.7rem] tabular-nums",
+                      "grid size-[1.2rem] shrink-0 place-items-center rounded-full font-mono text-[0.8rem] tabular-nums",
                       here
                         ? "bg-brand text-brand-ink"
                         : i < current
@@ -117,9 +117,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
         >
           Set up later
         </Button>
-        <p className="px-[0.75rem] text-[0.8rem] leading-snug text-ink-dim">
-          "Finish setup" in the sidebar brings you back.
-        </p>
+        <p className="px-[0.75rem] text-[0.8rem] leading-snug text-ink-dim">Finish later from the sidebar.</p>
       </div>
     </aside>
   )
@@ -139,7 +137,7 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
   const heading = useRef<HTMLHeadingElement>(null)
   const scroller = useRef<HTMLElement>(null)
   const headingId = useId()
-  const mounted = useRef(false)
+  const shown = useRef(step)
   const { go, finish } = useOnboarding.getState()
 
   useEffect(() => {
@@ -147,11 +145,11 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
   }, [])
 
   // Move focus to the new heading so a screen reader announces the step; not on first open, where it would jump.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every step change by design
   useEffect(() => {
+    if (shown.current === step) return
+    shown.current = step
     scroller.current?.scrollTo?.({ top: 0 })
-    if (mounted.current) heading.current?.focus()
-    mounted.current = true
+    heading.current?.focus()
   }, [step])
 
   const i = indexOf(step)
@@ -190,7 +188,8 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
             ref={heading}
             id={headingId}
             tabIndex={-1}
-            className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em] outline-none"
+            className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]"
+            style={{ outline: "none" }}
           >
             {page.title}
           </h1>
