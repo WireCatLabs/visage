@@ -2,12 +2,16 @@ import { type ReactNode, useState } from "react"
 import { create } from "zustand"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { ReportThis } from "../report/ReportThis"
 
 /** A change to the owner's agents or tasks, shown with the exact command before it runs. */
 export type Pending = {
   title: string
   body: ReactNode
   command: string
+  /** The catalog tool the command belongs to, so a report about it is filed with that tool. */
+  tool?: string
   action: string
   danger?: boolean
   /** Resolves false when it failed; the reason is in `failure`. */
@@ -65,10 +69,21 @@ export function ConfirmCommand() {
             {pending?.command}
           </code>
         </div>
-        {error && (
-          <p role="alert" className="selectable text-[0.9rem] text-bad">
+        {error && pending && (
+          <ErrorNotice
+            inline
+            action={
+              <ReportThis
+                what={pending.title.replace(/\?$/, "")}
+                tool={pending.tool ?? null}
+                command={pending.command}
+                error={error}
+                onOpen={done}
+              />
+            }
+          >
             {error}
-          </p>
+          </ErrorNotice>
         )}
       </div>
     </Dialog>

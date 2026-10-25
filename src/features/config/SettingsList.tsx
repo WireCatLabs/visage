@@ -3,7 +3,9 @@ import { type KeyboardEvent, useState } from "react"
 import type { Origin, SettingRow } from "@/platform/settings-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Pill } from "@/ui/Pill"
+import { ReportThis } from "../report/ReportThis"
 import { isReadOnly } from "./diff"
 import { useConfig } from "./store"
 
@@ -34,6 +36,7 @@ export function SettingsList({ rows, disabled }: { rows: readonly SettingRow[]; 
 
 function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
   const status = useConfig((s) => s.rows[row.key])
+  const toolId = useConfig((s) => s.tool)
   const apply = useConfig((s) => s.apply)
   const saving = status?.state === "saving"
   const readOnly = isReadOnly(row)
@@ -62,9 +65,13 @@ function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
           </Pill>
         </div>
         {status?.state === "failed" ? (
-          <p role="alert" className="selectable mt-1 text-[0.85rem] text-bad">
+          <ErrorNotice
+            inline
+            className="mt-1"
+            action={<ReportThis what={`Saving the ${row.key} setting`} tool={toolId} error={status.message} />}
+          >
             {status.message}
-          </p>
+          </ErrorNotice>
         ) : (
           note && (
             <p className="mt-1 flex items-start gap-1.5 text-[0.85rem] text-ink-soft">

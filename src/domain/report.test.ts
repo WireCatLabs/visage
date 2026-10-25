@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { issueBody, newIssueUrl, reportDetails, reportRepo, validateReport } from "./report"
+import { failureReport, issueBody, LIMITS, newIssueUrl, reportDetails, reportRepo, validateReport } from "./report"
 
 const facts = {
   app: { name: "wirecat-desktop", version: "0.1.0" },
@@ -37,5 +37,42 @@ describe("report", () => {
     const url = new URL(newIssueUrl(fields, facts))
     expect(url.pathname).toBe("/WireCatLabs/drive-cli/issues/new")
     expect(url.searchParams.get("title")).toBe("Install fails")
+  })
+})
+
+describe("a report filled from a failure", () => {
+  it("files a tool's failure under that tool, with the page and the command the app ran", () => {
+    const report = failureReport({
+      what: "Releasing the task inbox-zero",
+      message: "tg: task is held by another session\n(exit 3)",
+      page: "Agents",
+      tool: "tg",
+      command: "tg personal tasks release inbox-zero",
+    })
+    expect(report).toEqual({
+      about: "tg",
+      summary: "Releasing the task inbox-zero: tg: task is held by another session (exit 3)",
+      steps: "1. Opened Agents\n2. Releasing the task inbox-zero (the app ran `tg personal tasks release inbox-zero`)",
+      happened: "The app showed: tg: task is held by another session\n(exit 3)",
+    })
+    expect(validateReport({ ...report, expected: "" })).toEqual([])
+  })
+
+  it("files everything else under the app, so the form is complete without a choice", () => {
+    expect(failureReport({ what: "Reading storage", message: "denied", tool: null }).about).toBe("app")
+    expect(failureReport({ what: "Reading the tasks", message: "x", tool: "claude" }).about).toBe("app")
+  })
+
+  it("keeps the summary within the limit and a render stack within the field", () => {
+    const report = failureReport({
+      what: "Showing this page",
+      message: "TypeError: ".padEnd(400, "x"),
+      stack: Array.from({ length: 40 }, (_, i) => `    at Component${i} (Page.tsx:${i})`).join("\n"),
+    })
+    expect(report.summary).toHaveLength(LIMITS.summary)
+    expect(report.summary.endsWith("…")).toBe(true)
+    expect(report.happened).toContain("at Component14 ")
+    expect(report.happened).not.toContain("at Component15 ")
+    expect(report.happened.length).toBeLessThanOrEqual(LIMITS.happened)
   })
 })

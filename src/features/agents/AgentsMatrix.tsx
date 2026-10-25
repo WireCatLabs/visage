@@ -13,8 +13,10 @@ import { isNewer } from "@/domain/status"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { askSkillInstall } from "./actions"
@@ -189,6 +191,7 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
                           cell={c.cell}
                           busy={c.busy}
                           failure={c.failure}
+                          tool={r.tool.id}
                           label={`${r.tool.name} skill for ${columnName(c.target)}`}
                           onInstall={(action) => askSkillInstall(r.tool.id, c.target, action, columnName(c.target))}
                         />
@@ -213,10 +216,11 @@ function Cell(props: {
   cell: SkillCell
   busy: boolean
   failure: string | null
+  tool: string
   label: string
   onInstall: (action: string) => void
 }) {
-  const { cell, busy, failure, label, onInstall } = props
+  const { cell, busy, failure, tool, label, onInstall } = props
   const look = busy ? { tone: "busy" as const, word: "Writing…" } : LOOK[cell.kind]
   const action = cellAction(cell)
   const version = cell.kind === "current" || cell.kind === "stale" ? cell.installed : null
@@ -238,11 +242,23 @@ function Cell(props: {
           </Button>
         )}
       </div>
-      {cell.kind === "failed" && !busy && <p className="mt-1 text-[0.8rem] text-bad">{cell.message}</p>}
+      {cell.kind === "failed" && !busy && (
+        <ErrorNotice
+          inline
+          className="mt-1"
+          action={<ReportThis what={`Checking the ${label}`} tool={tool} error={cell.message} />}
+        >
+          {cell.message}
+        </ErrorNotice>
+      )}
       {failure && !busy && (
-        <p role="alert" className="selectable mt-1 text-[0.8rem] text-bad">
+        <ErrorNotice
+          inline
+          className="mt-1"
+          action={<ReportThis what={`Writing the ${label}`} tool={tool} error={failure} />}
+        >
           {failure}
-        </p>
+        </ErrorNotice>
       )}
     </div>
   )

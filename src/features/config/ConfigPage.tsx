@@ -4,8 +4,10 @@ import { findTool, tools } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Monogram } from "@/ui/Logo"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { CategoriesEditor } from "./CategoriesEditor"
@@ -102,9 +104,9 @@ export function ConfigPage() {
 
       {st.settings?.notice && <Banner tone="warn">{st.settings.notice}</Banner>}
       {st.error && (
-        <Banner tone="bad">
-          <span className="selectable">{st.error}</span>
-        </Banner>
+        <ErrorNotice action={<ReportThis what="Reading settings" tool={st.tool} error={st.error} />}>
+          {st.error}
+        </ErrorNotice>
       )}
 
       {(tool || shared) && st.target && !st.error && (
@@ -143,6 +145,7 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
   const { toolName, defaults, onSelect } = props
   const profiles = useConfig((s) => s.profiles)
   const error = useConfig((s) => s.profilesError)
+  const toolId = useConfig((s) => s.tool)
   const target = useConfig((s) => s.target)
   const current = target === null ? null : (target.profile ?? DEFAULTS)
 
@@ -152,6 +155,7 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
       <p className="text-[0.95rem] text-ink-soft">
         {error ? `${error}. ` : `There are no ${toolName} profiles yet. `}
         Set one up in Tools, under {toolName}, then come back here.
+        {error && <ReportThis what={`Listing ${toolName} profiles`} tool={toolId} error={error} />}
       </p>
     )
   }

@@ -6,7 +6,9 @@ import { platform } from "@/platform/bridge"
 import type { Readiness } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Stepper, type StepState } from "@/ui/Stepper"
+import { ReportThis } from "../report/ReportThis"
 import { ManagedNode } from "./ManagedNode"
 import { type NodeStep, useNode } from "./node-store"
 import { useSystem } from "./store"
@@ -171,10 +173,16 @@ function Progress() {
         </p>
       )}
       {failure && (
-        <div role="alert" className="text-[0.95rem]">
-          <p className="font-medium text-bad">{failure.message}</p>
-          {failure.hint && <p className="mt-0.5 text-ink-soft">{failure.hint}</p>}
-        </div>
+        <ErrorNotice
+          inline
+          className="text-[0.95rem]"
+          detail={failure.hint}
+          action={
+            <ReportThis what="Setting up Node.js" error={[failure.message, failure.hint].filter(Boolean).join(" ")} />
+          }
+        >
+          <span className="font-medium">{failure.message}</span>
+        </ErrorNotice>
       )}
       <div className="flex justify-end gap-2">
         {running ? (

@@ -5,7 +5,9 @@ import { SKILL_TARGETS, TARGET_FOLDER } from "@/domain/skills"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { useAgents } from "./store"
 
@@ -81,9 +83,15 @@ export function SkillPreview() {
           </div>
         )}
         {text.state === "error" && (
-          <p role="alert" className="selectable p-4 text-[0.9rem] text-bad">
+          <ErrorNotice
+            inline
+            className="p-4"
+            action={
+              <ReportThis what={`Showing the ${tool?.name ?? ""} skill`} tool={id} error={text.error} onOpen={close} />
+            }
+          >
             {text.error}
-          </p>
+          </ErrorNotice>
         )}
         {text.state === "ready" && (
           <pre className="selectable max-h-[50vh] overflow-auto p-4 font-mono text-[0.8rem] leading-relaxed whitespace-pre-wrap text-ink">

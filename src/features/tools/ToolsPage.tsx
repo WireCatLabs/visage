@@ -2,6 +2,8 @@ import { LoaderCircle, RefreshCw } from "lucide-react"
 import { useEffect } from "react"
 import { tools } from "@/domain/catalog"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { ReportThis } from "../report/ReportThis"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
 import { StorageSummary } from "./StorageFit"
@@ -53,14 +55,14 @@ export function ToolsPage() {
 
       <NodeNotice />
       {error && (
-        <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+        <ErrorNotice action={<ReportThis what="Looking for WireCat tools" error={error.message} />}>
           Could not inspect this computer: {error.message}
-        </p>
+        </ErrorNotice>
       )}
       {systemError && (
-        <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+        <ErrorNotice action={<ReportThis what="Checking Node.js and npm" error={systemError} />}>
           Could not check Node.js and npm: {systemError}
-        </p>
+        </ErrorNotice>
       )}
 
       <StorageSummary />

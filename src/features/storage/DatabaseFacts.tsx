@@ -7,6 +7,7 @@ import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { Disclosure } from "@/ui/Disclosure"
 import { Lamp } from "@/ui/Lamp"
+import { ReportThis } from "../report/ReportThis"
 import { useStorage } from "./store"
 import { useElapsed } from "./useElapsed"
 
@@ -160,9 +161,10 @@ function Health() {
     )
   if (checkError)
     return (
-      <span className="inline-flex items-center gap-2" role="alert">
+      <span className="inline-flex flex-wrap items-center gap-2" role="alert">
         <Lamp tone="bad" size="sm" />
         <span className="text-bad">The check did not finish: {checkError}</span>
+        <ReportThis what="Checking the message storage" error={checkError} />
       </span>
     )
   if (!check)

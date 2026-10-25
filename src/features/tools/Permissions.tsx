@@ -10,9 +10,11 @@ import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useProfiles } from "./Health"
 import {
   blockedCommands,
@@ -53,7 +55,7 @@ const MEANS: Record<Level, string> = {
 }
 
 type Change = { key: string; label: string; level: Level | null; from: Level | undefined; overrides: OwnLevel[] }
-type Row = { state: "saving" } | { state: "failed"; message: string }
+type Row = { state: "saving" } | { state: "failed"; message: string; tool: string; key: string }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -113,7 +115,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
       else await platform.settingsSet(tool.id, profile, defaultsView, setting, change.level)
       setRows(({ [change.key]: _, ...rest }) => rest)
     } catch (e) {
-      setRows((r) => ({ ...r, [change.key]: { state: "failed", message: message(e) } }))
+      setRows((r) => ({ ...r, [change.key]: { state: "failed", message: message(e), tool: tool.id, key: change.key } }))
     }
     await load()
   }
@@ -168,7 +170,14 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
         </div>
       </div>
 
-      {error && <p className="text-[0.9rem] text-bad">Could not read permissions: {error}</p>}
+      {error && (
+        <ErrorNotice
+          inline
+          action={<ReportThis what={`Reading ${tool.name} permissions`} tool={tool.id} error={error} />}
+        >
+          Could not read permissions: {error}
+        </ErrorNotice>
+      )}
       {data?.ceiling && <Ceiling tool={tool} profile={profile} ceiling={data.ceiling} />}
       {data &&
         locks(data.commands).map((reason) => (
@@ -252,7 +261,14 @@ function Notes({ tool, data, defaultsView }: { tool: CatalogTool; data: Data; de
       </p>
     )
   if (data.commandsError)
-    return <p className="text-[0.875rem] text-bad">Could not list the commands: {data.commandsError}</p>
+    return (
+      <ErrorNotice
+        inline
+        action={<ReportThis what={`Listing ${tool.name} commands`} tool={tool.id} error={data.commandsError} />}
+      >
+        Could not list the commands: {data.commandsError}
+      </ErrorNotice>
+    )
   if (data.commands === null)
     return (
       <p className="text-[0.875rem] text-ink-soft">
@@ -508,9 +524,12 @@ function RowStatus({ row }: { row: Row | undefined }) {
       </p>
     )
   return (
-    <p role="alert" className="text-[0.85rem] text-bad">
+    <ErrorNotice
+      inline
+      action={<ReportThis what={`Saving the ${row.key} permission`} tool={row.tool} error={row.message} />}
+    >
       {row.message}
-    </p>
+    </ErrorNotice>
   )
 }
 

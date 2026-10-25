@@ -18,7 +18,8 @@ The repository is `wirecat-desktop` (the local folder may still be called `visag
 | Screenshot the browser build | `node scripts/capture.mjs out.png "?state=fresh" [--dark] [--width 1280]` |
 
 Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install=<tool>`, `?hold=<tool>`,
-`?fail=<tool>`, `?state=one` (only Telegram installed; see `src/platform/mock.ts`). A fresh browser shows the first-run
+`?fail=<tool>`, `?fail=storage` (the Storage page cannot read its folders), `?crash=<section>` (that page breaks while
+rendering, to see the error screen), `?state=one` (only Telegram installed; see `src/platform/mock.ts`). A fresh browser shows the first-run
 setup; `?onboarding=off` hides it for one load, `?onboarding=<step>` (`choose`, `install`, `signin`…) opens that step. Bug reports: `?report=fail` (server
 unreachable), `?report=queued` (stored, no issue yet); the real app sends to `WIRECAT_API_URL` or `https://api.wirecat.dev`.
 

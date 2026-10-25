@@ -5,8 +5,10 @@ import { agentName, agentOf, commandLine, errorOf, formatDuration, type Run } fr
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
 import { toolName } from "./names"
 import { RunFailure } from "./RunFailure"
@@ -62,7 +64,20 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
 
   return (
     <div className="flex flex-col gap-[1.1rem] border-line border-t bg-app-2/60 px-[1.3rem] pt-[1rem] pb-[1.3rem]">
-      {failure && <RunFailure error={failure} />}
+      {failure && (
+        <RunFailure
+          error={failure}
+          action={
+            // The command line and stack can hold what the owner typed, so they stay in the private attachment; the
+            // run id lets the team find them there.
+            <ReportThis
+              what={`Running a ${service} command`}
+              tool={run.tool}
+              error={`${[failure.class, failure.message].filter(Boolean).join(": ")} (run ${run.run_id})`}
+            />
+          }
+        />
+      )}
       <div className="flex flex-wrap items-center gap-x-[1.2rem] gap-y-2">
         <div className="min-w-[16rem] flex-1">
           <CopyField value={run.run_id} label="Copy run id" />
@@ -83,9 +98,11 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
         </div>
         {detail?.state === "loading" && <Skeleton className="h-[4.5rem] w-full" label="Reading this run" />}
         {detail?.state === "error" && (
-          <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-2.5 text-[0.95rem]">
-            Could not read this run: <span className="selectable">{detail.error}</span>
-          </p>
+          <ErrorNotice
+            action={<ReportThis what="Reading a run's details" tool={run.tool} error={detail.error ?? ""} />}
+          >
+            Could not read this run: {detail.error}
+          </ErrorNotice>
         )}
         {detail?.state === "ready" &&
           (events.length === 0 ? (

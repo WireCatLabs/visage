@@ -8,10 +8,12 @@ import type { Agent, Claim } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { useLogs } from "../logs/store"
 import { useNav } from "../nav"
+import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
 import { askMcpAdd, askMcpRemove, askRelease, askSkillInstall, mcpKey, releaseKey } from "./actions"
 import { type Loaded, useConnect } from "./connect"
@@ -276,7 +278,15 @@ function McpCell({
   const profiles = useConnect((s) => s.profiles[tool.id])
   if (!servers || servers.state === "loading" || (tool.profiles && !profiles))
     return <Skeleton className="h-5 w-32" label="Reading MCP servers" />
-  if (servers.state === "error") return <p className="text-[0.85rem] text-bad">{servers.error}</p>
+  if (servers.state === "error")
+    return (
+      <ErrorNotice
+        inline
+        action={<ReportThis what={`Reading ${agent.name} MCP servers`} tool={tool.id} error={servers.error} />}
+      >
+        {servers.error}
+      </ErrorNotice>
+    )
   const { names, canAdd, canRemove } = servers.data
   const rows = connections(names, tool.bin, profiles ?? [])
   const shown = tool.mcp ? rows : rows.filter((r) => r.connected)
@@ -347,9 +357,18 @@ function McpRow(props: { agent: Agent; tool: CatalogTool; row: Connection; canAd
         </p>
       )}
       {failure && !busy && (
-        <p role="alert" className="selectable text-[0.8rem] text-bad">
+        <ErrorNotice
+          inline
+          action={
+            <ReportThis
+              what={`${row.connected ? "Disconnecting" : "Connecting"} ${tool.name} ${label} and ${agent.name}`}
+              tool={tool.id}
+              error={failure}
+            />
+          }
+        >
           {failure}
-        </p>
+        </ErrorNotice>
       )}
     </li>
   )
@@ -434,9 +453,13 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
         </Button>
       </div>
       {failure && !busy && (
-        <p role="alert" className="selectable mt-1 text-[0.8rem] text-bad">
+        <ErrorNotice
+          inline
+          className="mt-1"
+          action={<ReportThis what={`Releasing the task ${task}`} tool={c.tool.id} error={failure} />}
+        >
           {failure}
-        </p>
+        </ErrorNotice>
       )}
     </li>
   )

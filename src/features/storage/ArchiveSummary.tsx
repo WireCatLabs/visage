@@ -4,7 +4,9 @@ import { findTool } from "@/domain/catalog"
 import { formatBytes } from "@/domain/format"
 import type { StoreInfo } from "@/platform/archive-schemas"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { DatabaseFacts } from "./DatabaseFacts"
 import { useStorage } from "./store"
 import { TablesExplorer } from "./TablesExplorer"
@@ -44,9 +46,9 @@ export function ArchiveSummary() {
         {info === undefined ? (
           <Skeleton className="h-16 w-full" label="Reading storage" />
         ) : infoError ? (
-          <p role="alert" className="text-[0.95rem] text-bad">
+          <ErrorNotice inline action={<ReportThis what="Reading the message storage" error={infoError} />}>
             Could not read storage: {infoError}
-          </p>
+          </ErrorNotice>
         ) : info === null ? (
           <p className="text-[0.95rem] text-ink-soft">
             Install a WireCat tool to see what is in storage: the installed tool that reads the newest schema counts it
@@ -55,9 +57,9 @@ export function ArchiveSummary() {
         ) : !info.exists ? (
           <p className="text-[0.95rem] text-ink-soft">Storage is not created yet. It appears after the first sync.</p>
         ) : info.problem ? (
-          <p role="alert" className="text-[0.95rem] text-bad">
+          <ErrorNotice inline action={<ReportThis what="Opening the message storage" error={info.problem} />}>
             Storage is there but did not open: {info.problem}
-          </p>
+          </ErrorNotice>
         ) : (
           <Contents info={info} />
         )}

@@ -21,7 +21,7 @@ import type { Platform } from "./types"
 
 // A stand-in for Rust so the interface can be designed and reviewed in a browser.
 // `?state=fresh` shows a machine with nothing installed, `?state=nonode` one without Node.js,
-// `?state=one` only Telegram, `?fail=<tool>` makes that tool's install fail, `?hold=<tool>` keeps it installing, `?install=<tool>` starts one.
+// `?state=one` only Telegram, `?fail=<tool>` makes that tool's install fail (`?fail=storage`: reading Storage), `?hold=<tool>` keeps it installing, `?install=<tool>` starts one.
 // `?state=noadmin` has an apt Node whose npm needs administrator rights. With `nonode` or `noadmin`, "Set up Node.js
 // for me" runs a fake download; `?node=fail` makes its checksum mismatch, `?node=ready` starts with it already set up.
 // `?compat=upgrade` offers MAX 0.75, so updating WhatsApp shows the warning with an update to queue.
@@ -435,6 +435,8 @@ export function createMock(os: Platform["os"]): Platform {
     },
     async storage(): Promise<StorageArea[]> {
       await delay(400)
+      if (params.get("fail") === "storage")
+        throw new Error("Could not read the data folder: permission denied (os error 13)")
       const used = [...installed.keys()]
       return Object.keys(app).map((id) => {
         const bytes = dataSize[id] ?? 0

@@ -6,9 +6,11 @@ import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
 import { FinishInTerminal, ManualSetup, NewProfile, useProfiles } from "../tools/Health"
@@ -216,6 +218,14 @@ function Progress({ tool }: { tool: CatalogTool }) {
       <span aria-live="polite" className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
         {text}
       </span>
+      {outcome?.event === "failed" && outcome.reason !== "cancelled" && session && (
+        <ReportThis
+          what={`Installing ${tool.name}`}
+          tool={tool.id}
+          error={[outcome.message, outcome.hint].filter(Boolean).join(" ")}
+          log={session.log.slice(-200)}
+        />
+      )}
       {outcome?.event === "failed" && (
         <Button size="sm" onClick={() => useTools.getState().install(tool.id)}>
           Try again
@@ -369,7 +379,12 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
       </div>
       <div className="flex flex-col gap-[0.9rem] sm:pl-[2.4rem]">
         {error ? (
-          <p className="text-[0.9rem] text-bad">Could not list the accounts: {error}</p>
+          <ErrorNotice
+            inline
+            action={<ReportThis what={`Listing ${tool.name} accounts`} tool={tool.id} error={error} />}
+          >
+            Could not list the accounts: {error}
+          </ErrorNotice>
         ) : profiles === undefined ? (
           <Skeleton className="h-8 w-full" label={`Reading ${tool.name} accounts`} />
         ) : profiles && profiles.length > 0 ? (
@@ -379,7 +394,14 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             ))}
           </ul>
         ) : null}
-        {openError && <p className="text-[0.9rem] text-bad">{openError}</p>}
+        {openError && (
+          <ErrorNotice
+            inline
+            action={<ReportThis what="Opening a terminal to sign in" tool={tool.id} error={openError} />}
+          >
+            {openError}
+          </ErrorNotice>
+        )}
         {waiting && <FinishInTerminal onCheck={reload} checking={loading} />}
         {showForm ? (
           <>

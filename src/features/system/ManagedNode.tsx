@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { ReportThis } from "../report/ReportThis"
 import { useNode } from "./node-store"
 import { useSystem } from "./store"
 
@@ -94,9 +96,9 @@ export function ManagedNode({ compact = false }: { compact?: boolean }) {
         ))}
 
       {error && (
-        <p role="alert" className="text-bad">
+        <ErrorNotice inline action={<ReportThis what="Changing WireCat's Node.js" error={error} />}>
           {error}
-        </p>
+        </ErrorNotice>
       )}
     </div>
   )

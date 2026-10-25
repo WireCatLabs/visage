@@ -21,6 +21,7 @@ import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
 import { KeepRuns } from "./KeepRuns"
@@ -219,6 +220,9 @@ function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => voi
           >
             {sourceWords(s)}
           </span>
+          {s.state === "error" && (
+            <ReportThis what={`Reading ${toolName(s.id)} runs`} tool={s.id} error={s.error ?? "could not be read"} />
+          )}
           {s.hasMore && s.state === "ready" && (
             <button
               type="button"

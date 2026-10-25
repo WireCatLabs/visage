@@ -41,7 +41,13 @@ export function ReportDialog() {
 
   useEffect(() => {
     if (!open) return
-    setFields({ ...empty, summary: prefill.summary ?? "", about: prefill.tool ?? "", happened: prefill.details ?? "" })
+    setFields({
+      ...empty,
+      summary: prefill.summary ?? "",
+      about: prefill.tool ?? "",
+      steps: prefill.steps ?? "",
+      happened: prefill.details ?? "",
+    })
     setTried(false)
   }, [open, prefill])
 
@@ -280,9 +286,10 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
       <p className="flex gap-2.5">
         <LockKeyhole className="mt-[0.2rem] size-4 shrink-0 text-ink-dim" aria-hidden />
         <span>
-          Recent error logs from your tools are attached. They are masked, kept only on WireCat’s server for 90 days,
-          and never shown on GitHub. They can still contain personal details you typed into a command, such as a search
-          query.
+          Recent error logs from your tools
+          {prefill.errors?.length ? ", and this window’s recent errors," : ""} are attached. They are masked, kept only
+          on WireCat’s server for 90 days, and never shown on GitHub. They can still contain personal details you typed
+          into a command, such as a search query.
         </span>
       </p>
       {context ? (
@@ -291,7 +298,11 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
             <p className="mb-2">
               {runCount} failed {runCount === 1 ? "run" : "runs"}
               {runs.length ? ` from ${runs.map((r) => r.tool).join(", ")}` : ""}
-              {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}.
+              {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}
+              {prefill.errors?.length
+                ? `, and ${prefill.errors.length} recent ${prefill.errors.length === 1 ? "error" : "errors"} from this window`
+                : ""}
+              .
             </p>
             <pre className={pre}>{JSON.stringify(attachmentsOf(context, prefill), null, 2)}</pre>
           </Disclosure>

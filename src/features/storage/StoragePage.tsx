@@ -7,7 +7,9 @@ import type { StorageArea, StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useCompat } from "../tools/compat-store"
 import { StorageSummary } from "../tools/StorageFit"
 import { ToolIcon } from "../tools/ToolIcon"
@@ -51,9 +53,9 @@ export function StoragePage() {
       </div>
 
       {error && (
-        <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+        <ErrorNotice action={<ReportThis what="Working with data on this computer" error={error} />}>
           {error}
-        </p>
+        </ErrorNotice>
       )}
 
       <StorageSummary />

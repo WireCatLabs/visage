@@ -6,7 +6,9 @@ import { formatBytes } from "@/domain/format"
 import type { Table } from "@/platform/archive-schemas"
 import { Button } from "@/ui/Button"
 import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { useStorage } from "./store"
 import { useElapsed } from "./useElapsed"
 
@@ -42,9 +44,9 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
   return (
     <Frame count={tables ? main.length + search.length : null}>
       {tablesError && (
-        <p role="alert" className="text-[0.9rem] text-bad">
+        <ErrorNotice inline action={<ReportThis what="Listing the storage tables" error={tablesError} />}>
           Could not list the tables: {tablesError}
-        </p>
+        </ErrorNotice>
       )}
       {tables === undefined ? (
         <Skeleton className="h-24 w-full" label="Counting rows" />

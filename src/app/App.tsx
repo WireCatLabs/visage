@@ -11,6 +11,7 @@ import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { Button } from "@/ui/Button"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { Sidebar } from "./Sidebar"
+import { CrashScenario } from "./scenarios"
 import { sections } from "./sections"
 import { TopBar } from "./TopBar"
 import { useApplyTheme } from "./theme"
@@ -50,7 +51,7 @@ export function App() {
           )}
         </TopBar>
         {onboarding ? (
-          <ErrorBoundary>
+          <ErrorBoundary scope="page">
             <Onboarding onExit={toTools} onTour={startTour} />
           </ErrorBoundary>
         ) : (
@@ -59,7 +60,10 @@ export function App() {
               <ReadinessStrip />
             </div>
             <main className="min-h-0 flex-1 overflow-y-auto">
-              <ErrorBoundary>{Page && <Page />}</ErrorBoundary>
+              <ErrorBoundary key={active} scope="page">
+                <CrashScenario section={active} />
+                {Page && <Page />}
+              </ErrorBoundary>
             </main>
           </>
         )}

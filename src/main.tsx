@@ -3,10 +3,13 @@ import { createRoot } from "react-dom/client"
 import { App } from "./app/App"
 import { ErrorBoundary } from "./app/ErrorBoundary"
 import { runMockScenario } from "./app/scenarios"
+import { captureErrors } from "./features/report/errors"
 import "./styles/index.css"
 
 const root = document.getElementById("root")
 if (!root) throw new Error("index.html has no #root")
+
+captureErrors()
 
 // The first frame would be laid out in a fallback font, and the swap to the real one re-wraps every paragraph
 // (19 px on Logs). The fonts ship with the app, so the wait is a few milliseconds; the cap keeps a broken font
@@ -20,7 +23,7 @@ Promise.race([fonts, cap])
   .then(() => {
     createRoot(root).render(
       <StrictMode>
-        <ErrorBoundary>
+        <ErrorBoundary scope="app">
           <App />
         </ErrorBoundary>
       </StrictMode>,

@@ -4,7 +4,7 @@ import type { RunError } from "@/domain/runs"
 import { cx } from "@/ui/cx"
 
 /** What the tool recorded about how the run failed, before anything else in the run. */
-export function RunFailure({ error }: { error: RunError }) {
+export function RunFailure({ error, action }: { error: RunError; action?: ReactNode }) {
   const { http, provider, causes } = error
   const request = http && [http.method, http.endpoint].filter(Boolean).join(" ")
   return (
@@ -13,7 +13,10 @@ export function RunFailure({ error }: { error: RunError }) {
       className="flex flex-col gap-[0.7rem] rounded-[0.2rem] border border-bad/40 bg-bad/10 px-[1rem] py-[0.8rem]"
     >
       <div className="flex flex-col gap-[0.3rem]">
-        <h4 className="text-[0.85rem] font-medium text-ink-dim">What went wrong</h4>
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-[0.85rem] font-medium text-ink-dim">What went wrong</h4>
+          {action}
+        </div>
         <p className="flex flex-wrap items-baseline gap-x-[0.6rem] gap-y-1">
           <span className="selectable font-mono text-[0.95rem] font-medium text-bad">{error.class}</span>
           {error.code && <span className="selectable font-mono text-[0.85rem] text-ink-soft">{error.code}</span>}

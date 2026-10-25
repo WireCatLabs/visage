@@ -9,8 +9,10 @@ import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
 import { useLogs } from "../logs/store"
+import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { type AgentClaim, AgentRow, type AgentTool, ClaimRow } from "./AgentRow"
 import { AgentsMatrix, useSkillMatrix } from "./AgentsMatrix"
@@ -35,6 +37,7 @@ export function AgentsPage() {
   const load = useAgents((s) => s.load)
   const checking = useAgents((s) => rows.some((r) => !(r.tool.id in s.skills)))
   const anyBusy = useAgents((s) => Object.keys(s.busy).length > 0)
+  const agentsError = useAgents((s) => s.agentsError)
   const installs = useTools((s) => s.installs)
   const sources = useLogs((s) => s.sources)
   const connect = useConnect()
@@ -151,7 +154,12 @@ export function AgentsPage() {
         </Button>
       </div>
 
-      {found !== null && found.length === 0 && (
+      {agentsError && (
+        <ErrorNotice action={<ReportThis what="Looking for AI agents" error={agentsError} />}>
+          Could not look for AI agents: {agentsError}
+        </ErrorNotice>
+      )}
+      {!agentsError && found !== null && found.length === 0 && (
         <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">
           No AI agent was found on this computer. Skills can still be written; an agent installed later reads them.
         </p>
@@ -187,10 +195,19 @@ export function AgentsPage() {
           {claimErrors.map(({ key, error }) => {
             const [tool, profile] = key.split("/")
             return (
-              <p key={key}>
-                Could not read the tasks of {findTool(tool ?? "")?.name ?? tool} ({profile}):{" "}
-                <span className="selectable text-bad">{error}</span>
-              </p>
+              <ErrorNotice
+                key={key}
+                inline
+                action={
+                  <ReportThis
+                    what={`Reading the tasks of ${findTool(tool ?? "")?.name ?? tool} (${profile})`}
+                    tool={tool ?? null}
+                    error={error}
+                  />
+                }
+              >
+                Could not read the tasks of {findTool(tool ?? "")?.name ?? tool} ({profile}): {error}
+              </ErrorNotice>
             )
           })}
           {otherClaims.length > 0 && (

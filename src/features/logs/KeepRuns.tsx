@@ -3,6 +3,7 @@ import { findTool } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
 import { toolName } from "./names"
 import { type Keeping, useLogs } from "./store"
@@ -87,8 +88,11 @@ function Row({ id, k, onAsk }: { id: string; k: Keeping; onAsk: (a: Ask) => void
         <Skeleton className="h-[1.2rem] w-[18rem]" label={`Reading ${toolName(id)} settings`} />
       )}
       {k.state === "error" && (
-        <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
-          Could not read whether it keeps successful runs: <span className="selectable text-bad">{k.error}</span>
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[0.95rem] text-ink-soft">
+          <span>
+            Could not read whether it keeps successful runs: <span className="selectable text-bad">{k.error}</span>
+          </span>
+          <ReportThis what={`Reading ${toolName(id)} run settings`} tool={id} error={k.error} />
         </span>
       )}
       {k.state === "ready" && (
@@ -106,8 +110,9 @@ function Row({ id, k, onAsk }: { id: string; k: Keeping; onAsk: (a: Ask) => void
             )}
             {k.locked && <span className="block text-[0.85rem] text-ink-dim">{k.locked}</span>}
             {k.error && (
-              <span role="alert" className="selectable block text-[0.85rem] text-bad">
-                The tool refused the change: {k.error}
+              <span role="alert" className="flex flex-wrap items-center gap-x-3 text-[0.85rem]">
+                <span className="selectable text-bad">The tool refused the change: {k.error}</span>
+                <ReportThis what={`Changing whether ${toolName(id)} keeps runs`} tool={id} error={k.error} />
               </span>
             )}
           </span>

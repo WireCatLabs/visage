@@ -3,6 +3,8 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import type { SettingRow } from "@/platform/settings-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { ReportThis } from "../report/ReportThis"
 import { isReadOnly, type Op } from "./diff"
 import { CATEGORY, type Category, categoryValue, FALLBACK, removeCategory, setCategory, toCategory } from "./scope"
 import { useConfig } from "./store"
@@ -36,6 +38,7 @@ export function CategoriesEditor(props: {
   const [editing, setEditing] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [removed, setRemoved] = useState<{ name: string; value: string; error: string | null } | null>(null)
+  const toolId = useConfig((s) => s.tool)
   const all = rows.map(toCategory)
   const q = query.trim().toLowerCase()
   const shown = q ? all.filter((c) => `${c.name} ${c.meaning} ${c.words}`.toLowerCase().includes(q)) : all
@@ -92,6 +95,9 @@ export function CategoriesEditor(props: {
             Undo
           </Button>
           {removed.error && <span className="text-bad">{removed.error}</span>}
+          {removed.error && (
+            <ReportThis what={`Removing the ${removed.name} category`} tool={toolId} error={removed.error} />
+          )}
         </p>
       )}
 
@@ -154,6 +160,7 @@ function CategoryRow(props: {
 }) {
   const { category: c, editId, disabled, onEdit, onRemove } = props
   const status = useConfig((s) => s.rows[`${CATEGORY}${c.name}`])
+  const toolId = useConfig((s) => s.tool)
   const busy = status?.state === "saving"
   const readOnly = isReadOnly(c.row)
   return (
@@ -165,9 +172,13 @@ function CategoryRow(props: {
         </p>
         {c.words && <p className="selectable mt-0.5 line-clamp-2 text-[0.85rem] text-ink-dim">{c.words}</p>}
         {status?.state === "failed" && (
-          <p role="alert" className="selectable mt-1 text-[0.85rem] text-bad">
+          <ErrorNotice
+            inline
+            className="mt-1"
+            action={<ReportThis what={`Saving the ${c.name} category`} tool={toolId} error={status.message} />}
+          >
             {status.message}
-          </p>
+          </ErrorNotice>
         )}
         {readOnly && (
           <p className="mt-1 flex items-start gap-1.5 text-[0.85rem] text-ink-soft">

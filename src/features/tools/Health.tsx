@@ -8,8 +8,10 @@ import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
 
 type Check = { profile: string | null; state: "running" } | { profile: string | null; state: "done"; result: Diagnosis }
 
@@ -64,7 +66,11 @@ export function Health({ tool }: { tool: CatalogTool }) {
         />
       )}
 
-      {checkError && <p className="text-[0.9rem] text-bad">{checkError}</p>}
+      {checkError && (
+        <ErrorNotice inline action={<ReportThis what={`Checking ${tool.name}`} tool={tool.id} error={checkError} />}>
+          {checkError}
+        </ErrorNotice>
+      )}
       {check && <Result check={check} toolId={tool.id} />}
     </section>
   )
@@ -81,7 +87,13 @@ function ProfileList(props: {
   reloading: boolean
 }) {
   const { tool, profiles, error, busy, activeProfile, onCheck, onReload, reloading } = props
-  if (error) return <p className="text-[0.9rem] text-bad">Could not list profiles: {error}</p>
+  if (error) {
+    return (
+      <ErrorNotice inline action={<ReportThis what={`Listing ${tool.name} profiles`} tool={tool.id} error={error} />}>
+        Could not list profiles: {error}
+      </ErrorNotice>
+    )
+  }
   if (profiles === undefined) return <Skeleton className="h-10 w-full" label="Loading profiles" />
   return (
     <div className="flex flex-col gap-2">
@@ -271,7 +283,10 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
       {opened && <FinishInTerminal onCheck={onCheck} checking={checking} />}
       {error && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[0.85rem] text-ink-soft">No terminal could be opened. Run this yourself:</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-[0.85rem] text-ink-soft">No terminal could be opened. Run this yourself:</p>
+            <ReportThis what="Opening a terminal to sign in" tool={tool.id} command={command} error={error} />
+          </div>
           {command && <CopyField value={command} label="Copy the setup command" />}
         </div>
       )}
@@ -314,7 +329,11 @@ function ConfigProblems({ findings, toolId }: { findings: Finding[]; toolId: str
           Open settings folder
         </Button>
       </div>
-      {openError && <p className="text-[0.85rem] text-bad">{openError}</p>}
+      {openError && (
+        <ErrorNotice inline action={<ReportThis what="Opening the settings folder" tool={toolId} error={openError} />}>
+          {openError}
+        </ErrorNotice>
+      )}
       <ul className="flex flex-col gap-3">
         {findings.map((f) => {
           const at = f.config ? where(f.config) : ""

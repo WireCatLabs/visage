@@ -2,9 +2,20 @@ import { create } from "zustand"
 import { type ReportFields, reportDetails, reportTool } from "@/domain/report"
 import { platform } from "@/platform/bridge"
 import type { ReportContext, ReportSent } from "@/platform/report-schemas"
+import type { AppError } from "./errors"
 
-/** What the place that opened the report already knows: the tool, a first line, and a masked log if any. */
-export type ReportPrefill = { tool?: string | null; summary?: string; details?: string; log?: readonly string[] }
+/**
+ * What the place that opened the report already knows: the tool, a first line, the steps, a masked log if any, and
+ * the window's recent errors when an error opened it.
+ */
+export type ReportPrefill = {
+  tool?: string | null
+  summary?: string
+  steps?: string
+  details?: string
+  log?: readonly string[]
+  errors?: readonly AppError[]
+}
 
 type Phase = "edit" | "sending" | "sent" | "failed"
 
@@ -25,9 +36,16 @@ type ReportState = {
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-/** The private part of a report: recent failed runs, plus the install log when a failed install opened it. */
+/**
+ * The private part of a report: recent failed runs, plus the install log when a failed install opened it and the
+ * window's recent errors when an error did.
+ */
 export function attachmentsOf(context: ReportContext, prefill: ReportPrefill) {
-  return prefill.log?.length ? { ...context.attachments, installLog: prefill.log } : context.attachments
+  const extra = {
+    ...(prefill.log?.length ? { installLog: prefill.log } : {}),
+    ...(prefill.errors?.length ? { appErrors: prefill.errors } : {}),
+  }
+  return Object.keys(extra).length ? { ...context.attachments, ...extra } : context.attachments
 }
 
 export const useReport = create<ReportState>((set, get) => ({
