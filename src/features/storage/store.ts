@@ -1,10 +1,15 @@
 import { create } from "zustand"
+import type { StoreInfo } from "@/platform/archive-schemas"
 import { platform } from "@/platform/bridge"
 import type { StorageArea, StorageFolder } from "@/platform/schemas"
 
 type StorageState = {
   areas: StorageArea[] | null
   error: string | null
+  /** `undefined` while asking, `null` when no messenger tool is installed to ask. */
+  info: StoreInfo | null | undefined
+  infoError: string | null
+  loadInfo(): Promise<void>
   clearing: string | null
   load(): Promise<void>
   clear(id: string): Promise<void>
@@ -19,6 +24,17 @@ export const useStorage = create<StorageState>((set, get) => ({
   areas: null,
   error: null,
   clearing: null,
+  info: undefined,
+  infoError: null,
+
+  async loadInfo() {
+    set({ info: undefined, infoError: null })
+    try {
+      set({ info: await platform.storeInfo() })
+    } catch (e) {
+      set({ info: null, infoError: message(e) })
+    }
+  },
 
   async load() {
     try {

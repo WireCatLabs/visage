@@ -1,12 +1,15 @@
-import { Database, FolderOpen, Trash2 } from "lucide-react"
+import { Database, FolderOpen, KeyRound, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { findTool, sharedStorage } from "@/domain/catalog"
+import { describeEntry } from "@/domain/files"
 import { formatBytes } from "@/domain/format"
 import type { StorageArea, StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
+import { Disclosure } from "@/ui/Disclosure"
 import { Skeleton } from "@/ui/Skeleton"
 import { ToolIcon } from "../tools/ToolIcon"
+import { ArchiveSummary } from "./ArchiveSummary"
 import { areaBytes, useStorage } from "./store"
 
 const areaName = (id: string) => (id === "shared" ? sharedStorage.label : (findTool(id)?.name ?? id))
@@ -20,6 +23,7 @@ export function StoragePage() {
 
   useEffect(() => {
     load()
+    useStorage.getState().loadInfo()
   }, [load])
 
   const leftovers = (areas ?? []).filter((a) => a.folders.length > 0 && a.usedBy.length === 0)
@@ -47,6 +51,8 @@ export function StoragePage() {
           {error}
         </p>
       )}
+
+      <ArchiveSummary />
 
       <ul
         aria-label="Data on this computer"
@@ -132,7 +138,41 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
           </Button>
         )}
       </div>
+      {!empty && <Entries area={area} />}
     </li>
+  )
+}
+
+function Entries({ area }: { area: StorageArea }) {
+  const entries = area.folders.flatMap((f) =>
+    f.entries.map((e) => ({ ...e, key: `${f.kind}/${e.name}`, info: describeEntry(area.id, f.kind, e.name) })),
+  )
+  if (entries.length === 0) return null
+  return (
+    <div className="col-start-2 -col-end-1 mt-1">
+      <Disclosure summary={`What is in here (${entries.length})`}>
+        <ul aria-label={`What ${areaName(area.id)} keeps`} className="flex flex-col gap-1">
+          {entries.map((e) => (
+            <li
+              key={e.key}
+              className="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_5.5rem] items-baseline gap-3 text-[0.85rem]"
+            >
+              <span className="selectable flex min-w-0 items-center gap-1.5 truncate font-mono text-[0.8rem] text-ink">
+                {e.info?.secret && <KeyRound className="size-3.5 shrink-0 text-warn" aria-label="Credentials" />}
+                <span className="truncate">
+                  {e.name}
+                  {e.dir ? "/" : ""}
+                </span>
+              </span>
+              <span className={e.info ? "text-ink-soft" : "text-ink-dim"}>{e.info?.what ?? "Not described"}</span>
+              <span className="text-right font-mono text-[0.8rem] text-ink-dim tabular-nums">
+                {formatBytes(e.bytes)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Disclosure>
+    </div>
   )
 }
 
