@@ -70,7 +70,7 @@ describe("Reporting a problem", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Could not reach the WireCat server")
     await user.click(within(dialog).getByRole("button", { name: "Open on GitHub instead" }))
     expect(open.mock.calls[0]?.[0]).toMatch(
-      /^https:\/\/github\.com\/WireCatLabs\/visage\/issues\/new\?title=Install\+fails/,
+      /^https:\/\/github\.com\/WireCatLabs\/wirecat-desktop\/issues\/new\?title=Install\+fails/,
     )
 
     await user.click(within(dialog).getByRole("button", { name: "Try again" }))
