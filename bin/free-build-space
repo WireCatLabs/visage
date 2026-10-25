@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Frees disk by deleting the Rust build folder (src-tauri/target, ~5 GB each) of agent worktrees whose branch is
+# already in feat/desktop-mvp. Skips locked worktrees (an agent is still in them) and unmerged ones. Only build
+# output goes; the worktrees and branches stay (they are in CLEANUP.md). Without --yes it only lists.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+locked="$(git worktree list --porcelain | awk '/^worktree /{w=$2} /^locked/{print w}')"
+total=0
+for w in .claude/worktrees/*/; do
+  w="${w%/}"
+  target="$w/src-tauri/target"
+  [ -d "$target" ] || continue
+  if grep -qxF "$PWD/$w" <<<"$locked"; then echo "skip (agent working): $w"; continue; fi
+  branch="$(git -C "$w" branch --show-current)"
+  if ! git merge-base --is-ancestor "$branch" feat/desktop-mvp; then echo "skip (not merged): $w"; continue; fi
+  if [ -n "$(git -C "$w" status --porcelain)" ]; then echo "skip (uncommitted changes): $w"; continue; fi
+  size="$(du -sm "$target" | cut -f1)"
+  total=$((total + size))
+  if [ "${1:-}" = "--yes" ]; then rm -rf "$target"; echo "deleted ${size} MB: $target"; else echo "would delete ${size} MB: $target"; fi
+done
+echo "total: ${total} MB"
+[ "${1:-}" = "--yes" ] || echo "Run again with --yes to delete."

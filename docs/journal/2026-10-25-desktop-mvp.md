@@ -332,6 +332,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 
 - **UX-5 · В правах «Tool default» вместо настоящего уровня.** Слава: «in permissions I see Tool default - instead why dont we show the actual permissions. if mixed we can use a standard status like partial write or similar». Сделано: пустой пункт списка показывает действующее состояние, которое сообщил инструмент («Read only (default)», «Partial write (default)»); «Tool default» остался только когда инструмент не говорит. Статус «Partial» стал «Partial write»/«Partial read». И: «also let's style all dropdowns so they aren't native and look nice» — передано агенту UX-4, все `<select>`.
 
+- **RISK-8 · Диск заполнен на 98% (7,5 ГБ свободно).** Каждый рабочий каталог агента собирает Rust заново: `src-tauri/target` ~5 ГБ, 13 уже слитых каталогов держат ~69 ГБ. Агент выпадающих списков не смог прогнать clippy и тесты Rust. Скрипт `bin/free-build-space` (без `--yes` только перечисляет) удаляет только папки сборки слитых, незанятых, чистых каталогов — ждёт подтверждения Славы. Дальше: общий `CARGO_TARGET_DIR` для агентов.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
