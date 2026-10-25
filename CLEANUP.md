@@ -21,3 +21,4 @@
 - 2026-10-25 · .claude/worktrees/agent-afaa9f5333cf5427c and its branch — merged
 - 2026-10-25 · .claude/worktrees/agent-a1a188123edfab293 and its branch — merged
 - 2026-10-25 · mcp_add / mcp_check (src-tauri/src/mcp.rs, lib.rs), platform.mcpAdd / mcpCheck, their mocks and McpHealthSchema — the interface no longer adds or probes MCP servers (Agents shows existing ones only)
+- 2026-10-25 · .claude/worktrees/agent-a5ff77e288a15ff48 and its branch — merged
