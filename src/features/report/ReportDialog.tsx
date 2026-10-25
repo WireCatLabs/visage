@@ -2,11 +2,14 @@ import { CircleAlert, CircleCheck, ExternalLink, LoaderCircle, LockKeyhole, Send
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react"
 import { tools } from "@/domain/catalog"
 import { issueBody, LIMITS, newIssueUrl, type ReportFields, type ReportProblem, validateReport } from "@/domain/report"
+import { ToolIcon } from "@/features/tools/ToolIcon"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
+import { Monogram } from "@/ui/Logo"
+import { Select, type SelectGroup } from "@/ui/Select"
 import { attachmentsOf, useReport } from "./store"
 
 const SECURITY_POLICY = "https://github.com/WireCatLabs/.github/blob/main/SECURITY.md"
@@ -15,6 +18,18 @@ const control =
 const empty: ReportFields = { summary: "", about: "", steps: "", happened: "", expected: "" }
 
 type FieldId = keyof ReportFields
+
+const aboutOptions: SelectGroup<string>[] = [
+  { label: "The app", options: [{ value: "app", label: "WireCat Desktop", icon: <Monogram className="size-4" /> }] },
+  {
+    label: "A tool",
+    options: tools.map((t) => ({
+      value: t.id,
+      label: `${t.name} (${t.bin})`,
+      icon: <ToolIcon id={t.id} className="size-4" />,
+    })),
+  },
+]
 
 export function ReportDialog() {
   const { open, prefill, phase, close } = useReport()
@@ -114,27 +129,14 @@ export function ReportDialog() {
             </Field>
             <Field id={id("about")} label="About" problem={problem("about")}>
               {(a11y) => (
-                <select
+                <Select
                   {...a11y}
                   value={fields.about}
-                  onChange={set("about")}
-                  className={cx(control, "h-[2.4rem]", !fields.about && "text-ink-dim")}
+                  onChange={(about) => setFields((s) => ({ ...s, about }))}
+                  options={aboutOptions}
+                  className="w-full"
                   disabled={sending}
-                >
-                  <option value="" disabled>
-                    Choose…
-                  </option>
-                  <optgroup label="The app">
-                    <option value="app">WireCat Desktop</option>
-                  </optgroup>
-                  <optgroup label="A tool">
-                    {tools.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.bin})
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                />
               )}
             </Field>
           </div>

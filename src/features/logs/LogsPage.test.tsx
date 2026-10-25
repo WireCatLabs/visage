@@ -98,7 +98,7 @@ describe("Logs", () => {
     await loaded()
 
     await user.click(screen.getByRole("button", { name: "Group by Profile" }))
-    expect(screen.getByRole("combobox", { name: "Group by" })).toHaveValue("profile")
+    expect(screen.getByRole("combobox", { name: "Group by" })).toHaveTextContent("Profile")
     expect(screen.getByRole("columnheader", { name: "Profile" })).toBeInTheDocument()
   }, 15000)
 

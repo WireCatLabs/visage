@@ -207,3 +207,10 @@ body {
   animation: shimmer 1.6s linear infinite;
   border-radius: 6px;
 }
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}

@@ -17,7 +17,8 @@ async function openReport() {
 
 async function fillIn(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
   await user.type(within(dialog).getByLabelText("Summary"), "Install fails")
-  await user.selectOptions(within(dialog).getByLabelText("About"), "WireCat Desktop")
+  await user.click(within(dialog).getByLabelText("About"))
+  await user.click(within(dialog).getByRole("option", { name: "WireCat Desktop" }))
   await user.type(within(dialog).getByLabelText("What were you doing?"), "1. Pressed Install")
   await user.type(within(dialog).getByLabelText("What happened?"), "It stops at verify.")
 }

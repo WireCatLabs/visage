@@ -11,6 +11,7 @@ import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
 import { Lamp, type LampTone } from "@/ui/Lamp"
+import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
 import { useProfiles } from "./Health"
 import {
@@ -145,19 +146,17 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
           <label className="sr-only" htmlFor={`${headingId}-profile`}>
             Profile
           </label>
-          <select
+          <Select
             id={`${headingId}-profile`}
+            size="sm"
             value={profile ?? ""}
-            onChange={(e) => choose(e.target.value === "" ? null : e.target.value)}
-            className="h-8 rounded-[0.35rem] border border-line-strong bg-app px-2 text-[0.875rem] text-ink"
-          >
-            <option value="">Defaults (all profiles)</option>
-            {(profiles ?? []).map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={(p) => choose(p === "" ? null : p)}
+            options={[
+              { value: "", label: "Defaults (all profiles)" },
+              ...(profiles ?? []).map((p) => ({ value: p.name, label: p.name })),
+            ]}
+            className="min-w-[11rem]"
+          />
           <Button
             size="sm"
             variant="ghost"
@@ -424,24 +423,20 @@ function LevelSelect(props: {
   const { label, own, inherited, defaultsView, disabled, onChange } = props
   const removable = own !== undefined && layerOf(own, defaultsView) === "here"
   return (
-    <select
+    <Select<Level | "">
       aria-label={label}
+      className="w-full"
+      size="sm"
       value={own?.level ?? ""}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value === "" ? null : (e.target.value as Level))}
-      className="h-8 w-full rounded-[0.35rem] border border-line-strong bg-app px-2 text-[0.875rem] text-ink disabled:opacity-45"
-    >
-      {(own === undefined || removable) && (
-        <option value="" disabled={!removable}>
-          {inherited ? `${inherited} (default)` : "Tool default"}
-        </option>
-      )}
-      {LEVELS.map((l) => (
-        <option key={l} value={l}>
-          {LEVEL_LABEL[l]}
-        </option>
-      ))}
-    </select>
+      onChange={(l) => onChange(l === "" ? null : l)}
+      options={[
+        ...(own === undefined || removable
+          ? [{ value: "" as const, label: inherited ? `${inherited} (default)` : "Tool default", disabled: !removable }]
+          : []),
+        ...LEVELS.map((l) => ({ value: l, label: LEVEL_LABEL[l] })),
+      ]}
+    />
   )
 }
 

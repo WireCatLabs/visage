@@ -11,6 +11,11 @@ if (!tg) throw new Error("tg is in the catalog")
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.restoreAllMocks())
 
+async function choose(user: ReturnType<typeof userEvent.setup>, select: HTMLElement, option: string) {
+  await user.click(select)
+  await user.click(await screen.findByRole("option", { name: option }))
+}
+
 const row = (name: string) => {
   const select = screen.getByRole("combobox", { name: `${name} permission` })
   return select.closest("li") as HTMLElement
@@ -23,12 +28,11 @@ describe("Permissions", () => {
     expect(await screen.findByText(/Choose a profile to see which commands it may run/)).toBeInTheDocument()
 
     const picker = await screen.findByRole("combobox", { name: "Profile" })
-    await within(picker).findByRole("option", { name: "personal" })
-    await user.selectOptions(picker, "personal")
+    await choose(user, picker, "personal")
     await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
     expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument()
     expect(within(row("Contacts")).getByText("Allowed")).toBeInTheDocument()
-    expect(within(row("Contacts")).getByRole("option", { name: "Allowed (default)" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Contacts permission" })).toHaveTextContent("Allowed (default)")
 
     await user.click(within(row("Messages")).getByText(/4 blocked commands · 1 set separately/))
     expect(within(row("Messages")).getByText("tg messages edit")).toBeInTheDocument()
@@ -42,7 +46,7 @@ describe("Permissions", () => {
     render(<Permissions tool={tg} />)
     await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
 
-    await user.selectOptions(row("Messages").querySelector("select") as HTMLSelectElement, "allow")
+    await choose(user, screen.getByRole("combobox", { name: "Messages permission" }), "Allow")
     const dialog = await screen.findByRole("dialog", { name: "Allow: Messages?" })
     expect(within(dialog).getByText("tg personal config set --json permissions.messages allow")).toBeInTheDocument()
     expect(within(dialog).getByText(/These stay as they are/)).toHaveTextContent("messages.send (allow)")
@@ -60,7 +64,7 @@ describe("Permissions", () => {
     render(<Permissions tool={tg} />)
     await waitFor(() => expect(within(row("Contacts")).getByText("Blocked")).toBeInTheDocument())
 
-    await user.selectOptions(row("Polls").querySelector("select") as HTMLSelectElement, "readonly")
+    await choose(user, screen.getByRole("combobox", { name: "Polls permission" }), "Read only")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(set).toHaveBeenCalledWith("tg", "work", false, "permissions.polls", "readonly")
   })

@@ -19,6 +19,7 @@ import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
+import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
@@ -342,22 +343,22 @@ function GroupBy({ value, onChange }: { value: string | null; onChange: (f: stri
   const id = useId()
   return (
     <div className="flex h-[2.4rem] items-center gap-[0.5rem]">
-      <label htmlFor={id} className="text-[0.85rem] text-ink-dim">
+      <label htmlFor={id} className="shrink-0 whitespace-nowrap text-[0.85rem] text-ink-dim">
         Group by
       </label>
-      <select
+      <Select
         id={id}
         value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="h-[2.4rem] rounded-[0.35rem] border border-line-strong bg-app px-[0.6rem] text-[0.95rem] text-ink hover:border-ink-dim/60"
-      >
-        <option value="">Nothing</option>
-        {[...GROUPABLE, ...(value && !GROUPABLE.includes(value) ? [value] : [])].map((f) => (
-          <option key={f} value={f}>
-            {FACET_LABELS[f] ?? f}
-          </option>
-        ))}
-      </select>
+        onChange={(f) => onChange(f || null)}
+        options={[
+          { value: "", label: "Nothing" },
+          ...[...GROUPABLE, ...(value && !GROUPABLE.includes(value) ? [value] : [])].map((f) => ({
+            value: f,
+            label: FACET_LABELS[f] ?? f,
+          })),
+        ]}
+        className="min-w-[9rem]"
+      />
     </div>
   )
 }
