@@ -7,6 +7,7 @@ import type { StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { Dialog } from "@/ui/Dialog"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useStorage } from "../storage/store"
@@ -22,6 +23,7 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
   const [deleteData, setDeleteData] = useState(false)
   const data = useOwnData(tool, open)
   const bytes = data.folders?.reduce((sum, f) => sum + f.bytes, 0) ?? 0
+  const deleting = deleteData && (data.folders?.length ?? 0) > 0
 
   useEffect(() => {
     if (open) setDeleteData(false)
@@ -41,10 +43,10 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
             variant="danger"
             onClick={() => {
               onClose()
-              useTools.getState().uninstall(tool.id, deleteData && bytes > 0 ? bytes : undefined)
+              useTools.getState().uninstall(tool.id, deleting ? bytes : undefined)
             }}
           >
-            {deleteData && bytes > 0 ? "Uninstall and delete data" : "Uninstall"}
+            {deleting ? "Uninstall and delete data" : "Uninstall"}
           </Button>
         </>
       }
@@ -71,20 +73,21 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
   )
 }
 
-type OwnData = { folders: StorageFolder[] | null; sharedInUse: boolean }
+type OwnData = { folders: StorageFolder[] | null; error: string | null; sharedInUse: boolean }
 
 /** The package's own folders as storage.rs computes them, and whether another installed tool keeps the shared store. */
 function useOwnData(tool: CatalogTool, open: boolean): OwnData {
   const areas = useStorage((s) => s.areas)
+  const error = useStorage((s) => s.error)
   const installs = useTools((s) => s.installs)
   useEffect(() => {
     if (open) useStorage.getState().load()
   }, [open])
   const owner = ownerId(tool.id)
   const mine = areas?.find((a) => a.id === owner)
-  const store = areas?.find((a) => a.id === "shared")
+  // From installs, known on the first frame, so the note never appears after the dialog has opened.
   const others = Object.entries(installs).some(([id, copies]) => copies.length > 0 && ownerId(id) !== owner)
-  return { folders: mine ? mine.folders : null, sharedInUse: (store?.folders.length ?? 0) > 0 && others }
+  return { folders: mine ? mine.folders : null, error: mine ? null : error, sharedInUse: others }
 }
 
 function DeleteDataChoice(props: {
@@ -116,28 +119,35 @@ function DeleteDataChoice(props: {
           </span>
         </span>
       </label>
-      {data.folders === null ? (
-        <Skeleton className="mt-2 ml-[1.6rem] h-[3.6rem] w-[calc(100%-1.6rem)]" label="Reading its folders" />
-      ) : (
-        !none && (
-          <ul className="mt-2 ml-[1.6rem] flex flex-col gap-1 text-[0.85rem]" aria-label={`${name}'s data folders`}>
-            {data.folders.map((f) => (
-              <li key={f.path} className="flex flex-wrap items-baseline gap-x-2">
-                <code className="selectable min-w-0 break-all font-mono text-ink">{f.path}</code>
-                <span className="text-ink-dim tabular-nums">
-                  {f.kind} · {formatBytes(f.bytes)}
-                </span>
-              </li>
-            ))}
-            {data.folders.length > 1 && <li className="text-ink-soft tabular-nums">{formatBytes(bytes)} in all</li>}
-          </ul>
-        )
-      )}
       {data.sharedInUse && (
         <p className="mt-2 ml-[1.6rem] text-[0.85rem] text-ink-soft">
           Messages in the shared storage stay; other tools use it. Clear them on Storage.
         </p>
       )}
+      {/* Room for three folders and the total, so the centred dialog keeps its buttons in place when they arrive. */}
+      <div className="mt-2 ml-[1.6rem] min-h-[6rem]">
+        {data.folders === null ? (
+          data.error ? (
+            <ErrorNotice inline>Could not read its folders: {data.error}</ErrorNotice>
+          ) : (
+            <Skeleton className="h-[6rem] w-full" label="Reading its folders" />
+          )
+        ) : (
+          !none && (
+            <ul className="flex flex-col gap-1 text-[0.85rem]" aria-label={`${name}'s data folders`}>
+              {data.folders.map((f) => (
+                <li key={f.path} className="flex flex-wrap items-baseline gap-x-2">
+                  <code className="selectable min-w-0 break-all font-mono text-ink">{f.path}</code>
+                  <span className="text-ink-dim tabular-nums">
+                    {f.kind} · {formatBytes(f.bytes)}
+                  </span>
+                </li>
+              ))}
+              {data.folders.length > 1 && <li className="text-ink-soft tabular-nums">{formatBytes(bytes)} in all</li>}
+            </ul>
+          )
+        )}
+      </div>
     </div>
   )
 }
