@@ -44,6 +44,9 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
             : ""}
         . Your profiles, archive and settings stay on this computer; you can delete them later in Storage.
       </p>
+      <p className="mt-2">
+        If you set up background services with it (a server or a timer), remove them first with the tool itself.
+      </p>
     </Dialog>
   )
 }
