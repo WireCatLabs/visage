@@ -11,11 +11,18 @@ export type InstallOutcome =
   | { event: "removed" }
   | { event: "failed"; reason: FailReason; message: string; hint: string | null }
 
+/** Deleting the tool's own folders after an uninstall the owner asked for; `bytes` is what the dialog showed. */
+export type DataDeletion =
+  | { state: "waiting" | "deleting" | "deleted"; bytes: number }
+  | { state: "failed"; bytes: number; message: string }
+
 export type InstallSession = {
   operation: Operation
   step: InstallStep
   log: string[]
   outcome: InstallOutcome | null
+  /** Only on an uninstall whose dialog had "Also delete … data" checked. */
+  data?: DataDeletion
 }
 
 export type ToolStatus =

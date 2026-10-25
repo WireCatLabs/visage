@@ -1,8 +1,8 @@
-import { ChevronRight } from "lucide-react"
 import { connections, serverName } from "@/domain/agents"
 import { tools as catalogTools } from "@/domain/catalog"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
+import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
@@ -15,22 +15,15 @@ const PROGRAMS = catalogTools.filter((t) => !t.partOf)
 /** Read-only: agents here use the tools through their skill, so MCP is never offered, only cleaned up. */
 export function AdvancedMcp({ agent }: { agent: Agent }) {
   return (
-    <details className="group">
-      <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-[0.2rem] text-[0.85rem] font-medium text-ink-dim hover:text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-          aria-hidden
-        />
-        Advanced: MCP
-      </summary>
-      <div className="mt-2 flex flex-col gap-2 pl-[1.4rem]">
+    <Disclosure summary="Advanced: MCP">
+      <div className="flex flex-col gap-2 pl-[1.25rem]">
         <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
           For chat apps and agents on another computer. Agents on this computer use the tools directly through their
           skill.
         </p>
         <Servers agent={agent} />
       </div>
-    </details>
+    </Disclosure>
   )
 }
 

@@ -1,11 +1,15 @@
 import { AlertTriangle, ExternalLink, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { type CatalogTool, installCommand, packageNames, removeCommand, samePackage } from "@/domain/catalog"
+import { useEffect, useState } from "react"
+import { type CatalogTool, installCommand, ownerId, packageNames, removeCommand, samePackage } from "@/domain/catalog"
+import { formatBytes } from "@/domain/format"
 import { platform } from "@/platform/bridge"
+import type { StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { Dialog } from "@/ui/Dialog"
 import { Pill } from "@/ui/Pill"
+import { Skeleton } from "@/ui/Skeleton"
+import { useStorage } from "../storage/store"
 import { Health } from "./Health"
 import { Permissions } from "./Permissions"
 import { FitDetails } from "./StorageFit"
@@ -15,6 +19,14 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
   const installs = useTools((s) => s.installs[tool.id] ?? [])
   const copies = installs.length
   const shared = samePackage(tool.id).length > 1
+  const [deleteData, setDeleteData] = useState(false)
+  const data = useOwnData(tool, open)
+  const bytes = data.folders?.reduce((sum, f) => sum + f.bytes, 0) ?? 0
+
+  useEffect(() => {
+    if (open) setDeleteData(false)
+  }, [open])
+
   return (
     <Dialog
       open={open}
@@ -29,10 +41,10 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
             variant="danger"
             onClick={() => {
               onClose()
-              useTools.getState().uninstall(tool.id)
+              useTools.getState().uninstall(tool.id, deleteData && bytes > 0 ? bytes : undefined)
             }}
           >
-            Uninstall
+            {deleteData && bytes > 0 ? "Uninstall and delete data" : "Uninstall"}
           </Button>
         </>
       }
@@ -49,12 +61,84 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
           : copies > 2
             ? ` (all ${copies} copies, each with the program that installed it)`
             : ""}
-        . Your profiles, storage and settings stay on this computer; you can delete them later in Storage.
+        . Your profiles, storage and settings stay on this computer unless you delete them below.
       </p>
       <p className="mt-2">
         If you set up background services with it (a server or a timer), remove them first with the tool itself.
       </p>
+      <DeleteDataChoice tool={tool} data={data} bytes={bytes} checked={deleteData} onChange={setDeleteData} />
     </Dialog>
+  )
+}
+
+type OwnData = { folders: StorageFolder[] | null; sharedInUse: boolean }
+
+/** The package's own folders as storage.rs computes them, and whether another installed tool keeps the shared store. */
+function useOwnData(tool: CatalogTool, open: boolean): OwnData {
+  const areas = useStorage((s) => s.areas)
+  const installs = useTools((s) => s.installs)
+  useEffect(() => {
+    if (open) useStorage.getState().load()
+  }, [open])
+  const owner = ownerId(tool.id)
+  const mine = areas?.find((a) => a.id === owner)
+  const store = areas?.find((a) => a.id === "shared")
+  const others = Object.entries(installs).some(([id, copies]) => copies.length > 0 && ownerId(id) !== owner)
+  return { folders: mine ? mine.folders : null, sharedInUse: (store?.folders.length ?? 0) > 0 && others }
+}
+
+function DeleteDataChoice(props: {
+  tool: CatalogTool
+  data: OwnData
+  bytes: number
+  checked: boolean
+  onChange(v: boolean): void
+}) {
+  const { tool, data, bytes, checked, onChange } = props
+  const name = samePackage(tool.id).length > 1 ? packageNames(tool.id) : tool.name
+  const none = data.folders !== null && data.folders.length === 0
+  return (
+    <div className="mt-4 border-line border-t pt-3">
+      <label className="flex items-start gap-2.5 text-ink">
+        <input
+          type="checkbox"
+          checked={checked && !none}
+          disabled={data.folders === null || none}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-[0.3rem] size-[1.05rem] shrink-0 accent-brand"
+        />
+        <span>
+          Also delete {name}'s data
+          <span className="block text-[0.85rem] text-ink-soft">
+            {none
+              ? "It has no data on this computer."
+              : "Its settings, sign-in sessions and caches. Deleted only if the uninstall succeeds."}
+          </span>
+        </span>
+      </label>
+      {data.folders === null ? (
+        <Skeleton className="mt-2 ml-[1.6rem] h-[3.6rem] w-[calc(100%-1.6rem)]" label="Reading its folders" />
+      ) : (
+        !none && (
+          <ul className="mt-2 ml-[1.6rem] flex flex-col gap-1 text-[0.85rem]" aria-label={`${name}'s data folders`}>
+            {data.folders.map((f) => (
+              <li key={f.path} className="flex flex-wrap items-baseline gap-x-2">
+                <code className="selectable min-w-0 break-all font-mono text-ink">{f.path}</code>
+                <span className="text-ink-dim tabular-nums">
+                  {f.kind} · {formatBytes(f.bytes)}
+                </span>
+              </li>
+            ))}
+            {data.folders.length > 1 && <li className="text-ink-soft tabular-nums">{formatBytes(bytes)} in all</li>}
+          </ul>
+        )
+      )}
+      {data.sharedInUse && (
+        <p className="mt-2 ml-[1.6rem] text-[0.85rem] text-ink-soft">
+          Messages in the shared storage stay; other tools use it. Clear them on Storage.
+        </p>
+      )}
+    </div>
   )
 }
 

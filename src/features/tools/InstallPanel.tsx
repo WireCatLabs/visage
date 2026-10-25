@@ -1,8 +1,10 @@
 import { AlertTriangle, CheckCircle2, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { type CatalogTool, ownerId, packageNames, samePackage } from "@/domain/catalog"
-import { type InstallSession, STEPS } from "@/domain/status"
+import { formatBytes } from "@/domain/format"
+import { type DataDeletion, type InstallSession, STEPS } from "@/domain/status"
 import { Button } from "@/ui/Button"
+import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Stepper, type StepState } from "@/ui/Stepper"
 import { ReportThis } from "../report/ReportThis"
 import { useTools } from "./store"
@@ -49,10 +51,23 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
           <p className="flex items-center gap-2 text-[0.95rem]">
             <CheckCircle2 className="size-5 text-ok" aria-hidden />
             <span>
-              {packageNames(tool.id)} {shared ? "are" : "is"} uninstalled. The data stays on this computer until you
-              delete it in Storage.
+              {packageNames(tool.id)} {shared ? "are" : "is"} uninstalled.{" "}
+              {session.data ? (
+                <DataResult data={session.data} />
+              ) : (
+                "The data stays on this computer until you delete it in Storage."
+              )}
             </span>
           </p>
+        )}
+        {outcome?.event === "removed" && session.data?.state === "failed" && (
+          <ErrorNotice
+            inline
+            className="w-full"
+            action={<ReportThis what={`Deleting ${tool.name}'s data`} tool={tool.id} error={session.data.message} />}
+          >
+            {session.data.message}
+          </ErrorNotice>
         )}
         {outcome?.event === "failed" && (
           <div className="flex min-w-0 items-start gap-2 text-[0.95rem]">
@@ -60,6 +75,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
             <p>
               <span className="font-medium text-ink">{outcome.message}</span>
               {outcome.hint && <span className="text-ink-soft"> {outcome.hint}</span>}
+              {session.data && <span className="text-ink-soft"> Its data was not touched.</span>}
             </p>
           </div>
         )}
@@ -92,7 +108,9 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
               size="sm"
               variant="secondary"
               icon={<RotateCcw className="size-4" aria-hidden />}
-              onClick={() => (session.operation === "install" ? install(tool.id) : uninstall(tool.id))}
+              onClick={() =>
+                session.operation === "install" ? install(tool.id) : uninstall(tool.id, session.data?.bytes)
+              }
             >
               Try again
             </Button>
@@ -112,6 +130,12 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
       {showLog && <Log lines={session.log} />}
     </div>
   )
+}
+
+function DataResult({ data }: { data: DataDeletion }) {
+  if (data.state === "deleted") return <>Its data ({formatBytes(data.bytes)}) is deleted.</>
+  if (data.state === "failed") return <>Its data could not be deleted:</>
+  return <>Deleting its data…</>
 }
 
 function Log({ lines }: { lines: string[] }) {

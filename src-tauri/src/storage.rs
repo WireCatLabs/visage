@@ -156,6 +156,10 @@ pub fn clear(id: &str) -> Result<(), String> {
         if installed.iter().any(|i| i == id) {
             return Err("Uninstall the tool before deleting its data.".into());
         }
+        let mine: Vec<PathBuf> = folders(&tool.storage).into_iter().map(|(_, p)| p).collect();
+        if let Some(user) = shared_with(&mine, &in_use(&installed)) {
+            return Err(format!("{user} still uses this data, so it stays."));
+        }
         &tool.storage
     };
     for (_, path) in folders(storage) {
@@ -173,6 +177,20 @@ pub fn clear(id: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Every folder an installed tool reads, named by who reads it: its own, and the shared store while any is installed.
+fn in_use(installed: &[String]) -> Vec<(String, PathBuf)> {
+    let own = tools::owners()
+        .filter(|t| installed.contains(&t.id))
+        .flat_map(|t| folders(&t.storage).into_iter().map(|(_, p)| (t.name.clone(), p)));
+    let store = if installed.is_empty() { Vec::new() } else { folders(&catalog::catalog().shared_storage) };
+    own.chain(store.into_iter().map(|(_, p)| ("The shared storage".to_string(), p))).collect()
+}
+
+/// An override can point one tool's folder into another's, or into the shared store; deleting it would take theirs.
+fn shared_with<'a>(mine: &[PathBuf], used: &'a [(String, PathBuf)]) -> Option<&'a str> {
+    used.iter().find(|(_, u)| mine.iter().any(|m| m.starts_with(u) || u.starts_with(m))).map(|(who, _)| who.as_str())
 }
 
 /// A part's folders are its owner's area, so they are never offered, opened or deleted twice.
@@ -215,6 +233,32 @@ mod tests {
         assert!(ensure_ours(Path::new("/home/u"), "tg-cli").is_err());
         assert!(ensure_ours(Path::new("/tmp/elsewhere"), "tg-cli").is_err());
         assert!(ensure_ours(Path::new("tg-cli"), "tg-cli").is_err());
+    }
+
+    #[test]
+    fn refuses_a_folder_another_installed_tool_or_the_shared_store_uses() {
+        let used = vec![
+            ("Telegram".to_string(), PathBuf::from("/home/u/.local/share/tg-cli")),
+            ("The shared storage".to_string(), PathBuf::from("/home/u/.local/share/WireCat")),
+        ];
+        let own = [PathBuf::from("/home/u/.config/zm"), PathBuf::from("/home/u/.local/share/zm")];
+        assert_eq!(shared_with(&own, &used), None);
+        let inside = [PathBuf::from("/home/u/.local/share/WireCat/zm")];
+        assert_eq!(shared_with(&inside, &used), Some("The shared storage"));
+        let around = [PathBuf::from("/home/u/.local/share")];
+        assert_eq!(shared_with(&around, &used), Some("Telegram"));
+        assert_eq!(shared_with(&[PathBuf::from("/home/u/.local/share/tg-cli")], &used), Some("Telegram"));
+    }
+
+    #[test]
+    fn a_tools_folders_are_its_own_three_and_never_the_shared_store() {
+        let memo = Storage { app: "cli-memo".into(), env: "MEMO_TEST_NONE".into() };
+        let shared = Storage { app: "WireCat".into(), env: "WIRECAT_TEST_NONE".into() };
+        let mine: Vec<PathBuf> = folders(&memo).into_iter().map(|(_, p)| p).collect();
+        assert_eq!(mine.len(), 3);
+        assert!(mine.iter().all(|p| p.ends_with("cli-memo")));
+        let used: Vec<_> = folders(&shared).into_iter().map(|(_, p)| ("The shared storage".to_string(), p)).collect();
+        assert_eq!(shared_with(&mine, &used), None);
     }
 
     #[test]

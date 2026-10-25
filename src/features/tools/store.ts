@@ -1,8 +1,9 @@
 import { create } from "zustand"
 import { ownerId } from "@/domain/catalog"
-import type { InstallSession, Operation } from "@/domain/status"
+import type { DataDeletion, InstallSession, Operation } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
+import { useStorage } from "../storage/store"
 import { useSystem } from "../system/store"
 import { installedOf, useCompat } from "./compat-store"
 import { readSaved, save } from "./saved"
@@ -27,7 +28,8 @@ type ToolsState = {
   /** Set when the last installed tool was just removed, so the app can offer to delete the data left behind. */
   offerClear: boolean
   install(id: string): Promise<void>
-  uninstall(id: string): Promise<void>
+  /** `deleteBytes` asks to delete the package's own folders too, and only once the uninstall succeeded. */
+  uninstall(id: string, deleteBytes?: number): Promise<void>
   cancel(id: string): Promise<void>
   closeOffer(): void
   dismiss(id: string): void
@@ -74,6 +76,7 @@ export const useTools = create<ToolsState>((set, get) => {
       }))
     }
     await redetect(true).catch(() => undefined)
+    if (operation === "uninstall") await deleteData(id)
     if (operation === "install" && get().sessions[id]?.outcome?.event === "done")
       await useCompat.getState().checkAfterInstall(id, () => installedOf(get().installs))
     const st = get()
@@ -83,11 +86,28 @@ export const useTools = create<ToolsState>((set, get) => {
     }
   }
 
+  // Rust checks again that nothing installed uses the folders; a failed uninstall never reaches it.
+  const deleteData = async (id: string) => {
+    const session = get().sessions[id]
+    if (!session?.data || session.outcome?.event !== "removed") return
+    const setData = (data: DataDeletion) => patchSession(id, (s) => ({ ...s, data }))
+    const { bytes } = session.data
+    setData({ state: "deleting", bytes })
+    try {
+      await platform.clearStorage(id)
+      setData({ state: "deleted", bytes })
+    } catch (e) {
+      setData({ state: "failed", bytes, message: message(e) })
+    }
+    await useStorage.getState().load()
+  }
+
   // npm and pnpm do not like two global operations at once, so they queue and run one by one.
-  const enqueue = (id: string, operation: Operation) => {
+  const enqueue = (id: string, operation: Operation, data?: DataDeletion) => {
     const current = get().sessions[id]
     if (current && !current.outcome) return Promise.resolve()
-    set((st) => ({ sessions: { ...st.sessions, [id]: { operation, step: "queued", log: [], outcome: null } } }))
+    const session: InstallSession = { operation, step: "queued", log: [], outcome: null, ...(data ? { data } : {}) }
+    set((st) => ({ sessions: { ...st.sessions, [id]: session } }))
     return drain()
   }
 
@@ -140,7 +160,12 @@ export const useTools = create<ToolsState>((set, get) => {
     },
 
     install: (id) => enqueue(ownerId(id), "install"),
-    uninstall: (id) => enqueue(ownerId(id), "uninstall"),
+    uninstall: (id, deleteBytes) =>
+      enqueue(
+        ownerId(id),
+        "uninstall",
+        deleteBytes === undefined ? undefined : { state: "waiting", bytes: deleteBytes },
+      ),
     closeOffer: () => set({ offerClear: false }),
 
     async cancel(given) {

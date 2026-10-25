@@ -471,6 +471,8 @@ export function createMock(os: Platform["os"]): Platform {
     },
     async clearStorage(id) {
       await delay(600)
+      if (id === "shared" ? installed.size > 0 : installed.has(id))
+        throw new Error("Uninstall the tool before deleting its data.")
       dataSize[id] = 0
     },
     async openFolder() {},
