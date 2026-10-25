@@ -7,16 +7,28 @@
   ],
   "ignorePaths": ["CHANGELOG.md", "docs/journal/**", "src-tauri/target/**", "other/**"],
   "words": [
+    "brakeman",
     "clippy",
+    "healthcheck",
     "impeccable",
+    "jsonb",
+    "kamal",
     "lefthook",
+    "nbzb",
     "nvm",
     "pnpm",
+    "rswag",
+    "rubocop",
+    "selectel",
+    "sidekiq",
     "tauri",
+    "trustie",
     "valibot",
     "visage",
     "webkit",
+    "webmock",
     "wirecat",
+    "zeitwerk",
     "zustand"
   ]
 }
