@@ -1,0 +1,64 @@
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it } from "vitest"
+import { ConfigPage } from "./ConfigPage"
+import { useConfig } from "./store"
+
+beforeEach(() => useConfig.setState(useConfig.getInitialState(), true))
+
+const edit = (text: string, change: (doc: Record<string, unknown>) => void) => {
+  const doc = JSON.parse(text)
+  change(doc)
+  return JSON.stringify(doc, null, 2)
+}
+
+describe("Config", () => {
+  it("saves JSON edits through config set and stops at the first value the tool refuses", async () => {
+    const user = userEvent.setup()
+    render(<ConfigPage />)
+
+    await user.click(screen.getByRole("radio", { name: /Telegram/ }))
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument()
+    await user.click(await screen.findByRole("radio", { name: "work" }))
+    expect((await screen.findAllByRole("switch", {}, { timeout: 3000 })).length).toBeGreaterThan(0)
+    expect(screen.getByText(/TG_REQUESTS_PER_MINUTE/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: "JSON" }))
+    const editor = screen.getByRole("textbox", { name: "Settings as JSON" }) as HTMLTextAreaElement
+    fireEvent.change(editor, {
+      target: {
+        value: edit(editor.value, (d) => {
+          d.limit = "abc"
+          d.record = true
+        }),
+      },
+    })
+    await user.click(screen.getByRole("button", { name: "Save" }))
+
+    const progress = await screen.findByRole("list", { name: "Save progress" })
+    expect(await within(progress).findByText("Refused")).toBeInTheDocument()
+    expect(within(progress).getByText("Not tried")).toBeInTheDocument()
+    expect((await screen.findAllByText(/limit takes a whole number/)).length).toBeGreaterThan(0)
+
+    fireEvent.change(editor, { target: { value: edit(editor.value, (d) => (d.limit = 25)) } })
+    await user.click(screen.getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(screen.getAllByText("Saved")).toHaveLength(2))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeDisabled())
+    expect(JSON.parse(editor.value)).toMatchObject({ limit: 25, record: true })
+  }, 15000)
+
+  it("asks before dropping unsaved JSON when switching profile", async () => {
+    const user = userEvent.setup()
+    render(<ConfigPage />)
+    await user.click(screen.getByRole("radio", { name: /Telegram/ }))
+    await user.click(await screen.findByRole("radio", { name: "personal" }))
+    await user.click(await screen.findByRole("tab", { name: "JSON" }))
+    const editor = await screen.findByRole("textbox", { name: "Settings as JSON" })
+    fireEvent.change(editor, { target: { value: "{ broken" } })
+
+    await user.click(screen.getByRole("radio", { name: /Defaults/ }))
+    const dialog = await screen.findByRole("dialog", { name: "Discard unsaved JSON changes?" })
+    await user.click(within(dialog).getByRole("button", { name: "Keep editing" }))
+    expect(screen.getByRole("radio", { name: "personal" })).toBeChecked()
+  }, 15000)
+})

@@ -32,10 +32,31 @@ pub struct RunsSource {
 
 /// The tool's own settings commands; saving always goes through `set`/`unset` so the CLI validates each value.
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SettingsSource {
     pub show: Vec<String>,
     pub set: Vec<String>,
-    pub unset: Vec<String>,
+    pub unset: Option<Vec<String>>,
+    pub shape: SettingsShape,
+    /// False when one file holds the settings for every profile, so no profile is chosen.
+    pub per_profile: bool,
+    /// Whether `set --defaults` changes what every profile gets.
+    pub defaults: bool,
+    /// For a flat `show`: its key → the key `set` takes. Only these are settings.
+    pub keys: Option<std::collections::BTreeMap<String, String>>,
+    /// Shown, but `config set` refuses them or they are not settings.
+    pub read_only: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SettingsShape {
+    /// `item.settings[]` and `item.store_settings[]`, each with `setting`, `value`, `from`.
+    Rows,
+    /// `item.<key>` for the keys the catalog lists.
+    Flat,
+    /// The file itself: `item.defaults` and `item.profiles.<name>`.
+    Profiles,
 }
 
 /// The folder name and environment prefix a tool passes to cli-base's `resolvePaths`.

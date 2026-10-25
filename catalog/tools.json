@@ -29,8 +29,14 @@
       },
       "settings": {
         "show": ["{profile}", "config", "show", "--json"],
-        "set": ["{profile}", "config", "set"],
-        "unset": ["{profile}", "config", "unset"]
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
       }
     },
     {
@@ -58,8 +64,14 @@
       },
       "settings": {
         "show": ["{profile}", "config", "show", "--json"],
-        "set": ["{profile}", "config", "set"],
-        "unset": ["{profile}", "config", "unset"]
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
       }
     },
     {
@@ -87,8 +99,14 @@
       },
       "settings": {
         "show": ["{profile}", "config", "show", "--json"],
-        "set": ["{profile}", "config", "set"],
-        "unset": ["{profile}", "config", "unset"]
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
       }
     },
     {
@@ -112,9 +130,20 @@
         "env": "ZM"
       },
       "settings": {
-        "show": ["{profile}", "config", "show", "--json"],
-        "set": ["{profile}", "config", "set"],
-        "unset": ["{profile}", "config", "unset"]
+        "show": ["config", "show", "--json"],
+        "set": ["config", "set", "--json"],
+        "unset": null,
+        "shape": "flat",
+        "perProfile": false,
+        "defaults": false,
+        "jsonValues": false,
+        "keys": {
+          "client_id": "zoom.client_id",
+          "source": "source",
+          "files_folder": "files.folder",
+          "files_timezone": "files.timezone"
+        },
+        "readOnly": []
       }
     },
     {
@@ -138,9 +167,15 @@
         "env": "DRIVE"
       },
       "settings": {
-        "show": ["{profile}", "config", "show", "--json"],
-        "set": ["{profile}", "config", "set"],
-        "unset": ["{profile}", "config", "unset"]
+        "show": ["config", "show", "--json"],
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": null,
+        "shape": "profiles",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": true,
+        "keys": null,
+        "readOnly": ["principal", "roots", "mirrors", "storage"]
       }
     },
     {

@@ -15,7 +15,19 @@ const ToolSchema = v.object({
   runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
   setup: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),
-  settings: v.nullable(v.object({ show: v.array(v.string()), set: v.array(v.string()), unset: v.array(v.string()) })),
+  settings: v.nullable(
+    v.object({
+      show: v.array(v.string()),
+      set: v.array(v.string()),
+      unset: v.nullable(v.array(v.string())),
+      shape: v.picklist(["rows", "flat", "profiles"]),
+      perProfile: v.boolean(),
+      defaults: v.boolean(),
+      jsonValues: v.boolean(),
+      keys: v.nullable(v.record(v.string(), v.string())),
+      readOnly: v.array(v.string()),
+    }),
+  ),
 })
 
 const CatalogSchema = v.object({
@@ -50,6 +62,8 @@ export function doctorCommand(t: CatalogTool, profile: string | null): string {
   const args = t.doctor.map((a) => (a === "{profile}" ? (profile ?? "<profile>") : a))
   return [t.bin, ...args].join(" ")
 }
+
+export type SettingsSource = NonNullable<CatalogTool["settings"]>
 
 export const doctorNeedsProfile = (t: CatalogTool) => t.doctor.includes("{profile}")
 

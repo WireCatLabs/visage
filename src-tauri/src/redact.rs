@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 fn sensitive_key() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r"(?i)token|secret|password|passwd|cookie|credential|api_?key|auth_key|session_string|phone|e?mail|address|account|^name$|first_name|last_name|username|viewer_id|device_id|user_id|zoomuser")
+        Regex::new(r"(?i)token|secret|password|passwd|cookie|credential|api_?key|auth_key|session_string|phone|e?mail|address|account|^name$|first_name|last_name|username|viewer_id|device_id|user_id|zoomuser|client_id|principal|proxy|base_url")
             .unwrap()
     })
 }
@@ -75,5 +75,21 @@ mod tests {
         assert_eq!(v["mail"]["accounts"][0]["address"], "•••");
         assert_eq!(v["note"], "write to [email], or call [number]");
         assert_eq!(v["expires_at"], "2026-10-25T03:12:00Z");
+    }
+
+    #[test]
+    fn masks_settings_that_may_carry_credentials() {
+        let mut v = json!({
+            "proxy": "http://user:pw@host:8080",
+            "embedding_base_url": "https://key@example.test/v1",
+            "client_id": "abc123",
+            "principal": "someone",
+            "limit": 20
+        });
+        super::json(&mut v);
+        for key in ["proxy", "embedding_base_url", "client_id", "principal"] {
+            assert_eq!(v[key], "•••", "{key}");
+        }
+        assert_eq!(v["limit"], 20);
     }
 }

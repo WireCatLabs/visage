@@ -97,27 +97,28 @@ async fn show_run(id: String, run: String) -> Result<serde_json::Value, String> 
 }
 
 #[tauri::command]
-async fn settings_show(id: String, profile: String) -> Result<serde_json::Value, String> {
+async fn settings_show(id: String, profile: Option<String>) -> Result<settings::Settings, String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || settings::show(tool, &profile)).await?
+    blocking(move || settings::show(tool, profile.as_deref())).await?
 }
 
+/// `profile: None` with `defaults` changes what every profile gets.
 #[tauri::command]
 async fn settings_set(
     id: String,
-    profile: String,
+    profile: Option<String>,
     defaults: bool,
     setting: String,
     value: String,
 ) -> Result<(), String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || settings::set(tool, &profile, defaults, &setting, &value)).await?
+    blocking(move || settings::set(tool, profile.as_deref(), defaults, &setting, &value)).await?
 }
 
 #[tauri::command]
-async fn settings_unset(id: String, profile: String, defaults: bool, setting: String) -> Result<(), String> {
+async fn settings_unset(id: String, profile: Option<String>, defaults: bool, setting: String) -> Result<(), String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || settings::unset(tool, &profile, defaults, &setting)).await?
+    blocking(move || settings::unset(tool, profile.as_deref(), defaults, &setting)).await?
 }
 
 #[tauri::command]
