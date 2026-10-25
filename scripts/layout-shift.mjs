@@ -2,7 +2,8 @@
 //   pnpm build && pnpm preview --port 1478 --strictPort      (the dev server adds a shift of its own as CSS loads)
 //   node scripts/layout-shift.mjs [page…] --port 1478 [--slow 1] [--width 1536] [--height 1024] [--dark]
 //                                 [--sources 5] [--shots ms,ms,…] [--out dir] [--budget 0.01] [--grow 8]
-// Pages: tools tools-manage agents storage logs config config-telegram onboarding (default: all). Needs a local Chrome.
+// Pages: tools tools-manage agents storage logs config config-telegram onboarding-<step> (default: all).
+// Needs a local Chrome.
 // Prints the Cumulative Layout Shift (CLS: the sum of every shift's score, 0 = nothing moved) per page, and the
 // elements that moved most, with when and how far. CLS misses a block growing at the bottom (nothing below it
 // moves), so "grew" adds up how far the visible part of the page grew after its first frame, in pixels: a skeleton
@@ -19,7 +20,9 @@ const flag = (name, fallback) => {
   const i = args.indexOf(`--${name}`)
   return i === -1 ? fallback : args.splice(i, 2)[1]
 }
-const port = Number(flag("port", 1420))
+// No default: 1420 is usually the dev server of another checkout, which would measure the wrong code.
+const port = Number(flag("port", 0))
+if (!port) throw new Error("--port is required: pnpm build && pnpm preview --port <port> --strictPort")
 const slow = Number(flag("slow", 1))
 const width = Number(flag("width", 1536))
 const height = Number(flag("height", 1024))
@@ -41,7 +44,11 @@ const PAGES = {
   logs: { query: "?onboarding=off&section=logs" },
   config: { query: "?onboarding=off&section=tools", clicks: [nav("Config")] },
   "config-telegram": { query: "?onboarding=off&section=tools", clicks: [nav("Config"), 'label:has-text("Telegram")'] },
-  onboarding: { query: "?onboarding=signin" },
+  "onboarding-computer": { query: "?onboarding=computer" },
+  "onboarding-choose": { query: "?onboarding=choose" },
+  "onboarding-install": { query: "?onboarding=install" },
+  "onboarding-agents": { query: "?onboarding=agents" },
+  "onboarding-signin": { query: "?onboarding=signin" },
 }
 const pages = args.length ? args : Object.keys(PAGES)
 

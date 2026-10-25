@@ -177,7 +177,7 @@ the page down. Only the user's own click may change the layout.
 
 ```sh
 pnpm build && pnpm preview --port 1478 --strictPort
-node scripts/layout-shift.mjs tools agents --port 1478 --slow 3
+node scripts/layout-shift.mjs tools agents --port 1478 --slow 3   # --port is required; use your own free port
 ```
 
 It prints per page the Cumulative Layout Shift (`CLS`, how far things moved, 0 is best) and `grew`, how many pixels
