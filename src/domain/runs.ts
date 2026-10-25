@@ -23,7 +23,16 @@ export type QueryProblem = { start: number; end: number; message: string }
 export type Parsed = { terms: Term[]; problems: QueryProblem[] }
 
 /** The fields a facet column shows, in order. */
-export const FACETS = ["tool", "status", "cli_command", "profile", "error_code"] as const
+export const FACETS = [
+  "tool",
+  "status",
+  "cli_command",
+  "profile",
+  "agent",
+  "error_code",
+  "error.class",
+  "error.http.status",
+] as const
 export const FACET_LABELS: Record<string, string> = {
   tool: "Tool",
   status: "Status",
@@ -31,8 +40,15 @@ export const FACET_LABELS: Record<string, string> = {
   command: "Subcommand",
   error_code: "Error code",
   profile: "Profile",
+  agent: "Agent",
+  session_id: "Agent session",
+  "error.class": "Error class",
+  "error.http.status": "HTTP status",
   cli_version: "Version",
 }
+
+// Short names for fields a run keeps nested; `valuesAt` reads them at their real path.
+const PATHS: Record<string, string> = { agent: "agent.kind", session_id: "agent.session_id" }
 
 // A tool records `command` without its own name ("chats list"), except when it recognised no command at all: then
 // it records the bare name ("tg"). Prefixing the name keeps tg and max commands apart in facets and groups.
@@ -40,6 +56,76 @@ export function cliCommand(bin: string, command: string): string {
   const c = command.trim()
   if (!c) return bin
   return c === bin || c.startsWith(`${bin} `) ? c : `${bin} ${c}`
+}
+
+/** Which coding agent started the run, from CLIs that record it; older runs have none. */
+export type RunAgent = { kind: string; session: string | null }
+export function agentOf(run: Run): RunAgent | null {
+  const a = run.agent
+  if (!a || typeof a !== "object") return null
+  const { kind, session_id } = a as Record<string, unknown>
+  if (typeof kind !== "string" || !kind) return null
+  return { kind, session: typeof session_id === "string" && session_id ? session_id : null }
+}
+
+const AGENT_NAMES: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  "gemini-cli": "Gemini CLI",
+  cursor: "Cursor",
+  opencode: "OpenCode",
+}
+export const agentName = (kind: string) => AGENT_NAMES[kind] ?? kind
+/** Enough of a session id to tell sessions apart in a column; the whole id is one click away. */
+export const shortSession = (id: string) => id.slice(0, 8)
+
+/** The command line as the tool kept it, values that may be content already masked by the tool. */
+export function commandLine(run: Run): string | null {
+  if (!Array.isArray(run.argv) || !run.argv.every((w) => typeof w === "string")) return null
+  const bin = (typeof run.cli_command === "string" ? run.cli_command : run.command).split(" ")[0] ?? ""
+  return [bin, ...(run.argv as string[]).map(shellWord)].filter(Boolean).join(" ")
+}
+const shellWord = (w: string) => (w === "" || /[^\w@%+=:,./[\]-]/.test(w) ? `'${w.replace(/'/g, "'\\''")}'` : w)
+
+type Maybe<T> = T | undefined
+export type RunError = {
+  class: string
+  code?: Maybe<string>
+  message?: Maybe<string>
+  operation?: Maybe<string>
+  http?: { method?: Maybe<string>; endpoint?: Maybe<string>; status?: Maybe<number> }
+  provider?: { key?: Maybe<string>; code?: Maybe<number> }
+  causes: { class: string; message?: Maybe<string> }[]
+  stack: string[]
+}
+
+const str = (v: unknown) => (typeof v === "string" && v ? v : undefined)
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined)
+const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
+
+/** How a failed run failed, from CLIs that record it; read field by field so a different shape shows what it can. */
+export function errorOf(run: Run): RunError | null {
+  const e = obj(run.error)
+  const cls = str(e?.class)
+  if (!e || !cls) return null
+  const http = obj(e.http)
+  const provider = obj(e.provider)
+  const h = http && { method: str(http.method), endpoint: str(http.endpoint_template), status: num(http.status) }
+  const p = provider && { key: str(provider.key), code: num(provider.code) }
+  return {
+    class: cls,
+    code: str(e.code),
+    message: str(e.message),
+    operation: str(e.operation),
+    ...(h && (h.method || h.endpoint || h.status !== undefined) ? { http: h } : {}),
+    ...(p && (p.key || p.code !== undefined) ? { provider: p } : {}),
+    causes: (Array.isArray(e.causes) ? e.causes : []).flatMap((c) => {
+      const o = obj(c)
+      const k = str(o?.class)
+      return k ? [{ class: k, message: str(o?.message) }] : []
+    }),
+    stack: (Array.isArray(e.stack) ? e.stack : []).filter((f): f is string => typeof f === "string"),
+  }
 }
 
 /** A `cli_command` that is the tool's name alone: it was started without a command it knows. */
@@ -54,6 +140,13 @@ const TEXT_FIELDS = [
   "run_id",
   "command",
   "cli_command",
+  "unknown_command",
+  "agent",
+  "session_id",
+  "error.class",
+  "error.message",
+  "error.http.endpoint_template",
+  "error.provider.key",
   "profile",
   "status",
   "error_code",
@@ -124,7 +217,7 @@ export function parseQuery(query: string): Parsed {
 /** Every scalar at a dotted path; arrays on the way are walked, so `codes` or `partial.failures.stage` match any. */
 export function valuesAt(run: Run, path: string): string[] {
   let current: unknown[] = [run]
-  for (const key of path.split(".")) {
+  for (const key of (PATHS[path] ?? path).split(".")) {
     const next: unknown[] = []
     for (const c of current) {
       const v = c && typeof c === "object" && !Array.isArray(c) ? (c as Record<string, unknown>)[key] : undefined

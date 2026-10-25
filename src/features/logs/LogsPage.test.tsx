@@ -100,4 +100,29 @@ describe("Logs", () => {
     expect(screen.getByRole("combobox", { name: "Group by" })).toHaveValue("profile")
     expect(screen.getByRole("columnheader", { name: "Profile" })).toBeInTheDocument()
   }, 15000)
+
+  it("shows what went wrong in a failed run, its masked command line, and filters by the agent's session", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+
+    const status = screen.getByRole("region", { name: "HTTP status" })
+    await user.click(within(status).getByRole("button", { name: /^429/ }))
+    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("error.http.status:429")
+
+    const [first] = screen.getAllByRole("button", { name: /^Show run / })
+    await user.click(first as HTMLElement)
+    const failure = screen.getByRole("region", { name: "What went wrong" })
+    expect(failure).toHaveTextContent("CliError")
+    expect(failure).toHaveTextContent(/(GET|POST) \S+\s*429/)
+    await user.click(within(failure).getByRole("button", { name: /Where in the tool/ }))
+    expect(failure).toHaveTextContent("transport.js")
+    expect(screen.getByRole("region", { name: "Command line" })).toHaveTextContent(/^Command line(max|wa) \w+ \w+/)
+
+    const [session] = screen.getAllByTitle(/^Only runs of session /)
+    await user.click(session as HTMLElement)
+    expect((screen.getByRole("combobox", { name: "Search runs" }) as HTMLInputElement).value).toMatch(
+      /^error\.http\.status:429 session_id:[0-9a-f-]+$/,
+    )
+  }, 15000)
 })

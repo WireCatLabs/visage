@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react"
 import { Fragment, useState } from "react"
-import { formatDuration, type Run } from "@/domain/runs"
+import { agentName, agentOf, commandLine, errorOf, formatDuration, type Run } from "@/domain/runs"
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
@@ -8,6 +8,7 @@ import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
 import { toolName } from "./names"
+import { RunFailure } from "./RunFailure"
 import type { Detail } from "./store"
 
 type Filter = (field: string, value: string, negate: boolean) => void
@@ -55,15 +56,19 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
   const { events = [], ...record } = item ?? { ...summary, events: undefined }
   const json = JSON.stringify(item ?? summary, null, 2)
   const service = toolName(run.tool)
+  const failure = run.status === "failed" || run.status === "partial" ? errorOf(run) : null
+  const line = commandLine(run)
 
   return (
     <div className="flex flex-col gap-[1.1rem] border-line border-t bg-app-2/60 px-[1.3rem] pt-[1rem] pb-[1.3rem]">
+      {failure && <RunFailure error={failure} />}
       <div className="flex flex-wrap items-center gap-x-[1.2rem] gap-y-2">
         <div className="min-w-[16rem] flex-1">
           <CopyField value={run.run_id} label="Copy run id" />
         </div>
         <Facts run={run} />
       </div>
+      {line && <CommandLine run={run} line={line} onFilter={onFilter} />}
 
       <section aria-label="Steps" className="flex flex-col gap-[0.5rem]">
         <div>
@@ -104,6 +109,46 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
         </div>
       </section>
     </div>
+  )
+}
+
+function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter: Filter }) {
+  const agent = agentOf(run)
+  return (
+    <section aria-label="Command line" className="flex flex-col gap-[0.4rem]">
+      <h4 className="text-[0.85rem] font-medium text-ink-dim">Command line</h4>
+      <CopyField value={line} label="Copy the command line" />
+      <p className="text-[0.85rem] text-ink-dim">
+        {agent ? (
+          <>
+            Started by{" "}
+            <button
+              type="button"
+              onClick={() => onFilter("agent", agent.kind, false)}
+              className="font-medium text-ink-soft hover:text-brand"
+            >
+              {agentName(agent.kind)}
+            </button>
+            {agent.session && (
+              <>
+                {" "}
+                in session{" "}
+                <button
+                  type="button"
+                  onClick={() => onFilter("session_id", agent.session as string, false)}
+                  title="Show only this session's runs"
+                  className="selectable font-mono text-ink-soft hover:text-brand"
+                >
+                  {agent.session}
+                </button>
+              </>
+            )}
+            .{" "}
+          </>
+        ) : null}
+        The tool masked every value that could be message text or personal data.
+      </p>
+    </section>
   )
 }
 

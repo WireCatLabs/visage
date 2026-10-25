@@ -1,6 +1,7 @@
 import { Check, ChevronRight, Group, Minus } from "lucide-react"
 import { type MouseEvent, useState } from "react"
 import {
+  agentName,
   BARE_COMMAND_HINT,
   type Count,
   commandLabel,
@@ -207,6 +208,7 @@ export function ValueLabel({ field, value }: { field: string; value: string }) {
         <span className="truncate">{value}</span>
       </span>
     )
+  if (field === "agent") return <span className="truncate">{agentName(value)}</span>
   if (field === "cli_command" && isBareCommand(value))
     return (
       <span className="truncate font-mono text-[0.85rem]" title={BARE_COMMAND_HINT}>

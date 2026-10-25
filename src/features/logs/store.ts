@@ -58,7 +58,13 @@ const tooOld = (error: string) => /^unknown command '(runs|list)'/.test(error)
 export const runKey = (run: Pick<Run, "tool" | "run_id">) => `${run.tool}:${run.run_id}`
 const toRun = (tool: string) => {
   const bin = findTool(tool)?.bin ?? tool
-  return (item: RunItem): Run => ({ ...item, tool, cli_command: cliCommand(bin, item.command) })
+  return (item: RunItem): Run => ({
+    ...item,
+    tool,
+    // Newer CLIs record the command with their own name; older ones only the words after it.
+    cli_command:
+      typeof item.cli_command === "string" && item.cli_command ? item.cli_command : cliCommand(bin, item.command),
+  })
 }
 
 function initialState(id: string): SourceState {

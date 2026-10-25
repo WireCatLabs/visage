@@ -14,6 +14,10 @@ const FIELDS = [
   "requests",
   "provider_error",
   "partial.failures.error_code",
+  "unknown_command",
+  "error.code",
+  "error.provider.key",
+  "error.http.endpoint_template",
 ]
 
 type Props = {

@@ -1,12 +1,15 @@
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react"
 import { Fragment } from "react"
 import {
+  agentName,
+  agentOf,
   BARE_COMMAND_HINT,
   commandLabel,
   formatDuration,
   formatWhen,
   isBareCommand,
   type Run,
+  shortSession,
   statusTone,
 } from "@/domain/runs"
 import { cx } from "@/ui/cx"
@@ -30,15 +33,47 @@ type Props = {
 
 const commandOf = (run: Run) => (typeof run.cli_command === "string" ? run.cli_command : run.command)
 
-function CommandCell({ value }: { value: string }) {
+function CommandCell({ value, unknown }: { value: string; unknown: string | null }) {
   const bare = isBareCommand(value)
+  const typed = unknown && unknown !== "[redacted]" ? unknown : null
   return (
     <td
       className="truncate font-mono text-[0.95rem] font-medium group-hover:text-brand"
-      title={bare ? BARE_COMMAND_HINT : value}
+      title={bare ? `${typed ? `It did not know "${typed}". ` : ""}${BARE_COMMAND_HINT}` : value}
     >
       {value}
-      {bare && <span className="font-normal font-sans text-ink-dim"> (no command)</span>}
+      {bare && (
+        <span className="font-normal font-sans text-ink-dim">
+          {" "}
+          (no command{typed && <span className="font-mono"> {typed}</span>})
+        </span>
+      )}
+    </td>
+  )
+}
+
+function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] }) {
+  const agent = agentOf(run)
+  if (!agent) return <td className="text-ink-dim">—</td>
+  const [field, value] = agent.session ? ["session_id", agent.session] : ["agent", agent.kind]
+  return (
+    <td className="pr-[0.6rem]">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onFilter(field, value, false)
+        }}
+        title={agent.session ? `Only runs of session ${agent.session}` : `Only runs ${agentName(agent.kind)} started`}
+        className="flex max-w-full min-w-0 items-baseline gap-[0.4rem] rounded-[0.3rem] text-left hover:text-brand"
+      >
+        <span className="truncate">{agentName(agent.kind)}</span>
+        {agent.session && (
+          <span className="shrink-0 font-mono text-[0.8rem] text-ink-dim tabular-nums">
+            {shortSession(agent.session)}
+          </span>
+        )}
+      </button>
     </td>
   )
 }
@@ -59,6 +94,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
         <col className="w-[7.6rem]" />
         <col className="w-[7.4rem]" />
         <col />
+        <col className="w-[11.4rem]" />
         <col className="w-[6.8rem]" />
         <col className="w-[5.6rem]" />
         <col className="w-[9.6rem]" />
@@ -84,6 +120,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
           <th className="font-medium">Tool</th>
           <th className="font-medium">Profile</th>
           <th className="font-medium">Command</th>
+          <th className="font-medium">Agent</th>
           <th className="font-medium">Status</th>
           <th className="pr-[1rem] text-right font-medium">Took</th>
           <th className="pr-[1.3rem] font-medium">Error code</th>
@@ -132,7 +169,11 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
                   </span>
                 </td>
                 <td className="truncate font-mono text-[0.85rem] text-ink-soft">{run.profile ?? "—"}</td>
-                <CommandCell value={commandOf(run)} />
+                <CommandCell
+                  value={commandOf(run)}
+                  unknown={typeof run.unknown_command === "string" ? run.unknown_command : null}
+                />
+                <AgentCell run={run} onFilter={onFilter} />
                 <td>
                   <span className="flex items-center gap-[0.45rem]">
                     <Lamp tone={statusTone(run.status)} size="sm" />
@@ -150,7 +191,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
               </tr>
               {open && (
                 <tr className="border-line border-b">
-                  <td colSpan={8} className="p-0">
+                  <td colSpan={9} className="p-0">
                     <RunDetail run={run} detail={details[key]} onFilter={onFilter} onGroup={onGroup} />
                   </td>
                 </tr>

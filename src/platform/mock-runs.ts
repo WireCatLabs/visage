@@ -82,6 +82,96 @@ const ERRORS: Record<string, { op: string; weight: number }> = {
   flood_wait: { op: "messages.sendMessage", weight: 1 },
 }
 
+// Newer CLIs (cli-core with run context) also record the masked command line, the agent and how a run failed.
+const AGENTS = [
+  { kind: "claude-code", session_id: "3b8e51d2-7c4a-4f0e-9a61-0d2c5e7f1a94" },
+  { kind: "claude-code", session_id: "a71f0c9e-25d8-4b3a-8e47-6c1d9b02f3e8" },
+  { kind: "codex", session_id: "019a4c7e-82f1-7d30-b6a5-3e9f0c1d2b74" },
+  { kind: "gemini-cli", session_id: null },
+  null,
+  null,
+]
+
+const ARGS: Record<string, string[]> = {
+  "messages send": ["[redacted]", "[redacted]"],
+  "chats list": ["--limit", "50"],
+  "messages search": ["[redacted]", "--limit", "20"],
+  "media download": ["-1001873246510", "--since", "2026-10-01"],
+}
+
+type Failure = Record<string, unknown>
+// A tool may record a path without its host; WhatsApp's examples show that.
+const API: Record<string, string> = { max: "https://platform-api2.max.ru", wa: "/v21.0/:id" }
+const FAILURES: Record<string, (tool: string, command: string) => Failure> = {
+  rate_limited: (tool, command) =>
+    tool === "tg"
+      ? {
+          class: "CliError",
+          code: "rate_limited",
+          message: "Telegram asks to wait 27 s before the next request",
+          operation: "messages.getHistory",
+          provider: { key: "FLOOD_WAIT", code: 420 },
+          stack: [
+            "toCliError @wirecat/tg-cli/telegram/errors.js:156",
+            "history @wirecat/tg-cli/telegram/history.js:88",
+            "run @wirecat/cli-core/cli/program.js:580",
+          ],
+        }
+      : {
+          class: "CliError",
+          code: "rate_limited",
+          message: `${tool === "wa" ? "WhatsApp" : "MAX"} asks to slow down: too many requests`,
+          operation: command.replace(" ", "."),
+          http: {
+            method: command.endsWith("send") ? "POST" : "GET",
+            endpoint_template: `${API[tool]}/${command.split(" ")[0]}`,
+            status: 429,
+          },
+          stack: [
+            "failureOf @wirecat/max-cli/bot/transport.js:212",
+            "BotTransport.call @wirecat/max-cli/bot/transport.js:140",
+            "run @wirecat/cli-core/cli/program.js:580",
+          ],
+        },
+  flood_wait: () => ({
+    class: "CliError",
+    code: "rate_limited",
+    message: "Telegram asks to wait 27 s before the next request",
+    operation: "messages.sendMessage",
+    provider: { key: "FLOOD_WAIT", code: 420 },
+    stack: ["toCliError @wirecat/tg-cli/telegram/errors.js:156", "send @wirecat/tg-cli/telegram/send.js:64"],
+  }),
+  network_error: () => ({
+    class: "CliError",
+    code: "network_error",
+    message: "the service did not answer — check the connection",
+    causes: [
+      { class: "TypeError", message: "fetch failed" },
+      { class: "Error", message: "connect ECONNREFUSED 203.0.113.7:443" },
+    ],
+    stack: ["request @wirecat/cli-core/http/fetch.js:41", "run @wirecat/cli-core/cli/program.js:580"],
+  }),
+  not_found: (tool) => ({
+    class: "CliError",
+    code: "not_found",
+    message: 'no chat named "[redacted]" — `chats list` shows them',
+    operation: "chats.resolve",
+    ...(API[tool] ? { http: { method: "GET", endpoint_template: `${API[tool]}/chats/:id`, status: 404 } } : {}),
+  }),
+  timeout: () => ({ class: "CliError", code: "timeout", message: "the command reached its --timeout" }),
+  auth_required: (tool) => ({
+    class: "CliError",
+    code: "authentication_error",
+    message: "not logged in, or the session was ended — run account login",
+    ...(API[tool] ? { http: { method: "GET", endpoint_template: `${API[tool]}/me`, status: 401 } } : {}),
+  }),
+  validation_error: () => ({
+    class: "CliError",
+    code: "validation_error",
+    message: "--limit must be a positive number",
+  }),
+}
+
 function rng(seed: number) {
   let s = seed
   return () => {
@@ -167,6 +257,9 @@ function build(tool: string, now: number): MockRun[] {
             }
           })
     const profile = pick(r, plan.profiles)
+    const current = i < plan.count / 3
+    const agent = pick(r, AGENTS)
+    const unknown = bare ? pick(r, ["mesages", "chat", "[redacted]"]) : undefined
     runs.push({
       run_id: `${stamp(started)}-${command.replace(/\s+/g, "-")}-${hex(r)}`,
       command,
@@ -192,6 +285,28 @@ function build(tool: string, now: number): MockRun[] {
                 { id: "msg-1043", stage: "download", error_code: "timeout" },
               ],
             },
+          }
+        : {}),
+      ...(current
+        ? {
+            cli_command: bare ? tool : `${tool} ${command}`,
+            argv: bare
+              ? [...(profile ? [profile] : []), unknown as string, "[redacted]"]
+              : [...(profile ? [profile] : []), ...command.split(" "), ...(ARGS[command] ?? [])],
+            ...(unknown ? { unknown_command: unknown } : {}),
+            ...(agent ? { agent } : {}),
+            ...(status === "failed" && code
+              ? {
+                  error: bare
+                    ? {
+                        class: "CliError",
+                        code: "validation_error",
+                        message: `unknown command '${unknown}'`,
+                        stack: ["run @wirecat/cli-core/cli/program.js:552"],
+                      }
+                    : (FAILURES[code]?.(tool, command) ?? { class: "CliError", code }),
+                }
+              : {}),
           }
         : {}),
       events,

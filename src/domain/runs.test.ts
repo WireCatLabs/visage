@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
+  agentOf,
   cliCommand,
   commandLabel,
+  commandLine,
   countValues,
+  errorOf,
   FACETS,
   facetCounts,
   formatDuration,
@@ -129,7 +132,16 @@ describe("commands, facets and grouping by path", () => {
   })
 
   it("orders facets with profile before error code, and values by count with ties alphabetical", () => {
-    expect(FACETS).toEqual(["tool", "status", "cli_command", "profile", "error_code"])
+    expect(FACETS).toEqual([
+      "tool",
+      "status",
+      "cli_command",
+      "profile",
+      "agent",
+      "error_code",
+      "error.class",
+      "error.http.status",
+    ])
     expect(countValues(runs, "tool")).toEqual([
       { value: "tg", count: 2 },
       { value: "max", count: 1 },
@@ -157,5 +169,54 @@ describe("inline JSON", () => {
     expect(inlineJson([{ stage: "download" }])).toBeNull()
     expect(inlineJson(["x".repeat(70)])).toBeNull()
     expect(inlineJson("text")).toBeNull()
+  })
+})
+
+describe("what newer CLIs record about a run", () => {
+  const recorded = run({
+    tool: "max",
+    command: "messages send",
+    cli_command: "max messages send",
+    argv: ["work", "messages", "send", "[redacted]", "--limit", "5"],
+    agent: { kind: "claude-code", session_id: "3b8e51d2-7c4a-4f0e" },
+    error: {
+      class: "CliError",
+      code: "rate_limited",
+      message: "MAX asks to slow down",
+      http: { method: "POST", endpoint_template: "https://platform-api2.max.ru/messages", status: 429 },
+      causes: [{ class: "TypeError", message: "fetch failed" }, { nope: 1 }],
+      stack: ["send transport.js:140", 7],
+    },
+  })
+  const older = run({ command: "sync" })
+
+  it("reads the agent, the command line and the failure, and nothing from a run that predates them", () => {
+    expect(agentOf(recorded)).toEqual({ kind: "claude-code", session: "3b8e51d2-7c4a-4f0e" })
+    expect(commandLine(recorded)).toBe("max work messages send [redacted] --limit 5")
+    expect(errorOf(recorded)).toMatchObject({
+      class: "CliError",
+      http: { method: "POST", endpoint: "https://platform-api2.max.ru/messages", status: 429 },
+      causes: [{ class: "TypeError", message: "fetch failed" }],
+      stack: ["send transport.js:140"],
+    })
+    expect([agentOf(older), commandLine(older), errorOf(older)]).toEqual([null, null, null])
+    expect(errorOf(run({ error: "boom" }))).toBeNull()
+  })
+
+  it("quotes a word the shell would split", () => {
+    expect(commandLine(run({ cli_command: "tg", argv: ["it's here", "x"] }))).toBe("tg 'it'\\''s here' x")
+  })
+
+  it("filters and counts by agent, session, error class and HTTP status", () => {
+    const all = [recorded, older]
+    const find = (q: string) => all.filter(matcher(parseQuery(q).terms))
+    expect(find("agent:claude-code")).toEqual([recorded])
+    expect(find("session_id:3b8e51d2*")).toEqual([recorded])
+    expect(find("error.class:CliError error.http.status:429")).toEqual([recorded])
+    expect(find("slow")).toEqual([recorded])
+    expect(facetCounts(all, [], "agent")).toEqual([
+      { value: "", count: 1 },
+      { value: "claude-code", count: 1 },
+    ])
   })
 })
