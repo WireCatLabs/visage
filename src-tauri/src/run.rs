@@ -1,3 +1,4 @@
+use crate::catalog;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -55,6 +56,10 @@ pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>
         .env("NO_COLOR", "1")
         .env("FORCE_COLOR", "0")
         .env("npm_config_update_notifier", "false");
+    // A `<PREFIX>_PROFILE` in the app's own environment would let a tool pick a profile the owner never chose here.
+    for prefix in catalog::catalog().tools.iter().map(|t| t.storage.env.as_str()) {
+        cmd.env_remove(format!("{prefix}_PROFILE"));
+    }
     if let Some(p) = path_env {
         cmd.env("PATH", p);
     }
@@ -202,6 +207,15 @@ fn kill(child: &mut Child) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn never_hands_a_tool_a_profile_from_the_environment() {
+        let cmd = command(Path::new("tg"), &[], None);
+        let removed: Vec<_> = cmd.get_envs().filter(|(_, v)| v.is_none()).map(|(k, _)| k.to_owned()).collect();
+        for prefix in ["TG", "MAX", "WA", "ZM", "DRIVE", "MEMO"] {
+            assert!(removed.contains(&std::ffi::OsString::from(format!("{prefix}_PROFILE"))), "{prefix}_PROFILE");
+        }
+    }
 
     #[test]
     fn reads_the_json_answer_around_notes_and_warnings() {
