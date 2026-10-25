@@ -31,7 +31,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
         <Stepper steps={stepStates(session)} />
       </div>
 
-      <div className="mt-[0.9rem] flex flex-wrap items-center gap-x-4 gap-y-3" aria-live="polite">
+      <div className="mt-[1.45rem] flex flex-wrap items-center gap-x-4 gap-y-3" aria-live="polite">
         {session.step === "queued" && !outcome && (
           <p className="text-[0.95rem] text-ink-soft">Waiting for the operation in progress to finish.</p>
         )}

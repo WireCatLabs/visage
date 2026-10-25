@@ -34,12 +34,12 @@ export function ToolsPage() {
 
       <NodeNotice />
       {error && (
-        <p role="alert" className="rounded-[0.45rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+        <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
           Could not inspect this computer: {error.message}
         </p>
       )}
       {systemError && (
-        <p role="alert" className="rounded-[0.45rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+        <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
           Could not check Node.js and npm: {systemError}
         </p>
       )}

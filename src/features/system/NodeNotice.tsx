@@ -22,7 +22,7 @@ export function NodeNotice() {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-4 rounded-[0.55rem] border border-warn/40 bg-warn/10 px-5 py-4"
+      className="flex flex-wrap items-center gap-4 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-5 py-4"
     >
       <div className="min-w-0 flex-1">
         <p className="font-semibold">{title}</p>
