@@ -136,6 +136,16 @@ GNOME связывает окно с .desktop-файлом по app id; у Tauri
 галочку: галочка не нужна, достаточно ясной строки. Но по GDPR владелец обязан сказать об этом в политике
 конфиденциальности (NEED-16).
 
+**ASK-22 · «list permissions in the cli block… see if they allowed write/read and easily toggle… if permissions are custom… partial write»**
+Агент строит блок Permissions в панели Manage: группы (чтение, запись, отправка, удаление…) с состоянием
+Allowed / Asks / Blocked / Partial и переключателем через `config set permissions.<путь>`; источник — команды
+самого CLI (rule 1).
+
+**ASK-23 · «how does the app identify language? … switch language easily on config? English, Spanish, Russian»**
+Никак: интерфейс только на английском, переводов нет. План: язык системы при первом запуске (navigator.languages в
+webview), иначе английский; переключатель в Config (раздел самого приложения); en/es/ru; термины — из
+`cli-docs/docs/TERMINOLOGY.md`. Начинать после слияния текущих агентов: правка задевает почти все экраны.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -273,6 +283,8 @@ WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
 
 ASK-15 (логи zm, drive, memo): PR zoom-cli#255, drive-cli#219, cli-memo#436; приложение — `ec89d42`.
 
+**NEED-16 · ответ «1 A»** — агент документации пишет абзац (en/es/ru), отдельный PR в cli-docs.
+
 **NEED-16 · Добавить в политику конфиденциальности wirecat.dev абзац о логах в отчётах об ошибках?**
 - Сейчас: `cli-docs/lib/privacy.ts:47` говорит только о «support data» общими словами; приложение будет всегда
   отправлять замаскированные логи на сервер WireCat и хранить их 90 дней.
@@ -286,6 +298,6 @@ ASK-15 (логи zm, drive, memo): PR zoom-cli#255, drive-cli#219, cli-memo#436;
   — только Claude Code, остальные подписываются как владелец.
 - Варианты: **A** одно правило в обоих местах · **B** оставить.
 - Я бы: **A** — работа агентов не будет записана на владельца.
-- Ответ: ещё нет.
+- Ответ: «2 A» — ещё один коммит в cli-core#1963.
 
 ASK-13 (контекст запусков): PR cli-core#1963; приложение — `a2ce308`.
