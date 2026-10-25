@@ -130,7 +130,8 @@ export const useTools = create<ToolsState>((set, get) => {
       const system = useSystem.getState()
       try {
         await Promise.all([fresh || !system.readiness ? system.refresh() : null, redetect(fresh)])
-        useCompat.getState().load()
+        // Compatibility asks every tool's store info: once a session, on Check again, and after an install.
+        if (fresh || useCompat.getState().compat === undefined) useCompat.getState().load()
       } catch (e) {
         set({ error: { message: message(e) } })
       } finally {

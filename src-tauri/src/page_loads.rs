@@ -37,7 +37,8 @@ fn report(page: &str, visit: &str, data_ms: u128, before: usize, started: Instan
     );
 }
 
-/// The interface checks Node.js and npm again only on the first visit and on "Check again".
+/// The interface checks Node.js, npm and storage compatibility again only on the first visit and on "Check again";
+/// compatibility starts once the tools are found.
 fn tools_page(visit: &str) {
     let fresh = visit == "check";
     let (before, started) = (run::started(), Instant::now());
@@ -47,10 +48,16 @@ fn tools_page(visit: &str) {
         jobs.push(Box::new(|| drop(system::readiness())));
     }
     let done = together(jobs);
+    if visit != "revisit" {
+        compat::forget();
+        drop(compat::compat());
+    }
     report("Tools", visit, done[0].max(done.get(2).copied().unwrap_or(0)), before, started);
 }
 
+/// A real visit comes more than a few seconds after any other, so it never shares a store info round.
 fn storage_page(visit: &str) {
+    compat::forget();
     let (before, started) = (run::started(), Instant::now());
     let done = together(vec![
         Box::new(|| drop(storage::report())),
