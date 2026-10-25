@@ -1,5 +1,6 @@
 mod archive;
 mod catalog;
+mod compat;
 mod install;
 mod mcp;
 mod node;
@@ -161,6 +162,11 @@ async fn open_folder(id: String, kind: String, entry: Option<String>) -> Result<
 #[tauri::command]
 async fn store_info() -> Result<Option<archive::StoreInfo>, String> {
     blocking(archive::info).await?
+}
+
+#[tauri::command]
+async fn store_compat() -> Result<compat::StoreCompat, String> {
+    blocking(compat::compat).await
 }
 
 #[tauri::command]
@@ -340,6 +346,7 @@ pub fn run() {
             clear_storage,
             open_folder,
             store_info,
+            store_compat,
             store_tables,
             store_check,
             detect_agents,

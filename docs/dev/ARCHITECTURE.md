@@ -23,7 +23,8 @@ src-tauri/src/
   runs.rs       run logs, read through each tool's own `runs list` / `runs show`.
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
-  archive.rs    what the shared archive holds, from a messenger tool's `store info`; the database is never opened.
+  archive.rs    what the shared archive holds, from a tool's `store info`; the database is never opened.
+  compat.rs     every installed tool's own `store info`, at once: which schema each reads and what its next run does.
   skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `install` / `show`.
   mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
@@ -83,8 +84,10 @@ Each tool writes its skill (`SKILL.md`) to `~/.claude/skills` and `~/.agents/ski
 memo falls back to the skill list in `doctor --json`. Agents are found by program on PATH or by their settings
 folder (`skills.rs`); which folder each agent reads comes from the agents' own docs.
 
-Shared storage is described by `store info --json` of the first installed of tg, wa and max (`storeInfo` in the
-catalog). `archive.rs` picks known fields by name, because the generic masker would hide counts called `accounts`
+Shared storage is described by `store info --json` (`storeInfo` in the catalog). `compat.rs` asks every installed
+package at once, read-only, and the answer of the tool that reads the newest schema fills the Storage page; tables and
+checks go to the first messenger in that ranking. A tool from before cli-core's shared `store info` (zm, drive, memo
+before their release with WireCatLabs/cli-core#1973) answers "unknown command". `archive.rs` picks known fields by name, because the generic masker would hide counts called `accounts`
 or `emails`. The breakdown is read only when the tool prints `by_provider`, and the file facts (journal mode, pages,
 migrations, last backup) only when it prints `migrations`. The same tool answers `storeTables` (every table with its
 kind and rows), `storeTableSizes` (the same with sizes; it reads the whole file, so the page runs it on request) and
@@ -94,6 +97,16 @@ interface calls the shared database "storage" everywhere, never "archive". Folde
 names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`. `open_folder` opens a folder or
 one entry in it by name: Rust joins the name to the catalog's folder after refusing anything but a plain child, opens
 a directory, and shows a file or a link in its folder instead of opening it.
+
+## Can each tool read storage
+
+The store records a schema version and the oldest schema a tool must read to open it (`min_compatible`); each tool
+reads up to the schema of its cli-core (`speaks`). `src/domain/compat.ts` turns the tools' answers into one state per
+installed package: reads it, can't read it (and the update that fixes it), will move it on its next run past what other
+installed tools read (from `schema.upgrade`), or can't say. A tool too old to say is placed from the store's own list of
+the tools that opened it (`clients`, matched by command and version) or from a refusal it printed ("written by a newer
+version (schema N, needs at least M"). The schema moves on a tool's first run after an update, not on install, so
+the Tools page asks again right after an install and warns, with the other tools' updates to queue, before that run.
 
 ## What agents do with the tools
 

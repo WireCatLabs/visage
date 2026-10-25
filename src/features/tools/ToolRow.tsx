@@ -1,5 +1,6 @@
 import { LoaderCircle } from "lucide-react"
 import { type CatalogTool, findTool, ownerId } from "@/domain/catalog"
+import { fitSeverity } from "@/domain/compat"
 import { type ToolStatus, toolStatus } from "@/domain/status"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -8,9 +9,11 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useSystem } from "../system/store"
 import { InstallPanel } from "./InstallPanel"
+import { fitLabel, fitLine, useLatestKnown } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolDetails } from "./ToolDetails"
 import { ToolIcon } from "./ToolIcon"
+import { useFits } from "./useFits"
 
 const lampTone: Record<ToolStatus["kind"], LampTone> = {
   checking: "idle",
@@ -37,16 +40,26 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const session = useTools((s) => s.sessions[ownerId(tool.id)])
   const expanded = useTools((s) => s.expanded === tool.id)
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
+  const fit = useFits()?.all[ownerId(tool.id)]
   const { install, toggle, cancel } = useTools.getState()
 
   const status = toolStatus(installs, latest, session)
+  const installed = status.kind === "ready" || status.kind === "outdated"
+  const severity = installed ? fitSeverity(fit) : null
+  const latestKnown = useLatestKnown()
+  const canUpdate = status.kind === "outdated" ? true : latestKnown ? false : null
+  const storageLine = installed ? fitLine(fit, ownerId(tool.id), canUpdate) : null
+  const storageLabel = installed ? fitLabel(fit) : null
   const panelId = `tool-panel-${tool.id}`
   const showInstallPanel = Boolean(session)
 
   return (
     <li data-tour="tool" className="border-line border-b last:border-b-0">
       <div className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
-        <Lamp tone={lampTone[status.kind]} label={lampLabel(status)} />
+        <Lamp
+          tone={severity ?? lampTone[status.kind]}
+          label={storageLabel ? `${lampLabel(status)}. ${storageLabel}` : lampLabel(status)}
+        />
         <ToolIcon id={tool.id} className="size-[1.6rem] text-ink xl:size-[1.75rem]" />
         <button
           type="button"
@@ -60,7 +73,16 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
             <span className="font-mono text-[0.95rem] font-normal text-ink-soft">{tool.bin}</span>
             {tool.partOf && <Pill>Part of {findTool(tool.partOf)?.name ?? tool.partOf}</Pill>}
           </h3>
-          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
+          {storageLine ? (
+            <p
+              title={storageLine}
+              className={cx("mt-1 truncate text-[0.95rem]", severity === "bad" ? "text-bad" : "text-warn-ink")}
+            >
+              {storageLine}
+            </p>
+          ) : (
+            <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
+          )}
         </button>
         <Version status={status} installed={installs?.[0]?.version ?? null} />
         <div data-tour="tool-action" className="flex justify-end">

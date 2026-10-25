@@ -8,6 +8,8 @@ import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
 import { Skeleton } from "@/ui/Skeleton"
+import { useCompat } from "../tools/compat-store"
+import { StorageSummary } from "../tools/StorageFit"
 import { ToolIcon } from "../tools/ToolIcon"
 import { ArchiveSummary } from "./ArchiveSummary"
 import { areaBytes, useStorage } from "./store"
@@ -25,6 +27,7 @@ export function StoragePage() {
     load()
     useStorage.getState().loadInfo()
     useStorage.getState().loadTables()
+    if (useCompat.getState().compat === undefined) useCompat.getState().load()
   }, [load])
 
   const leftovers = (areas ?? []).filter((a) => a.folders.length > 0 && a.usedBy.length === 0)
@@ -52,6 +55,8 @@ export function StoragePage() {
           {error}
         </p>
       )}
+
+      <StorageSummary />
 
       <ArchiveSummary />
 

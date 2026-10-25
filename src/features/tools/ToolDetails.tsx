@@ -8,6 +8,7 @@ import { Dialog } from "@/ui/Dialog"
 import { Pill } from "@/ui/Pill"
 import { Health } from "./Health"
 import { Permissions } from "./Permissions"
+import { FitDetails } from "./StorageFit"
 import { useTools } from "./store"
 
 function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: boolean; onClose: () => void }) {
@@ -89,6 +90,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
             ))}
           </ul>
         </div>
+        {installs.length > 0 && <FitDetails id={tool.id} />}
         {installs.length > 0 && (
           <div>
             <Button

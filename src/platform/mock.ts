@@ -2,6 +2,7 @@ import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
 import { storeCheckMock, storeInfoMock, storeTablesMock } from "./mock-archive"
 import { delay } from "./mock-delay"
+import { newestReader, storeCompatMock } from "./mock-compat"
 import { permissionsMock } from "./mock-permissions"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
@@ -23,6 +24,7 @@ import type { Platform } from "./types"
 // `?state=one` only Telegram, `?fail=<tool>` makes that tool's install fail, `?hold=<tool>` keeps it installing, `?install=<tool>` starts one.
 // `?state=noadmin` has an apt Node whose npm needs administrator rights. With `nonode` or `noadmin`, "Set up Node.js
 // for me" runs a fake download; `?node=fail` makes its checksum mismatch, `?node=ready` starts with it already set up.
+// `?compat=upgrade` offers MAX 0.75, so updating WhatsApp shows the warning with an update to queue.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("state") ?? "mixed"
@@ -34,6 +36,7 @@ const LATEST: Record<string, string> = {
   drive: "0.30.0",
   memo: "0.95.0",
 }
+if (params.get("compat") === "upgrade") LATEST.max = "0.75.0"
 const PACKAGES: Record<string, string> = {
   tg: "@wirecat/tg-cli",
   max: "@wirecat/max-cli",
@@ -467,7 +470,8 @@ export function createMock(os: Platform["os"]): Platform {
       dataSize[id] = 0
     },
     async openFolder() {},
-    storeInfo: () => storeInfoMock(asksArchive()),
+    storeInfo: () => storeInfoMock(newestReader(installed) ?? asksArchive()),
+    storeCompat: () => storeCompatMock(installed),
     storeTables: (sizes) => storeTablesMock(asksArchive(), sizes),
     storeCheck: () => storeCheckMock(asksArchive()),
     ...agentsMock((id) => installed.get(id)),

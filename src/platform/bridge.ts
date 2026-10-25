@@ -12,7 +12,7 @@ import {
   SkillWrittenSchema,
   TerminalReachSchema,
 } from "./agents-schemas"
-import { StoreCheckSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
+import { StoreCheckSchema, StoreCompatSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
@@ -86,6 +86,7 @@ function createTauri(): Platform {
     clearStorage: (id) => invoke("clear_storage", { id }),
     openFolder: (id, kind, entry) => invoke("open_folder", { id, kind, entry: entry ?? null }),
     storeInfo: () => call(StoreInfoSchema, "store_info"),
+    storeCompat: () => call(StoreCompatSchema, "store_compat"),
     storeTables: (sizes) => call(TableListSchema, "store_tables", { sizes }),
     storeCheck: () => call(StoreCheckSchema, "store_check"),
     detectAgents: () => call(AgentsSchema, "detect_agents"),

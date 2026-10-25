@@ -4,8 +4,10 @@ import { tools } from "@/domain/catalog"
 import { cx } from "@/ui/cx"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
+import { StorageSummary } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolRow } from "./ToolRow"
+import { UpgradeWarning } from "./UpgradeWarning"
 
 export function ToolsPage() {
   const refreshing = useTools((s) => s.refreshing)
@@ -61,11 +63,15 @@ export function ToolsPage() {
         </p>
       )}
 
+      <StorageSummary />
+
       <ul aria-label="WireCat tools" className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
         {tools.map((t) => (
           <ToolRow key={t.id} tool={t} />
         ))}
       </ul>
+
+      <UpgradeWarning />
 
       {latestUnknown && (
         <p className="text-[0.85rem] text-ink-dim">

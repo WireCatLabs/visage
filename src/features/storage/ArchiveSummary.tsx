@@ -49,7 +49,8 @@ export function ArchiveSummary() {
           </p>
         ) : info === null ? (
           <p className="text-[0.95rem] text-ink-soft">
-            Install Telegram, WhatsApp or MAX to see what is in storage: one of them reads it for the app.
+            Install a WireCat tool to see what is in storage: the installed tool that reads the newest schema counts it
+            for the app.
           </p>
         ) : !info.exists ? (
           <p className="text-[0.95rem] text-ink-soft">Storage is not created yet. It appears after the first sync.</p>

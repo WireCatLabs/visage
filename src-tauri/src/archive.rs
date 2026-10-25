@@ -1,12 +1,16 @@
 use crate::catalog::{self, Tool};
-use crate::{paths, redact, run};
+use crate::{compat, paths, redact, run};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::sync::Mutex;
 use std::time::Duration;
 
-/// The messengers share one store, so the first one installed answers for all of them.
+/// Before `store info` has ranked the installed tools, the messengers answer in this order.
 const ASKED_IN_ORDER: [&str; 3] = ["tg", "wa", "max"];
+
+/// Tool ids by the newest schema each reads, from the last `store info` round; tables and checks ask the first.
+static RANKED: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 #[derive(Serialize, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -297,24 +301,41 @@ fn check_of(tool: &Tool, envelope: &Value) -> Check {
     }
 }
 
-type Template = fn(&Tool) -> Option<&Vec<String>>;
+pub(crate) type Template = fn(&Tool) -> Option<&Vec<String>>;
 
 /// The first installed messenger tool, as long as it has a store; it answers for the whole shared archive.
-fn asked() -> Option<&'static Tool> {
-    ASKED_IN_ORDER.iter().find_map(|id| {
+fn asked(template: Template) -> Option<&'static Tool> {
+    let ranked = RANKED.lock().map(|r| r.clone()).unwrap_or_default();
+    ranked.iter().map(String::as_str).chain(ASKED_IN_ORDER).find_map(|id| {
         let tool = catalog::tool(id).ok()?;
-        tool.store_info.as_ref()?;
+        template(tool)?;
         paths::find(&tool.bin).map(|_| tool)
     })
 }
 
-enum Answer {
+fn rank(answers: &[(&'static Tool, Result<Answer, String>)]) {
+    let mut by_speaks: Vec<(u64, String)> = answers
+        .iter()
+        .filter_map(|(tool, answer)| match answer {
+            Ok(Answer::Envelope(v)) => {
+                Some((v.get("item").unwrap_or(v)["schema"]["speaks"].as_u64()?, tool.id.clone()))
+            }
+            _ => None,
+        })
+        .collect();
+    by_speaks.sort_by_key(|(speaks, _)| std::cmp::Reverse(*speaks));
+    if let Ok(mut ranked) = RANKED.lock() {
+        *ranked = by_speaks.into_iter().map(|(_, id)| id).collect();
+    }
+}
+
+pub(crate) enum Answer {
     Envelope(Value),
     /// The tool is older than the command.
     Unknown,
 }
 
-fn ask(tool: &Tool, template: Template, timeout: Duration) -> Result<Answer, String> {
+pub(crate) fn ask(tool: &Tool, template: Template, timeout: Duration) -> Result<Answer, String> {
     let Some(args) = template(tool) else { return Ok(Answer::Unknown) };
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
@@ -334,18 +355,25 @@ fn ask(tool: &Tool, template: Template, timeout: Duration) -> Result<Answer, Str
 }
 
 /// `None` when no messenger tool is installed to ask.
+/// Asks every installed tool and keeps the answer of the one that reads the newest schema.
 pub fn info() -> Result<Option<StoreInfo>, String> {
-    let Some(tool) = asked() else { return Ok(None) };
-    match ask(tool, |t| t.store_info.as_ref(), Duration::from_secs(30))? {
-        Answer::Envelope(v) => Ok(Some(shape(&tool.id, v.get("item").unwrap_or(&v)))),
-        Answer::Unknown => Err("the tool does not know `store info`".into()),
+    let answers = compat::probe();
+    if answers.is_empty() {
+        return Ok(None);
     }
+    rank(&answers);
+    if let Some((tool, v)) = compat::best(&answers) {
+        return Ok(Some(shape(&tool.id, v.get("item").unwrap_or(v))));
+    }
+    Err(answers
+        .into_iter()
+        .find_map(|(_, answer)| answer.err())
+        .unwrap_or_else(|| "no installed tool knows `store info` yet".into()))
 }
 
-/// Without sizes this counts rows only, a few seconds at most; sizes read every page of the file.
 pub fn tables(sizes: bool) -> Result<Option<TableList>, String> {
-    let Some(tool) = asked() else { return Ok(None) };
     let template: Template = if sizes { |t| t.store_table_sizes.as_ref() } else { |t| t.store_tables.as_ref() };
+    let Some(tool) = asked(template) else { return Ok(None) };
     let timeout = Duration::from_mins(if sizes { 10 } else { 2 });
     Ok(Some(match ask(tool, template, timeout)? {
         Answer::Envelope(v) => tables_of(&tool.id, v["items"].as_array().map_or(&[], Vec::as_slice), sizes),
@@ -357,7 +385,7 @@ pub fn tables(sizes: bool) -> Result<Option<TableList>, String> {
 
 /// Runs `SQLite`'s integrity check over the whole file: a minute or two on a large archive.
 pub fn check() -> Result<Option<Check>, String> {
-    let Some(tool) = asked() else { return Ok(None) };
+    let Some(tool) = asked(|t| t.store_check.as_ref()) else { return Ok(None) };
     match ask(tool, |t| t.store_check.as_ref(), Duration::from_mins(10))? {
         Answer::Envelope(v) => Ok(Some(check_of(tool, &v))),
         Answer::Unknown => Err("the tool does not know `store check`".into()),

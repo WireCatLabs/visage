@@ -1,3 +1,4 @@
+import type { StoreCompat } from "@/domain/compat"
 import type { Agent, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { Permissions } from "./permissions-schemas"
@@ -44,8 +45,10 @@ export type Platform = {
   clearStorage(id: string): Promise<void>
   /** `entry` opens one item directly inside the folder; Rust builds and checks the path. */
   openFolder(id: string, kind: StorageFolder["kind"], entry?: string): Promise<void>
-  /** What the shared archive holds, from the first installed messenger tool; null when none is installed. */
+  /** What the shared archive holds, from the installed tool that reads the newest schema; null when none is installed. */
   storeInfo(): Promise<StoreInfo | null>
+  /** Every installed tool's own `store info`: whether it reads the shared store, and what its next run does to it. */
+  storeCompat(): Promise<StoreCompat>
   /** Every table with its kind and rows; `sizes` reads the whole file, from seconds to minutes. */
   storeTables(sizes: boolean): Promise<TableList | null>
   /** The archive's integrity and health checks; a minute or more on a large archive. */

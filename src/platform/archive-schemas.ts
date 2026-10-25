@@ -30,7 +30,7 @@ const FileFactsSchema = v.object({
   backup: v.nullable(v.object({ at: v.string(), file: v.nullable(v.string()), checked: v.nullable(v.string()) })),
 })
 
-/** `null` when no messenger tool is installed to ask. */
+/** `null` when no tool is installed to ask. */
 export const StoreInfoSchema = v.nullable(
   v.object({
     answeredBy: v.string(),
@@ -86,6 +86,26 @@ export const StoreCheckSchema = v.nullable(
     fixes: v.array(v.string()),
   }),
 )
+
+const SchemaPair = v.object({ version: count, minCompatible: count })
+
+/** Every installed package's own `store info`; `problem` is its masked refusal when it ran and failed. */
+export const StoreCompatSchema = v.object({
+  tools: v.array(
+    v.object({
+      id: v.string(),
+      outcome: v.picklist(["answered", "unknown", "failed"]),
+      speaks: v.nullable(count),
+      writable: v.nullable(v.boolean()),
+      reason: v.nullable(v.string()),
+      upgrade: v.nullable(SchemaPair),
+      file: v.nullable(SchemaPair),
+      exists: v.nullable(v.boolean()),
+      problem: v.nullable(v.string()),
+    }),
+  ),
+  clients: v.array(v.object({ command: v.string(), version: v.string(), speaks: count })),
+})
 
 export type Group = v.InferOutput<typeof GroupSchema>
 export type Breakdown = v.InferOutput<typeof BreakdownSchema>

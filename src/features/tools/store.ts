@@ -4,6 +4,7 @@ import type { InstallSession, Operation } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
 import { useSystem } from "../system/store"
+import { installedOf, useCompat } from "./compat-store"
 
 type LoadError = { message: string } | null
 
@@ -67,6 +68,8 @@ export const useTools = create<ToolsState>((set, get) => {
       }))
     }
     await redetect().catch(() => undefined)
+    if (operation === "install" && get().sessions[id]?.outcome?.event === "done")
+      await useCompat.getState().checkAfterInstall(id, () => installedOf(get().installs))
     const st = get()
     const nothingLeft = Object.values(st.installs).every((copies) => copies.length === 0)
     if (operation === "uninstall" && st.sessions[id]?.outcome?.event === "removed" && nothingLeft) {
@@ -105,6 +108,7 @@ export const useTools = create<ToolsState>((set, get) => {
       )
       try {
         await Promise.all([useSystem.getState().refresh(), redetect()])
+        useCompat.getState().load()
       } catch (e) {
         set({ error: { message: message(e) } })
       } finally {
