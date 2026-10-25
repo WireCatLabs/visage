@@ -16,7 +16,7 @@ export function ToolsPage() {
   const error = useTools((s) => s.error)
   const systemError = useSystem((s) => s.error)
   const latestUnknown = useTools((s) => s.latest !== null && Object.keys(s.latest).length === 0)
-  const askingNpm = useTools((s) => s.latest === null)
+  const askingNpm = useTools((s) => s.checkingLatest)
   const progress = refreshing
     ? "Looking for WireCat tools on this computer…"
     : askingNpm
@@ -44,7 +44,7 @@ export function ToolsPage() {
         <button
           type="button"
           data-tour="check-again"
-          onClick={() => useTools.getState().refresh()}
+          onClick={() => useTools.getState().refresh(true)}
           disabled={refreshing}
           className="inline-flex items-center gap-1.5 rounded-[0.35rem] px-2 py-1 text-[0.875rem] text-ink-dim transition-colors hover:bg-app-3 hover:text-ink disabled:opacity-60"
         >

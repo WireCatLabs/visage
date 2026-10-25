@@ -1,4 +1,4 @@
-import { Database, FolderOpen, KeyRound, Trash2 } from "lucide-react"
+import { Database, FolderOpen, KeyRound, LoaderCircle, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { findTool, sharedStorage } from "@/domain/catalog"
 import { describeEntry } from "@/domain/files"
@@ -22,15 +22,13 @@ const kindLabel: Record<StorageFolder["kind"], string> = { config: "Settings", s
 const toolNames = (ids: string[]) => ids.map((id) => findTool(id)?.name ?? id).join(", ")
 
 export function StoragePage() {
-  const { areas, error, clearing, load, clear, clearAll } = useStorage()
+  const { areas, error, clearing, revalidating, refresh, clear, clearAll } = useStorage()
   const [confirm, setConfirm] = useState<StorageArea | "all" | null>(null)
 
   useEffect(() => {
-    load()
-    useStorage.getState().loadInfo()
-    useStorage.getState().loadTables()
+    refresh()
     if (useCompat.getState().compat === undefined) useCompat.getState().load()
-  }, [load])
+  }, [refresh])
 
   const leftovers = (areas ?? []).filter((a) => a.folders.length > 0 && a.usedBy.length === 0)
   const leftoverBytes = leftovers.reduce((sum, a) => sum + areaBytes(a), 0)
@@ -39,7 +37,17 @@ export function StoragePage() {
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
+          <div className="flex items-baseline gap-[1.2rem]">
+            <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
+            <p aria-live="polite" className="flex items-center gap-1.5 text-[0.9rem] text-ink-soft">
+              {revalidating && areas !== null && (
+                <>
+                  <LoaderCircle className="size-4 shrink-0 animate-spin text-brand" aria-hidden />
+                  Checking…
+                </>
+              )}
+            </p>
+          </div>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
             What WireCat tools keep on this computer: settings, sessions, shared storage and caches. A tool's data can
             be deleted once the tool is uninstalled. Sign-in tokens in your system keyring are not touched.

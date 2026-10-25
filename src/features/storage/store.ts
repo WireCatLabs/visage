@@ -26,6 +26,10 @@ type StorageState = {
   checkError: string | null
   runCheck(): Promise<void>
   clearing: string | null
+  /** Asking again while the last answers stay on screen. */
+  revalidating: boolean
+  /** Folders, storage facts and tables together, as the page asks on every visit. */
+  refresh(): Promise<void>
   load(): Promise<void>
   clear(id: string): Promise<void>
   /** Deletes every area nothing installed uses, the shared archive last. */
@@ -39,6 +43,7 @@ export const useStorage = create<StorageState>((set, get) => ({
   areas: null,
   error: null,
   clearing: null,
+  revalidating: false,
   info: undefined,
   infoError: null,
   infoAt: null,
@@ -51,9 +56,16 @@ export const useStorage = create<StorageState>((set, get) => ({
   checkedIn: null,
   checkError: null,
 
+  async refresh() {
+    set({ revalidating: true })
+    await Promise.all([get().load(), get().loadInfo(), get().loadTables()])
+    set({ revalidating: false })
+  },
+
+  // The last list stays on screen while the tool is asked again.
   async loadTables() {
     if (get().measuring !== null) return
-    set({ tables: undefined, tablesError: null })
+    set({ tablesError: null })
     try {
       set({ tables: await platform.storeTables(false) })
     } catch (e) {
@@ -88,7 +100,7 @@ export const useStorage = create<StorageState>((set, get) => ({
   },
 
   async loadInfo() {
-    set({ info: undefined, infoError: null })
+    set({ infoError: null })
     try {
       set({ info: await platform.storeInfo(), infoAt: Date.now() })
     } catch (e) {

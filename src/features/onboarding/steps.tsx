@@ -100,7 +100,7 @@ export function Computer() {
           size="sm"
           variant="ghost"
           disabled={refreshing}
-          onClick={() => useTools.getState().refresh()}
+          onClick={() => useTools.getState().refresh(true)}
           icon={<RefreshCw className={cx("size-4", refreshing && "animate-spin")} aria-hidden />}
         >
           {refreshing ? "Checking…" : "Check again"}

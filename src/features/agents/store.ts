@@ -14,6 +14,10 @@ type AgentsState = {
   written: Record<string, string | null>
   busy: Record<string, boolean>
   failures: Record<string, string>
+  /** Asking again; the last answers stay on screen meanwhile. */
+  refreshing: boolean
+  /** Every tool answered once this session; the page asks for logs and claims only after, so skills come first. */
+  answered: boolean
   /** Asks every installed tool at once; each row fills in as its tool answers. */
   load(installed: readonly string[]): Promise<void>
   install(id: string, target: SkillTarget): Promise<void>
@@ -32,9 +36,11 @@ export const useAgents = create<AgentsState>((set, get) => ({
   written: {},
   busy: {},
   failures: {},
+  refreshing: false,
+  answered: false,
 
   async load(installed) {
-    set({ skills: {}, failures: {} })
+    set({ refreshing: true, failures: {} })
     const agents = platform
       .detectAgents()
       .then((agents) => set({ agents, agentsError: null }))
@@ -47,6 +53,7 @@ export const useAgents = create<AgentsState>((set, get) => ({
         .then((result) => set((s) => ({ skills: { ...s.skills, [id]: result } }))),
     )
     await Promise.all([agents, ...skills])
+    set({ refreshing: false, answered: true })
   },
 
   async install(id, target) {

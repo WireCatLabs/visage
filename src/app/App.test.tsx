@@ -2,11 +2,15 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
+import { useTools } from "@/features/tools/store"
 import { App } from "./App"
 
 // The browser mock stands in for Rust: Drive is the one tool not installed.
 describe("WireCat Desktop", () => {
-  beforeEach(() => useOnboarding.setState({ status: "done", open: false }))
+  beforeEach(() => {
+    useOnboarding.setState({ status: "done", open: false })
+    useTools.setState(useTools.getInitialState(), true)
+  })
 
   it("installs a missing tool and shows it verified", async () => {
     const user = userEvent.setup()

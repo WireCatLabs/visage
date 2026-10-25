@@ -99,11 +99,12 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
   const { detected, agents, found, targets, rows, notInstalled } = useSkillMatrix()
   const load = useAgents((s) => s.load)
   const installedIds = rows.map((r) => r.tool.id).join(",")
+  const checked = useTools((s) => s.checked)
 
   useEffect(() => {
     const tools = useTools.getState()
-    if (!detected && !tools.refreshing) tools.refresh()
-  }, [detected])
+    if (!checked && !tools.refreshing) tools.refresh()
+  }, [checked])
 
   useEffect(() => {
     if (detected) load(installedIds ? installedIds.split(",") : [])

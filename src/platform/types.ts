@@ -34,8 +34,10 @@ export type Platform = {
   /** The exact line "Add to PATH" writes and the file it goes into, for the app's own Node.js. */
   nodePath(): Promise<NodePath>
   setNodePath(add: boolean): Promise<NodePath>
-  detectTools(): Promise<ToolState[]>
-  latestVersions(): Promise<Record<string, string | null>>
+  /** `fresh` runs every copy's `--version` again; otherwise an unchanged program keeps its last answer. */
+  detectTools(fresh?: boolean): Promise<ToolState[]>
+  /** `fresh` asks npm even when an answer from the last hour is kept. */
+  latestVersions(fresh?: boolean): Promise<Record<string, string | null>>
   listProfiles(id: string): Promise<Profile[] | null>
   diagnose(id: string, profile: string | null): Promise<Diagnosis>
   install(id: string, onEvent: (e: InstallEvent) => void): Promise<void>

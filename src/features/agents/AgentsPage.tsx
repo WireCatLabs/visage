@@ -35,7 +35,8 @@ const PREFER: SkillCell["kind"][] = ["current", "stale", "unversioned", "unknown
 export function AgentsPage() {
   const { agents, found, stale, rows } = useSkillMatrix()
   const load = useAgents((s) => s.load)
-  const checking = useAgents((s) => rows.some((r) => !(r.tool.id in s.skills)))
+  const checking = useAgents((s) => s.refreshing || rows.some((r) => !(r.tool.id in s.skills)))
+  const answered = useAgents((s) => s.answered)
   const anyBusy = useAgents((s) => Object.keys(s.busy).length > 0)
   const agentsError = useAgents((s) => s.agentsError)
   const installs = useTools((s) => s.installs)
@@ -49,12 +50,12 @@ export function AgentsPage() {
     .join(",")
 
   useEffect(() => {
-    if (Object.keys(useLogs.getState().sources).length === 0) useLogs.getState().load()
-  }, [])
+    if (answered && Object.keys(useLogs.getState().sources).length === 0) useLogs.getState().load()
+  }, [answered])
 
   useEffect(() => {
-    if (foundIds && installedIds) useConnect.getState().load(foundIds.split(","), installedIds.split(","))
-  }, [foundIds, installedIds])
+    if (answered && foundIds && installedIds) useConnect.getState().load(foundIds.split(","), installedIds.split(","))
+  }, [answered, foundIds, installedIds])
 
   const sourceList = Object.values(sources)
   const logsReady = sourceList.length > 0 && sourceList.every((s) => s.state !== "loading")

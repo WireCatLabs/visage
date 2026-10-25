@@ -34,6 +34,22 @@ describe("Config", () => {
     await waitFor(() => expect(screen.getByRole("radio", { name: "work" })).toBeChecked())
   })
 
+  it("asks for the defaults without waiting for the profile list", async () => {
+    vi.spyOn(platform, "listProfiles").mockReturnValue(new Promise(() => undefined))
+    const show = vi.spyOn(platform, "settingsShow")
+    void useConfig.getState().chooseTool("tg")
+    await waitFor(() => expect(show).toHaveBeenCalledWith("tg", null))
+  })
+
+  it("waits for the profile list before opening a remembered profile", async () => {
+    localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "work" } }))
+    vi.spyOn(platform, "listProfiles").mockReturnValue(new Promise(() => undefined))
+    const show = vi.spyOn(platform, "settingsShow")
+    void useConfig.getState().chooseTool("tg")
+    await Promise.resolve()
+    expect(show).not.toHaveBeenCalled()
+  })
+
   it("saves JSON edits through config set and stops at the first value the tool refuses", async () => {
     const user = userEvent.setup()
     render(<ConfigPage />)

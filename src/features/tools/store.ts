@@ -5,6 +5,7 @@ import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
 import { useSystem } from "../system/store"
 import { installedOf, useCompat } from "./compat-store"
+import { readSaved, save } from "./saved"
 
 type LoadError = { message: string } | null
 
@@ -15,9 +16,14 @@ type ToolsState = {
   /** Keyed by the package owner's id (`ownerId`): a part's install is its owner's. */
   sessions: Record<string, InstallSession>
   expanded: string | null
+  /** A check is running; rows keep showing the last answer meanwhile. */
   refreshing: boolean
+  checkingLatest: boolean
+  /** The tools answered in this app session; until then `installs` may be the last session's. */
+  checked: boolean
   error: LoadError
-  refresh(): Promise<void>
+  /** `fresh` (Check again) asks every copy and npm again instead of reusing answers for unchanged programs. */
+  refresh(fresh?: boolean): Promise<void>
   /** Set when the last installed tool was just removed, so the app can offer to delete the data left behind. */
   offerClear: boolean
   install(id: string): Promise<void>
@@ -67,7 +73,7 @@ export const useTools = create<ToolsState>((set, get) => {
         outcome: { event: "failed", reason: "failed", message: message(e), hint: null },
       }))
     }
-    await redetect().catch(() => undefined)
+    await redetect(true).catch(() => undefined)
     if (operation === "install" && get().sessions[id]?.outcome?.event === "done")
       await useCompat.getState().checkAfterInstall(id, () => installedOf(get().installs))
     const st = get()
@@ -85,29 +91,45 @@ export const useTools = create<ToolsState>((set, get) => {
     return drain()
   }
 
-  const redetect = async () => {
-    const detected = await platform.detectTools()
-    set({ installs: Object.fromEntries(detected.map((d) => [d.id, d.installs])) })
+  // Only the real app keeps an answer across starts; the browser build's mock scenarios must each start clean.
+  const keep = platform.kind === "tauri"
+  const persist = () => {
+    if (!keep) return
+    const { installs, latest } = get()
+    save({ tools: Object.entries(installs).map(([id, copies]) => ({ id, installs: copies })), latest })
+  }
+  const saved = keep ? readSaved() : null
+
+  const redetect = async (fresh: boolean) => {
+    const detected = await platform.detectTools(fresh)
+    set({ installs: Object.fromEntries(detected.map((d) => [d.id, d.installs])), checked: true })
+    persist()
   }
 
   return {
-    installs: {},
-    latest: null,
+    installs: Object.fromEntries((saved?.tools ?? []).map((t) => [t.id, t.installs])),
+    latest: saved?.latest ?? null,
     sessions: {},
     offerClear: false,
     expanded: null,
     refreshing: false,
+    checkingLatest: false,
+    checked: false,
     error: null,
 
-    async refresh() {
-      set({ refreshing: true, error: null, latest: null })
+    async refresh(fresh = false) {
+      set({ refreshing: true, checkingLatest: true, error: null })
       // npm answers slowly, so the update check runs alongside detection instead of after it.
-      platform.latestVersions().then(
-        (latest) => set({ latest }),
-        () => set({ latest: {} }),
+      platform.latestVersions(fresh).then(
+        (latest) => {
+          set({ latest, checkingLatest: false })
+          persist()
+        },
+        () => set((st) => ({ latest: st.latest ?? {}, checkingLatest: false })),
       )
+      const system = useSystem.getState()
       try {
-        await Promise.all([useSystem.getState().refresh(), redetect()])
+        await Promise.all([fresh || !system.readiness ? system.refresh() : null, redetect(fresh)])
         useCompat.getState().load()
       } catch (e) {
         set({ error: { message: message(e) } })

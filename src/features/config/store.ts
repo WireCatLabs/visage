@@ -213,11 +213,16 @@ export const useConfig = create<ConfigState>((set, get) => {
         await get().chooseTarget({ profile: null })
         return
       }
+      const last = readLast().targets?.[id]
+      // The defaults need no profile list: it only confirms a remembered profile still exists. Asking for both at
+      // once saves a whole tool start.
+      const defaults = src.defaults && (last === null || last === undefined)
+      const shown = defaults ? get().chooseTarget({ profile: null }) : null
       try {
         const profiles = (await platform.listProfiles(id)) ?? []
         if (get().tool !== id) return
         set({ profiles })
-        const last = readLast().targets?.[id]
+        await shown
         const stillThere = last === null ? src.defaults : profiles.some((p) => p.name === last)
         const target = last !== undefined && stillThere ? { profile: last } : src.defaults ? { profile: null } : null
         if (target && !get().target) await get().chooseTarget(target)
