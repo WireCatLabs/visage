@@ -213,10 +213,20 @@ pub fn show(tool: &Tool) -> Result<SkillText, String> {
     let src = tool.skill.as_ref().ok_or(NO_SKILL)?;
     let (out, json) = call(tool, &src.show, Duration::from_secs(30))?;
     let item = json.as_ref().map(body).filter(|_| out.code == Some(0));
-    match item.and_then(|v| Some((v["name"].as_str()?, v["content"].as_str()?))) {
-        Some((name, content)) => Ok(SkillText { name: name.into(), content: content.into() }),
+    if let Some((name, content)) = item.and_then(|v| Some((v["name"].as_str()?, v["content"].as_str()?))) {
+        return Ok(SkillText { name: name.into(), content: content.into() });
+    }
+    // memo has no `--json` on `skill show` and prints the file itself.
+    match plain_skill(&out.stdout).filter(|_| out.code == Some(0)) {
+        Some(text) => Ok(text),
         None => Err(failure(&out, json.as_ref())),
     }
+}
+
+fn plain_skill(stdout: &str) -> Option<SkillText> {
+    let front = stdout.strip_prefix("---\n")?;
+    let name = front.lines().take_while(|l| *l != "---").find_map(|l| l.strip_prefix("name:"))?.trim();
+    Some(SkillText { name: name.into(), content: stdout.into() })
 }
 
 #[cfg(test)]
@@ -255,6 +265,14 @@ mod tests {
         assert_eq!(rows[0].state.as_deref(), Some("current"));
         assert_eq!(rows[1].installed, None);
         assert_eq!(from_status(&json!({"item": bare})), rows);
+    }
+
+    #[test]
+    fn reads_a_skill_printed_as_the_file_itself() {
+        let text = plain_skill("---\nname: cli-memo\ndescription: x\n---\n# Memo\n").unwrap();
+        assert_eq!(text.name, "cli-memo");
+        assert!(text.content.starts_with("---\nname: cli-memo"));
+        assert!(plain_skill("unknown option '--json'").is_none());
     }
 
     #[test]

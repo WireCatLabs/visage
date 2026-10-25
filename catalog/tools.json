@@ -360,8 +360,8 @@
       "setup": null,
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"],
-        "show": ["skill", "show", "--json"],
+        "install": ["skill", "install", "--for", "{target}"],
+        "show": ["skill", "show"],
         "doctorSkills": ["doctor", "--json"]
       },
       "mcp": null,

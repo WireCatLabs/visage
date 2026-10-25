@@ -314,6 +314,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 показать установленным. На машине: WireCat-серверов MCP ни у одного агента нет; tg 0.84 и wa 0.6 слишком старые для
 `mcp add`.
 
+- **BUG-6 · Обновление навыка Memo падает: «unknown option '--json'».** Скриншот Славы, Agents → «Update the Memo skill for Claude Code?». У memo нет общего `--json` (у tg/max/wa/zm/drive есть), и его `skill install`/`skill show` берутся из cli-base без `--json` (`/home/leemour/Projects/AI/cli-memo/src/program.ts:202-217`). Ни один выпущенный инструмент пока не знает `skill status` (cli-base #332 ещё не выпущен), поэтому статус идёт через `doctor`. Исправлено в приложении: для memo каталог зовёт `skill install`/`skill show` без `--json`, а `skills.rs` читает напечатанный SKILL.md как есть. В memo `--json` для `skill` — передано агенту выпуска.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
