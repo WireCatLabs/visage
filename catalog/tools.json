@@ -18,10 +18,19 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
+      "runs": {
+        "list": ["runs", "list", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": ["{profile}", "setup"],
       "storage": {
         "app": "tg-cli",
         "env": "TG"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set"],
+        "unset": ["{profile}", "config", "unset"]
       }
     },
     {
@@ -38,10 +47,19 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
+      "runs": {
+        "list": ["runs", "list", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": ["{profile}", "setup"],
       "storage": {
         "app": "max-cli",
         "env": "MAX"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set"],
+        "unset": ["{profile}", "config", "unset"]
       }
     },
     {
@@ -58,10 +76,19 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
+      "runs": {
+        "list": ["runs", "list", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": ["{profile}", "setup"],
       "storage": {
         "app": "whatsapp-cli",
         "env": "WA"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set"],
+        "unset": ["{profile}", "config", "unset"]
       }
     },
     {
@@ -78,10 +105,16 @@
         "shape": "item.profiles"
       },
       "doctor": ["{profile}", "session", "status", "--json"],
+      "runs": null,
       "setup": ["{profile}", "session", "start"],
       "storage": {
         "app": "zm",
         "env": "ZM"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set"],
+        "unset": ["{profile}", "config", "unset"]
       }
     },
     {
@@ -98,10 +131,16 @@
         "shape": "item.items"
       },
       "doctor": ["{profile}", "status", "--json"],
+      "runs": null,
       "setup": ["{profile}", "session", "start"],
       "storage": {
         "app": "drive-cli",
         "env": "DRIVE"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set"],
+        "unset": ["{profile}", "config", "unset"]
       }
     },
     {
@@ -115,11 +154,13 @@
       "repo": "https://github.com/WireCatLabs/cli-memo",
       "profiles": null,
       "doctor": ["doctor", "--json"],
+      "runs": null,
       "setup": null,
       "storage": {
         "app": "cli-memo",
         "env": "MEMO"
-      }
+      },
+      "settings": null
     }
   ],
   "sharedStorage": {

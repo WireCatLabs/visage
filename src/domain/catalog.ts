@@ -12,8 +12,10 @@ const ToolSchema = v.object({
   repo: v.pipe(v.string(), v.url()),
   profiles: v.nullable(v.object({ args: v.array(v.string()), shape: v.string() })),
   doctor: v.array(v.string()),
+  runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
   setup: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),
+  settings: v.nullable(v.object({ show: v.array(v.string()), set: v.array(v.string()), unset: v.array(v.string()) })),
 })
 
 const CatalogSchema = v.object({

@@ -3,6 +3,8 @@ mod install;
 mod paths;
 mod redact;
 mod run;
+mod runs;
+mod settings;
 mod storage;
 mod system;
 mod terminal;
@@ -83,6 +85,42 @@ async fn open_folder(id: String, kind: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn list_runs(id: String, query: Option<String>) -> Result<serde_json::Value, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || runs::list(tool, query.as_deref())).await?
+}
+
+#[tauri::command]
+async fn show_run(id: String, run: String) -> Result<serde_json::Value, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || runs::show(tool, &run)).await?
+}
+
+#[tauri::command]
+async fn settings_show(id: String, profile: String) -> Result<serde_json::Value, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || settings::show(tool, &profile)).await?
+}
+
+#[tauri::command]
+async fn settings_set(
+    id: String,
+    profile: String,
+    defaults: bool,
+    setting: String,
+    value: String,
+) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || settings::set(tool, &profile, defaults, &setting, &value)).await?
+}
+
+#[tauri::command]
+async fn settings_unset(id: String, profile: String, defaults: bool, setting: String) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || settings::unset(tool, &profile, defaults, &setting)).await?
+}
+
+#[tauri::command]
 fn cancel_install(id: String, running: State<'_, Arc<Running>>) {
     running.cancel(&id);
 }
@@ -113,6 +151,11 @@ pub fn run() {
             storage_report,
             clear_storage,
             open_folder,
+            list_runs,
+            show_run,
+            settings_show,
+            settings_set,
+            settings_unset,
             open_setup
         ])
         .run(tauri::generate_context!())

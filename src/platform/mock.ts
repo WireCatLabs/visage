@@ -1,3 +1,5 @@
+import { runsMock } from "./mock-runs"
+import { settingsMock } from "./mock-settings"
 import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, ToolState } from "./schemas"
 import type { Platform } from "./types"
 
@@ -226,6 +228,8 @@ export function createMock(os: Platform["os"]): Platform {
       cancelled = true
     },
     async openSetup() {},
+    ...runsMock,
+    ...settingsMock,
     async openUrl(url) {
       window.open(url, "_blank", "noopener")
     },

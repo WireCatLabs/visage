@@ -17,8 +17,25 @@ pub struct Tool {
     pub package: String,
     pub profiles: Option<ProfileSource>,
     pub doctor: Vec<String>,
+    pub runs: Option<RunsSource>,
     pub setup: Option<Vec<String>>,
     pub storage: Storage,
+    pub settings: Option<SettingsSource>,
+}
+
+/// The tool's own run-log commands; `{run}` is a validated run id.
+#[derive(Debug, Deserialize)]
+pub struct RunsSource {
+    pub list: Vec<String>,
+    pub show: Vec<String>,
+}
+
+/// The tool's own settings commands; saving always goes through `set`/`unset` so the CLI validates each value.
+#[derive(Debug, Deserialize)]
+pub struct SettingsSource {
+    pub show: Vec<String>,
+    pub set: Vec<String>,
+    pub unset: Vec<String>,
 }
 
 /// The folder name and environment prefix a tool passes to cli-base's `resolvePaths`.

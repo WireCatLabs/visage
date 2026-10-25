@@ -1,4 +1,6 @@
+import type { RunDetail, RunsPage } from "./runs-schemas"
 import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, StorageFolder, ToolState } from "./schemas"
+import type { Settings } from "./settings-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
@@ -18,6 +20,12 @@ export type Platform = {
   clearStorage(id: string): Promise<void>
   openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
+  listRuns(id: string, query: string | null): Promise<RunsPage>
+  showRun(id: string, run: string): Promise<RunDetail>
+  /** `defaults` changes what every profile gets instead of one profile. */
+  settingsShow(id: string, profile: string): Promise<Settings>
+  settingsSet(id: string, profile: string, defaults: boolean, setting: string, value: string): Promise<void>
+  settingsUnset(id: string, profile: string, defaults: boolean, setting: string): Promise<void>
   openUrl(url: string): Promise<void>
   window(action: WindowAction): Promise<void>
 }

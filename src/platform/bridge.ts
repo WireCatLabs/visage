@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
 import { createMock } from "./mock"
+import { RunDetailSchema, RunsPageSchema } from "./runs-schemas"
 import {
   DiagnosisSchema,
   InstallEventSchema,
@@ -12,6 +13,7 @@ import {
   StorageSchema,
   ToolStatesSchema,
 } from "./schemas"
+import { SettingsSchema } from "./settings-schemas"
 import type { Platform } from "./types"
 
 const call = async <S extends v.GenericSchema>(schema: S, cmd: string, args?: Record<string, unknown>) =>
@@ -46,6 +48,12 @@ function createTauri(): Platform {
     openFolder: (id, kind) => invoke("open_folder", { id, kind }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
+    listRuns: (id, query) => call(RunsPageSchema, "list_runs", { id, query }),
+    showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
+    settingsShow: (id, profile) => call(SettingsSchema, "settings_show", { id, profile }),
+    settingsSet: (id, profile, defaults, setting, value) =>
+      invoke("settings_set", { id, profile, defaults, setting, value }),
+    settingsUnset: (id, profile, defaults, setting) => invoke("settings_unset", { id, profile, defaults, setting }),
     openUrl: (url) => openUrl(url),
     window: async (action) => {
       const w = getCurrentWindow()
