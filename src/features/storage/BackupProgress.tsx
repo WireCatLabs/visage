@@ -35,9 +35,14 @@ export function BackupProgress({ progress, onCancel }: { progress: Progress; onC
       <span className="w-[3rem] shrink-0 text-right font-mono text-[0.875rem] tabular-nums text-ink-soft">
         {unknown ? "" : `${pct}%`}
       </span>
-      <Button variant="ghost" size="sm" onClick={onCancel}>
-        Cancel
-      </Button>
+      {/* Stopping the tool mid-seal leaves its plain copy of the whole store beside it, so sealing runs to the end. */}
+      {unknown ? (
+        <span className="w-[4.6rem] shrink-0 text-right text-[0.8rem] text-ink-dim">Can't stop</span>
+      ) : (
+        <Button variant="ghost" size="sm" className="w-[4.6rem]" onClick={onCancel}>
+          Cancel
+        </Button>
+      )}
     </div>
   )
 }
