@@ -42,7 +42,7 @@ colors:
 typography:
   display:
     fontFamily: '"Unbounded Variable", "Unbounded", system-ui, sans-serif'
-    fontSize: "2.85rem"
+    fontSize: "2.1rem"
     fontWeight: 800
     lineHeight: 1
     letterSpacing: "-0.035em"
@@ -52,12 +52,12 @@ typography:
     fontWeight: 600
   title:
     fontFamily: '"Onest Variable", "Onest", system-ui, sans-serif'
-    fontSize: "1.18rem"
+    fontSize: "1.08rem"
     fontWeight: 600
     lineHeight: 1.25
   nav:
     fontFamily: '"Onest Variable", "Onest", system-ui, sans-serif'
-    fontSize: "1.15rem"
+    fontSize: "1rem"
     fontWeight: 400
   body:
     fontFamily: '"Onest Variable", "Onest", system-ui, sans-serif'
@@ -105,8 +105,8 @@ components:
     textColor: "{colors.brand-ink}"
     typography: "{typography.button}"
     rounded: "{rounded.button}"
-    height: "2.75rem"
-    padding: "0 1.35rem"
+    height: "2.4rem"
+    padding: "0 1.1rem"
   button-primary-hover:
     backgroundColor: "{colors.light-brand-hover}"
   button-secondary:
@@ -114,8 +114,8 @@ components:
     textColor: "{colors.light-ink}"
     typography: "{typography.button}"
     rounded: "{rounded.button}"
-    height: "2.75rem"
-    padding: "0 1.35rem"
+    height: "2.4rem"
+    padding: "0 1.1rem"
   button-secondary-hover:
     backgroundColor: "{colors.light-app-2}"
   button-ghost:
@@ -129,7 +129,7 @@ components:
     textColor: "{colors.light-bad}"
     typography: "{typography.button}"
     rounded: "{rounded.button}"
-    height: "2.75rem"
+    height: "2.4rem"
   button-sm:
     rounded: "{rounded.control}"
     height: "2rem"
@@ -139,7 +139,7 @@ components:
     rounded: "{rounded.rack}"
   rack-row:
     padding: "0 1.3rem"
-    height: "5.75rem"
+    height: "4.5rem"
   row-panel:
     backgroundColor: "{colors.light-app-2}"
     padding: "1.4rem 1.3rem"
@@ -188,7 +188,7 @@ components:
   nav-item:
     textColor: "{colors.light-ink-soft}"
     typography: "{typography.nav}"
-    height: "3.1rem"
+    height: "2.6rem"
     padding: "0 1.5rem"
   nav-item-active:
     textColor: "{colors.light-ink}"
@@ -297,11 +297,11 @@ The app follows the site's purple, wall, ink and `app-3` values exactly in light
 
 ## Layout
 
-The window is a fixed shell: a sidebar on the `wall` (13.5rem, 16.6rem from the `xl` breakpoint at 1280px), and a content column with a 3.3rem top bar (window controls, drag region), a 3.9rem "Your computer" readiness strip, and a scrolling page. The body never scrolls; only the page region does. The default window is 1280×840 and the minimum is 960×640 ([src-tauri/tauri.conf.json](src-tauri/tauri.conf.json)).
+The window is a fixed shell: a sidebar on the `wall` (12rem, 13.5rem from the `xl` breakpoint at 1280px), and a content column with a 3.3rem top bar (window controls, drag region), a 3.9rem "Your computer" readiness strip, and a scrolling page. The body never scrolls; only the page region does. The default window is 1280×840 and the minimum is 960×640 ([src-tauri/tauri.conf.json](src-tauri/tauri.conf.json)).
 
-The root font size is fluid, `clamp(13.5px, 0.6rem + 0.45vw, 16.5px)` on `html`, and every size in the app is in rem, so the whole interface grows and shrinks with the window like native content. All spacing tokens above scale with it.
+The root font size is fluid, `clamp(11.5px, 0.5rem + 0.35vw, 13.5px)` (about 12.5px in the default window; the owner asked for a denser interface) on `html`, and every size in the app is in rem, so the whole interface grows and shrinks with the window like native content. All spacing tokens above scale with it.
 
-A page is a vertical stack with a 1.5rem gap and a 2.1rem side gutter: title row (title left, a quiet secondary action right, bottom-aligned), then any notice banners, then the rack. The rack row is a five-column grid: lamp, icon, name and tagline (flexible), version, action. The fixed columns widen and the gap grows from 0.9rem to 1.2rem at `xl`. Rows are at least 5.75rem tall. The Storage rack uses the same frame with four columns (icon, name and folders, size, action).
+A page is a vertical stack with a 1.5rem gap and a 2.1rem side gutter: title row (title left, a quiet secondary action right, bottom-aligned), then any notice banners, then the rack. The rack row is a five-column grid: lamp, icon, name and tagline (flexible), version, action. The fixed columns widen and the gap grows from 0.9rem to 1.2rem at `xl`. Rows are at least 4.5rem tall. The Storage rack uses the same frame with four columns (icon, name and folders, size, action).
 
 A row expands in place: the panel under it opens by animating grid rows from 0fr to 1fr over 300ms with the quart ease-out. The details panel becomes two columns from `lg` (1024px), about and links on the left, profiles and health on the right.
 
@@ -327,7 +327,7 @@ Corners are nearly square and grow slightly with how "detached" an element is: t
 
 ### Buttons
 
-- **Shape:** gently squared (0.4rem; 0.35rem in the small size), 1px border, 2.75rem tall (2rem small).
+- **Shape:** gently squared (0.4rem; 0.35rem in the small size), 1px border, 2.4rem tall (2rem small).
 - **Primary:** filled purple with white text. Used for Install, Update to x, Get Node.js, and Done after an operation.
 - **Secondary:** white surface, `line-strong` border; hover moves to `app-2`. Used for Manage, Cancel, Try again, Check health. The row action keeps a minimum width of 7.6rem so the column stays steady between states.
 - **Ghost:** no fill, `ink-soft`; hover fills `app-3`. Used for Keep it, Close, Check, Sign in.
