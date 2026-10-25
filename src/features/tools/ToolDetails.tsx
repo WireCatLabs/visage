@@ -7,6 +7,7 @@ import { CopyField } from "@/ui/CopyField"
 import { Dialog } from "@/ui/Dialog"
 import { Pill } from "@/ui/Pill"
 import { Health } from "./Health"
+import { Permissions } from "./Permissions"
 import { useTools } from "./store"
 
 function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: boolean; onClose: () => void }) {
@@ -107,6 +108,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
       ) : (
         <p className="text-[0.95rem] text-ink-soft">Install {tool.name} to connect an account and run health checks.</p>
       )}
+      {installs.length > 0 && tool.permissions && <Permissions tool={tool} />}
     </div>
   )
 }

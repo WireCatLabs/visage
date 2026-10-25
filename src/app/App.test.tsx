@@ -62,7 +62,8 @@ describe("WireCat Desktop", () => {
       .closest("li")
     if (!tg) throw new Error("no Telegram row")
     await user.click(await within(tg).findByRole("button", { name: /Manage/ }))
-    const personal = (await within(tg).findByText("personal")).closest("li")
+    const health = await within(tg).findByRole("region", { name: "Telegram accounts and health" })
+    const personal = (await within(health).findByText("personal")).closest("li")
     if (!personal) throw new Error("no personal profile")
     await user.click(within(personal).getByRole("button", { name: "Check" }))
 

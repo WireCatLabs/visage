@@ -50,7 +50,7 @@ fn source(tool: &Tool) -> Result<&SettingsSource, String> {
 }
 
 /// `None` is the defaults every profile gets; the `{profile}` word is then left out.
-fn args_for(template: &[String], profile: Option<&str>) -> Result<Vec<String>, String> {
+pub(crate) fn args_for(template: &[String], profile: Option<&str>) -> Result<Vec<String>, String> {
     if let Some(p) = profile {
         catalog::validate_profile(p)?;
     }
@@ -83,18 +83,18 @@ fn validate_value(value: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn run_tool(tool: &Tool, args: &[String]) -> Result<run::Output, String> {
+pub(crate) fn run_tool(tool: &Tool, args: &[String]) -> Result<run::Output, String> {
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_mins(1)).map_err(|e| e.to_string())
 }
 
-fn parsed(out: &run::Output) -> Option<Value> {
+pub(crate) fn parsed(out: &run::Output) -> Option<Value> {
     out.json()
 }
 
 /// The CLI's own message, so a rejected value is explained in the tool's words.
-fn failure(out: &run::Output, json: Option<&Value>) -> String {
+pub(crate) fn failure(out: &run::Output, json: Option<&Value>) -> String {
     if let Some(m) = json.and_then(|v| v["error"]["message"].as_str()) {
         return redact::text(m);
     }
@@ -153,7 +153,7 @@ pub fn unset(tool: &Tool, profile: Option<&str>, defaults: bool, setting: &str) 
     change(tool, template, profile, defaults, &[setting])
 }
 
-fn origin_of(from: &str, env_prefix: &str) -> Origin {
+pub(crate) fn origin_of(from: &str, env_prefix: &str) -> Origin {
     let is_env_name =
         from.starts_with(&format!("{env_prefix}_")) && from.chars().all(|c| c.is_ascii_uppercase() || c == '_');
     match from {

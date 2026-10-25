@@ -5,6 +5,7 @@ import * as v from "valibot"
 import { AgentsSchema, SkillReportSchema, SkillWrittenSchema } from "./agents-schemas"
 import { StoreCheckSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { createMock } from "./mock"
+import { PermissionsSchema } from "./permissions-schemas"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
 import { RunDetailSchema, RunsPageSchema } from "./runs-schemas"
 import {
@@ -78,6 +79,7 @@ function createTauri(): Platform {
     settingsSet: (id, profile, defaults, setting, value) =>
       invoke("settings_set", { id, profile, defaults, setting, value }),
     settingsUnset: (id, profile, defaults, setting) => invoke("settings_unset", { id, profile, defaults, setting }),
+    permissionsShow: (id, profile) => call(PermissionsSchema, "permissions_show", { id, profile }),
     openUrl: (url) => openUrl(url),
     window: async (action) => {
       const w = getCurrentWindow()

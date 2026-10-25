@@ -1,6 +1,7 @@
 import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
 import { storeCheckMock, storeInfoMock, storeTablesMock } from "./mock-archive"
+import { permissionsMock } from "./mock-permissions"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
@@ -477,6 +478,7 @@ export function createMock(os: Platform["os"]): Platform {
     ...reportMock,
     ...runsMock,
     ...settingsMock,
+    ...permissionsMock(settingsMock),
     async openUrl(url) {
       window.open(url, "_blank", "noopener")
     },

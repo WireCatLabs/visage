@@ -52,6 +52,13 @@ const ToolSchema = v.object({
       readOnly: v.array(v.string()),
     }),
   ),
+  /** Each group is a top-level command word that is also a permission key `config set` accepts. */
+  permissions: v.optional(
+    v.object({
+      commands: v.array(v.string()),
+      groups: v.array(v.object({ key: v.pipe(v.string(), v.regex(/^[a-z][a-z-]*$/)), label: v.string() })),
+    }),
+  ),
 })
 
 const CatalogSchema = v.object({
@@ -108,6 +115,7 @@ export function doctorCommand(t: CatalogTool, profile: string | null): string {
 }
 
 export type SettingsSource = NonNullable<CatalogTool["settings"]>
+export type PermissionGroup = NonNullable<CatalogTool["permissions"]>["groups"][number]
 
 export const doctorNeedsProfile = (t: CatalogTool) => t.doctor.includes("{profile}")
 

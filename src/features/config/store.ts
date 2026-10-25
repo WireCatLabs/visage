@@ -45,14 +45,14 @@ type ConfigState = {
 // Only what the owner picked last time; a profile is never chosen for them, the shared defaults are.
 const LAST = "wirecat.config.last"
 type Last = { tool?: string; targets?: Record<string, string | null> }
-function readLast(): Last {
+export function readLast(): Last {
   try {
     return JSON.parse(localStorage.getItem(LAST) ?? "{}") as Last
   } catch {
     return {}
   }
 }
-function remember(f: (last: Last) => Last) {
+export function remember(f: (last: Last) => Last) {
   try {
     localStorage.setItem(LAST, JSON.stringify(f(readLast())))
   } catch {

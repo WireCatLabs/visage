@@ -22,6 +22,8 @@ pub struct Tool {
     pub setup: Option<Vec<String>>,
     pub storage: Storage,
     pub settings: Option<SettingsSource>,
+    /// Only for tools whose `config show` reports `permissions` levels.
+    pub permissions: Option<PermissionsSource>,
     pub skill: Option<SkillSource>,
     /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
     pub part_of: Option<String>,
@@ -33,6 +35,12 @@ pub struct Tool {
     pub store_table_sizes: Option<Vec<String>>,
     /// `store check`: integrity and the other health checks; a minute or more on a large archive.
     pub store_check: Option<Vec<String>>,
+}
+
+/// `commands` lists every command with its effects and, from cli-core 0.408, whether the profile may run it.
+#[derive(Debug, Deserialize)]
+pub struct PermissionsSource {
+    pub commands: Vec<String>,
 }
 
 /// The tool's own skill commands; `{target}` is a validated install place.

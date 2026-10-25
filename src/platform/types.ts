@@ -1,5 +1,6 @@
 import type { Agent, SkillReport, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
+import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
 import type {
@@ -66,6 +67,8 @@ export type Platform = {
   /** `defaults` changes what every profile gets instead of one profile. Rejects with the tool's own message. */
   settingsSet(id: string, profile: string | null, defaults: boolean, setting: string, value: string): Promise<void>
   settingsUnset(id: string, profile: string | null, defaults: boolean, setting: string): Promise<void>
+  /** Levels the owner set, plus per-command access when the tool reports it. Saved with `settingsSet`. */
+  permissionsShow(id: string, profile: string | null): Promise<Permissions>
   openUrl(url: string): Promise<void>
   window(action: WindowAction): Promise<void>
 }

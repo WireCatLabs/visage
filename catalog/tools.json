@@ -46,6 +46,21 @@
         "keys": null,
         "readOnly": ["default_profile"]
       },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "topics", "label": "Topics" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" },
+          { "key": "bot", "label": "Bot" }
+        ]
+      },
       "signIn": {
         "gives": "Lets your agent read and search your Telegram chats, and send messages when you ask.",
         "asks": "The first time, your phone number and the code Telegram sends, to register your own Telegram app. Then a QR code to scan in Telegram: Settings → Devices → Link Desktop Device."
@@ -93,6 +108,20 @@
         "keys": null,
         "readOnly": ["default_profile"]
       },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" },
+          { "key": "bot", "label": "Bot" }
+        ]
+      },
       "signIn": {
         "gives": "Lets your agent read and search your MAX chats, and send messages when you ask.",
         "asks": "A QR code to scan with the MAX app on your phone."
@@ -139,6 +168,20 @@
         "jsonValues": false,
         "keys": null,
         "readOnly": ["default_profile"]
+      },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" },
+          { "key": "bot", "label": "Bot" }
+        ]
       },
       "signIn": {
         "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",

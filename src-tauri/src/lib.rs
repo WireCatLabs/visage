@@ -3,6 +3,7 @@ mod catalog;
 mod install;
 mod node;
 mod paths;
+mod permissions;
 mod profile;
 mod redact;
 mod report;
@@ -225,6 +226,13 @@ async fn settings_unset(id: String, profile: Option<String>, defaults: bool, set
     blocking(move || settings::unset(tool, profile.as_deref(), defaults, &setting)).await?
 }
 
+/// Saving goes through `settings_set` / `settings_unset` with a `permissions.<key>` setting.
+#[tauri::command]
+async fn permissions_show(id: String, profile: Option<String>) -> Result<permissions::Permissions, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || permissions::show(tool, profile.as_deref())).await?
+}
+
 #[tauri::command]
 async fn report_context() -> Result<report::Context, String> {
     blocking(report::context).await
@@ -286,6 +294,7 @@ pub fn run() {
             settings_show,
             settings_set,
             settings_unset,
+            permissions_show,
             open_setup
         ])
         .run(tauri::generate_context!())
