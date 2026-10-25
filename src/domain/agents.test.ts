@@ -101,6 +101,13 @@ describe("buildCheck", () => {
     expect(by("skill:unknown")?.title).toBe("MAX cannot report its skill")
     expect(items.some((i) => i.id.startsWith("mcp:"))).toBe(false)
     expect(overall(items)).toBe("bad")
+    expect(overall(items, base.tools)).toBe("warn")
+    expect(
+      overall(
+        items,
+        base.tools.filter((t) => t.id === "zm"),
+      ),
+    ).toBe("bad")
   })
 
   it("is fine when everything answers", () => {

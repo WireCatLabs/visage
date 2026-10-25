@@ -270,8 +270,15 @@ function skillItem(tool: CheckTool, agentName: string, target: SkillTarget, cell
   }
 }
 
-export function overall(items: readonly CheckItem[]): Tone {
-  if (items.some((i) => i.tone === "bad")) return "bad"
+const toolOf = (item: CheckItem) => item.id.split(/[:/]/)[0]
+
+/** Red only when the agent can use none of its tools; a fault in some of them is something to set up. */
+export function overall(items: readonly CheckItem[], tools?: readonly { id: string }[]): Tone {
+  const bad = items.filter((i) => i.tone === "bad")
+  if (bad.length > 0) {
+    const broken = new Set(bad.map(toolOf))
+    return tools && tools.some((t) => !broken.has(t.id)) ? "warn" : "bad"
+  }
   if (items.some((i) => i.tone === "warn")) return "warn"
   return items.some((i) => i.tone === "ok") ? "ok" : "idle"
 }

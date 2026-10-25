@@ -203,7 +203,14 @@ export function AgentsPage() {
                     sessions={c.sessions}
                     claims={c.claims}
                     items={c.items}
-                    tone={c.items ? overall(c.items) : null}
+                    tone={
+                      c.items
+                        ? overall(
+                            c.items,
+                            c.tools.map((t) => t.tool),
+                          )
+                        : null
+                    }
                     selected={expanded === c.agent.id}
                     onManage={() => manage(c.agent.id)}
                   />
@@ -221,7 +228,14 @@ export function AgentsPage() {
           sessions={open.sessions}
           claims={open.claims}
           items={open.items}
-          tone={open.items ? overall(open.items) : null}
+          tone={
+            open.items
+              ? overall(
+                  open.items,
+                  open.tools.map((t) => t.tool),
+                )
+              : null
+          }
           onClose={() => {
             const name = open.agent.name
             setExpanded(null)
