@@ -13,3 +13,4 @@
 - 2026-10-25 · .claude/worktrees/agent-adf351362a7126c0b, agent-a449a71a65950a620 and their branches — merged
 - 2026-10-25 · .claude/worktrees/agent-a866c6643add56fda (feat/logs-layout-shift), agent-aa7c442677aa6c3e0, agent-a71e4c2e153fd3c7b (fix/onboarding-layout-shift) — merged
 - 2026-10-25 · .claude/worktrees/agent-aa4df2faabe3b5073 (fix/storage-layout-shift) — merged
+- 2026-10-25 · .claude/worktrees/agent-a5dd59ec5b8499746 and its branch — merged
