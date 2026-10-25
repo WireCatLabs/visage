@@ -1,0 +1,450 @@
+{
+ "regions": [
+  {
+   "id": "logo",
+   "kind": "chrome",
+   "box": {
+    "x": 0.0156,
+    "y": 0.0625,
+    "w": 0.1185,
+    "h": 0.0527
+   },
+   "note": "purple WireCat monogram and bold rounded wordmark",
+   "grid": "A0:B1"
+  },
+  {
+   "id": "window-controls",
+   "kind": "control",
+   "box": {
+    "x": 0.8932,
+    "y": 0.0117,
+    "w": 0.0964,
+    "h": 0.0312
+   },
+   "note": "minimise, maximise and close glyphs",
+   "grid": "I0:J0"
+  },
+  {
+   "id": "readiness",
+   "kind": "text",
+   "box": {
+    "x": 0.1986,
+    "y": 0.0645,
+    "w": 0.4102,
+    "h": 0.0312
+   },
+   "note": "Your computer label then three green lamps: Linux, Node.js 24.19.0, npm 11.6 in mono",
+   "grid": "B0:G0"
+  },
+  {
+   "id": "title",
+   "kind": "text",
+   "box": {
+    "x": 0.1986,
+    "y": 0.1328,
+    "w": 0.1055,
+    "h": 0.0547
+   },
+   "note": "Tools heading in wide heavy display face",
+   "grid": "B1:D1"
+  },
+  {
+   "id": "nav-tools",
+   "kind": "control",
+   "box": {
+    "x": 0.0,
+    "y": 0.1875,
+    "w": 0.1706,
+    "h": 0.0508
+   },
+   "note": "active nav item Tools with wrench icon and purple left bar",
+   "grid": "A1:B2"
+  },
+  {
+   "id": "nav-accounts",
+   "kind": "control",
+   "box": {
+    "x": 0.0156,
+    "y": 0.2617,
+    "w": 0.1471,
+    "h": 0.041
+   },
+   "note": "dimmed nav item Accounts with Soon pill",
+   "grid": "A2:B3"
+  },
+  {
+   "id": "nav-memory",
+   "kind": "control",
+   "box": {
+    "x": 0.0156,
+    "y": 0.332,
+    "w": 0.1471,
+    "h": 0.041
+   },
+   "note": "dimmed nav item Memory with Soon pill",
+   "grid": "A3:B3"
+  },
+  {
+   "id": "app-version",
+   "kind": "text",
+   "box": {
+    "x": 0.0143,
+    "y": 0.9414,
+    "w": 0.0312,
+    "h": 0.0273
+   },
+   "note": "app version 0.1.0",
+   "grid": "A9:A9"
+  },
+  {
+   "id": "tg-mark",
+   "kind": "control",
+   "grid": "C2:C2",
+   "box": {
+    "x": 0.2096,
+    "y": 0.2246,
+    "w": 0.0716,
+    "h": 0.0703
+   },
+   "note": "status lamp and line icon (tg)"
+  },
+  {
+   "id": "tg-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.2246,
+    "w": 0.1953,
+    "h": 0.0703
+   },
+   "note": "bold tool name with mono command above a one-line description (tg)",
+   "grid": "C2:E2"
+  },
+  {
+   "id": "tg-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.2441,
+    "w": 0.0944,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (tg)",
+   "grid": "H2:I2"
+  },
+  {
+   "id": "tg-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8789,
+    "y": 0.2373,
+    "w": 0.0794,
+    "h": 0.0449
+   },
+   "note": "Manage button",
+   "grid": "I2:J2"
+  },
+  {
+   "id": "max-mark",
+   "kind": "control",
+   "grid": "C3:C3",
+   "box": {
+    "x": 0.2096,
+    "y": 0.3184,
+    "w": 0.0716,
+    "h": 0.0703
+   },
+   "note": "status lamp and line icon (max)"
+  },
+  {
+   "id": "max-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.3184,
+    "w": 0.1953,
+    "h": 0.0703
+   },
+   "note": "bold tool name with mono command above a one-line description (max)",
+   "grid": "C3:E3"
+  },
+  {
+   "id": "max-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.3379,
+    "w": 0.0944,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (max)",
+   "grid": "H3:I3"
+  },
+  {
+   "id": "max-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8789,
+    "y": 0.3311,
+    "w": 0.0794,
+    "h": 0.0449
+   },
+   "note": "Manage button",
+   "grid": "I3:J3"
+  },
+  {
+   "id": "wa-mark",
+   "kind": "control",
+   "grid": "C4:C4",
+   "box": {
+    "x": 0.2096,
+    "y": 0.4131,
+    "w": 0.0716,
+    "h": 0.0703
+   },
+   "note": "status lamp and line icon (wa)"
+  },
+  {
+   "id": "wa-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.4131,
+    "w": 0.1953,
+    "h": 0.0703
+   },
+   "note": "bold tool name with mono command above a one-line description (wa)",
+   "grid": "C4:E4"
+  },
+  {
+   "id": "wa-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.4326,
+    "w": 0.0944,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (wa)",
+   "grid": "H4:I4"
+  },
+  {
+   "id": "wa-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8464,
+    "y": 0.4258,
+    "w": 0.112,
+    "h": 0.0449
+   },
+   "note": "Update to 0.7.0 button",
+   "grid": "I4:J4"
+  },
+  {
+   "id": "zm-mark",
+   "kind": "control",
+   "grid": "C5:C5",
+   "box": {
+    "x": 0.2096,
+    "y": 0.5068,
+    "w": 0.0716,
+    "h": 0.0703
+   },
+   "note": "status lamp and line icon (zm)"
+  },
+  {
+   "id": "zm-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.5068,
+    "w": 0.1953,
+    "h": 0.0703
+   },
+   "note": "bold tool name with mono command above a one-line description (zm)",
+   "grid": "C5:E5"
+  },
+  {
+   "id": "zm-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.5264,
+    "w": 0.0944,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (zm)",
+   "grid": "H5:I5"
+  },
+  {
+   "id": "zm-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8789,
+    "y": 0.5195,
+    "w": 0.0794,
+    "h": 0.0449
+   },
+   "note": "Manage button",
+   "grid": "I5:J5"
+  },
+  {
+   "id": "drive-mark",
+   "kind": "control",
+   "grid": "C5:C6",
+   "box": {
+    "x": 0.2096,
+    "y": 0.5977,
+    "w": 0.0716,
+    "h": 0.0703
+   },
+   "note": "status lamp and line icon (drive)"
+  },
+  {
+   "id": "drive-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.5977,
+    "w": 0.1953,
+    "h": 0.0703
+   },
+   "note": "bold tool name with mono command above a one-line description (drive)",
+   "grid": "C5:E6"
+  },
+  {
+   "id": "drive-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.6172,
+    "w": 0.0977,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (drive)",
+   "grid": "H6:I6"
+  },
+  {
+   "id": "drive-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8789,
+    "y": 0.6104,
+    "w": 0.0794,
+    "h": 0.0449
+   },
+   "note": "Install button",
+   "grid": "I6:J6"
+  },
+  {
+   "id": "memo-mark",
+   "kind": "control",
+   "grid": "C8:C9",
+   "box": {
+    "x": 0.2096,
+    "y": 0.8594,
+    "w": 0.0716,
+    "h": 0.0742
+   },
+   "note": "status lamp and line icon (memo)"
+  },
+  {
+   "id": "memo-name",
+   "kind": "text",
+   "box": {
+    "x": 0.2904,
+    "y": 0.8594,
+    "w": 0.1953,
+    "h": 0.0742
+   },
+   "note": "bold tool name with mono command above a one-line description (memo)",
+   "grid": "C8:E9"
+  },
+  {
+   "id": "memo-version",
+   "kind": "text",
+   "box": {
+    "x": 0.7591,
+    "y": 0.8789,
+    "w": 0.0944,
+    "h": 0.0312
+   },
+   "note": "installed version in mono (memo)",
+   "grid": "H8:I9"
+  },
+  {
+   "id": "memo-action",
+   "kind": "control",
+   "box": {
+    "x": 0.8789,
+    "y": 0.8721,
+    "w": 0.0794,
+    "h": 0.0449
+   },
+   "note": "Fix button",
+   "grid": "I8:J9"
+  },
+  {
+   "id": "progress",
+   "kind": "control",
+   "box": {
+    "x": 0.2148,
+    "y": 0.7051,
+    "w": 0.651,
+    "h": 0.0801
+   },
+   "note": "install stepper: Checking requirements done, Installing active purple, Verifying, Done",
+   "grid": "C7:I7"
+  },
+  {
+   "id": "show-log",
+   "kind": "text",
+   "box": {
+    "x": 0.2201,
+    "y": 0.7988,
+    "w": 0.0521,
+    "h": 0.0273
+   },
+   "note": "Show log link in purple",
+   "grid": "C7:C8"
+  },
+  {
+   "id": "sidebar-rule",
+   "kind": "chrome",
+   "grid": "B0:B9",
+   "box": {
+    "x": 0.1732,
+    "y": 0.0,
+    "w": 0.0052,
+    "h": 1.0
+   },
+   "note": "hairline separating sidebar from main area"
+  },
+  {
+   "id": "titlebar-rule",
+   "kind": "chrome",
+   "grid": "B0:J0",
+   "box": {
+    "x": 0.1771,
+    "y": 0.0488,
+    "w": 0.8229,
+    "h": 0.0059
+   },
+   "note": "hairline under the top strip"
+  },
+  {
+   "id": "rack-frame",
+   "kind": "chrome",
+   "grid": "B2:J9",
+   "box": {
+    "x": 0.1992,
+    "y": 0.2109,
+    "w": 0.7773,
+    "h": 0.7344
+   },
+   "note": "single hairline frame around the six module rows with row dividers",
+   "container": true
+  }
+ ],
+ "allowUncovered": true
+}

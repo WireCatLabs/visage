@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm -s typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm -s lint)",
+      "Bash(pnpm lint:fix)",
+      "Bash(pnpm test)",
+      "Bash(pnpm -s test)",
+      "Bash(pnpm check)",
+      "Bash(pnpm rust:fmt)",
+      "Bash(pnpm rust:lint)",
+      "Bash(pnpm rust:test)",
+      "Bash(node scripts/capture.mjs *)",
+      "Bash(npm view *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "deny": ["Bash(sudo)", "Bash(sudo *)", "Bash(npm install -g *)", "Bash(pnpm add -g *)"]
+  }
+}

@@ -1,0 +1,2173 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-10-25T02:44:44.451Z",
+  "comp": ".impeccable/mocks/decision/rack.png",
+  "warnings": [
+    "region rack-frame: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)"
+  ],
+  "uncoveredInkCells": [
+    "A0",
+    "B0",
+    "A2",
+    "D9"
+  ],
+  "compSize": {
+    "width": 1536,
+    "height": 1024
+  },
+  "aspect": 1.5,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#f8f8f8",
+      "coverage": 0.9746
+    },
+    {
+      "hex": "#8e9392",
+      "coverage": 0.0104
+    },
+    {
+      "hex": "#494be8",
+      "coverage": 0.0083
+    },
+    {
+      "hex": "#151f1d",
+      "coverage": 0.0038
+    },
+    {
+      "hex": "#c0c3c3",
+      "coverage": 0.0029
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.0706,
+      "strength": 0.2145
+    },
+    {
+      "y": 0.4353,
+      "strength": 0.2229
+    },
+    {
+      "y": 0.4706,
+      "strength": 0.293
+    }
+  ],
+  "regions": [
+    {
+      "id": "logo",
+      "kind": "chrome",
+      "note": "purple WireCat monogram and bold rounded wordmark",
+      "grid": "A0:B1",
+      "box": {
+        "x": 0.0156,
+        "y": 0.0625,
+        "w": 0.1185,
+        "h": 0.0527
+      },
+      "px": {
+        "x": 24,
+        "y": 64,
+        "w": 182,
+        "h": 54
+      },
+      "aspect": 3.3704,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.7495
+        },
+        {
+          "hex": "#494ee8",
+          "coverage": 0.1238
+        },
+        {
+          "hex": "#141d1a",
+          "coverage": 0.0921
+        },
+        {
+          "hex": "#424947",
+          "coverage": 0.0192
+        },
+        {
+          "hex": "#878c8b",
+          "coverage": 0.0154
+        }
+      ],
+      "detail": {
+        "energy": 27.3263
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "window-controls",
+      "kind": "control",
+      "note": "minimise, maximise and close glyphs",
+      "grid": "I0:J0",
+      "box": {
+        "x": 0.8932,
+        "y": 0.0117,
+        "w": 0.0964,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1372,
+        "y": 12,
+        "w": 148,
+        "h": 32
+      },
+      "aspect": 4.625,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9618
+        },
+        {
+          "hex": "#b6b8ba",
+          "coverage": 0.0182
+        },
+        {
+          "hex": "#2b3232",
+          "coverage": 0.0091
+        },
+        {
+          "hex": "#586368",
+          "coverage": 0.0055
+        },
+        {
+          "hex": "#888888",
+          "coverage": 0.0055
+        }
+      ],
+      "detail": {
+        "energy": 8.7956
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "readiness",
+      "kind": "text",
+      "note": "Your computer label then three green lamps: Linux, Node.js 24.19.0, npm 11.6 in mono",
+      "grid": "B0:G0",
+      "box": {
+        "x": 0.1986,
+        "y": 0.0645,
+        "w": 0.4102,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 305,
+        "y": 66,
+        "w": 630,
+        "h": 32
+      },
+      "aspect": 19.6875,
+      "palette": [
+        {
+          "hex": "#f7f8f7",
+          "coverage": 0.919
+        },
+        {
+          "hex": "#28b455",
+          "coverage": 0.0258
+        },
+        {
+          "hex": "#18191d",
+          "coverage": 0.0222
+        },
+        {
+          "hex": "#c1c4c5",
+          "coverage": 0.0172
+        },
+        {
+          "hex": "#363f46",
+          "coverage": 0.0158
+        }
+      ],
+      "detail": {
+        "energy": 39.1544
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 37,
+          "capHeightPx": 13.2,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5667,
+          "advTall": 0.5667,
+          "advX": 0.5667,
+          "gap": 0.1133,
+          "xRatio": 0.6972,
+          "stemW": 0.1721,
+          "contrast": 1.0504,
+          "serif": 0.6221,
+          "densTall": 0.5037,
+          "densX": 0.5689,
+          "weight": 0.5037
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "title",
+      "kind": "text",
+      "note": "Tools heading in wide heavy display face",
+      "grid": "B1:D1",
+      "box": {
+        "x": 0.1986,
+        "y": 0.1328,
+        "w": 0.1055,
+        "h": 0.0547
+      },
+      "px": {
+        "x": 305,
+        "y": 136,
+        "w": 162,
+        "h": 56
+      },
+      "aspect": 2.8929,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.6374
+        },
+        {
+          "hex": "#17201c",
+          "coverage": 0.2885
+        },
+        {
+          "hex": "#606a69",
+          "coverage": 0.0331
+        },
+        {
+          "hex": "#aaafae",
+          "coverage": 0.0322
+        },
+        {
+          "hex": "#3a463f",
+          "coverage": 0.0088
+        }
+      ],
+      "detail": {
+        "energy": 27.2605
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 35.9,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.9475,
+          "advTall": 1.0729,
+          "advX": 0.9475,
+          "gap": 0.0836,
+          "xRatio": 0.7687,
+          "stemW": 0.3006,
+          "contrast": 1.3512,
+          "serif": 0.4727,
+          "densTall": 0.7569,
+          "densX": 0.6928,
+          "weight": 0.7569
+        },
+        "widthClass": "wide",
+        "weightClass": "black",
+        "chosen": {
+          "family": "Unbounded",
+          "weight": 800,
+          "fontSizePx": 47,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 4,
+            "capHeightPx": 36.5,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.9452,
+            "advTall": 1.0959,
+            "advX": 0.9452,
+            "gap": 0.0822,
+            "xRatio": 0.7671,
+            "stemW": 0.3033,
+            "contrast": 1.3208,
+            "serif": null,
+            "densTall": 0.7431,
+            "densX": 0.6777,
+            "weight": 0.7431
+          },
+          "stamp": "3fc1adc9ba96"
+        }
+      }
+    },
+    {
+      "id": "nav-tools",
+      "kind": "control",
+      "note": "active nav item Tools with wrench icon and purple left bar",
+      "grid": "A1:B2",
+      "box": {
+        "x": 0,
+        "y": 0.1875,
+        "w": 0.1706,
+        "h": 0.0508
+      },
+      "px": {
+        "x": 0,
+        "y": 192,
+        "w": 262,
+        "h": 52
+      },
+      "aspect": 5.0385,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9473
+        },
+        {
+          "hex": "#4c55e7",
+          "coverage": 0.0156
+        },
+        {
+          "hex": "#b3bbee",
+          "coverage": 0.0143
+        },
+        {
+          "hex": "#a39acf",
+          "coverage": 0.0124
+        },
+        {
+          "hex": "#141d1f",
+          "coverage": 0.0104
+        }
+      ],
+      "detail": {
+        "energy": 16.7857
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nav-accounts",
+      "kind": "control",
+      "note": "dimmed nav item Accounts with Soon pill",
+      "grid": "A2:B3",
+      "box": {
+        "x": 0.0156,
+        "y": 0.2617,
+        "w": 0.1471,
+        "h": 0.041
+      },
+      "px": {
+        "x": 24,
+        "y": 268,
+        "w": 226,
+        "h": 42
+      },
+      "aspect": 5.381,
+      "palette": [
+        {
+          "hex": "#f5f5f5",
+          "coverage": 0.906
+        },
+        {
+          "hex": "#878c91",
+          "coverage": 0.047
+        },
+        {
+          "hex": "#b4b9bb",
+          "coverage": 0.0338
+        },
+        {
+          "hex": "#3f4547",
+          "coverage": 0.0113
+        },
+        {
+          "hex": "#606870",
+          "coverage": 0.0019
+        }
+      ],
+      "detail": {
+        "energy": 19.0297
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nav-memory",
+      "kind": "control",
+      "note": "dimmed nav item Memory with Soon pill",
+      "grid": "A3:B3",
+      "box": {
+        "x": 0.0156,
+        "y": 0.332,
+        "w": 0.1471,
+        "h": 0.041
+      },
+      "px": {
+        "x": 24,
+        "y": 340,
+        "w": 226,
+        "h": 42
+      },
+      "aspect": 5.381,
+      "palette": [
+        {
+          "hex": "#f5f5f5",
+          "coverage": 0.906
+        },
+        {
+          "hex": "#848a8e",
+          "coverage": 0.0461
+        },
+        {
+          "hex": "#b6bbbe",
+          "coverage": 0.0338
+        },
+        {
+          "hex": "#313a3d",
+          "coverage": 0.0085
+        },
+        {
+          "hex": "#5b6060",
+          "coverage": 0.0056
+        }
+      ],
+      "detail": {
+        "energy": 20.1603
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "app-version",
+      "kind": "text",
+      "note": "app version 0.1.0",
+      "grid": "A9:A9",
+      "box": {
+        "x": 0.0143,
+        "y": 0.9414,
+        "w": 0.0312,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 22,
+        "y": 964,
+        "w": 48,
+        "h": 28
+      },
+      "aspect": 1.7143,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.8812
+        },
+        {
+          "hex": "#6d7a7a",
+          "coverage": 0.0563
+        },
+        {
+          "hex": "#acaeb0",
+          "coverage": 0.05
+        },
+        {
+          "hex": "#606070",
+          "coverage": 0.0125
+        }
+      ],
+      "detail": {
+        "energy": 7.5643
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 3,
+          "capHeightPx": 12.2,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.7362,
+          "advTall": 0.7362,
+          "advX": null,
+          "gap": 0.4908,
+          "xRatio": 0.8111,
+          "stemW": 0.1658,
+          "contrast": 0.954,
+          "serif": null,
+          "densTall": 0.4984,
+          "densX": null,
+          "weight": 0.4984
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "tg-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (tg)",
+      "grid": "C2:C2",
+      "box": {
+        "x": 0.2096,
+        "y": 0.2246,
+        "w": 0.0716,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 322,
+        "y": 230,
+        "w": 110,
+        "h": 72
+      },
+      "aspect": 1.5278,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9014
+        },
+        {
+          "hex": "#27af54",
+          "coverage": 0.0436
+        },
+        {
+          "hex": "#192321",
+          "coverage": 0.0344
+        },
+        {
+          "hex": "#9b9d9e",
+          "coverage": 0.0115
+        },
+        {
+          "hex": "#525454",
+          "coverage": 0.0092
+        }
+      ],
+      "detail": {
+        "energy": 9.6937
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "tg-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (tg)",
+      "grid": "C2:E2",
+      "box": {
+        "x": 0.2904,
+        "y": 0.2246,
+        "w": 0.1953,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 446,
+        "y": 230,
+        "w": 300,
+        "h": 72
+      },
+      "aspect": 4.1667,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9339
+        },
+        {
+          "hex": "#586064",
+          "coverage": 0.0179
+        },
+        {
+          "hex": "#929596",
+          "coverage": 0.0166
+        },
+        {
+          "hex": "#151b1b",
+          "coverage": 0.0162
+        },
+        {
+          "hex": "#bbc4c7",
+          "coverage": 0.0154
+        }
+      ],
+      "detail": {
+        "energy": 27.8844
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 33,
+          "capHeightPx": 13.4,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6074,
+          "advTall": 0.229,
+          "advX": 0.6869,
+          "gap": 0.1302,
+          "xRatio": 0.7406,
+          "stemW": 0.1661,
+          "contrast": 1.1113,
+          "serif": 0.5366,
+          "densTall": 0.7351,
+          "densX": 0.5598,
+          "weight": 0.7351
+        },
+        "widthClass": "normal",
+        "weightClass": "black",
+        "chosen": {
+          "family": "Schibsted Grotesk",
+          "weight": 400,
+          "fontSizePx": 18,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 8,
+            "capHeightPx": 14.1,
+            "inkIsDark": true,
+            "allCaps": false,
+            "advance": 0.6048,
+            "advTall": 0.2134,
+            "advX": 0.6403,
+            "gap": 0.1423,
+            "xRatio": 0.7019,
+            "stemW": 0.157,
+            "contrast": 1.0977,
+            "serif": 0.7898,
+            "densTall": 0.6815,
+            "densX": 0.5814,
+            "weight": 0.6815
+          },
+          "stamp": "008ad5002dc9"
+        }
+      }
+    },
+    {
+      "id": "tg-version",
+      "kind": "text",
+      "note": "installed version in mono (tg)",
+      "grid": "H2:I2",
+      "box": {
+        "x": 0.7591,
+        "y": 0.2441,
+        "w": 0.0944,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 250,
+        "w": 145,
+        "h": 32
+      },
+      "aspect": 4.5313,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9419
+        },
+        {
+          "hex": "#c3c5c5",
+          "coverage": 0.0225
+        },
+        {
+          "hex": "#263331",
+          "coverage": 0.0131
+        },
+        {
+          "hex": "#101315",
+          "coverage": 0.0112
+        },
+        {
+          "hex": "#939595",
+          "coverage": 0.0112
+        }
+      ],
+      "detail": {
+        "energy": 14.345
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 12.3,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6529,
+          "advTall": 0.6529,
+          "advX": null,
+          "gap": 0.1904,
+          "xRatio": 0.3891,
+          "stemW": 0.1759,
+          "contrast": 1.054,
+          "serif": null,
+          "densTall": 0.5698,
+          "densX": null,
+          "weight": 0.5698
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "tg-action",
+      "kind": "control",
+      "note": "Manage button",
+      "grid": "I2:J2",
+      "box": {
+        "x": 0.8789,
+        "y": 0.2373,
+        "w": 0.0794,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1350,
+        "y": 243,
+        "w": 122,
+        "h": 46
+      },
+      "aspect": 2.6522,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.8833
+        },
+        {
+          "hex": "#b5b7b7",
+          "coverage": 0.0753
+        },
+        {
+          "hex": "#323838",
+          "coverage": 0.0215
+        },
+        {
+          "hex": "#6c7174",
+          "coverage": 0.0138
+        },
+        {
+          "hex": "#d8e0d8",
+          "coverage": 0.0061
+        }
+      ],
+      "detail": {
+        "energy": 21.2953
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "max-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (max)",
+      "grid": "C3:C3",
+      "box": {
+        "x": 0.2096,
+        "y": 0.3184,
+        "w": 0.0716,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 322,
+        "y": 326,
+        "w": 110,
+        "h": 72
+      },
+      "aspect": 1.5278,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9088
+        },
+        {
+          "hex": "#2aaf58",
+          "coverage": 0.0468
+        },
+        {
+          "hex": "#131c1b",
+          "coverage": 0.0285
+        },
+        {
+          "hex": "#717f78",
+          "coverage": 0.008
+        },
+        {
+          "hex": "#b3b6b6",
+          "coverage": 0.008
+        }
+      ],
+      "detail": {
+        "energy": 10.0538
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "max-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (max)",
+      "grid": "C3:E3",
+      "box": {
+        "x": 0.2904,
+        "y": 0.3184,
+        "w": 0.1953,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 446,
+        "y": 326,
+        "w": 300,
+        "h": 72
+      },
+      "aspect": 4.1667,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9469
+        },
+        {
+          "hex": "#4c5456",
+          "coverage": 0.0225
+        },
+        {
+          "hex": "#b2b5b5",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#162020",
+          "coverage": 0.0089
+        },
+        {
+          "hex": "#828989",
+          "coverage": 0.0085
+        }
+      ],
+      "detail": {
+        "energy": 21.8013
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 24,
+          "capHeightPx": 13.7,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.623,
+          "advTall": 0.8307,
+          "advX": 0.5815,
+          "gap": 0.1246,
+          "xRatio": 0.6669,
+          "stemW": 0.1552,
+          "contrast": 1.0534,
+          "serif": 0.3995,
+          "densTall": 0.5186,
+          "densX": 0.5426,
+          "weight": 0.5186
+        },
+        "widthClass": "condensed",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "max-version",
+      "kind": "text",
+      "note": "installed version in mono (max)",
+      "grid": "H3:I3",
+      "box": {
+        "x": 0.7591,
+        "y": 0.3379,
+        "w": 0.0944,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 346,
+        "w": 145,
+        "h": 32
+      },
+      "aspect": 4.5313,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9425
+        },
+        {
+          "hex": "#bdbfbf",
+          "coverage": 0.0297
+        },
+        {
+          "hex": "#161a1c",
+          "coverage": 0.0148
+        },
+        {
+          "hex": "#888b8b",
+          "coverage": 0.0093
+        },
+        {
+          "hex": "#505050",
+          "coverage": 0.0037
+        }
+      ],
+      "detail": {
+        "energy": 12.2687
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 12.2,
+          "inkIsDark": true,
+          "allCaps": true,
+          "advance": 0.6532,
+          "advTall": 0.6532,
+          "advX": null,
+          "gap": 0.2994,
+          "xRatio": null,
+          "stemW": 0.1582,
+          "contrast": 0.9505,
+          "serif": null,
+          "densTall": 0.5225,
+          "densX": null,
+          "weight": 0.5225
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "max-action",
+      "kind": "control",
+      "note": "Manage button",
+      "grid": "I3:J3",
+      "box": {
+        "x": 0.8789,
+        "y": 0.3311,
+        "w": 0.0794,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1350,
+        "y": 339,
+        "w": 122,
+        "h": 46
+      },
+      "aspect": 2.6522,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.887
+        },
+        {
+          "hex": "#99999d",
+          "coverage": 0.0687
+        },
+        {
+          "hex": "#c4c8c9",
+          "coverage": 0.0183
+        },
+        {
+          "hex": "#636a6c",
+          "coverage": 0.0137
+        },
+        {
+          "hex": "#303232",
+          "coverage": 0.0122
+        }
+      ],
+      "detail": {
+        "energy": 20.1692
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "wa-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (wa)",
+      "grid": "C4:C4",
+      "box": {
+        "x": 0.2096,
+        "y": 0.4131,
+        "w": 0.0716,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 322,
+        "y": 423,
+        "w": 110,
+        "h": 72
+      },
+      "aspect": 1.5278,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.8883
+        },
+        {
+          "hex": "#28af57",
+          "coverage": 0.0456
+        },
+        {
+          "hex": "#141e1c",
+          "coverage": 0.0422
+        },
+        {
+          "hex": "#a3a8a5",
+          "coverage": 0.0137
+        },
+        {
+          "hex": "#46514c",
+          "coverage": 0.0103
+        }
+      ],
+      "detail": {
+        "energy": 11.4761
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "wa-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (wa)",
+      "grid": "C4:E4",
+      "box": {
+        "x": 0.2904,
+        "y": 0.4131,
+        "w": 0.1953,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 446,
+        "y": 423,
+        "w": 300,
+        "h": 72
+      },
+      "aspect": 4.1667,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9168
+        },
+        {
+          "hex": "#4e5556",
+          "coverage": 0.0324
+        },
+        {
+          "hex": "#17201f",
+          "coverage": 0.0205
+        },
+        {
+          "hex": "#9b9e9b",
+          "coverage": 0.0158
+        },
+        {
+          "hex": "#767c80",
+          "coverage": 0.0145
+        }
+      ],
+      "detail": {
+        "energy": 30.64
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 33,
+          "capHeightPx": 13.4,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6273,
+          "advTall": 0.6413,
+          "advX": 0.6294,
+          "gap": 0.1283,
+          "xRatio": 0.7522,
+          "stemW": 0.164,
+          "contrast": 1.0943,
+          "serif": 0.6077,
+          "densTall": 0.4942,
+          "densX": 0.5539,
+          "weight": 0.4942
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "wa-version",
+      "kind": "text",
+      "note": "installed version in mono (wa)",
+      "grid": "H4:I4",
+      "box": {
+        "x": 0.7591,
+        "y": 0.4326,
+        "w": 0.0944,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 443,
+        "w": 145,
+        "h": 32
+      },
+      "aspect": 4.5313,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.905
+        },
+        {
+          "hex": "#4848e8",
+          "coverage": 0.0615
+        },
+        {
+          "hex": "#1a181e",
+          "coverage": 0.0149
+        },
+        {
+          "hex": "#c6cacd",
+          "coverage": 0.013
+        },
+        {
+          "hex": "#5d635d",
+          "coverage": 0.0056
+        }
+      ],
+      "detail": {
+        "energy": 12.4161
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 12.2,
+          "inkIsDark": true,
+          "allCaps": true,
+          "advance": 0.6992,
+          "advTall": 0.6992,
+          "advX": null,
+          "gap": 0,
+          "xRatio": null,
+          "stemW": 0.1639,
+          "contrast": 0.9947,
+          "serif": null,
+          "densTall": 0.5654,
+          "densX": null,
+          "weight": 0.5654
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "wa-action",
+      "kind": "control",
+      "note": "Update to 0.7.0 button",
+      "grid": "I4:J4",
+      "box": {
+        "x": 0.8464,
+        "y": 0.4258,
+        "w": 0.112,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1300,
+        "y": 436,
+        "w": 172,
+        "h": 46
+      },
+      "aspect": 3.7391,
+      "palette": [
+        {
+          "hex": "#484ae8",
+          "coverage": 0.7991
+        },
+        {
+          "hex": "#f7f7f8",
+          "coverage": 0.1227
+        },
+        {
+          "hex": "#626de7",
+          "coverage": 0.0467
+        },
+        {
+          "hex": "#bdc0f6",
+          "coverage": 0.0195
+        },
+        {
+          "hex": "#8c95eb",
+          "coverage": 0.0119
+        }
+      ],
+      "detail": {
+        "energy": 24.6143
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "zm-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (zm)",
+      "grid": "C5:C5",
+      "box": {
+        "x": 0.2096,
+        "y": 0.5068,
+        "w": 0.0716,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 322,
+        "y": 519,
+        "w": 110,
+        "h": 72
+      },
+      "aspect": 1.5278,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.8986
+        },
+        {
+          "hex": "#28b157",
+          "coverage": 0.0456
+        },
+        {
+          "hex": "#111b19",
+          "coverage": 0.0251
+        },
+        {
+          "hex": "#9a9e9e",
+          "coverage": 0.0171
+        },
+        {
+          "hex": "#414c4c",
+          "coverage": 0.0137
+        }
+      ],
+      "detail": {
+        "energy": 10.3895
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "zm-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (zm)",
+      "grid": "C5:E5",
+      "box": {
+        "x": 0.2904,
+        "y": 0.5068,
+        "w": 0.1953,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 446,
+        "y": 519,
+        "w": 300,
+        "h": 72
+      },
+      "aspect": 4.1667,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9505
+        },
+        {
+          "hex": "#464b4b",
+          "coverage": 0.022
+        },
+        {
+          "hex": "#7b7d7c",
+          "coverage": 0.0114
+        },
+        {
+          "hex": "#ced1cd",
+          "coverage": 0.0085
+        },
+        {
+          "hex": "#131e1e",
+          "coverage": 0.0076
+        }
+      ],
+      "detail": {
+        "energy": 20.1866
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 24,
+          "capHeightPx": 13.4,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6628,
+          "advTall": 0.4971,
+          "advX": 0.6628,
+          "gap": 0.1243,
+          "xRatio": 0.7423,
+          "stemW": 0.1609,
+          "contrast": 1.05,
+          "serif": 0.5757,
+          "densTall": 0.5003,
+          "densX": 0.5506,
+          "weight": 0.5003
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "zm-version",
+      "kind": "text",
+      "note": "installed version in mono (zm)",
+      "grid": "H5:I5",
+      "box": {
+        "x": 0.7591,
+        "y": 0.5264,
+        "w": 0.0944,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 539,
+        "w": 145,
+        "h": 32
+      },
+      "aspect": 4.5313,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9535
+        },
+        {
+          "hex": "#6d7070",
+          "coverage": 0.0186
+        },
+        {
+          "hex": "#abadad",
+          "coverage": 0.0112
+        },
+        {
+          "hex": "#0e1818",
+          "coverage": 0.0093
+        },
+        {
+          "hex": "#1c1424",
+          "coverage": 0.0074
+        }
+      ],
+      "detail": {
+        "energy": 12.9402
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 12.4,
+          "inkIsDark": true,
+          "allCaps": true,
+          "advance": 0.6593,
+          "advTall": 0.6593,
+          "advX": null,
+          "gap": 0.1615,
+          "xRatio": null,
+          "stemW": 0.1703,
+          "contrast": 1.0416,
+          "serif": null,
+          "densTall": 0.5029,
+          "densX": null,
+          "weight": 0.5029
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "zm-action",
+      "kind": "control",
+      "note": "Manage button",
+      "grid": "I5:J5",
+      "box": {
+        "x": 0.8789,
+        "y": 0.5195,
+        "w": 0.0794,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1350,
+        "y": 532,
+        "w": 122,
+        "h": 46
+      },
+      "aspect": 2.6522,
+      "palette": [
+        {
+          "hex": "#f6f6f6",
+          "coverage": 0.872
+        },
+        {
+          "hex": "#96979a",
+          "coverage": 0.0686
+        },
+        {
+          "hex": "#c2c9c7",
+          "coverage": 0.0351
+        },
+        {
+          "hex": "#535a5a",
+          "coverage": 0.0152
+        },
+        {
+          "hex": "#2b2b30",
+          "coverage": 0.0091
+        }
+      ],
+      "detail": {
+        "energy": 19.9889
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "drive-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (drive)",
+      "grid": "C5:C6",
+      "box": {
+        "x": 0.2096,
+        "y": 0.5977,
+        "w": 0.0716,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 322,
+        "y": 612,
+        "w": 110,
+        "h": 72
+      },
+      "aspect": 1.5278,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.9364
+        },
+        {
+          "hex": "#b8bec0",
+          "coverage": 0.0227
+        },
+        {
+          "hex": "#505555",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#0b0d10",
+          "coverage": 0.0136
+        },
+        {
+          "hex": "#262e2e",
+          "coverage": 0.0114
+        }
+      ],
+      "detail": {
+        "energy": 12.3744
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "drive-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (drive)",
+      "grid": "C5:E6",
+      "box": {
+        "x": 0.2904,
+        "y": 0.5977,
+        "w": 0.1953,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 446,
+        "y": 612,
+        "w": 300,
+        "h": 72
+      },
+      "aspect": 4.1667,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9254
+        },
+        {
+          "hex": "#141b1b",
+          "coverage": 0.0287
+        },
+        {
+          "hex": "#4b5152",
+          "coverage": 0.0261
+        },
+        {
+          "hex": "#bdc0ba",
+          "coverage": 0.0126
+        },
+        {
+          "hex": "#7e8381",
+          "coverage": 0.0072
+        }
+      ],
+      "detail": {
+        "energy": 30.2956
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 33,
+          "capHeightPx": 13.6,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6022,
+          "advTall": 0.4947,
+          "advX": 0.6883,
+          "gap": 0.129,
+          "xRatio": 0.7368,
+          "stemW": 0.1613,
+          "contrast": 1.0402,
+          "serif": null,
+          "densTall": 0.5993,
+          "densX": 0.5551,
+          "weight": 0.5993
+        },
+        "widthClass": "normal",
+        "weightClass": "bold"
+      }
+    },
+    {
+      "id": "drive-version",
+      "kind": "text",
+      "note": "installed version in mono (drive)",
+      "grid": "H6:I6",
+      "box": {
+        "x": 0.7591,
+        "y": 0.6172,
+        "w": 0.0977,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 632,
+        "w": 150,
+        "h": 32
+      },
+      "aspect": 4.6875,
+      "palette": [
+        {
+          "hex": "#f7f8f8",
+          "coverage": 0.8871
+        },
+        {
+          "hex": "#212325",
+          "coverage": 0.0419
+        },
+        {
+          "hex": "#c4c6c8",
+          "coverage": 0.0328
+        },
+        {
+          "hex": "#525556",
+          "coverage": 0.0273
+        },
+        {
+          "hex": "#858585",
+          "coverage": 0.0109
+        }
+      ],
+      "detail": {
+        "energy": 26.0815
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 12,
+          "capHeightPx": 13,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.5777,
+          "advTall": 0.5392,
+          "advX": 0.6162,
+          "gap": 0.1926,
+          "xRatio": 0.7487,
+          "stemW": 0.1603,
+          "contrast": 1.0778,
+          "serif": null,
+          "densTall": 0.4506,
+          "densX": 0.5568,
+          "weight": 0.4506
+        },
+        "widthClass": "normal",
+        "weightClass": "regular"
+      }
+    },
+    {
+      "id": "drive-action",
+      "kind": "control",
+      "note": "Install button",
+      "grid": "I6:J6",
+      "box": {
+        "x": 0.8789,
+        "y": 0.6104,
+        "w": 0.0794,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1350,
+        "y": 625,
+        "w": 122,
+        "h": 46
+      },
+      "aspect": 2.6522,
+      "palette": [
+        {
+          "hex": "#4648e8",
+          "coverage": 0.8264
+        },
+        {
+          "hex": "#f4f5f8",
+          "coverage": 0.126
+        },
+        {
+          "hex": "#646ee6",
+          "coverage": 0.02
+        },
+        {
+          "hex": "#8a92ea",
+          "coverage": 0.0154
+        },
+        {
+          "hex": "#babcf6",
+          "coverage": 0.0123
+        }
+      ],
+      "detail": {
+        "energy": 14.5941
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "memo-mark",
+      "kind": "control",
+      "note": "status lamp and line icon (memo)",
+      "grid": "C8:C9",
+      "box": {
+        "x": 0.2096,
+        "y": 0.8594,
+        "w": 0.0716,
+        "h": 0.0742
+      },
+      "px": {
+        "x": 322,
+        "y": 880,
+        "w": 110,
+        "h": 76
+      },
+      "aspect": 1.4474,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9079
+        },
+        {
+          "hex": "#f5b816",
+          "coverage": 0.0392
+        },
+        {
+          "hex": "#1e2423",
+          "coverage": 0.0254
+        },
+        {
+          "hex": "#737778",
+          "coverage": 0.019
+        },
+        {
+          "hex": "#a6acac",
+          "coverage": 0.0085
+        }
+      ],
+      "detail": {
+        "energy": 9.5508
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "memo-name",
+      "kind": "text",
+      "note": "bold tool name with mono command above a one-line description (memo)",
+      "grid": "C8:E9",
+      "box": {
+        "x": 0.2904,
+        "y": 0.8594,
+        "w": 0.1953,
+        "h": 0.0742
+      },
+      "px": {
+        "x": 446,
+        "y": 880,
+        "w": 300,
+        "h": 76
+      },
+      "aspect": 3.9474,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9433
+        },
+        {
+          "hex": "#45494b",
+          "coverage": 0.0176
+        },
+        {
+          "hex": "#797d7c",
+          "coverage": 0.0172
+        },
+        {
+          "hex": "#b5babc",
+          "coverage": 0.0125
+        },
+        {
+          "hex": "#111717",
+          "coverage": 0.0094
+        }
+      ],
+      "detail": {
+        "energy": 23.4806
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 2,
+          "glyphs": 27,
+          "capHeightPx": 13.9,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6257,
+          "advTall": 0.584,
+          "advX": 0.6675,
+          "gap": 0.095,
+          "xRatio": 0.7345,
+          "stemW": 0.1492,
+          "contrast": 1.0046,
+          "serif": null,
+          "densTall": 0.5025,
+          "densX": 0.541,
+          "weight": 0.5025
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "memo-version",
+      "kind": "text",
+      "note": "installed version in mono (memo)",
+      "grid": "H8:I9",
+      "box": {
+        "x": 0.7591,
+        "y": 0.8789,
+        "w": 0.0944,
+        "h": 0.0312
+      },
+      "px": {
+        "x": 1166,
+        "y": 900,
+        "w": 145,
+        "h": 32
+      },
+      "aspect": 4.5313,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9496
+        },
+        {
+          "hex": "#131a1c",
+          "coverage": 0.0168
+        },
+        {
+          "hex": "#bababc",
+          "coverage": 0.0149
+        },
+        {
+          "hex": "#8a9898",
+          "coverage": 0.0131
+        },
+        {
+          "hex": "#43434d",
+          "coverage": 0.0056
+        }
+      ],
+      "detail": {
+        "energy": 13.5774
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 4,
+          "capHeightPx": 12.4,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.6467,
+          "advTall": 0.6467,
+          "advX": null,
+          "gap": 0.1886,
+          "xRatio": 0.829,
+          "stemW": 0.1578,
+          "contrast": 1.0279,
+          "serif": null,
+          "densTall": 0.5368,
+          "densX": null,
+          "weight": 0.5368
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "memo-action",
+      "kind": "control",
+      "note": "Fix button",
+      "grid": "I8:J9",
+      "box": {
+        "x": 0.8789,
+        "y": 0.8721,
+        "w": 0.0794,
+        "h": 0.0449
+      },
+      "px": {
+        "x": 1350,
+        "y": 893,
+        "w": 122,
+        "h": 46
+      },
+      "aspect": 2.6522,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9159
+        },
+        {
+          "hex": "#989a9a",
+          "coverage": 0.0627
+        },
+        {
+          "hex": "#3d434a",
+          "coverage": 0.0107
+        },
+        {
+          "hex": "#1c1c24",
+          "coverage": 0.0061
+        },
+        {
+          "hex": "#c8c8c8",
+          "coverage": 0.0046
+        }
+      ],
+      "detail": {
+        "energy": 14.4081
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "progress",
+      "kind": "control",
+      "note": "install stepper: Checking requirements done, Installing active purple, Verifying, Done",
+      "grid": "C7:I7",
+      "box": {
+        "x": 0.2148,
+        "y": 0.7051,
+        "w": 0.651,
+        "h": 0.0801
+      },
+      "px": {
+        "x": 330,
+        "y": 722,
+        "w": 1000,
+        "h": 82
+      },
+      "aspect": 12.1951,
+      "palette": [
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.973
+        },
+        {
+          "hex": "#acb5c0",
+          "coverage": 0.0097
+        },
+        {
+          "hex": "#484be8",
+          "coverage": 0.0067
+        },
+        {
+          "hex": "#28ad58",
+          "coverage": 0.0061
+        },
+        {
+          "hex": "#60686d",
+          "coverage": 0.0045
+        }
+      ],
+      "detail": {
+        "energy": 14.6515
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "show-log",
+      "kind": "text",
+      "note": "Show log link in purple",
+      "grid": "C7:C8",
+      "box": {
+        "x": 0.2201,
+        "y": 0.7988,
+        "w": 0.0521,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 338,
+        "y": 818,
+        "w": 80,
+        "h": 28
+      },
+      "aspect": 2.8571,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.8447
+        },
+        {
+          "hex": "#515ce5",
+          "coverage": 0.0682
+        },
+        {
+          "hex": "#acacee",
+          "coverage": 0.0303
+        },
+        {
+          "hex": "#cccaf4",
+          "coverage": 0.0303
+        },
+        {
+          "hex": "#8a8ae6",
+          "coverage": 0.0265
+        }
+      ],
+      "detail": {
+        "energy": 15.9473
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 7,
+          "capHeightPx": 12.3,
+          "inkIsDark": true,
+          "allCaps": false,
+          "advance": 0.7041,
+          "advTall": 0.6229,
+          "advX": 0.7041,
+          "gap": 0.1083,
+          "xRatio": 0.7467,
+          "stemW": 0.1773,
+          "contrast": 1.0461,
+          "serif": 0.2257,
+          "densTall": 0.5064,
+          "densX": 0.5546,
+          "weight": 0.5064
+        },
+        "widthClass": "normal",
+        "weightClass": "medium"
+      }
+    },
+    {
+      "id": "sidebar-rule",
+      "kind": "chrome",
+      "note": "hairline separating sidebar from main area",
+      "grid": "B0:B9",
+      "box": {
+        "x": 0.1732,
+        "y": 0,
+        "w": 0.0052,
+        "h": 1
+      },
+      "px": {
+        "x": 266,
+        "y": 0,
+        "w": 8,
+        "h": 1024
+      },
+      "aspect": 0.0078,
+      "palette": [
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.9942
+        },
+        {
+          "hex": "#909895",
+          "coverage": 0.0058
+        }
+      ],
+      "detail": {
+        "energy": 0.3778
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "titlebar-rule",
+      "kind": "chrome",
+      "note": "hairline under the top strip",
+      "grid": "B0:J0",
+      "box": {
+        "x": 0.1771,
+        "y": 0.0488,
+        "w": 0.8229,
+        "h": 0.0059
+      },
+      "px": {
+        "x": 272,
+        "y": 50,
+        "w": 1264,
+        "h": 6
+      },
+      "aspect": 210.6667,
+      "palette": [
+        {
+          "hex": "#e8e8e8",
+          "coverage": 0.9976
+        },
+        {
+          "hex": "#989898",
+          "coverage": 0.0024
+        }
+      ],
+      "detail": {
+        "energy": 8.1144
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "rack-frame",
+      "kind": "chrome",
+      "note": "single hairline frame around the six module rows with row dividers",
+      "grid": "B2:J9",
+      "container": true,
+      "box": {
+        "x": 0.1992,
+        "y": 0.2109,
+        "w": 0.7773,
+        "h": 0.7344
+      },
+      "px": {
+        "x": 306,
+        "y": 216,
+        "w": 1194,
+        "h": 752
+      },
+      "aspect": 1.5878,
+      "palette": [
+        {
+          "hex": "#f7f8f7",
+          "coverage": 0.9762
+        },
+        {
+          "hex": "#494ae8",
+          "coverage": 0.0132
+        },
+        {
+          "hex": "#c0c4c4",
+          "coverage": 0.0041
+        },
+        {
+          "hex": "#5a5d5d",
+          "coverage": 0.0037
+        },
+        {
+          "hex": "#121c1c",
+          "coverage": 0.0028
+        }
+      ],
+      "detail": {
+        "energy": 11.7805
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# pnpm 11 blocks dependencies' install scripts unless they are allowed here, one explicit boolean each.
+allowBuilds:
+  esbuild: true
+  lefthook: true

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Tauri 2 build prerequisites for Debian/Ubuntu: https://v2.tauri.app/start/prerequisites/#linux
+set -euo pipefail
+sudo apt update
+sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+pkg-config --modversion webkit2gtk-4.1 && echo "Tauri Linux prerequisites installed."

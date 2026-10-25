@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Actions are pinned by commit; this is what moves the pins forward.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      tauri:
+        patterns: ["@tauri-apps/*"]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"

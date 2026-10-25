@@ -1,0 +1,43 @@
+{
+  "title": "WireCat Desktop — main screen",
+  "question": "Three layouts for the tool manager, all in the WireCat brand. Lock the one to build, steer, or re-roll.",
+  "options": [
+    {
+      "id": "rack",
+      "label": "Patch rack",
+      "kicker": "THE ROLL",
+      "lineage": "studio equipment racks and patch bays",
+      "thesis": "Each tool is a module in one rack: a status lamp, its version and one action, wired to the machine's power strip at the top.",
+      "palette": ["#f1f4f2", "#182822", "#4b53f0", "#ffffff", "#ccd7cf"],
+      "materials": ["ruled rows", "status lamps", "monospace readouts"],
+      "viewport": "Thin left rail (Tools, later sections); top strip with OS · Node · npm lamps; six full-width module rows, each opening inline to show details, profiles and the install log.",
+      "risk": "Inline expansion can push other tools off screen when two are open.",
+      "comp": ".impeccable/mocks/decision/rack.png"
+    },
+    {
+      "id": "split",
+      "label": "List and detail",
+      "lineage": "mail clients, Raycast and Linear",
+      "thesis": "A quiet list of tools on the left; the selected tool owns a large detail pane with its action, status and log.",
+      "palette": ["#f1f4f2", "#182822", "#4b53f0", "#ffffff", "#e5ece7"],
+      "materials": ["two panes", "hairline dividers", "large tool heading"],
+      "viewport": "Left: section rail plus a tool list with lamps and versions, readiness at the bottom. Right: the selected tool's name in Unbounded, its install button, requirements, profiles, links and log.",
+      "risk": "The overview of all six tools is narrower; first-time users see one tool's detail before the whole set.",
+      "comp": ".impeccable/mocks/decision/split.png"
+    },
+    {
+      "id": "launcher",
+      "label": "Command first",
+      "lineage": "Raycast and Spotlight launchers",
+      "thesis": "One search field leads; tools and actions are results you run with the keyboard, the CLI's grammar given a window.",
+      "palette": ["#131718", "#e9eeec", "#4b53f0", "#1c2023", "#2a3034"],
+      "materials": ["search field", "keyboard hints", "result rows"],
+      "viewport": "A wide field reading 'Install, update or check a tool…' above grouped results: Ready, Not installed, Needs attention; a readiness line below; detail opens as a panel on Enter.",
+      "risk": "First-time users who are not keyboard people may not see that the list is clickable.",
+      "comp": ".impeccable/mocks/decision/launcher.png"
+    }
+  ],
+  "reroll": true,
+  "buildPath": { "value": "comp", "toggle": true },
+  "steer": true
+}

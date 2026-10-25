@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "@fontsource-variable/unbounded/wght.css";
+@import "@fontsource-variable/onest/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* WireCat brand (wirecat.dev): purple identity, green-tinted neutrals, Unbounded / Onest / JetBrains Mono. */
+:root {
+  color-scheme: light;
+  --wall: #f1f4f2;
+  --app: #ffffff;
+  --app-2: #f6f8f7;
+  --app-3: #e5ece7;
+  --line: #d6dfd9;
+  --line-strong: #ccd7cf;
+  --ink: #182822;
+  --ink-soft: #4c5e55;
+  --ink-dim: #63746a;
+  --brand: #4b53f0;
+  --brand-hover: #3a42dc;
+  --brand-ink: #ffffff;
+  --brand-soft: #e8e9fd;
+  --ok: #1f9a55;
+  --warn: #d08a12;
+  --bad: #cf4a2f;
+  --idle: #a9b5ae;
+  --shadow: 0 1px 2px rgb(24 40 34 / 6%), 0 8px 24px rgb(24 40 34 / 5%);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --wall: #131718;
+  --app: #181c1e;
+  --app-2: #1c2023;
+  --app-3: #23292c;
+  --line: #262c30;
+  --line-strong: #2f373b;
+  --ink: #e9eeec;
+  --ink-soft: #a7b1ae;
+  --ink-dim: #87928e;
+  --brand: #6b72ff;
+  --brand-hover: #8187ff;
+  --brand-ink: #ffffff;
+  --brand-soft: #262a52;
+  --ok: #5cc98a;
+  --warn: #e6b04a;
+  --bad: #f07a5f;
+  --idle: #4c5659;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+}
+
+@theme inline {
+  --color-wall: var(--wall);
+  --color-app: var(--app);
+  --color-app-2: var(--app-2);
+  --color-app-3: var(--app-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-dim: var(--ink-dim);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-idle: var(--idle);
+  --font-display: "Unbounded Variable", "Unbounded", system-ui, sans-serif;
+  --font-sans: "Onest Variable", "Onest", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --shadow-panel: var(--shadow);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* The interface scales with the window, as a native app's content does at different display sizes. */
+html {
+  font-size: clamp(13.5px, 0.6rem + 0.45vw, 16.5px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--wall);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat every component transition */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same */
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes lamp-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--app-3) 0%, var(--app-2) 50%, var(--app-3) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 6px;
+}

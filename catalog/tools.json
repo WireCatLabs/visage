@@ -1,0 +1,95 @@
+{
+  "requirements": {
+    "nodeLabel": "Node.js 22.16+ or 24+",
+    "nodeDownload": "https://nodejs.org/en/download"
+  },
+  "tools": [
+    {
+      "id": "tg",
+      "name": "Telegram",
+      "bin": "tg",
+      "package": "@wirecat/tg-cli",
+      "summary": "A Telegram client for the terminal and for AI agents, on your own account.",
+      "docs": "https://wirecat.dev/en/docs/tg",
+      "repo": "https://github.com/WireCatLabs/tg-cli",
+      "profiles": {
+        "args": ["account", "list", "--json"],
+        "shape": "items"
+      },
+      "doctor": ["{profile}", "doctor", "--json"],
+      "setup": ["{profile}", "setup"]
+    },
+    {
+      "id": "max",
+      "name": "MAX",
+      "bin": "max",
+      "package": "@wirecat/max-cli",
+      "summary": "MAX Messenger from the terminal: bots through the official Bot API, and your personal account.",
+      "docs": "https://wirecat.dev/en/docs/max",
+      "repo": "https://github.com/WireCatLabs/max-cli",
+      "profiles": {
+        "args": ["account", "list", "--json"],
+        "shape": "items"
+      },
+      "doctor": ["{profile}", "doctor", "--json"],
+      "setup": ["{profile}", "setup"]
+    },
+    {
+      "id": "wa",
+      "name": "WhatsApp",
+      "bin": "wa",
+      "package": "@wirecat/whatsapp-cli",
+      "summary": "Your WhatsApp account from the terminal, as a linked device, for agents and scripts.",
+      "docs": "https://wirecat.dev/en/docs/wa",
+      "repo": "https://github.com/WireCatLabs/whatsapp-cli",
+      "profiles": {
+        "args": ["account", "list", "--json"],
+        "shape": "items"
+      },
+      "doctor": ["{profile}", "doctor", "--json"],
+      "setup": ["{profile}", "setup"]
+    },
+    {
+      "id": "zm",
+      "name": "Zoom",
+      "bin": "zm",
+      "package": "@wirecat/zoom-cli",
+      "summary": "Keep Zoom transcripts and recordings, search meeting evidence and give your agent context for the next call.",
+      "docs": "https://wirecat.dev/en/docs/zm",
+      "repo": "https://github.com/WireCatLabs/zoom-cli",
+      "profiles": {
+        "args": ["doctor", "--json"],
+        "shape": "item.profiles"
+      },
+      "doctor": ["{profile}", "session", "status", "--json"],
+      "setup": ["{profile}", "session", "start"]
+    },
+    {
+      "id": "drive",
+      "name": "Google Drive",
+      "bin": "drive",
+      "package": "@wirecat/drive-cli",
+      "summary": "Import selected Google folders, search documents locally and keep tags, notes and source-backed memories.",
+      "docs": "https://wirecat.dev/en/docs/drive",
+      "repo": "https://github.com/WireCatLabs/drive-cli",
+      "profiles": {
+        "args": ["session", "list", "--json"],
+        "shape": "item.items"
+      },
+      "doctor": ["{profile}", "status", "--json"],
+      "setup": ["{profile}", "session", "start"]
+    },
+    {
+      "id": "memo",
+      "name": "Memo",
+      "bin": "memo",
+      "package": "@wirecat/cli-memo",
+      "summary": "Your notes, mail and messages in one place for your AI agent: search, tags, people and memories, on your computer.",
+      "docs": "https://wirecat.dev/en/docs/memo",
+      "repo": "https://github.com/WireCatLabs/cli-memo",
+      "profiles": null,
+      "doctor": ["doctor", "--json"],
+      "setup": null
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scaffold reference: rack.png</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@800&family=Schibsted+Grotesk:wght@400&display=swap">
+  <link rel="stylesheet" href="layout.css">
+  <style>html,body{margin:0}body{background:#f8f8f8}.region{box-sizing:border-box}.region.text p{white-space:pre-wrap}</style>
+</head>
+<body>
+<!-- Reference only. Every region sits at its measured box inside a comp-aspect frame. Take the boxes (layout.css), keep your own semantic structure. -->
+<main class="comp-frame" style="max-width:1536px">
+  <div class="r-logo region chrome" data-region="logo"><!-- purple WireCat monogram and bold rounded wordmark --></div>
+  <div class="r-window-controls region control" data-region="window-controls"><!-- minimise, maximise and close glyphs: rebuild the control's chrome from the crop (comp-spec.mjs --crop window-controls); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-readiness region text" data-region="readiness"><!-- Your computer label then three green lamps: Linux, Node.js 24.19.0, npm 11.6 in mono --><p style="font-size:var(--r-readiness-font);line-height:1.05;margin:0">readiness</p></div>
+  <div class="r-title region text" data-region="title"><!-- Tools heading in wide heavy display face --><p style="font-size:var(--r-title-font);font-family:var(--r-title-family),sans-serif;font-weight:var(--r-title-weight);line-height:1.05;margin:0">title</p></div>
+  <div class="r-nav-tools region control" data-region="nav-tools"><!-- active nav item Tools with wrench icon and purple left bar: rebuild the control's chrome from the crop (comp-spec.mjs --crop nav-tools); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-nav-accounts region control" data-region="nav-accounts"><!-- dimmed nav item Accounts with Soon pill: rebuild the control's chrome from the crop (comp-spec.mjs --crop nav-accounts); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-nav-memory region control" data-region="nav-memory"><!-- dimmed nav item Memory with Soon pill: rebuild the control's chrome from the crop (comp-spec.mjs --crop nav-memory); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-app-version region text" data-region="app-version"><!-- app version 0.1.0 --><p style="font-size:var(--r-app-version-font);line-height:1.05;margin:0">app-version</p></div>
+  <div class="r-tg-mark region control" data-region="tg-mark"><!-- status lamp and line icon (tg): rebuild the control's chrome from the crop (comp-spec.mjs --crop tg-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-tg-name region text" data-region="tg-name"><!-- bold tool name with mono command above a one-line description (tg) --><p style="font-size:var(--r-tg-name-font);font-family:var(--r-tg-name-family),sans-serif;font-weight:var(--r-tg-name-weight);line-height:1.05;margin:0">tg-name</p></div>
+  <div class="r-tg-version region text" data-region="tg-version"><!-- installed version in mono (tg) --><p style="font-size:var(--r-tg-version-font);line-height:1.05;margin:0">tg-version</p></div>
+  <div class="r-tg-action region control" data-region="tg-action"><!-- Manage button: rebuild the control's chrome from the crop (comp-spec.mjs --crop tg-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-max-mark region control" data-region="max-mark"><!-- status lamp and line icon (max): rebuild the control's chrome from the crop (comp-spec.mjs --crop max-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-max-name region text" data-region="max-name"><!-- bold tool name with mono command above a one-line description (max) --><p style="font-size:var(--r-max-name-font);line-height:1.05;margin:0">max-name</p></div>
+  <div class="r-max-version region text" data-region="max-version"><!-- installed version in mono (max) --><p style="font-size:var(--r-max-version-font);line-height:1.05;margin:0">max-version</p></div>
+  <div class="r-max-action region control" data-region="max-action"><!-- Manage button: rebuild the control's chrome from the crop (comp-spec.mjs --crop max-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-wa-mark region control" data-region="wa-mark"><!-- status lamp and line icon (wa): rebuild the control's chrome from the crop (comp-spec.mjs --crop wa-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-wa-name region text" data-region="wa-name"><!-- bold tool name with mono command above a one-line description (wa) --><p style="font-size:var(--r-wa-name-font);line-height:1.05;margin:0">wa-name</p></div>
+  <div class="r-wa-version region text" data-region="wa-version"><!-- installed version in mono (wa) --><p style="font-size:var(--r-wa-version-font);line-height:1.05;margin:0">wa-version</p></div>
+  <div class="r-wa-action region control" data-region="wa-action"><!-- Update to 0.7.0 button: rebuild the control's chrome from the crop (comp-spec.mjs --crop wa-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-zm-mark region control" data-region="zm-mark"><!-- status lamp and line icon (zm): rebuild the control's chrome from the crop (comp-spec.mjs --crop zm-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-zm-name region text" data-region="zm-name"><!-- bold tool name with mono command above a one-line description (zm) --><p style="font-size:var(--r-zm-name-font);line-height:1.05;margin:0">zm-name</p></div>
+  <div class="r-zm-version region text" data-region="zm-version"><!-- installed version in mono (zm) --><p style="font-size:var(--r-zm-version-font);line-height:1.05;margin:0">zm-version</p></div>
+  <div class="r-zm-action region control" data-region="zm-action"><!-- Manage button: rebuild the control's chrome from the crop (comp-spec.mjs --crop zm-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-drive-mark region control" data-region="drive-mark"><!-- status lamp and line icon (drive): rebuild the control's chrome from the crop (comp-spec.mjs --crop drive-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-drive-name region text" data-region="drive-name"><!-- bold tool name with mono command above a one-line description (drive) --><p style="font-size:var(--r-drive-name-font);line-height:1.05;margin:0">drive-name</p></div>
+  <div class="r-drive-version region text" data-region="drive-version"><!-- installed version in mono (drive) --><p style="font-size:var(--r-drive-version-font);line-height:1.05;margin:0">drive-version</p></div>
+  <div class="r-drive-action region control" data-region="drive-action"><!-- Install button: rebuild the control's chrome from the crop (comp-spec.mjs --crop drive-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-memo-mark region control" data-region="memo-mark"><!-- status lamp and line icon (memo): rebuild the control's chrome from the crop (comp-spec.mjs --crop memo-mark); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-memo-name region text" data-region="memo-name"><!-- bold tool name with mono command above a one-line description (memo) --><p style="font-size:var(--r-memo-name-font);line-height:1.05;margin:0">memo-name</p></div>
+  <div class="r-memo-version region text" data-region="memo-version"><!-- installed version in mono (memo) --><p style="font-size:var(--r-memo-version-font);line-height:1.05;margin:0">memo-version</p></div>
+  <div class="r-memo-action region control" data-region="memo-action"><!-- Fix button: rebuild the control's chrome from the crop (comp-spec.mjs --crop memo-action); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-progress region control" data-region="progress"><!-- install stepper: Checking requirements done, Installing active purple, Verifying, Done: rebuild the control's chrome from the crop (comp-spec.mjs --crop progress); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-show-log region text" data-region="show-log"><!-- Show log link in purple --><p style="font-size:var(--r-show-log-font);line-height:1.05;margin:0">show-log</p></div>
+  <div class="r-sidebar-rule region chrome" data-region="sidebar-rule"><!-- hairline separating sidebar from main area --></div>
+  <div class="r-titlebar-rule region chrome" data-region="titlebar-rule"><!-- hairline under the top strip --></div>
+  <div class="r-rack-frame region chrome" data-region="rack-frame"><!-- single hairline frame around the six module rows with row dividers --></div>
+</main>
+</body>
+</html>

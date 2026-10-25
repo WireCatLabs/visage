@@ -1,0 +1,8 @@
+extends:
+  - config/wirecat/lefthook.yml
+
+pre-commit:
+  commands:
+    rustfmt:
+      glob: "src-tauri/**/*.rs"
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check {staged_files}

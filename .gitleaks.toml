@@ -1,0 +1,13 @@
+# Secret scanning. Default rules catch the well-known shapes; the rule below catches what this app touches.
+#
+#   gitleaks git --log-opts=HEAD --redact .   the whole history of HEAD
+#   gitleaks git --staged --redact .          what is about to be committed — the pre-commit hook
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "telegram-bot-token"
+description = "A Telegram bot token"
+regex = '''\b\d{6,}:[A-Za-z0-9_-]{30,}\b'''
+tags = ["token", "telegram"]

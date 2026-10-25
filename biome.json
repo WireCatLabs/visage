@@ -1,0 +1,113 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["./config/wirecat/biome.base.json"],
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!pnpm-lock.yaml",
+      "!config/wirecat",
+      "!src-tauri/target",
+      "!src-tauri/gen",
+      "!other",
+      "!.impeccable"
+    ]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/domain/**", "!**/*.test.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "react",
+                      "react-dom",
+                      "@tauri-apps/*",
+                      "zustand",
+                      "@/platform/*",
+                      "@/features/*",
+                      "@/ui/*",
+                      "@/app/*"
+                    ],
+                    "message": "domain is plain TypeScript: no React, no Tauri, nothing above it (docs/dev/ARCHITECTURE.md)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/platform/**", "!**/*.test.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["react", "react-dom", "zustand", "@/features/*", "@/ui/*", "@/app/*"],
+                    "message": "platform talks to Rust and returns validated data; it knows no UI (docs/dev/ARCHITECTURE.md)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/ui/**", "!**/*.test.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@tauri-apps/*", "@/platform/*", "@/features/*", "@/app/*"],
+                    "message": "ui is presentational: props in, events out; features own data (docs/dev/ARCHITECTURE.md)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/**", "!**/*.test.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@tauri-apps/*", "@/app/*"],
+                    "message": "features reach Rust only through @/platform and never import the app shell (docs/dev/ARCHITECTURE.md)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
