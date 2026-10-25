@@ -5,6 +5,7 @@ import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
+import { useSystem } from "../system/store"
 import { InstallPanel } from "./InstallPanel"
 import { useTools } from "./store"
 import { ToolDetails } from "./ToolDetails"
@@ -34,7 +35,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const latest = useTools((s) => (s.latest ? (s.latest[tool.id] ?? null) : undefined))
   const session = useTools((s) => s.sessions[tool.id])
   const expanded = useTools((s) => s.expanded === tool.id)
-  const nodeReady = useTools((s) => s.readiness?.node.ok ?? false)
+  const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
   const { install, toggle, cancel } = useTools.getState()
 
   const status = toolStatus(installs, latest, session)
@@ -43,9 +44,9 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
 
   return (
     <li className="border-line border-b last:border-b-0">
-      <div className="grid min-h-[5.75rem] grid-cols-[2.6rem_3.6rem_minmax(0,1fr)_7.8rem_9.6rem] items-center gap-x-[1.2rem] px-[1.3rem]">
+      <div className="grid min-h-[5.75rem] grid-cols-[1.5rem_2.4rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[2.6rem_3.6rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
         <Lamp tone={lampTone[status.kind]} label={lampLabel(status)} />
-        <ToolIcon id={tool.id} className="size-[2.4rem] text-ink" />
+        <ToolIcon id={tool.id} className="size-[2rem] text-ink xl:size-[2.4rem]" />
         <button
           type="button"
           onClick={() => toggle(tool.id)}

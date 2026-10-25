@@ -2,10 +2,10 @@ import { ExternalLink } from "lucide-react"
 import { requirements } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
-import { useTools } from "../tools/store"
+import { useSystem } from "./store"
 
 export function NodeNotice() {
-  const r = useTools((s) => s.readiness)
+  const r = useSystem((s) => s.readiness)
   if (!r) return null
   if (r.node.ok && r.npmPrefixWritable !== false) return null
 

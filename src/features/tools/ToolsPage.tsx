@@ -3,12 +3,14 @@ import { useEffect } from "react"
 import { tools } from "@/domain/catalog"
 import { cx } from "@/ui/cx"
 import { NodeNotice } from "../system/NodeNotice"
+import { useSystem } from "../system/store"
 import { useTools } from "./store"
 import { ToolRow } from "./ToolRow"
 
 export function ToolsPage() {
   const refreshing = useTools((s) => s.refreshing)
   const error = useTools((s) => s.error)
+  const systemError = useSystem((s) => s.error)
   const latestUnknown = useTools((s) => s.latest !== null && Object.keys(s.latest).length === 0)
 
   useEffect(() => {
@@ -34,6 +36,11 @@ export function ToolsPage() {
       {error && (
         <p role="alert" className="rounded-[0.45rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
           Could not inspect this computer: {error.message}
+        </p>
+      )}
+      {systemError && (
+        <p role="alert" className="rounded-[0.45rem] border border-bad/40 bg-bad/10 px-4 py-3 text-[0.95rem]">
+          Could not check Node.js and npm: {systemError}
         </p>
       )}
 

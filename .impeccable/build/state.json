@@ -62,19 +62,19 @@
           "region drive-action (control) is contradicted (structure 41%, detail added 7%): this control does not read as the comp's: rebuild its chrome from the crop (border, fill, radius, chevron or arrow, label size) rather than from a component default",
           "region memo-action (control) is contradicted (structure 38%, detail added 28%): this control does not read as the comp's: rebuild its chrome from the crop (border, fill, radius, chevron or arrow, label size) rather than from a component default",
           "control nav-memory drifts to 63% (structure 66%, color 92%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/nav-memory.png and match the border, fill, radius, chevron or arrow, and label size",
-          "control wa-action drifts to 51% (structure 54%, color 54%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/wa-action.png and match the border, fill, radius, chevron or arrow, and label size",
+          "control wa-action drifts to 53% (structure 54%, color 56%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/wa-action.png and match the border, fill, radius, chevron or arrow, and label size",
           "control zm-action drifts to 65% (structure 66%, color 87%): its chrome differs from the comp's; open .impeccable/review/diff/hero/regions/zm-action.png and match the border, fill, radius, chevron or arrow, and label size",
           "the build carries ink in 13 grid cells where the comp is calm (F2, F3, G3, F5, G5, E6, F6, G6, I8, J8, E9, F9, ...); nothing exists on the page that the comp does not show (a kicker, an extra nav item, a divider, a second row of controls); remove it or name it in a stated decision after the hero passes"
         ],
         "summary": "hero 75% (drift)",
-        "score": 0.7505,
+        "score": 0.7515,
         "verdict": "drift",
         "report": ".impeccable/review/diff/hero/report.json",
         "sideBySide": "/home/leemour/Projects/AI/visage/.impeccable/review/diff/hero/side-by-side.png",
         "worst": [
           "drive-action contradicted 31%",
           "memo-action contradicted 43%",
-          "wa-action drift 51%"
+          "wa-action drift 53%"
         ],
         "worstIds": [
           "drive-action",
@@ -118,24 +118,25 @@
             "id": "wa-action",
             "verdict": "drift",
             "score": {
-              "overall": 0.5136,
-              "structure": 0.5383,
-              "color": 0.544,
-              "colorIntersection": 0.0901,
-              "paletteMatch": 0.7883,
-              "detail": 0.405,
-              "detailRaw": 0.4831,
-              "detailAdded": 0.1563,
-              "bands": 0.3964
+              "overall": 0.5261,
+              "structure": 0.5419,
+              "color": 0.5583,
+              "colorIntersection": 0.1274,
+              "paletteMatch": 0.7903,
+              "detail": 0.4345,
+              "detailRaw": 0.4918,
+              "detailAdded": 0.1146,
+              "bands": 0.4536
             },
             "file": ".impeccable/review/diff/hero/regions/wa-action.png"
           }
         ],
         "advisories": [
-          "(advisory, above the 72% bar; fix in the polish pass before responsive) 6 readings:",
+          "(advisory, above the 72% bar; fix in the polish pass before responsive) 7 readings:",
           "  text memo-name: the face renders 47% heavier than the comp's (ink density 0.74 vs 0.50); drop a weight step or use the ranked face",
           "  text tg-version: ink is #f3c57d in the build, #263331 in the comp; use the comp's colour",
           "  text max-version: ink is #edbd75 in the build, #bdbfbf in the comp; use the comp's colour",
+          "  text wa-version: ink is #482d2d in the build, #4848e8 in the comp; use the comp's colour",
           "  text zm-version: ink is #182828 in the build, #6d7070 in the comp; use the comp's colour",
           "  text memo-version: ink is #4858f8 in the build, #131a1c in the comp; use the comp's colour",
           "  control wa-action: its rule sits 1px into the box in the comp and 24px in the build (+23px), so the strip is taller than the comp's; match the height, not only the position",
@@ -182,14 +183,14 @@
           "titlebar-rule": "drift",
           "rack-frame": "drift"
         },
-        "at": "2026-10-25T02:56:26.664Z"
+        "at": "2026-10-25T03:06:29.794Z"
       },
       "forced": null,
       "readingsSeen": {
-        "text tg-name: 1 line in the build, 2 in the comp; the measure (max-width, font-size, letter-spacing) wraps it differently, so the block is a different shape": 5,
+        "text tg-name: 1 line in the build, 2 in the comp; the measure (max-width, font-size, letter-spacing) wraps it differently, so the block is a different shape": 6,
         "text drive-name: 1 line in the build, 2 in the comp; the measure (max-width, font-size, letter-spacing) wraps it differently, so the block is a different shape": 3,
-        "text tg-name: the face renders 31% lighter than the comp's (ink density 0.50 vs 0.74); raise a weight step or use the ranked face": 5,
-        "text app-version: ink is #709ac0 in the build, #6d7a7a in the comp; use the comp's colour": 5,
+        "text tg-name: the face renders 31% lighter than the comp's (ink density 0.50 vs 0.74); raise a weight step or use the ranked face": 6,
+        "text app-version: ink is #709ac0 in the build, #6d7a7a in the comp; use the comp's colour": 6,
         "text tg-version: ink is #ce8548 in the build, #263331 in the comp; use the comp's colour": 3,
         "text max-version: ink is #cb8245 in the build, #bdbfbf in the comp; use the comp's colour": 3,
         "text wa-version: ink is #a9b8f8 in the build, #4848e8 in the comp; use the comp's colour": 2,
@@ -200,16 +201,17 @@
         "text memo-version: ink is #a8b8f8 in the build, #131a1c in the comp; use the comp's colour": 1,
         "text show-log: its first line starts 13px lower than in the comp (21px vs 8px into the region box); the spacing above it is too large": 1,
         "control progress: its rule sits 17px into the box in the comp and 34px in the build (+17px), so the strip is taller than the comp's; match the height, not only the position": 2,
-        "text memo-name: the face renders 47% heavier than the comp's (ink density 0.74 vs 0.50); drop a weight step or use the ranked face": 2,
-        "text memo-version: ink is #4858f8 in the build, #131a1c in the comp; use the comp's colour": 2,
+        "text memo-name: the face renders 47% heavier than the comp's (ink density 0.74 vs 0.50); drop a weight step or use the ranked face": 3,
+        "text memo-version: ink is #4858f8 in the build, #131a1c in the comp; use the comp's colour": 3,
         "text show-log: cap height 7.2px in the build, 12.3px in the comp (-41%); set font-size so the cap height renders at 12.3px": 1,
         "text memo-name: the face renders 35% heavier than the comp's (ink density 0.68 vs 0.50); drop a weight step or use the ranked face": 1,
-        "text tg-version: ink is #f3c57d in the build, #263331 in the comp; use the comp's colour": 2,
-        "text max-version: ink is #edbd75 in the build, #bdbfbf in the comp; use the comp's colour": 2,
-        "text zm-version: ink is #182828 in the build, #6d7070 in the comp; use the comp's colour": 2,
+        "text tg-version: ink is #f3c57d in the build, #263331 in the comp; use the comp's colour": 3,
+        "text max-version: ink is #edbd75 in the build, #bdbfbf in the comp; use the comp's colour": 3,
+        "text zm-version: ink is #182828 in the build, #6d7070 in the comp; use the comp's colour": 3,
         "text memo-version: ink is #4958f8 in the build, #131a1c in the comp; use the comp's colour": 1,
         "text memo-name: its first line starts 18px higher than in the comp (0px vs 18px into the region box); the spacing above it is too small": 1,
-        "control wa-action: its rule sits 1px into the box in the comp and 24px in the build (+23px), so the strip is taller than the comp's; match the height, not only the position": 2
+        "control wa-action: its rule sits 1px into the box in the comp and 24px in the build (+23px), so the strip is taller than the comp's; match the height, not only the position": 3,
+        "text wa-version: ink is #482d2d in the build, #4848e8 in the comp; use the comp's colour": 1
       },
       "history": [
         {
@@ -457,7 +459,8 @@
           },
           "artifactHash": "5e9849174786"
         }
-      ]
+      ],
+      "records": 1
     },
     "sections": {
       "status": "pending",

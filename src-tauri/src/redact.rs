@@ -15,7 +15,7 @@ fn sensitive_text() -> &'static [(Regex, &'static str)] {
     R.get_or_init(|| {
         vec![
             (Regex::new(r"[\w.+-]+@[\w-]+\.[\w.-]+").unwrap(), "[email]"),
-            (Regex::new(r"\+?\d[\d\s-]{8,}\d").unwrap(), "[number]"),
+            (Regex::new(r"\+\d[\d\s-]{7,}\d").unwrap(), "[number]"),
             (Regex::new(r"\b\d{6,}:[\w-]{30,}\b").unwrap(), "[bot token]"),
         ]
     })
@@ -65,7 +65,8 @@ mod tests {
             "items": [{"profile": "personal", "account": "+34 600 000 000", "name": "Ann"}],
             "token": {"present": true, "from": "keyring"},
             "mail": {"accounts": [{"address": "a@b.com"}]},
-            "note": "write to a@b.com"
+            "note": "write to a@b.com, or call +34 600 000 000",
+            "expires_at": "2026-10-25T03:12:00Z"
         });
         super::json(&mut v);
         assert_eq!(v["items"][0]["profile"], "personal");
@@ -73,6 +74,7 @@ mod tests {
         assert_eq!(v["items"][0]["name"], "•••");
         assert_eq!(v["token"]["present"], true);
         assert_eq!(v["mail"]["accounts"][0]["address"], "•••");
-        assert_eq!(v["note"], "write to [email]");
+        assert_eq!(v["note"], "write to [email], or call [number]");
+        assert_eq!(v["expires_at"], "2026-10-25T03:12:00Z");
     }
 }

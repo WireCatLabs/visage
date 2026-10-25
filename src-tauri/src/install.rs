@@ -115,7 +115,10 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
     send(InstallEvent::Step { step: Step::Install });
     send(InstallEvent::Log { line: format!("$ {program} {}", args.join(" ")), stderr: false });
     let mut tail: Vec<String> = Vec::new();
-    let cmd = run::command(&program_path, &args, Some(&paths::search_path()));
+    let mut cmd = run::command(&program_path, &args, Some(&paths::search_path()));
+    if let Some(home) = paths::pnpm_home() {
+        cmd.env("PNPM_HOME", home);
+    }
     let code = run::stream(
         cmd,
         INSTALL_TIMEOUT,

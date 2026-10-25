@@ -133,7 +133,14 @@ pub fn stream(
         }
         match child.try_wait() {
             Ok(Some(status)) => {
-                rx.iter().for_each(&mut on_line);
+                // A postinstall may leave a child holding the pipes open; waiting for EOF would hang forever.
+                let drain_until = Instant::now() + Duration::from_secs(2);
+                while let Some(left) = drain_until.checked_duration_since(Instant::now()) {
+                    match rx.recv_timeout(left) {
+                        Ok(line) => on_line(line),
+                        Err(_) => break,
+                    }
+                }
                 return Ok(status.code());
             }
             Ok(None) => thread::sleep(Duration::from_millis(40)),

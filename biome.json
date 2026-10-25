@@ -36,9 +36,21 @@
                       "@tauri-apps/*",
                       "zustand",
                       "@/platform/*",
+                      "**/platform/**",
+                      "../platform/*",
+                      "../../platform/*",
                       "@/features/*",
+                      "**/features/**",
+                      "../features/*",
+                      "../../features/*",
                       "@/ui/*",
-                      "@/app/*"
+                      "**/ui/**",
+                      "../ui/*",
+                      "../../ui/*",
+                      "@/app/*",
+                      "**/app/**",
+                      "../app/*",
+                      "../../app/*"
                     ],
                     "message": "domain is plain TypeScript: no React, no Tauri, nothing above it (docs/dev/ARCHITECTURE.md)"
                   }
@@ -59,7 +71,23 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["react", "react-dom", "zustand", "@/features/*", "@/ui/*", "@/app/*"],
+                    "group": [
+                      "react",
+                      "react-dom",
+                      "zustand",
+                      "@/features/*",
+                      "**/features/**",
+                      "../features/*",
+                      "../../features/*",
+                      "@/ui/*",
+                      "**/ui/**",
+                      "../ui/*",
+                      "../../ui/*",
+                      "@/app/*",
+                      "**/app/**",
+                      "../app/*",
+                      "../../app/*"
+                    ],
                     "message": "platform talks to Rust and returns validated data; it knows no UI (docs/dev/ARCHITECTURE.md)"
                   }
                 ]
@@ -79,7 +107,25 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["@tauri-apps/*", "@/platform/*", "@/features/*", "@/app/*"],
+                    "group": [
+                      "@tauri-apps/*",
+                      "@/platform/*",
+                      "**/platform/**",
+                      "../platform/*",
+                      "../../platform/*",
+                      "@/features/*",
+                      "**/features/**",
+                      "../features/*",
+                      "../../features/*",
+                      "@/app/*",
+                      "**/app/**",
+                      "../app/*",
+                      "../../app/*",
+                      "@/domain/*",
+                      "**/domain/**",
+                      "../domain/*",
+                      "../../domain/*"
+                    ],
                     "message": "ui is presentational: props in, events out; features own data (docs/dev/ARCHITECTURE.md)"
                   }
                 ]
@@ -99,8 +145,28 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["@tauri-apps/*", "@/app/*"],
+                    "group": ["@tauri-apps/*", "@/app/*", "**/app/**", "../app/*", "../../app/*"],
                     "message": "features reach Rust only through @/platform and never import the app shell (docs/dev/ARCHITECTURE.md)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/system/**", "!**/*.test.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/tools/**", "../tools/*", "@/features/tools/*"],
+                    "message": "system is the base feature: tools may read it, it never reads tools"
                   }
                 ]
               }

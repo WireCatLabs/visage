@@ -73,10 +73,13 @@ fn launch(line: &str) -> std::io::Result<()> {
         .map(|_| ())
 }
 
+// `start` reads its first quoted argument as the window title, and cmd does not understand Rust's
+// backslash-escaped quotes, so the command line is passed raw.
 #[cfg(windows)]
 fn launch(line: &str) -> std::io::Result<()> {
+    use std::os::windows::process::CommandExt;
     Command::new("cmd")
-        .args(["/c", "start", "WireCat", "cmd", "/k", line])
+        .raw_arg(format!("/c start \"WireCat\" cmd /k {line}"))
         .env("PATH", paths::search_path())
         .spawn()
         .map(|_| ())

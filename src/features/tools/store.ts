@@ -1,12 +1,12 @@
 import { create } from "zustand"
 import type { InstallSession } from "@/domain/status"
 import { platform } from "@/platform/bridge"
-import type { Readiness, ToolState } from "@/platform/schemas"
+import type { ToolState } from "@/platform/schemas"
+import { useSystem } from "../system/store"
 
 type LoadError = { message: string } | null
 
 type ToolsState = {
-  readiness: Readiness | null
   installs: Record<string, ToolState["installs"]>
   /** null while asking npm; an empty object when npm could not answer. */
   latest: Record<string, string | null> | null
@@ -68,7 +68,6 @@ export const useTools = create<ToolsState>((set, get) => {
   }
 
   return {
-    readiness: null,
     installs: {},
     latest: null,
     sessions: {},
@@ -79,8 +78,7 @@ export const useTools = create<ToolsState>((set, get) => {
     async refresh() {
       set({ refreshing: true, error: null })
       try {
-        const [readiness] = await Promise.all([platform.readiness(), redetect()])
-        set({ readiness })
+        await Promise.all([useSystem.getState().refresh(), redetect()])
       } catch (e) {
         set({ error: { message: message(e) } })
       } finally {

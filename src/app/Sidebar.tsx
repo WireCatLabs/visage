@@ -15,7 +15,10 @@ const themeOptions = [
 export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
   const theme = useTheme()
   return (
-    <aside className="flex w-[16.6rem] shrink-0 flex-col border-line border-r bg-wall" data-tauri-drag-region>
+    <aside
+      className="flex w-[13.5rem] shrink-0 xl:w-[16.6rem] flex-col border-line border-r bg-wall"
+      data-tauri-drag-region
+    >
       <div className="flex h-[11.6rem] items-center px-[1.5rem] pb-[0.6rem]" data-tauri-drag-region>
         <Logo className="flex h-[2.75rem] items-center gap-[0.9rem] [&>svg:last-child]:h-[40%]" />
       </div>
@@ -44,7 +47,7 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
                 )}
               />
               <s.icon
-                className={cx("size-[1.55rem]", current ? "text-brand" : "text-current")}
+                className={cx("size-[1.55rem] shrink-0", current ? "text-brand" : "text-current")}
                 strokeWidth={1.6}
                 aria-hidden
               />

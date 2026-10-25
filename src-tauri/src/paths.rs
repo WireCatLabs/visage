@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 use std::time::Duration;
 
 static SEARCH_PATH: RwLock<Option<OsString>> = RwLock::new(None);
@@ -28,8 +28,8 @@ fn build_search_path(extra: &[PathBuf]) -> OsString {
     if let Some(p) = std::env::var_os("PATH") {
         dirs.extend(std::env::split_paths(&p));
     }
-    if let Some(p) = login_shell_path() {
-        dirs.extend(std::env::split_paths(&p));
+    if let Some(p) = &login_shell().path {
+        dirs.extend(std::env::split_paths(p));
     }
     dirs.extend(extra.iter().cloned());
     dirs.extend(known_dirs());
@@ -39,23 +39,39 @@ fn build_search_path(extra: &[PathBuf]) -> OsString {
     std::env::join_paths(dirs).unwrap_or_default()
 }
 
+#[derive(Default)]
+struct ShellEnv {
+    path: Option<OsString>,
+    pnpm_home: Option<OsString>,
+}
+
+/// Asked once: an interactive login shell is slow and its rc files do not change while the app runs.
+fn login_shell() -> &'static ShellEnv {
+    static ENV: OnceLock<ShellEnv> = OnceLock::new();
+    ENV.get_or_init(read_login_shell)
+}
+
 #[cfg(unix)]
-fn login_shell_path() -> Option<OsString> {
+fn read_login_shell() -> ShellEnv {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-    let out = crate::run::run(
-        Path::new(&shell),
-        &["-lic", "printf '__WIRECAT_PATH__%s' \"$PATH\""],
-        None,
-        Duration::from_secs(5),
-    )
-    .ok()?;
-    let (_, path) = out.stdout.rsplit_once("__WIRECAT_PATH__")?;
-    Some(OsString::from(path.trim()))
+    let script = "printf '__WIRECAT_PATH__%s__WIRECAT_PNPM__%s' \"$PATH\" \"$PNPM_HOME\"";
+    let Ok(out) = crate::run::run(Path::new(&shell), &["-lic", script], None, Duration::from_secs(5)) else {
+        return ShellEnv::default();
+    };
+    let Some((_, rest)) = out.stdout.rsplit_once("__WIRECAT_PATH__") else { return ShellEnv::default() };
+    let (path, pnpm) = rest.split_once("__WIRECAT_PNPM__").unwrap_or((rest, ""));
+    let non_empty = |s: &str| (!s.trim().is_empty()).then(|| OsString::from(s.trim()));
+    ShellEnv { path: non_empty(path), pnpm_home: non_empty(pnpm) }
 }
 
 #[cfg(windows)]
-fn login_shell_path() -> Option<OsString> {
-    None
+fn read_login_shell() -> ShellEnv {
+    ShellEnv::default()
+}
+
+/// pnpm refuses global commands when its home is unknown, which is the case for an app started from a launcher.
+pub fn pnpm_home() -> Option<OsString> {
+    std::env::var_os("PNPM_HOME").or_else(|| login_shell().pnpm_home.clone())
 }
 
 pub fn home() -> Option<PathBuf> {
@@ -73,7 +89,15 @@ fn known_dirs() -> Vec<PathBuf> {
         return dirs;
     }
     if let Some(home) = home() {
-        for sub in [".local/share/pnpm", "Library/pnpm", ".volta/bin", ".npm-global/bin", ".bun/bin", ".local/bin"] {
+        for sub in [
+            ".local/share/pnpm",
+            ".local/share/pnpm/bin",
+            "Library/pnpm",
+            ".volta/bin",
+            ".npm-global/bin",
+            ".bun/bin",
+            ".local/bin",
+        ] {
             dirs.push(home.join(sub));
         }
         dirs.extend(nvm_bins(&home.join(".nvm/versions/node")));

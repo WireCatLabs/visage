@@ -104,7 +104,7 @@ function ProfileList(props: {
                   {busy && activeProfile === p.name ? "Checking…" : "Check"}
                 </Button>
               )}
-              {tool.setup && (
+              {tool.setup && p.signedIn !== true && (
                 <Button size="sm" variant="ghost" onClick={() => platform.openSetup(tool.id, p.name)}>
                   {p.signedIn === false ? "Sign in" : "Set up"}
                 </Button>

@@ -1,6 +1,6 @@
 import type { ProgramState } from "@/platform/schemas"
 import { Lamp } from "@/ui/Lamp"
-import { useTools } from "../tools/store"
+import { useSystem } from "./store"
 
 function Item({ label, program }: { label: string; program: ProgramState | null }) {
   const tone = !program ? "idle" : program.ok ? "ok" : "bad"
@@ -14,7 +14,7 @@ function Item({ label, program }: { label: string; program: ProgramState | null 
 }
 
 export function ReadinessStrip() {
-  const r = useTools((s) => s.readiness)
+  const r = useSystem((s) => s.readiness)
   return (
     <section aria-label="Your computer" className="flex min-w-0 items-center gap-[2rem] text-[0.98rem]">
       <h2 className="shrink-0 font-medium">Your computer</h2>
