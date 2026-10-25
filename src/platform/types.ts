@@ -1,3 +1,5 @@
+import type { Agent, SkillReport, Target } from "./agents-schemas"
+import type { StoreInfo } from "./archive-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
 import type {
@@ -40,6 +42,13 @@ export type Platform = {
   storage(): Promise<StorageArea[]>
   clearStorage(id: string): Promise<void>
   openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
+  /** What the shared archive holds, from the first installed messenger tool; null when none is installed. */
+  storeInfo(): Promise<StoreInfo | null>
+  /** Every known agent; `foundBy` is null for the ones not on this computer. */
+  detectAgents(): Promise<Agent[]>
+  skillStatus(id: string): Promise<SkillReport>
+  /** Resolves with the version written. */
+  skillInstall(id: string, target: Target): Promise<string | null>
   openSetup(id: string, profile: string | null): Promise<void>
   /** What a bug report would carry about this computer, masked; `attachLogs` adds recent failed runs (private). */
   reportContext(attachLogs: boolean): Promise<ReportContext>

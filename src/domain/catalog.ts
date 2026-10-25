@@ -15,6 +15,12 @@ const ToolSchema = v.object({
   runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
   setup: v.nullable(v.array(v.string())),
   signIn: v.nullable(v.object({ gives: v.string(), asks: v.string(), guide: v.optional(v.pipe(v.string(), v.url())) })),
+  skill: v.object({
+    status: v.array(v.string()),
+    install: v.array(v.string()),
+    doctorSkills: v.optional(v.array(v.string())),
+  }),
+  storeInfo: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),
   settings: v.nullable(
     v.object({

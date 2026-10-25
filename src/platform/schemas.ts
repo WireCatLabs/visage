@@ -72,7 +72,15 @@ export const NodeEventSchema = v.variant("event", [
 export const StorageSchema = v.array(
   v.object({
     id: v.string(),
-    folders: v.array(v.object({ kind: v.picklist(["config", "state", "cache"]), path: v.string(), bytes: v.number() })),
+    folders: v.array(
+      v.object({
+        kind: v.picklist(["config", "state", "cache"]),
+        path: v.string(),
+        bytes: v.number(),
+        /** One level, largest first; names and sizes only. */
+        entries: v.array(v.object({ name: v.string(), dir: v.boolean(), bytes: v.number() })),
+      }),
+    ),
     usedBy: v.array(v.string()),
   }),
 )

@@ -1,3 +1,5 @@
+import { agentsMock } from "./mock-agents"
+import { storeInfoMock } from "./mock-archive"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
@@ -37,6 +39,47 @@ const PACKAGES: Record<string, string> = {
   zm: "@wirecat/zoom-cli",
   drive: "@wirecat/drive-cli",
   memo: "@wirecat/cli-memo",
+}
+
+// Each tool's data folder as the real tools lay it out: name, is a folder, share of the folder's size.
+const STATE_ENTRIES: Record<string, [string, boolean, number][]> = {
+  tg: [
+    ["sessions", true, 0.02],
+    ["runs", true, 0.55],
+    ["backfill", true, 0.3],
+    ["sends", true, 0.08],
+    ["accounts", true, 0.01],
+    ["pace", true, 0.02],
+    ["update-check.json", false, 0.02],
+  ],
+  max: [
+    ["profiles", true, 0.05],
+    ["runs", true, 0.6],
+    ["sends", true, 0.15],
+    ["bots", true, 0.15],
+    ["update-check.json", false, 0.05],
+  ],
+  wa: [
+    ["runs", true, 0.9],
+    ["update-check.json", false, 0.1],
+  ],
+  zm: [["runs", true, 1]],
+  drive: [
+    ["drive.db", false, 0.7],
+    ["drive.db-wal", false, 0.05],
+    ["backups", true, 0.2],
+    ["profiles", true, 0.05],
+  ],
+  memo: [
+    ["folders", true, 0.4],
+    ["mail-trash", true, 0.5],
+    ["domain-ages.json", false, 0.1],
+  ],
+  shared: [
+    ["wirecat.db", false, 0.8],
+    ["backups", true, 0.15],
+    ["models", true, 0.05],
+  ],
 }
 
 export function createMock(os: Platform["os"]): Platform {
@@ -314,8 +357,22 @@ export function createMock(os: Platform["os"]): Platform {
           id,
           folders: bytes
             ? [
-                { kind: "config" as const, path: `~/.config/${name}`, bytes: 4096 },
-                { kind: "state" as const, path: `~/.local/share/${name}`, bytes },
+                {
+                  kind: "config" as const,
+                  path: `~/.config/${name}`,
+                  bytes: 4096,
+                  entries: [{ name: "config.json", dir: false, bytes: 4096 }],
+                },
+                {
+                  kind: "state" as const,
+                  path: `~/.local/share/${name}`,
+                  bytes,
+                  entries: (STATE_ENTRIES[id] ?? []).map(([entry, dir, share]) => ({
+                    name: entry,
+                    dir,
+                    bytes: Math.round(bytes * share),
+                  })),
+                },
               ]
             : [],
           usedBy: id === "shared" ? used : used.filter((u) => u === id),
@@ -327,6 +384,8 @@ export function createMock(os: Platform["os"]): Platform {
       dataSize[id] = 0
     },
     async openFolder() {},
+    storeInfo: () => storeInfoMock(["tg", "wa", "max"].find((id) => installed.has(id)) ?? null),
+    ...agentsMock((id) => installed.get(id)),
     async cancelInstall() {
       cancelled = true
     },

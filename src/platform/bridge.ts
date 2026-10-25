@@ -2,6 +2,8 @@ import { Channel, invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
+import { AgentsSchema, SkillReportSchema, SkillWrittenSchema } from "./agents-schemas"
+import { StoreInfoSchema } from "./archive-schemas"
 import { createMock } from "./mock"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
 import { RunDetailSchema, RunsPageSchema } from "./runs-schemas"
@@ -60,6 +62,10 @@ function createTauri(): Platform {
     storage: () => call(StorageSchema, "storage_report"),
     clearStorage: (id) => invoke("clear_storage", { id }),
     openFolder: (id, kind) => invoke("open_folder", { id, kind }),
+    storeInfo: () => call(StoreInfoSchema, "store_info"),
+    detectAgents: () => call(AgentsSchema, "detect_agents"),
+    skillStatus: (id) => call(SkillReportSchema, "skill_status", { id }),
+    skillInstall: (id, target) => call(SkillWrittenSchema, "skill_install", { id, target }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
