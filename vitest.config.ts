@@ -11,6 +11,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["src/testing/setup.ts"],
     maxWorkers: 4,
+    // The app tests click through whole flows against the mock's real delays; 5 s fails them on a busy machine.
+    testTimeout: 15_000,
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],

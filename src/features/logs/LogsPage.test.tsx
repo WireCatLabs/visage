@@ -14,10 +14,20 @@ const loaded = () =>
 describe("Logs", () => {
   it("reads every tool's runs, filters by a facet and opens a run's record", async () => {
     const user = userEvent.setup()
+    const listRuns = platform.listRuns.bind(platform)
+    let release = () => {}
+    const held = new Promise<void>((r) => {
+      release = r
+    })
+    vi.spyOn(platform, "listRuns").mockImplementation(async (...args) => {
+      await held
+      return listRuns(...args)
+    })
     render(<LogsPage />)
 
     expect(screen.getByText(/keeps a run only when it fails/)).toBeInTheDocument()
     expect(await screen.findByRole("progressbar", { name: "Tools read" })).toBeInTheDocument()
+    release()
     await loaded()
 
     const commands = screen.getByRole("region", { name: "Command" })
