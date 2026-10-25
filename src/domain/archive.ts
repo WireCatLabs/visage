@@ -22,7 +22,7 @@ export type BreakdownLike = {
 export type Dimension = "provider" | "chatKind" | "account" | "year" | "attachment"
 
 export const DIMENSIONS: readonly { id: Dimension; label: string }[] = [
-  { id: "provider", label: "Messenger" },
+  { id: "provider", label: "Source" },
   { id: "chatKind", label: "Chat type" },
   { id: "account", label: "Account" },
   { id: "year", label: "Year" },
@@ -56,6 +56,19 @@ const OWNERS: Record<string, string> = {
 }
 
 export const providerName = (p: string) => PROVIDERS[p] ?? p
+
+/** The command that collects each source into storage, so a number can be traced to the tool that wrote it. */
+const COLLECTED_BY: Record<string, string> = {
+  telegram: "tg",
+  whatsapp: "wa",
+  max: "max",
+  email: "memo mail",
+  "google-drive": "drive",
+  zoom: "zm",
+  notes: "memo",
+}
+
+export const collectedBy = (p: string): string | null => COLLECTED_BY[p] ?? null
 
 /** Totals in the order the page shows them; only the tables this store has. */
 export const TOTALS: readonly { key: string; label: string }[] = [
@@ -109,7 +122,13 @@ export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n:
           .map((g) => {
             const { value, detail } = itemsOf(g)
             const accounts = `${g.accounts} ${g.accounts === 1 ? "account" : "accounts"}`
-            return { id: g.provider, label: providerName(g.provider), value, detail: [accounts, detail].join(" · ") }
+            const via = collectedBy(g.provider)
+            return {
+              id: g.provider,
+              label: providerName(g.provider),
+              value,
+              detail: [via ? `via ${via}` : null, accounts, detail].filter(Boolean).join(" · "),
+            }
           })
           .sort(byValue),
       )

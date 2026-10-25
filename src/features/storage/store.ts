@@ -9,6 +9,8 @@ type StorageState = {
   /** `undefined` while asking, `null` when no messenger tool is installed to ask. */
   info: StoreInfo | null | undefined
   infoError: string | null
+  /** When the tool answered, so the page can say how fresh the numbers are. */
+  infoAt: number | null
   loadInfo(): Promise<void>
   /** `undefined` while asking; sizes stay from the last measurement until the list is asked for again. */
   tables: TableList | null | undefined
@@ -28,7 +30,7 @@ type StorageState = {
   clear(id: string): Promise<void>
   /** Deletes every area nothing installed uses, the shared archive last. */
   clearAll(): Promise<void>
-  open(id: string, kind: StorageFolder["kind"]): Promise<void>
+  open(id: string, kind: StorageFolder["kind"], entry?: string): Promise<void>
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -39,6 +41,7 @@ export const useStorage = create<StorageState>((set, get) => ({
   clearing: null,
   info: undefined,
   infoError: null,
+  infoAt: null,
   tables: undefined,
   tablesError: null,
   measuring: null,
@@ -87,7 +90,7 @@ export const useStorage = create<StorageState>((set, get) => ({
   async loadInfo() {
     set({ info: undefined, infoError: null })
     try {
-      set({ info: await platform.storeInfo() })
+      set({ info: await platform.storeInfo(), infoAt: Date.now() })
     } catch (e) {
       set({ info: null, infoError: message(e) })
     }
@@ -121,9 +124,9 @@ export const useStorage = create<StorageState>((set, get) => ({
     for (const id of ids) await get().clear(id)
   },
 
-  async open(id, kind) {
+  async open(id, kind, entry) {
     try {
-      await platform.openFolder(id, kind)
+      await platform.openFolder(id, kind, entry)
     } catch (e) {
       set({ error: message(e) })
     }

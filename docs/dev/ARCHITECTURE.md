@@ -81,10 +81,17 @@ never reads a `SKILL.md`. A tool from before `skill status` answers "unknown com
 memo falls back to the skill list in `doctor --json`. Agents are found by program on PATH or by their settings
 folder (`skills.rs`); which folder each agent reads comes from the agents' own docs.
 
-The shared archive is described by `store info --json` of the first installed of tg, wa and max (`storeInfo` in the
+Shared storage is described by `store info --json` of the first installed of tg, wa and max (`storeInfo` in the
 catalog). `archive.rs` picks known fields by name, because the generic masker would hide counts called `accounts`
-or `emails`. The breakdown is read only when the tool prints `by_provider`. Folder entries on the Storage page are
-names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`.
+or `emails`. The breakdown is read only when the tool prints `by_provider`, and the file facts (journal mode, pages,
+migrations, last backup) only when it prints `migrations`. The same tool answers `storeTables` (every table with its
+kind and rows), `storeTableSizes` (the same with sizes; it reads the whole file, so the page runs it on request) and
+`storeCheck` (the health check, also on request: about 90 s on a 3 GB file). A tool that answers "unknown command"
+gets "arrives with the next update". Of a check only counts leave Rust, never the chats it finds behind. The
+interface calls the shared database "storage" everywhere, never "archive". Folder entries on the Storage page are
+names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`. `open_folder` opens a folder or
+one entry in it by name: Rust joins the name to the catalog's folder after refusing anything but a plain child, opens
+a directory, and shows a file or a link in its folder instead of opening it.
 
 ## One package, several tools
 

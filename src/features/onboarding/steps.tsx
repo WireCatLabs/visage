@@ -40,7 +40,7 @@ export function Welcome() {
           icon={<HardDrive className={icon} strokeWidth={1.6} aria-hidden />}
           title="Everything stays on this computer"
         >
-          The tools keep your messages, mail, meetings and files in an archive on this computer, not in a WireCat cloud.
+          The tools keep your messages, mail, meetings and files in storage on this computer, not in a WireCat cloud.
         </Fact>
         <Fact
           icon={<Terminal className={icon} strokeWidth={1.6} aria-hidden />}

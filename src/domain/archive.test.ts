@@ -27,10 +27,11 @@ const breakdown: BreakdownLike = {
 }
 
 describe("breakdownRows", () => {
-  it("names messengers, sorts largest first and scales bars to the largest", () => {
+  it("names sources with the tool that collects them, sorts largest first and scales bars to the largest", () => {
     const rows = breakdownRows(breakdown, "provider", String)
     expect(rows.map((r) => r.label)).toEqual(["Telegram", "Chat"])
     expect(rows[0]?.share).toBe(1)
+    expect(rows[0]?.detail).toMatch(/^via tg · /)
     expect(rows[1]?.detail).toBe("1 account · 4 messages")
   })
 
@@ -65,7 +66,7 @@ describe("describeEntry", () => {
     expect(describeEntry("tg", "state", "sessions")?.secret).toBe(true)
     expect(describeEntry("max", "state", "profiles")?.secret).toBe(true)
     expect(describeEntry("drive", "config", "client_secret_[client id].json")?.secret).toBe(true)
-    expect(describeEntry("shared", "state", "wirecat.db")?.what).toMatch(/shared archive/)
+    expect(describeEntry("shared", "state", "wirecat.db")?.what).toMatch(/Shared storage/)
     expect(describeEntry("max", "cache", "personal.db")?.what).toMatch(/older per-profile/)
     expect(describeEntry("tg", "state", "something-new")).toBeNull()
   })

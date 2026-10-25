@@ -114,13 +114,34 @@ fn size(path: &Path) -> u64 {
 }
 
 /// The interface names a folder by area and kind; the path itself is always computed here.
-pub fn open(id: &str, kind: &str) -> Result<(), String> {
+/// Opens a folder, or one entry directly inside it. The path is built here from the catalog; the interface only
+/// names the entry, and a name that is not a plain child of the folder is refused.
+pub fn open(id: &str, kind: &str, entry: Option<&str>) -> Result<(), String> {
     let storage = if id == SHARED { &catalog::catalog().shared_storage } else { &area(id)?.storage };
     let (_, path) = folders(storage).into_iter().find(|(k, _)| *k == kind).ok_or("unknown folder kind")?;
     if !path.is_dir() {
         return Err("That folder no longer exists.".into());
     }
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(|e| e.to_string())
+    let Some(name) = entry else {
+        return tauri_plugin_opener::open_path(&path, None::<&str>).map_err(|e| e.to_string());
+    };
+    let child = child_of(&path, name)?;
+    let meta = std::fs::symlink_metadata(&child).map_err(|_| "That entry no longer exists.".to_string())?;
+    // A file would open in whatever app claims it, and a link could lead anywhere: show those in their folder.
+    if meta.is_dir() {
+        tauri_plugin_opener::open_path(&child, None::<&str>).map_err(|e| e.to_string())
+    } else {
+        tauri_plugin_opener::reveal_item_in_dir(&child).map_err(|e| e.to_string())
+    }
+}
+
+fn child_of(folder: &Path, name: &str) -> Result<PathBuf, String> {
+    let plain = !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains(['/', '\\', '\0'])
+        && Path::new(name).components().count() == 1;
+    if plain { Ok(folder.join(name)) } else { Err("Not an entry of that folder.".into()) }
 }
 
 /// Deletes a tool's folders, or the shared archive, once nothing installed uses them.
@@ -178,6 +199,16 @@ fn ensure_ours(path: &Path, app: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn opens_only_a_plain_entry_of_the_folder() {
+        let folder = Path::new("/home/u/.local/share/tg-cli");
+        assert_eq!(child_of(folder, "sessions").unwrap(), folder.join("sessions"));
+        assert_eq!(child_of(folder, ".env").unwrap(), folder.join(".env"));
+        for bad in ["", ".", "..", "../x", "a/b", "/etc", "a\\b", "nul\0"] {
+            assert!(child_of(folder, bad).is_err(), "{bad:?}");
+        }
+    }
 
     #[test]
     fn deletes_only_folders_named_for_the_tool() {

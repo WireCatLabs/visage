@@ -151,8 +151,8 @@ async fn clear_storage(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn open_folder(id: String, kind: String) -> Result<(), String> {
-    blocking(move || storage::open(&id, &kind)).await?
+async fn open_folder(id: String, kind: String, entry: Option<String>) -> Result<(), String> {
+    blocking(move || storage::open(&id, &kind, entry.as_deref())).await?
 }
 
 #[tauri::command]

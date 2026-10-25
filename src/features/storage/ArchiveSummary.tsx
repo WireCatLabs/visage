@@ -10,20 +10,29 @@ import { useStorage } from "./store"
 import { TablesExplorer } from "./TablesExplorer"
 
 const n = (x: number) => x.toLocaleString("en-US")
+const clock = (at: number) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
 
 export function ArchiveSummary() {
   const info = useStorage((s) => s.info)
   const infoError = useStorage((s) => s.infoError)
+  const infoAt = useStorage((s) => s.infoAt)
 
   return (
     <section aria-labelledby="archive-title" className="rounded-[0.2rem] border border-line-strong bg-app">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-line border-b px-[1.3rem] py-[0.9rem]">
         <h2 id="archive-title" className="text-[1.08rem] font-semibold">
-          In the archive
+          In storage
         </h2>
         {info && (
           <p className="text-[0.85rem] text-ink-dim">
-            Asked {findTool(info.answeredBy)?.name ?? info.answeredBy} ·{" "}
+            Counted by <span className="font-mono">{findTool(info.answeredBy)?.bin ?? info.answeredBy} store info</span>
+            {infoAt !== null && (
+              <>
+                {" "}
+                at <span className="font-mono tabular-nums">{clock(infoAt)}</span>
+              </>
+            )}{" "}
+            ·{" "}
             <span className="font-mono tabular-nums">
               {formatBytes(info.fileBytes + info.walBytes)}
               {info.schema !== null && ` · schema ${info.schema}`}
@@ -33,22 +42,20 @@ export function ArchiveSummary() {
       </div>
       <div className="px-[1.3rem] py-[1.1rem]">
         {info === undefined ? (
-          <Skeleton className="h-16 w-full" label="Reading the archive" />
+          <Skeleton className="h-16 w-full" label="Reading storage" />
         ) : infoError ? (
           <p role="alert" className="text-[0.95rem] text-bad">
-            Could not read the archive: {infoError}
+            Could not read storage: {infoError}
           </p>
         ) : info === null ? (
           <p className="text-[0.95rem] text-ink-soft">
-            Install Telegram, WhatsApp or MAX to see what the archive holds: one of them reads it for the app.
+            Install Telegram, WhatsApp or MAX to see what is in storage: one of them reads it for the app.
           </p>
         ) : !info.exists ? (
-          <p className="text-[0.95rem] text-ink-soft">
-            The archive is not created yet. It appears after the first sync.
-          </p>
+          <p className="text-[0.95rem] text-ink-soft">Storage is not created yet. It appears after the first sync.</p>
         ) : info.problem ? (
           <p role="alert" className="text-[0.95rem] text-bad">
-            The archive is there but did not open: {info.problem}
+            Storage is there but did not open: {info.problem}
           </p>
         ) : (
           <Contents info={info} />
@@ -144,7 +151,7 @@ function Contents({ info }: { info: StoreInfo }) {
         </div>
       ) : (
         <p className="text-[0.9rem] text-ink-soft">
-          Breakdowns by messenger, chat type, account and year arrive with the next update of{" "}
+          Breakdowns by source, chat type, account and year arrive with the next update of{" "}
           {findTool(info.answeredBy)?.name ?? info.answeredBy}.
         </p>
       )}

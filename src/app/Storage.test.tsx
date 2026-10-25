@@ -7,15 +7,16 @@ import { App } from "./App"
 describe("Storage", () => {
   beforeEach(() => useOnboarding.setState({ status: "done", open: false }))
 
-  it("shows what the archive holds, breaks it down, and says what each folder entry is", async () => {
+  it("shows what is in storage, breaks it down, and says what each folder entry is", async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByRole("button", { name: /Storage/ }))
 
-    const archive = await screen.findByRole("region", { name: "In the archive" })
+    const archive = await screen.findByRole("region", { name: "In storage" })
     expect(await within(archive).findByText("15,594", {}, { timeout: 4000 })).toBeInTheDocument()
-    expect(within(archive).getByText(/Asked Telegram/)).toBeInTheDocument()
-    expect(within(archive).getByRole("table", { name: "By messenger" })).toHaveTextContent("WhatsApp")
+    expect(within(archive).getByText("tg store info")).toBeInTheDocument()
+    expect(within(archive).getByRole("table", { name: "By source" })).toHaveTextContent("via tg")
+    expect(within(archive).getByRole("table", { name: "By source" })).toHaveTextContent("WhatsApp")
 
     await user.click(within(archive).getByRole("button", { name: "Chat type" }))
     expect(within(archive).getByRole("table", { name: "By chat type" })).toHaveTextContent("Telegram · Groups")

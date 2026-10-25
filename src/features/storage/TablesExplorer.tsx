@@ -135,7 +135,7 @@ function MeasureSizes({ measured }: { measured: boolean }) {
             Measured in <span className="font-mono tabular-nums">{formatDuration(measuredIn)}</span>
           </>
         ) : (
-          "Reads the whole file: seconds, or a few minutes on a large archive"
+          "Reads the whole file: seconds, or a few minutes when storage is large"
         )}
       </span>
     </div>

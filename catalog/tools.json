@@ -297,6 +297,9 @@
       "setup": null,
       "skill": null,
       "storeInfo": null,
+      "storeTables": null,
+      "storeTableSizes": null,
+      "storeCheck": null,
       "storage": {
         "app": "cli-memo",
         "env": "MEMO"
@@ -313,6 +316,6 @@
   "sharedStorage": {
     "app": "WireCat",
     "env": "WIRECAT",
-    "label": "Shared WireCat archive"
+    "label": "Shared storage"
   }
 }

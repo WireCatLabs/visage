@@ -1,4 +1,4 @@
-// The archive's database, shaped for the Storage page: its facts, its tables and its health in plain words.
+// The storage file, shaped for the Storage page: its facts, its tables and its health in plain words.
 
 export type TableLike = { name: string; kind: string; rows: number | null; bytes: number | null }
 export type TableSort = { key: "name" | "kind" | "rows" | "bytes"; descending: boolean }
@@ -47,7 +47,7 @@ export function backupState(
   backup: { at: string; checked: string | null } | null,
   now: number,
 ): { tone: Tone; text: string } {
-  if (!backup) return { tone: "idle", text: "No backup recorded beside the archive" }
+  if (!backup) return { tone: "idle", text: "No backup recorded beside the storage file" }
   const at = Date.parse(backup.at)
   const days = Math.floor((now - at) / DAY)
   const when = days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`
@@ -66,7 +66,7 @@ export function schemaState(
   if (schema === null || speaks === null) return null
   if (schema === speaks) return { tone: "ok", text: `${tool} speaks it` }
   if (schema < speaks)
-    return { tone: "warn", text: `${tool} speaks ${speaks}; the archive is brought up to it on its next write` }
+    return { tone: "warn", text: `${tool} speaks ${speaks}; storage moves to it the next time a tool writes` }
   return { tone: "warn", text: `newer than ${tool} knows (${speaks}); update ${tool}` }
 }
 
@@ -95,18 +95,18 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en
 
 /** Each failed check in plain words, with the command that fixes it when there is one. */
 export function healthIssues(c: CheckLike, formatBytes: (n: number) => string): Issue[] {
-  if (c.problem) return [{ text: `The archive did not open: ${c.problem}`, fix: null }]
+  if (c.problem) return [{ text: `Storage did not open: ${c.problem}`, fix: null }]
   const issues: Issue[] = []
   const migrate = c.fixes.find((f) => f.endsWith("store migrate")) ?? `${c.bin} store migrate`
   if (c.checks.schema === false && c.schema !== null && c.speaks !== null) {
     if (c.schema < c.speaks)
       issues.push({
-        text: `The archive is at schema ${c.schema}; ${c.bin} speaks ${c.speaks}. Back it up, then bring it up to date.`,
+        text: `Storage is at schema ${c.schema}; ${c.bin} speaks ${c.speaks}. Back it up, then bring it up to date.`,
         fix: migrate,
       })
     else if (c.writable === false)
       issues.push({
-        text: `The archive is at schema ${c.schema} and needs a tool that speaks at least ${c.minCompatible}; ${c.bin} speaks ${c.speaks}.`,
+        text: `Storage is at schema ${c.schema} and needs a tool that speaks at least ${c.minCompatible}; ${c.bin} speaks ${c.speaks}.`,
         fix: `${c.bin} upgrade`,
       })
   }
@@ -138,7 +138,7 @@ export function healthIssues(c: CheckLike, formatBytes: (n: number) => string): 
 export function healthNotes(c: CheckLike): string[] {
   const notes: string[] = []
   if (c.chatsBehind > 0)
-    notes.push(`${plural(c.chatsBehind, "chat has", "chats have")} newer messages than the archive holds.`)
+    notes.push(`${plural(c.chatsBehind, "chat has", "chats have")} newer messages than storage holds.`)
   if (c.orphanPointers > 0)
     notes.push(`${plural(c.orphanPointers, "tag or link points", "tags and links point")} at something deleted.`)
   return notes

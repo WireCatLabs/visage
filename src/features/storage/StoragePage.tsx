@@ -36,7 +36,7 @@ export function StoragePage() {
         <div>
           <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Storage</h1>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
-            What WireCat tools keep on this computer: settings, sessions, message archives and caches. A tool's data can
+            What WireCat tools keep on this computer: settings, sessions, shared storage and caches. A tool's data can
             be deleted once the tool is uninstalled. Sign-in tokens in your system keyring are not touched.
           </p>
         </div>
@@ -145,8 +145,14 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
 }
 
 function Entries({ area }: { area: StorageArea }) {
+  const open = useStorage((s) => s.open)
   const entries = area.folders.flatMap((f) =>
-    f.entries.map((e) => ({ ...e, key: `${f.kind}/${e.name}`, info: describeEntry(area.id, f.kind, e.name) })),
+    f.entries.map((e) => ({
+      ...e,
+      kind: f.kind,
+      key: `${f.kind}/${e.name}`,
+      info: describeEntry(area.id, f.kind, e.name),
+    })),
   )
   if (entries.length === 0) return null
   return (
@@ -156,7 +162,7 @@ function Entries({ area }: { area: StorageArea }) {
           {entries.map((e) => (
             <li
               key={e.key}
-              className="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_5.5rem] items-baseline gap-3 text-[0.85rem]"
+              className="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_5.5rem_1.5rem] items-center gap-3 text-[0.85rem]"
             >
               <span className="selectable flex min-w-0 items-center gap-1.5 truncate font-mono text-[0.8rem] text-ink">
                 {e.info?.secret && <KeyRound className="size-3.5 shrink-0 text-warn" aria-label="Credentials" />}
@@ -169,6 +175,15 @@ function Entries({ area }: { area: StorageArea }) {
               <span className="text-right font-mono text-[0.8rem] text-ink-dim tabular-nums">
                 {formatBytes(e.bytes)}
               </span>
+              <button
+                type="button"
+                onClick={() => open(area.id, e.kind, e.name)}
+                aria-label={`Open ${e.name} in the file manager`}
+                title={e.dir ? "Open in file manager" : "Show in file manager"}
+                className="grid size-6 shrink-0 place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
+              >
+                <FolderOpen className="size-3.5" aria-hidden />
+              </button>
             </li>
           ))}
         </ul>
@@ -205,7 +220,7 @@ function ConfirmDelete(props: {
         </>
       }
     >
-      <p>These folders are deleted for good. Archives, sessions and settings in them cannot be recovered.</p>
+      <p>These folders are deleted for good. Messages, sessions and settings in them cannot be recovered.</p>
       <ul className="mt-3 flex flex-col gap-1">
         {areas.flatMap((a) =>
           a.folders.map((f) => (

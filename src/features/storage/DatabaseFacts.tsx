@@ -29,7 +29,7 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
     <section aria-labelledby="database-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id="database-title" className="text-[1rem] font-semibold">
-          Database
+          Storage file
         </h3>
         <CheckButton />
       </div>
@@ -170,7 +170,7 @@ function Health() {
       <span className="inline-flex items-center gap-2">
         <Lamp tone="idle" size="sm" />
         <span className="text-ink-soft">
-          Not checked yet. The check reads the whole file, a minute or two on a large archive.
+          Not checked yet. The check reads the whole file, a minute or two when storage is large.
         </span>
       </span>
     )

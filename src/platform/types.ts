@@ -41,7 +41,8 @@ export type Platform = {
   cancelInstall(id: string): Promise<void>
   storage(): Promise<StorageArea[]>
   clearStorage(id: string): Promise<void>
-  openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
+  /** `entry` opens one item directly inside the folder; Rust builds and checks the path. */
+  openFolder(id: string, kind: StorageFolder["kind"], entry?: string): Promise<void>
   /** What the shared archive holds, from the first installed messenger tool; null when none is installed. */
   storeInfo(): Promise<StoreInfo | null>
   /** Every table with its kind and rows; `sizes` reads the whole file, from seconds to minutes. */

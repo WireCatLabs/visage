@@ -46,8 +46,8 @@ export function ClearDataOffer() {
       }
     >
       <p>
-        The tools left {formatBytes(bytes)} on this computer: message archives, sessions, settings and caches. Keep it
-        if you may install them again; delete it to remove everything. Sign-in tokens in your system keyring are not
+        The tools left {formatBytes(bytes)} on this computer: shared storage, sessions, settings and caches. Keep it if
+        you may install them again; delete it to remove everything. Sign-in tokens in your system keyring are not
         touched.
       </p>
     </Dialog>

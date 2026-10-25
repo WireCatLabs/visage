@@ -65,7 +65,7 @@ describe("database facts", () => {
     expect(backupState(null, now).tone).toBe("idle")
   })
 
-  it("says whether the answering tool speaks the archive's schema", () => {
+  it("says whether the answering tool speaks the storage schema", () => {
     expect(schemaState(33, 33, "Telegram")?.tone).toBe("ok")
     expect(schemaState(34, 33, "Telegram")?.text).toContain("update Telegram")
     expect(schemaState(null, 33, "Telegram")).toBeNull()
@@ -73,7 +73,7 @@ describe("database facts", () => {
 })
 
 describe("health", () => {
-  it("has nothing to say about a healthy archive", () => {
+  it("has nothing to say about healthy storage", () => {
     expect(healthIssues(healthy, formatBytes)).toEqual([])
     expect(healthNotes(healthy)).toEqual([])
   })
@@ -95,14 +95,14 @@ describe("health", () => {
     expect(issues[0]?.text).toContain("schema 31; tg speaks 33")
     expect(issues[2]?.text).toContain("477 MB free")
     expect(healthNotes(sick)).toEqual([
-      "12 chats have newer messages than the archive holds.",
+      "12 chats have newer messages than storage holds.",
       "1 tag or link points at something deleted.",
     ])
   })
 
-  it("reports an archive that does not open as the only problem", () => {
+  it("reports storage that does not open as the only problem", () => {
     expect(healthIssues({ ...healthy, ok: false, problem: "locked" }, formatBytes)).toEqual([
-      { text: "The archive did not open: locked", fix: null },
+      { text: "Storage did not open: locked", fix: null },
     ])
   })
 })
