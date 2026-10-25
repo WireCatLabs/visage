@@ -60,8 +60,6 @@ const COMMANDS: [string, boolean][] = [
   ["tasks list", R],
   ["tasks add", W],
   ["tasks close", W],
-  ["bot messages list", R],
-  ["bot messages send", W],
   ["config show", R],
   ["runs list", R],
 ]

@@ -57,8 +57,7 @@
           { "key": "contacts", "label": "Contacts" },
           { "key": "account", "label": "Account" },
           { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" },
-          { "key": "bot", "label": "Bot" }
+          { "key": "tasks", "label": "Tasks" }
         ]
       },
       "signIn": {
@@ -118,8 +117,7 @@
           { "key": "contacts", "label": "Contacts" },
           { "key": "account", "label": "Account" },
           { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" },
-          { "key": "bot", "label": "Bot" }
+          { "key": "tasks", "label": "Tasks" }
         ]
       },
       "signIn": {
@@ -179,8 +177,7 @@
           { "key": "contacts", "label": "Contacts" },
           { "key": "account", "label": "Account" },
           { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" },
-          { "key": "bot", "label": "Bot" }
+          { "key": "tasks", "label": "Tasks" }
         ]
       },
       "signIn": {

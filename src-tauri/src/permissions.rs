@@ -100,7 +100,10 @@ fn command_access(doc: &Value) -> Option<Vec<CommandAccess>> {
                 writes: effects.is_null() || effects["remote"] == "write" || effects["local"] == "write",
                 available: availability["available"].as_bool()?,
                 reason: availability["reason"].as_str().map(redact::text),
-                permission: availability["permission"].as_str().filter(|k| is_key(k)).map(str::to_string),
+                permission: availability["permission"]
+                    .as_str()
+                    .filter(|k| is_key(k) || *k == CEILING_KEY)
+                    .map(str::to_string),
             })
         })
         .collect();

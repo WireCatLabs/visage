@@ -74,15 +74,33 @@ export const STATE_LABEL: Record<GroupState, string> = {
   default: "Not set",
 }
 
+const mixed = (c: Count) => c.allowed > 0 && c.allowed < c.total
+
 /** "3 of 8 changes allowed", for the half that is partly blocked. */
 export function partialDetail(s: GroupSummary): string | null {
   if (s.state !== "partial" || !s.reads || !s.writes) return null
-  if (s.writes.allowed < s.writes.total && s.writes.total > 0)
-    return `${s.writes.allowed} of ${s.writes.total} changes allowed`
+  if (mixed(s.writes) || !mixed(s.reads)) return `${s.writes.allowed} of ${s.writes.total} changes allowed`
   return `${s.reads.allowed} of ${s.reads.total} reads allowed`
 }
 
 export const blockedCommands = (s: GroupSummary) => s.commands.filter((c) => !c.available)
+
+/** In a partial group, the commands that still run in the half that is partly blocked. */
+export function stillAllowed(s: GroupSummary): CommandAccess[] {
+  if (s.state !== "partial" || !s.reads || !s.writes) return []
+  const changes = mixed(s.writes) || !mixed(s.reads)
+  return s.commands.filter((c) => c.available && c.writes === changes)
+}
+
+/** A command the tool blocks without naming a key no level can lift, such as a read-only lock in the environment. */
+export const isLock = (c: CommandAccess) => !c.available && c.permission === null
+
+export const locks = (commands: readonly CommandAccess[] | null) => [
+  ...new Set((commands ?? []).filter(isLock).map((c) => c.reason ?? "The tool blocks it without saying why.")),
+]
+
+/** Removing a level falls back to the tool's default, which is wider unless the level already allowed everything. */
+export const removalWidens = (own: OwnLevel | undefined) => own?.level !== "allow"
 
 /** How permissive the group is now, for deciding whether a new level widens it. */
 function currentOrder(s: GroupSummary): number {

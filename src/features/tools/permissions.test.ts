@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { findTool } from "@/domain/catalog"
 import type { CommandAccess, Permissions } from "@/platform/permissions-schemas"
-import { commandLine, lockReason, partialDetail, summarize, widens } from "./permissions"
+import {
+  commandLine,
+  lockReason,
+  locks,
+  partialDetail,
+  removalWidens,
+  stillAllowed,
+  summarize,
+  widens,
+} from "./permissions"
 
 const messages = { key: "messages", label: "Messages" }
 const cmd = (path: string, writes: boolean, available = true): CommandAccess => ({
@@ -43,6 +52,23 @@ describe("summarize", () => {
     expect(s.commands).toHaveLength(4)
   })
 
+  it("lists what still runs in a blocked group: commands the tool checks under another key", () => {
+    const contacts = summarize(
+      { key: "contacts", label: "Contacts" },
+      view({
+        levels: [{ key: "contacts", level: "deny", origin: "profile", from: null }],
+        commands: [
+          cmd("contacts list", false, false),
+          cmd("contacts context", false),
+          cmd("contacts add", true, false),
+        ],
+      }),
+    )
+    expect(contacts.state).toBe("partial")
+    expect(partialDetail(contacts)).toBe("1 of 2 reads allowed")
+    expect(stillAllowed(contacts).map((c) => c.path.join(" "))).toEqual(["contacts context"])
+  })
+
   it("tells read only, blocked, allowed and asks first apart from what the tool reports", () => {
     const reads = [cmd("messages list", false)]
     expect(summarize(messages, view({ commands: [...reads, cmd("messages send", true, false)] })).state).toBe(
@@ -67,6 +93,19 @@ describe("changing a level", () => {
     messages,
     view({ levels: [{ key: "messages", level: "readonly", origin: "profile", from: null }], commands: null }),
   )
+
+  it("treats a block without a key as a lock, and removing anything but allow as widening", () => {
+    const locked = {
+      ...cmd("messages send", true, false),
+      permission: null,
+      reason: "the read-only lock blocks this change",
+    }
+    expect(locks([locked, locked, cmd("messages edit", true, false)])).toEqual([
+      "the read-only lock blocks this change",
+    ])
+    expect(removalWidens({ key: "messages", level: "ask", origin: "profile", from: null })).toBe(true)
+    expect(removalWidens({ key: "messages", level: "allow", origin: "profile", from: null })).toBe(false)
+  })
 
   it("widens only above the current level", () => {
     expect(widens(s, "allow")).toBe(true)

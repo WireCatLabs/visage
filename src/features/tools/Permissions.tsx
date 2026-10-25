@@ -19,12 +19,16 @@ import {
   commandLine,
   type GroupState,
   type GroupSummary,
+  isLock,
   LEVEL_LABEL,
   LEVELS,
   layerOf,
   lockReason,
+  locks,
   partialDetail,
+  removalWidens,
   STATE_LABEL,
+  stillAllowed,
   summarize,
   widens,
   widensLevel,
@@ -167,6 +171,15 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
 
       {error && <p className="text-[0.9rem] text-bad">Could not read permissions: {error}</p>}
       {data?.ceiling && <Ceiling tool={tool} profile={profile} ceiling={data.ceiling} />}
+      {data &&
+        locks(data.commands).map((reason) => (
+          <p
+            key={reason}
+            className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2 text-[0.9rem] text-ink"
+          >
+            {tool.name} blocks some commands whatever the levels below say: {reason}.
+          </p>
+        ))}
       {data && <Notes tool={tool} data={data} defaultsView={defaultsView} />}
       {data && <Totals summaries={summaries} />}
 
@@ -283,7 +296,8 @@ function GroupRow(props: {
 }) {
   const { tool, summary: s, defaultsView, rows, onChange } = props
   const status = rows[s.group.key]
-  const lock = lockReason(s.own, defaultsView)
+  const lock = lockReason(s.own, defaultsView) ?? s.commands.find(isLock)?.reason ?? null
+  const still = stillAllowed(s)
   const blocked = blockedCommands(s)
   const detail =
     lock ??
@@ -313,7 +327,7 @@ function GroupRow(props: {
           onChange={(level) =>
             onChange(
               { key: s.group.key, label: s.group.label, level, from: s.own?.level, overrides: s.overrides },
-              level === null ? s.own?.level === "readonly" || s.own?.level === "deny" : widens(s, level),
+              level === null ? removalWidens(s.own) : widens(s, level),
             )
           }
         />
@@ -334,7 +348,7 @@ function GroupRow(props: {
                       onChange={(level) =>
                         onChange(
                           { key: o.key, label: o.key, level, from: o.level, overrides: [] },
-                          level === null ? o.level === "readonly" || o.level === "deny" : widensLevel(o.level, level),
+                          level === null ? removalWidens(o) : widensLevel(o.level, level),
                         )
                       }
                     />
@@ -356,6 +370,19 @@ function GroupRow(props: {
                         onChange({ key, label: key, level: "allow", from: undefined, overrides: [] }, true)
                       }
                     />
+                  ))}
+                </ul>
+              </SubList>
+            )}
+            {still.length > 0 && (
+              <SubList title="Still allowed">
+                <ul aria-label={`${s.group.label}: still allowed`} className="flex flex-col gap-1">
+                  {still.map((c) => (
+                    <li key={c.path.join(" ")}>
+                      <code className="selectable font-mono text-[0.85rem] text-ink">
+                        {tool.bin} {c.path.join(" ")}
+                      </code>
+                    </li>
                   ))}
                 </ul>
               </SubList>
@@ -454,7 +481,8 @@ function Blocked(props: {
   onAllow: (key: string) => void
 }) {
   const { tool, command, row, allowed, onAllow } = props
-  const key = command.permission
+  const key = command.permission === "*" ? null : command.permission
+  const own = key === command.path.join(".")
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -464,7 +492,7 @@ function Blocked(props: {
         {command.reason && <span className="min-w-0 flex-1 text-[0.85rem] text-ink-soft">{command.reason}</span>}
         {key && allowed && (
           <Button size="sm" variant="ghost" disabled={row?.state === "saving"} onClick={() => onAllow(key)}>
-            Allow
+            {own ? "Allow" : `Allow all of ${key}`}
           </Button>
         )}
       </div>
