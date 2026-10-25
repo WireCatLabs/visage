@@ -90,6 +90,35 @@ export const canKeepEveryRun = (id: string) => {
   return Boolean(settings?.defaults && settings.unset)
 }
 
+/** Every source and keeping row the catalog knows of, before anything is read. */
+export function fromCatalog(): Pick<LogsState, "sources" | "keeping"> {
+  const sources = Object.fromEntries(
+    // A part's runs come from its owner's source and are filed under the part by `runTool`.
+    tools
+      .filter((t) => !t.partOf)
+      .map((t) => [
+        t.id,
+        { id: t.id, state: initialState(t.id), runs: [], hasMore: false, pages: 0, error: null } satisfies Source,
+      ]),
+  )
+  const keeping = Object.fromEntries(
+    Object.values(sources)
+      .filter((s) => s.state === "loading" && canKeepEveryRun(s.id))
+      .map((s) => [s.id, { state: "loading" } satisfies Keeping]),
+  )
+  return { sources, keeping }
+}
+
+// load() starts in an effect, after the first paint; until it has run the page shows what it is about to fill.
+// Built once, so the selector keeps returning the same object and the store does not re-render in a loop.
+let firstFrame: Pick<LogsState, "sources" | "keeping"> | undefined
+export const useShownLogs = <T>(pick: (s: Pick<LogsState, "sources" | "keeping">) => T): T =>
+  useLogs((s) => {
+    if (Object.keys(s.sources).length) return pick(s)
+    firstFrame ??= fromCatalog()
+    return pick(firstFrame)
+  })
+
 export const useLogs = create<LogsState>((set, get) => {
   const patch = (id: string, f: (s: Source) => Partial<Source>) =>
     set((st) => {
@@ -147,19 +176,8 @@ export const useLogs = create<LogsState>((set, get) => {
     details: {},
 
     async load() {
-      const sources = Object.fromEntries(
-        // A part's runs come from its owner's source and are filed under the part by `runTool`.
-        tools
-          .filter((t) => !t.partOf)
-          .map((t) => [
-            t.id,
-            { id: t.id, state: initialState(t.id), runs: [], hasMore: false, pages: 0, error: null } satisfies Source,
-          ]),
-      )
+      const { sources, keeping } = fromCatalog()
       const reading = Object.values(sources).filter((s) => s.state === "loading")
-      const keeping = Object.fromEntries(
-        reading.filter((s) => canKeepEveryRun(s.id)).map((s) => [s.id, { state: "loading" } satisfies Keeping]),
-      )
       set({ sources, keeping, loadedAt: Date.now(), details: {} })
       await Promise.all([
         ...reading.map((s) => fetchPage(s.id, 1)),

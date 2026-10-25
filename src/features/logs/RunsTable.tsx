@@ -14,6 +14,7 @@ import {
 } from "@/domain/runs"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
+import { Skeleton } from "@/ui/Skeleton"
 import { ToolIcon } from "../tools/ToolIcon"
 import { toolName } from "./names"
 import { RunDetail } from "./RunDetail"
@@ -21,6 +22,8 @@ import { type Detail, runKey } from "./store"
 
 type Props = {
   runs: Run[]
+  /** Rows to hold at the real row height while the first runs are read. */
+  placeholders?: number
   now: Date
   expanded: string | null
   details: Record<string, Detail>
@@ -85,7 +88,18 @@ const STATUS_WORD: Record<string, string> = {
   running: "Running",
 }
 
-export function RunsTable({ runs, now, expanded, details, newest, onSort, onToggle, onFilter, onGroup }: Props) {
+export function RunsTable({
+  runs,
+  placeholders = 0,
+  now,
+  expanded,
+  details,
+  newest,
+  onSort,
+  onToggle,
+  onFilter,
+  onGroup,
+}: Props) {
   // The fixed columns alone take ~55rem; below that the command column would shrink to nothing, so the table
   // keeps a minimum width and scrolls sideways instead.
   return (
@@ -202,6 +216,18 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
               </Fragment>
             )
           })}
+          {Array.from({ length: placeholders }, (_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+            <tr key={i} className="h-[2.6rem] border-line border-b">
+              <td colSpan={9} className="px-[1.3rem]">
+                {i === 0 ? (
+                  <Skeleton className="h-[1.3rem] w-full" label="Loading runs" />
+                ) : (
+                  <Skeleton className="h-[1.3rem] w-full" />
+                )}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

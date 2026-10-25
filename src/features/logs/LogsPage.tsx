@@ -20,7 +20,7 @@ import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Select } from "@/ui/Select"
-import { Skeleton } from "@/ui/Skeleton"
+import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
@@ -28,12 +28,13 @@ import { KeepRuns } from "./KeepRuns"
 import { LOGS_DOCS, toolName } from "./names"
 import { QueryBar } from "./QueryBar"
 import { RunsTable } from "./RunsTable"
-import { type Source, useLogs } from "./store"
+import { type Source, useLogs, useShownLogs } from "./store"
 
 const STEP = 100
 
 export function LogsPage() {
-  const { sources, loadedAt, query, range, groupBy, expanded, details } = useLogs()
+  const { loadedAt, query, range, groupBy, expanded, details } = useLogs()
+  const sources = useShownLogs((s) => s.sources)
   const { load, loadMore, setQuery, setRange, setGroupBy, toggle } = useLogs.getState()
   const [newest, setNewest] = useState(true)
   const [shown, setShown] = useState(STEP)
@@ -95,7 +96,7 @@ export function LogsPage() {
           disabled={reading.length > 0}
           icon={<RefreshCw className={cx("size-4", reading.length > 0 && "animate-spin")} aria-hidden />}
         >
-          {reading.length > 0 ? "Reading…" : "Read again"}
+          <StableText value={reading.length > 0 ? "Reading…" : "Read again"} variants={["Reading…", "Read again"]} />
         </Button>
       </div>
 
@@ -127,7 +128,7 @@ export function LogsPage() {
           </div>
 
           {firstLoad ? (
-            <Loading reading={reading} total={withLogs.length} />
+            <Loading reading={reading} total={withLogs.length} facetsOpen={facetsOpen} newest={newest} />
           ) : (
             <div className="grid gap-[1.5rem] lg:grid-cols-[13.5rem_minmax(0,1fr)]">
               <div className={cx(facetsOpen ? "block" : "hidden", "lg:block")}>
@@ -251,37 +252,54 @@ function sourceWords(s: Source): string {
   return s.state === "loading" ? (n ? `${runs}, reading older…` : "reading…") : runs
 }
 
-function Loading({ reading, total }: { reading: Source[]; total: number }) {
+// The table's own header and rows at their real height, so the first tool's runs land where the placeholders were.
+const PLACEHOLDER_ROWS = 20
+
+function Loading(props: { reading: Source[]; total: number; facetsOpen: boolean; newest: boolean }) {
+  const { reading, total, facetsOpen, newest } = props
   const done = total - reading.length
   return (
-    <div className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
-      <div className="flex flex-col gap-[0.6rem] border-line border-b px-[1.3rem] py-[1rem]">
-        <p className="text-[0.95rem]">
-          Reading {reading.map((s) => toolName(s.id)).join(", ")} run logs… {done} of {total} tools done
+    <div className="grid gap-[1.5rem] lg:grid-cols-[13.5rem_minmax(0,1fr)]">
+      <div className={cx(facetsOpen ? "flex" : "hidden", "flex-col gap-[1.1rem] lg:flex")}>
+        <Skeleton className="h-[2.6rem] w-full" />
+        {FACETS.map((f) => (
+          <Skeleton key={f} className="h-[9rem] w-full" />
+        ))}
+      </div>
+      <div className="flex min-w-0 flex-col gap-[0.7rem]">
+        <p className="flex flex-wrap items-center gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
+          <span>
+            Reading {reading.map((s) => toolName(s.id)).join(", ")} run logs… {done} of {total} tools done
+          </span>
+          <span
+            role="progressbar"
+            aria-label="Tools read"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={done}
+            className="h-[0.3rem] w-[8rem] overflow-hidden rounded-full bg-app-3"
+          >
+            <span
+              className="block h-full rounded-full bg-brand transition-[width] duration-500 ease-out-quart"
+              style={{ width: `${Math.max(8, (done / Math.max(total, 1)) * 100)}%` }}
+            />
+          </span>
         </p>
-        <div
-          role="progressbar"
-          aria-label="Tools read"
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={done}
-          className="h-[0.3rem] overflow-hidden rounded-full bg-app-3"
-        >
-          <div
-            className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out-quart"
-            style={{ width: `${Math.max(8, (done / Math.max(total, 1)) * 100)}%` }}
+        <div className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
+          <RunsTable
+            runs={[]}
+            placeholders={PLACEHOLDER_ROWS}
+            now={new Date()}
+            expanded={null}
+            details={{}}
+            newest={newest}
+            onSort={() => {}}
+            onToggle={() => {}}
+            onFilter={() => {}}
+            onGroup={() => {}}
           />
         </div>
       </div>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="border-line border-b px-[1.3rem] py-[0.65rem] last:border-b-0">
-          {i === 0 ? (
-            <Skeleton className="h-[1.3rem] w-full" label="Loading runs" />
-          ) : (
-            <Skeleton className="h-[1.3rem] w-full" />
-          )}
-        </div>
-      ))}
     </div>
   )
 }

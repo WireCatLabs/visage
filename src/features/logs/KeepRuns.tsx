@@ -6,12 +6,12 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
 import { toolName } from "./names"
-import { type Keeping, useLogs } from "./store"
+import { type Keeping, useLogs, useShownLogs } from "./store"
 
 type Ask = { id: string; on: boolean; days: number | null }
 
 export function KeepRuns() {
-  const keeping = useLogs((s) => s.keeping)
+  const keeping = useShownLogs((s) => s.keeping)
   const setRecord = useLogs((s) => s.setRecord)
   const [ask, setAsk] = useState<Ask | null>(null)
   const ids = Object.keys(keeping)
@@ -85,7 +85,13 @@ function Row({ id, k, onAsk }: { id: string; k: Keeping; onAsk: (a: Ask) => void
         {toolName(id)}
       </span>
       {k.state === "loading" && (
-        <Skeleton className="h-[1.2rem] w-[18rem]" label={`Reading ${toolName(id)} settings`} />
+        <>
+          <span className="min-w-0 flex-1">
+            <Skeleton className="h-[1.2rem] w-[18rem] max-w-full" label={`Reading ${toolName(id)} settings`} />
+          </span>
+          {/* The button that comes with the setting is taller than the text line. */}
+          <Skeleton className="h-8 w-[8.6rem]" />
+        </>
       )}
       {k.state === "error" && (
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[0.95rem] text-ink-soft">
