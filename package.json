@@ -22,7 +22,7 @@
     "docs:spell": "cspell lint --no-progress README.md AGENTS.md CLAUDE.md 'docs/**/*.md'",
     "standards:check": "node config/wirecat/check.mjs",
     "secrets:scan": "gitleaks git --log-opts=HEAD --no-banner --redact --exit-code 1 .",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test",
+    "check": "pnpm standards:check && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test",
     "prepare": "lefthook install || true"
   },
   "dependencies": {
