@@ -221,6 +221,7 @@ export function createMock(os: Platform["os"]): Platform {
       await delay(600)
       dataSize[id] = 0
     },
+    async openFolder() {},
     async cancelInstall() {
       cancelled = true
     },

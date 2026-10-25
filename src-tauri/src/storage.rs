@@ -85,6 +85,16 @@ fn size(path: &Path) -> u64 {
         .sum()
 }
 
+/// The interface names a folder by area and kind; the path itself is always computed here.
+pub fn open(id: &str, kind: &str) -> Result<(), String> {
+    let storage = if id == SHARED { &catalog::catalog().shared_storage } else { &catalog::tool(id)?.storage };
+    let (_, path) = folders(storage).into_iter().find(|(k, _)| *k == kind).ok_or("unknown folder kind")?;
+    if !path.is_dir() {
+        return Err("That folder no longer exists.".into());
+    }
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(|e| e.to_string())
+}
+
 /// Deletes a tool's folders, or the shared archive, once nothing installed uses them.
 pub fn clear(id: &str) -> Result<(), String> {
     let installed: Vec<String> =

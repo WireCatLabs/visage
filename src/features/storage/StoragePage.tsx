@@ -1,8 +1,8 @@
-import { Database, Trash2 } from "lucide-react"
+import { Database, FolderOpen, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { findTool, sharedStorage } from "@/domain/catalog"
 import { formatBytes } from "@/domain/format"
-import type { StorageArea } from "@/platform/schemas"
+import type { StorageArea, StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Skeleton } from "@/ui/Skeleton"
@@ -10,6 +10,8 @@ import { ToolIcon } from "../tools/ToolIcon"
 import { areaBytes, useStorage } from "./store"
 
 const areaName = (id: string) => (id === "shared" ? sharedStorage.label : (findTool(id)?.name ?? id))
+const kindLabel: Record<StorageFolder["kind"], string> = { config: "Settings", state: "Data", cache: "Cache" }
+
 const toolNames = (ids: string[]) => ids.map((id) => findTool(id)?.name ?? id).join(", ")
 
 export function StoragePage() {
@@ -80,6 +82,7 @@ export function StoragePage() {
 }
 
 function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDelete: () => void }) {
+  const open = useStorage((s) => s.open)
   const empty = area.folders.length === 0
   const inUse = area.usedBy.length > 0
   const status = empty
@@ -103,8 +106,19 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
         {!empty && (
           <ul className="mt-1.5 flex flex-col gap-0.5">
             {area.folders.map((f) => (
-              <li key={f.path} className="selectable truncate font-mono text-[0.8rem] text-ink-dim">
-                {f.path}
+              <li key={f.path} className="flex min-w-0 items-center gap-2 text-[0.8rem]">
+                <span className="w-[3.6rem] shrink-0 text-ink-soft">{kindLabel[f.kind]}</span>
+                <span className="selectable truncate font-mono text-ink-dim">{f.path}</span>
+                <span className="shrink-0 font-mono text-ink-dim tabular-nums">{formatBytes(f.bytes)}</span>
+                <button
+                  type="button"
+                  onClick={() => open(area.id, f.kind)}
+                  aria-label={`Open ${kindLabel[f.kind].toLowerCase()} folder ${f.path}`}
+                  title="Open in file manager"
+                  className="grid size-6 shrink-0 place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
+                >
+                  <FolderOpen className="size-3.5" aria-hidden />
+                </button>
               </li>
             ))}
           </ul>

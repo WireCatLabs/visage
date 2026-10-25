@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { platform } from "@/platform/bridge"
-import type { StorageArea } from "@/platform/schemas"
+import type { StorageArea, StorageFolder } from "@/platform/schemas"
 
 type StorageState = {
   areas: StorageArea[] | null
@@ -10,6 +10,7 @@ type StorageState = {
   clear(id: string): Promise<void>
   /** Deletes every area nothing installed uses, the shared archive last. */
   clearAll(): Promise<void>
+  open(id: string, kind: StorageFolder["kind"]): Promise<void>
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -45,6 +46,14 @@ export const useStorage = create<StorageState>((set, get) => ({
       .map((a) => a.id)
       .sort((a, b) => Number(a === "shared") - Number(b === "shared"))
     for (const id of ids) await get().clear(id)
+  },
+
+  async open(id, kind) {
+    try {
+      await platform.openFolder(id, kind)
+    } catch (e) {
+      set({ error: message(e) })
+    }
   },
 }))
 

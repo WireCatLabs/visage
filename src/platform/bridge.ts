@@ -43,6 +43,7 @@ function createTauri(): Platform {
     uninstall: (id, onEvent) => invoke("uninstall_tool", { id, onEvent: events(onEvent) }),
     storage: () => call(StorageSchema, "storage_report"),
     clearStorage: (id) => invoke("clear_storage", { id }),
+    openFolder: (id, kind) => invoke("open_folder", { id, kind }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     openUrl: (url) => openUrl(url),

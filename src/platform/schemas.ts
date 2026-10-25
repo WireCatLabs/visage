@@ -66,3 +66,4 @@ export type Profile = NonNullable<v.InferOutput<typeof ProfilesSchema>>[number]
 export type Diagnosis = v.InferOutput<typeof DiagnosisSchema>
 export type InstallEvent = v.InferOutput<typeof InstallEventSchema>
 export type StorageArea = v.InferOutput<typeof StorageSchema>[number]
+export type StorageFolder = StorageArea["folders"][number]

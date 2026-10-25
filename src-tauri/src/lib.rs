@@ -78,6 +78,11 @@ async fn clear_storage(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn open_folder(id: String, kind: String) -> Result<(), String> {
+    blocking(move || storage::open(&id, &kind)).await?
+}
+
+#[tauri::command]
 fn cancel_install(id: String, running: State<'_, Arc<Running>>) {
     running.cancel(&id);
 }
@@ -107,6 +112,7 @@ pub fn run() {
             cancel_install,
             storage_report,
             clear_storage,
+            open_folder,
             open_setup
         ])
         .run(tauri::generate_context!())
