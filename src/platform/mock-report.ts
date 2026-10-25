@@ -1,8 +1,8 @@
+import { delay } from "./mock-delay"
 import type { Platform } from "./types"
 
 // `?report=fail` makes the server unreachable, `?report=queued` stores without an issue yet.
 const mode = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("report")
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export const reportMock: Pick<Platform, "reportContext" | "sendReport"> = {
   async reportContext() {

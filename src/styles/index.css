@@ -201,7 +201,8 @@ body {
   }
 }
 
-.skeleton {
+.skeleton,
+.skeleton-text::before {
   background: linear-gradient(90deg, var(--app-3) 0%, var(--app-2) 50%, var(--app-3) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
@@ -212,5 +213,54 @@ body {
   from {
     opacity: 0;
     transform: translateY(-2px);
+  }
+}
+
+/* Loading without layout shift: docs/dev/ARCHITECTURE.md. The text form keeps its line's height and draws the bar
+   inside it. */
+.skeleton-text {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+}
+.skeleton-text::before {
+  content: "";
+  position: absolute;
+  inset: 0.22em 0;
+}
+
+.stable-text {
+  display: inline-grid;
+}
+.stable-text > * {
+  grid-area: 1 / 1;
+}
+.stable-text > [data-text] {
+  visibility: hidden;
+}
+.stable-text > [data-text]::before {
+  content: attr(data-text);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Content that replaces a placeholder fades in where the placeholder was, instead of popping. */
+.reveal {
+  animation: reveal 180ms var(--ease-out-quart);
+}
+
+/* A scrollbar that appears once content outgrows the window would narrow the page by its width and re-wrap every
+   line. Reserve its gutter up front; WebKit before Safari 18.2 lacks the property, so it gets an always-on track,
+   which is invisible because the track is transparent. */
+main {
+  scrollbar-gutter: stable;
+}
+@supports not (scrollbar-gutter: stable) {
+  main {
+    overflow-y: scroll;
   }
 }

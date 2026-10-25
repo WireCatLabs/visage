@@ -1,10 +1,10 @@
 import type { Breakdown, FileFacts, Group, StoreCheck, StoreInfo, Table, TableList } from "./archive-schemas"
+import { delay } from "./mock-delay"
 
 // A fictional archive. `?store=plain` answers like today's tools, without the breakdown, the file facts or the
 // table list. `?backup=fresh|none` changes the last backup; `?check=issues` makes the health check find problems.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const g = (provider: string, key: string | null, counts: Partial<Omit<Group, "provider" | "key">>): Group => ({
   provider,

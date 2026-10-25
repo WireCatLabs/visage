@@ -1,6 +1,7 @@
 import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
 import { storeCheckMock, storeInfoMock, storeTablesMock } from "./mock-archive"
+import { delay } from "./mock-delay"
 import { permissionsMock } from "./mock-permissions"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
@@ -25,7 +26,6 @@ import type { Platform } from "./types"
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("state") ?? "mixed"
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const LATEST: Record<string, string> = {
   tg: "0.88.0",
   max: "0.74.0",

@@ -1,3 +1,4 @@
+import { delay } from "./mock-delay"
 import type { CommandAccess, Level, OwnLevel, Permissions } from "./permissions-schemas"
 import type { Platform } from "./types"
 
@@ -5,7 +6,6 @@ import type { Platform } from "./types"
 // `?permissions=readonly` is a machine whose first-run answer was "read only".
 
 const mode = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("permissions")
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 type Layers = { defaults: Record<string, Level>; profiles: Record<string, Record<string, Level>> }
 

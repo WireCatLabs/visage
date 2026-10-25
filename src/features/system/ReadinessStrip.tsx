@@ -3,8 +3,12 @@ import type { ProgramState } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Lamp } from "@/ui/Lamp"
+import { Skeleton } from "@/ui/Skeleton"
 import { ManagedNode } from "./ManagedNode"
 import { useSystem } from "./store"
+
+// "24.19.0": the usual length, so the strip does not move when real versions replace the placeholders.
+const VERSION_CHARS = 7
 
 function Item({
   label,
@@ -20,7 +24,15 @@ function Item({
   return (
     <span className="flex items-center gap-2" title={program?.problem ?? program?.path ?? undefined}>
       <Lamp size="sm" tone={tone} />
-      <span className="font-mono">{text}</span>
+      <span className="font-mono">
+        {text}
+        {!program && (
+          <>
+            {" "}
+            <Skeleton chars={VERSION_CHARS} />
+          </>
+        )}
+      </span>
       {suffix && <span className="text-ink-soft">{suffix}</span>}
     </span>
   )
@@ -37,7 +49,7 @@ export function ReadinessStrip() {
       <ul className="flex min-w-0 items-center gap-[2rem] overflow-hidden whitespace-nowrap text-ink">
         <li className="flex items-center gap-2">
           <Lamp size="sm" tone={r ? "ok" : "idle"} />
-          <span className="font-mono">{r ? r.os : "…"}</span>
+          <span className="font-mono">{r ? r.os : <Skeleton chars={5} label="Checking this computer" />}</span>
         </li>
         <li>
           {managed ? (

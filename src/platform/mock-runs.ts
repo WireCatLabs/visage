@@ -1,3 +1,4 @@
+import { delay } from "./mock-delay"
 import { recordOn } from "./mock-settings"
 import type { RunDetail, RunEvent, RunItem } from "./runs-schemas"
 import type { Platform } from "./types"
@@ -6,7 +7,6 @@ import type { Platform } from "./types"
 // `?runs=old` gives Zoom, Drive and Memo a version from before their `runs` commands.
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("runs")
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 type Plan = {
   count: number

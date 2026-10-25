@@ -1,4 +1,5 @@
 import type { Agent, Claim, Registrations, SkillReport, Target } from "./agents-schemas"
+import { delay } from "./mock-delay"
 import type { Platform } from "./types"
 
 // Fictional skill states covering each case: a CLI with `skill status`, one without (unknown),
@@ -6,7 +7,6 @@ import type { Platform } from "./types"
 // MCP: Claude Code has Telegram's personal profile, Cursor a hand-added `memo`; WhatsApp is too old for `mcp check`.
 // Tasks: Telegram's personal profile has three claims; Zoom is installed where a terminal does not look.
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 
 const AGENTS: Agent[] = [

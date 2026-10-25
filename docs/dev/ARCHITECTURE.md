@@ -152,6 +152,40 @@ The app's own Node.js (`node.rs`) is the nodejs.org LTS build, checked against `
 `install.rs` pick it up by path and no caller changes. `profile.rs` owns the marked PATH block in shell profiles
 and the user PATH in the Windows registry.
 
+## Loading without layout shift
+
+**Rule:** what the user sees first has the final shape. Data fills slots; it never adds rows, grows blocks or pushes
+the page down. Only the user's own click may change the layout.
+
+- **Render the real layout from what is known up front.** The catalog (`catalog/tools.json`) gives every tool's name,
+  icon and order before any command runs, so a list of tools renders its real rows at once and only the values wait.
+- **`<Skeleton chars={n} />`** (`src/ui/Skeleton.tsx`) stands in for a value inside a line: `n` characters wide, the
+  line's own height. Size `n` to the usual value (`7` for `24.19.0`). Use it in a cell, next to a label, in a sentence.
+- **`<Skeleton className="h-… w-…" />`** stands in for a block. Give it the block's final height, not a token one: a
+  row of a list is one skeleton per expected row at that row's height, not one short bar.
+- **`label`** goes on the first skeleton of a group only; it is announced as `role="status"`, the rest are silent.
+- **`<StableText value variants />`** is a label that switches between known texts ("Check again" / "Checking…")
+  and keeps the width of the widest.
+- **A slot that may appear later** (a note, an error, a "Tasks held by others" box) reserves its room with
+  `min-h-[…]` on the wrapper, or sits below everything that loads, where growing moves nothing.
+- **Numbers** use `tabular-nums` (or the mono font), so a count changing from 9 to 10 does not move its neighbours.
+- **`.reveal`** fades content in where its placeholder was. Under reduced motion it is instant.
+- **Global:** `main` reserves the scrollbar's gutter, so a page growing past the window does not narrow and re-wrap,
+  and `src/main.tsx` renders after the bundled fonts load, so the first frame is not laid out in a fallback font.
+
+**How to check.** On the browser build:
+
+```sh
+pnpm build && pnpm preview --port 1478 --strictPort
+node scripts/layout-shift.mjs tools agents --port 1478 --slow 3
+```
+
+It prints per page the Cumulative Layout Shift (`CLS`, how far things moved, 0 is best) and `grew`, how many pixels
+the visible part of the page grew after its first frame, which CLS does not see. A page is done when both are under
+the budget (`--budget 0.01`, `--grow 8`); the script exits 1 otherwise. `--shots 150,2000,4000` saves screenshots of
+the loading stages; check them in light and dark (`--dark`). `?slow=3` on any browser-build URL stretches every
+mock wait the same way.
+
 ## Design review
 
 `.impeccable/` holds the approved mock-up (`mocks/decision/rack.png`), its measured spec and review captures.

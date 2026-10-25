@@ -1,3 +1,4 @@
+import { delay } from "./mock-delay"
 import type { Origin, SettingRow, Settings } from "./settings-schemas"
 import type { Platform } from "./types"
 
@@ -5,8 +6,6 @@ import type { Platform } from "./types"
 
 type Scalar = string | number | boolean | null
 type Layer = Record<string, Scalar>
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const BUILT_IN: Layer = {
   limit: 50,
