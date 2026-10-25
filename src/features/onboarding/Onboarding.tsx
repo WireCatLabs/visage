@@ -3,6 +3,7 @@ import { type ComponentType, useEffect, useId, useRef } from "react"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
+import { AgentsMatrix } from "../agents/AgentsMatrix"
 import { useSystem } from "../system/store"
 import { useTools } from "../tools/store"
 import { Agents, Choose, Computer, Done, Install, installChosen, SignIn, Welcome } from "./steps"
@@ -34,7 +35,7 @@ const pages: Record<StepId, Page> = {
   agents: {
     title: "Connect agents",
     lead: "Your agent learns to use each tool from a skill: a short guide to the tool's commands and when to use them.",
-    body: Agents,
+    body: () => <Agents matrix={<AgentsMatrix compact />} />,
   },
   signin: {
     title: "Sign in",
