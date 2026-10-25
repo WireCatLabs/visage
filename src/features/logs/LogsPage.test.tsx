@@ -78,7 +78,8 @@ describe("Logs", () => {
     vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
       if (id === "zm")
         throw new Error(`unknown command 'list' — "runs" is not a command, so it was read as a profile name`)
-      if (id === "memo") throw "unknown command 'runs'"
+      if (id === "memo")
+        throw '{"error":{"code":"validation_error","message":"unknown command \'runs\'","retry":{"safe":false}}}'
       if (id === "drive") throw new Error("drive runs list: the program did not finish in time")
       return listRuns(id, ...rest)
     })

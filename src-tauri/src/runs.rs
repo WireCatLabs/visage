@@ -63,7 +63,7 @@ fn call(tool: &Tool, args: &[String]) -> Result<Value, String> {
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_secs(30)).map_err(|e| e.to_string())?;
-    let mut value = first_json(&out.stdout).or_else(|| first_json(&out.stderr));
+    let mut value = out.json();
     if let Some(v) = value.as_mut() {
         redact::json(v);
     }
@@ -72,11 +72,6 @@ fn call(tool: &Tool, args: &[String]) -> Result<Value, String> {
         Some(v) => Err(v["error"]["message"].as_str().map_or_else(|| failure(&out), str::to_string)),
         None => Err(failure(&out)),
     }
-}
-
-// Notes the CLI prints for people may follow the JSON, so only the first value is read.
-fn first_json(s: &str) -> Option<Value> {
-    serde_json::Deserializer::from_str(s).into_iter::<Value>().next()?.ok()
 }
 
 fn failure(out: &run::Output) -> String {
@@ -141,12 +136,6 @@ mod tests {
             let src = source(catalog::tool(id).unwrap()).unwrap();
             assert!(!src.list.iter().chain(&src.show).any(|a| a == "{profile}"), "{id}");
         }
-    }
-
-    #[test]
-    fn reads_the_first_json_value_only() {
-        assert_eq!(first_json("{\"items\":[]}\nnothing recorded").unwrap()["items"], serde_json::json!([]));
-        assert!(first_json("not json").is_none());
     }
 
     /// `cargo test -- --ignored real_tg` against the installed tg; prints shapes and counts, never values.

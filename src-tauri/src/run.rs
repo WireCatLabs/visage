@@ -11,6 +11,20 @@ pub struct Output {
     pub stderr: String,
 }
 
+impl Output {
+    /// The tool's JSON answer. Tools print it on stdout, or on stderr for an error, and a runtime warning or a note
+    /// for people may come before or after it, so a line that starts a JSON object is accepted too.
+    pub fn json(&self) -> Option<serde_json::Value> {
+        [&self.stdout, &self.stderr].into_iter().find_map(|s| {
+            first_value(s).or_else(|| s.lines().filter(|l| l.trim_start().starts_with('{')).find_map(first_value))
+        })
+    }
+}
+
+fn first_value(s: &str) -> Option<serde_json::Value> {
+    serde_json::Deserializer::from_str(s).into_iter::<serde_json::Value>().next()?.ok()
+}
+
 #[derive(Debug)]
 pub enum RunError {
     NotFound,
@@ -183,4 +197,19 @@ fn kill(child: &mut Child) {
     }
     let _ = child.kill();
     let _ = child.wait();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_the_json_answer_around_notes_and_warnings() {
+        let out = |stdout: &str, stderr: &str| Output { code: Some(2), stdout: stdout.into(), stderr: stderr.into() };
+        assert_eq!(out("{\"items\":[]}\nnothing recorded", "").json().unwrap()["items"], serde_json::json!([]));
+        let warned =
+            out("", "(node:12) ExperimentalWarning: SQLite\n{\"error\":{\"message\":\"unknown command 'runs'\"}}");
+        assert_eq!(warned.json().unwrap()["error"]["message"], "unknown command 'runs'");
+        assert!(out("not json", "").json().is_none());
+    }
 }

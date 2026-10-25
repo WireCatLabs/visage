@@ -150,8 +150,7 @@ pub fn info() -> Result<Option<StoreInfo>, String> {
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_secs(30)).map_err(|e| e.to_string())?;
-    let json: Option<Value> =
-        serde_json::Deserializer::from_str(&out.stdout).into_iter::<Value>().next().and_then(Result::ok);
+    let json = out.json();
     match json {
         Some(v) if out.code == Some(0) => Ok(Some(shape(&tool.id, v.get("item").unwrap_or(&v)))),
         Some(v) if v["error"]["message"].is_string() => Err(redact::text(v["error"]["message"].as_str().unwrap_or(""))),

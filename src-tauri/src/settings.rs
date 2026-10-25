@@ -90,7 +90,7 @@ fn run_tool(tool: &Tool, args: &[String]) -> Result<run::Output, String> {
 }
 
 fn parsed(out: &run::Output) -> Option<Value> {
-    serde_json::from_str(&out.stdout).or_else(|_| serde_json::from_str(&out.stderr)).ok()
+    out.json()
 }
 
 /// The CLI's own message, so a rejected value is explained in the tool's words.

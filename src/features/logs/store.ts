@@ -52,7 +52,17 @@ type LogsState = {
   toggle(key: string, run: Run): void
 }
 
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const message = (e: unknown) => {
+  const text = e instanceof Error ? e.message : String(e)
+  // A tool's JSON error that reached here unread still has a plain message inside.
+  if (!text.startsWith("{")) return text
+  try {
+    const inner = (JSON.parse(text) as { error?: { message?: unknown } }).error?.message
+    return typeof inner === "string" ? inner : text
+  } catch {
+    return text
+  }
+}
 // Every older zm, drive and memo refuses `runs list` with a validation_error whose message starts this way.
 const tooOld = (error: string) => /^unknown command '(runs|list)'/.test(error)
 export const runKey = (run: Pick<Run, "tool" | "run_id">) => `${run.tool}:${run.run_id}`

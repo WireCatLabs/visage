@@ -122,9 +122,7 @@ pub fn profiles(tool: &Tool) -> Result<Option<Vec<Profile>>, String> {
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let args: Vec<&str> = src.args.iter().map(String::as_str).collect();
     let out = run::run(&bin, &args, Some(&paths::search_path()), Duration::from_secs(30)).map_err(|e| e.to_string())?;
-    let value: Value = serde_json::from_str(&out.stdout)
-        .or_else(|_| serde_json::from_str(&out.stderr))
-        .map_err(|_| redact::text(last_line(&out.stderr)))?;
+    let value = out.json().ok_or_else(|| redact::text(last_line(&out.stderr)))?;
     Ok(Some(parse_profiles(&value, &src.shape)))
 }
 
@@ -170,8 +168,7 @@ pub fn diagnose(tool: &Tool, profile: Option<&str>) -> Result<Diagnosis, String>
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let started = Instant::now();
     let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_secs(90)).map_err(|e| e.to_string())?;
-    let mut report =
-        serde_json::from_str::<Value>(&out.stdout).or_else(|_| serde_json::from_str::<Value>(&out.stderr)).ok();
+    let mut report = out.json();
     if let Some(r) = report.as_mut() {
         redact::json(r);
     }

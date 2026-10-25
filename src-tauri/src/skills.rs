@@ -95,12 +95,8 @@ fn call(tool: &Tool, args: &[String], timeout: Duration) -> Result<(run::Output,
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = run::run(&bin, &refs, Some(&paths::search_path()), timeout).map_err(|e| e.to_string())?;
-    let json = first_json(&out.stdout).or_else(|| first_json(&out.stderr));
+    let json = out.json();
     Ok((out, json))
-}
-
-fn first_json(s: &str) -> Option<Value> {
-    serde_json::Deserializer::from_str(s).into_iter::<Value>().next()?.ok()
 }
 
 /// Some commands wrap their answer in `item`, others print it bare.
