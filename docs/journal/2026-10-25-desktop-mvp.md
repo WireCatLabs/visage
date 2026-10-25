@@ -54,6 +54,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-11 · Резервная копия и очистка хранилища.** «Let's add buttons to backup the storage (create a local backup for now in say zip) and clear storage with confirmation warning.» Копия — собственной командой инструмента `store backup` (уже есть, VACUUM INTO) и сжатие в zip в Rust. Команды очистки всего хранилища нет (`store clear` убирает только покинутые чаты) — агент открывает PR в cli-core, а кнопка в приложении выключена с объяснением, пока инструменты её не знают. Перед очисткой — предложение сделать копию и ввод слова-подтверждения.
 
+- **TASK-12 · Раунд правок интерфейса.** Слава: про «In use: uninstall the tool to delete its data»; MCP на Agents выглядит обязательным; непонятная кнопка Check у агента — «mb use Manage like in Tools»; кнопки назад/вперёд мыши; «Open terminal to sign in» — основной (фиолетовой) кнопкой, без аккаунтов ещё заметнее; Permissions в Tools — за видимым переключателем, подсветить несколько установленных копий, больше внимания аккаунтам; убрать «WhatsApp speaks it». Статус: один агент на все пункты (кроме Logs).
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -186,6 +188,9 @@ memo с пометкой «About: Email»; чтение логов для отч
 - **ASK-31 · «I still don't see the tables count/sizes etc displayed in storage, and I dont see data like segments in messages by cli or similar. is smone working on it?»** Ответ: экран готов, данных нет, потому что установленные инструменты этих команд ещё не знают. Разбивка (cli-core #1959) слита в 16:33, после выпуска 0.424.0 (16:10) — ждёт следующего выпуска cli-core. Таблицы (cli-core #1967) открыты, CI падает — их ведёт агент выпуска. После выпуска cli-core нужно обновить tg/max/wa и поставить новые версии.
 
 - **ASK-32 · «exclude no command from the logs filter / also did we improve the log fields? what will be added?»** Ответ: запуски без команды скрываются по умолчанию (снимаемый фильтр, счётчик скрытых) — передано агенту Logs. Поля журнала: cli-core #1963 слит и выпущен в 0.425.0 (17:08): `cli_command`, `argv` с маскировкой, `unknown_command`, `agent {kind, session_id}`, `error {class, code, reason, message, operation, http {method, endpoint_template, status}, provider, causes, stack}`. Приложение их уже показывает (ветка feat/logs-run-context слита). Чтобы появились — tg/max/wa/zm/drive/memo должны перейти на cli-core 0.425.0 и выйти; `http.method`/`endpoint_template` ещё требуют правок в max-cli, tg-cli, whatsapp-cli (транспорт), после выпуска.
+
+- **ASK-33 · «will uninstall remove the data?»** Ответ: нет. Удаление программы запускает только `npm/pnpm uninstall` (`src-tauri/src/install.rs`, `uninstall_steps`); данные остаются. Когда ни один установленный инструмент папку не использует, её можно удалить на Storage после подтверждения (правило 5 в CLAUDE.md). Надпись перефразируется.
+- **ASK-33.a · «can we install mcp server for the web browser from here?»** Ответ: можно — приложение может добавить чужой MCP-сервер в агента его же командой (`claude mcp add …`, `codex mcp add …`), как добавляет серверы WireCat. Решение — NEED-40 / IDEA-6.
 
 ## 3. Находки
 
@@ -351,6 +356,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **RISK-9 · После очистки `memo-import.timer` снова наполнит хранилище** заметками и почтой при следующем запуске. Диалог говорит об этом общими словами.
 - **RISK-10 · Падение приложения посреди копии оставляет скрытую частичную копию** (до размера хранилища) в `~/WireCat backups`; список её не показывает.
 - **BUG-7 · Проверка орфографии падала на `modelcontextprotocol` в плане OpenClaw/Hermes.** Слово добавлено в `cspell.json`.
+
+- **IDEA-6 · Рекомендуемые MCP-серверы не от WireCat (браузер).** Например Playwright MCP (`@playwright/mcp`) или Chrome DevTools MCP — ставить в выбранного агента его же командой, со страницы Agents. Вне продукта WireCat (данные владельца), поэтому только по решению NEED-40.
 
 ## 4. Вопросы к Славе
 
@@ -529,3 +536,4 @@ cli-private `main` (`4f3796c5`, `293693a0`). Причина замедления
 - **NEED-37 · Шифровать ли резервные копии паролем (`store backup --encrypt`)?** Сейчас: zip со всеми сообщениями без шифрования, панель советует хранить его в тайне. Варианты: **A** необязательное поле пароля · **B** только обычный zip. Я бы: **A**. Ответ: —
 - **NEED-38 · Как ускорить все команды, а не только `--version` (бэклог cli-core CORE-40)?** Сейчас: каждая команда грузит ~880 файлов cli-core (~400 мс); грузить только нужную команду нельзя — `config` и др. читают всё дерево команд. Варианты: **A** код каждой команды грузится при запуске, волнами по ~60 файлов, сверка одинаковым `commands --json` · **B** один бандл на инструмент (tg: −100–150 мс, −300 мс CPU на команду), вторая сборка, заглушки драйверов SQLite. Я бы: **A**. Ответ: —
 - **NEED-39 · Показывать на Agents все пять известных агентов всегда, даже ненайденные («Not found on this computer»)?** Сейчас: так и слито — единственный вариант без сдвига при первом запуске; раскрывашка «Agents this app knows» теперь почти повторяет список. Варианты: **A** оставить, раскрывашку убрать · **B** показывать только найденных (сдвиг при первом запуске). Я бы: **A**. Ответ: —
+- **NEED-40 · Ставить ли из приложения чужие MCP-серверы, например для управления браузером (Playwright MCP, Chrome DevTools MCP)?** Сейчас: приложение подключает к агентам только инструменты WireCat. Варианты: **A** короткий список «Recommended MCP servers» на Agents: добавить в выбранного агента его командой, с объяснением, что сервер делает и какие права получает · **B** не надо, приложение — только про WireCat. Я бы: **A** после волны OpenClaw/Hermes — общий код подключения тот же. Ответ: —
