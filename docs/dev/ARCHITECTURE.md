@@ -80,8 +80,11 @@ Doctor output is masked in Rust and summarised in `src/domain/doctor.ts`; the ra
 ## Growing the app
 
 A new area (accounts, memory, people…) is one entry in `src/app/sections.tsx` and one folder in `src/features/`.
-A managed Node.js runtime would live behind `system.rs`/`install.rs`: they already resolve `node` and `npm` by
-path, so pointing them at a bundled runtime changes no caller.
+The app's own Node.js (`node.rs`) is the nodejs.org LTS build, checked against `SHASUMS256.txt` and unpacked into
+`<app local data>/dev.wirecat.desktop/node/v<version>`, outside the shared archive that Storage may delete.
+`paths.rs` puts its `bin` first only when the user's own Node or npm cannot install tools, so `system.rs` and
+`install.rs` pick it up by path and no caller changes. `profile.rs` owns the marked PATH block in shell profiles
+and the user PATH in the Windows registry.
 
 ## Design review
 

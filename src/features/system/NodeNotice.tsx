@@ -101,8 +101,8 @@ function NeedsNode({ r }: { r: Readiness }) {
             {offer ? (
               <>
                 <span className="selectable font-mono tabular-nums text-ink">Node.js {offer.version}</span>
-                {offer.bytes ? <span className="font-mono tabular-nums">, {formatBytes(offer.bytes)}</span> : null} from
-                nodejs.org, checked against its published checksums.
+                {offer.bytes ? <span className="font-mono tabular-nums"> · {formatBytes(offer.bytes)}</span> : null}{" "}
+                from nodejs.org, checked against its published checksums.
               </>
             ) : offerError ? (
               "The latest LTS from nodejs.org, checked against its published checksums."

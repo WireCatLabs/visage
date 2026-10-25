@@ -59,10 +59,11 @@ export function ReadinessStrip() {
       </ul>
       <Dialog
         open={open}
+        wide
         title="WireCat's Node.js"
         onClose={() => setOpen(false)}
         actions={
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          <Button variant="ghost" data-autofocus onClick={() => setOpen(false)}>
             Close
           </Button>
         }
