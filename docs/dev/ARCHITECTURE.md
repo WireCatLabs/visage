@@ -24,7 +24,9 @@ src-tauri/src/
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
   archive.rs    what the shared archive holds, from a messenger tool's `store info`; the database is never opened.
-  skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `skill install`.
+  skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `install` / `show`.
+  mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
+  tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
@@ -76,8 +78,8 @@ everything that is left.
 ## Skills and the archive
 
 Each tool writes its skill (`SKILL.md`) to `~/.claude/skills` and `~/.agents/skills` with its own
-`skill install --for claude|agents`; the catalog's `skill` templates hold those commands and `skill status`. The app
-never reads a `SKILL.md`. A tool from before `skill status` answers "unknown command" and its cells show "unknown";
+`skill install --for claude|agents`; the catalog's `skill` templates hold those commands, `skill status` and
+`skill show`. The app never reads a `SKILL.md` file itself. A tool from before `skill status` answers "unknown command" and its cells show "unknown";
 memo falls back to the skill list in `doctor --json`. Agents are found by program on PATH or by their settings
 folder (`skills.rs`); which folder each agent reads comes from the agents' own docs.
 
@@ -92,6 +94,33 @@ interface calls the shared database "storage" everywhere, never "archive". Folde
 names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`. `open_folder` opens a folder or
 one entry in it by name: Rust joins the name to the catalog's folder after refusing anything but a plain child, opens
 a directory, and shows a file or a link in its folder instead of opening it.
+
+## What agents do with the tools
+
+The Agents page has one row per agent found. Each opens to what to fix, the tools (skill and MCP per profile), the
+agent's recent sessions and the tasks it holds.
+
+- **MCP.** The messenger CLIs register a profile's server as `<bin>-<profile>` with their own
+  `<bin> <profile> mcp add codex|claude-code` (cli-core), after the owner confirms; `mcp check` runs first so the
+  dialog says how many of the server's commands can write, and `--allow-writes` is passed only then. No tool removes
+  its server yet, so Disconnect runs the agent's own `claude mcp remove <name> --scope user` or `codex mcp remove
+  <name>`, for a name `mcp.rs` builds from the catalog and a validated profile. What is registered is read from
+  `codex mcp list --json`, and from the agents' settings files where no command lists without starting every server:
+  `~/.claude.json` (`mcpServers`, user scope), `~/.cursor/mcp.json`, `~/.gemini/settings.json`,
+  `~/.config/opencode/opencode.json` (`mcp`). Only names that look like a WireCat server leave Rust; commands,
+  environment and headers never do. zm, drive and memo serve MCP but cannot register themselves yet.
+- **Sessions** come from the runs the Logs page already read: runs grouped by `agent.kind` and `agent.session_id`
+  (`src/domain/agents.ts`). A run with `argv` and no agent was started by a person; one without either comes from a
+  tool too old to record it.
+- **Tasks.** `tasks list --json=id,key,claimed_by,claimed_until` for every profile of tg, max and wa, so no title reaches
+  the app; the holder (`claude-code:<session>`, `codex:<thread>`, an agent's name) is matched to its agent.
+  Release runs `tasks release <task> --holder owner`, because the app may itself run inside an agent's terminal.
+- **Check** joins these with `paths::in_terminal` (is the tool on the PATH a terminal has, without the folders the
+  app adds) and runs `mcp check` for every connected profile.
+- **Skill preview** shows `skill show --json`, the SKILL.md the installed version ships, beside the installed copies'
+  versions. The app does not read an installed SKILL.md, so what an update changes waits for a CLI that prints it.
+
+Every write on the page (skill install, MCP add or remove, task release) opens a dialog with the exact command.
 
 ## One package, several tools
 

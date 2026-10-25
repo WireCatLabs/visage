@@ -1,35 +1,76 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
+import { platform } from "@/platform/bridge"
 import { App } from "./App"
 
+const wait = { timeout: 5000 }
+
+async function openAgents() {
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole("button", { name: /Agents/ }))
+  return user
+}
+
 // Mock: Telegram has `skill status` with an old ~/.agents copy, MAX and Zoom are too old to report, memo answers
-// through doctor; Claude Code, Codex and Cursor are found.
+// through doctor; Claude Code, Codex and Cursor are found. Claude Code has tg-personal over MCP and holds Q-15;
+// Zoom is not on a terminal's PATH.
 describe("Agents", () => {
   beforeEach(() => useOnboarding.setState({ status: "done", open: false }))
 
-  it("shows each tool's skill per place and updates one cell", async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await user.click(screen.getByRole("button", { name: /Agents/ }))
+  it("shows each tool's skill per place and updates one cell after confirming", async () => {
+    const user = await openAgents()
 
-    const table = await screen.findByRole("table", { name: "Skills for agents" }, { timeout: 4000 })
-    expect(
-      await within(table).findByRole("columnheader", { name: /Claude Code, Cursor/ }, { timeout: 4000 }),
-    ).toBeInTheDocument()
-    const tg = (await within(table).findByRole("rowheader", { name: /Telegram/ }, { timeout: 4000 })).closest(
-      "tr",
-    ) as HTMLElement
-    expect(
-      await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Old/ }, { timeout: 4000 }),
-    ).toBeInTheDocument()
+    const table = await screen.findByRole("table", { name: "Skills for agents" }, wait)
+    expect(await within(table).findByRole("columnheader", { name: /Claude Code, Cursor/ }, wait)).toBeInTheDocument()
+    const tg = (await within(table).findByRole("rowheader", { name: /Telegram/ }, wait)).closest("tr") as HTMLElement
+    expect(await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Old/ }, wait)).toBeInTheDocument()
     const max = within(table).getByRole("rowheader", { name: /MAX/ })
-    expect(await within(max).findByText(/cannot report its skill/, {}, { timeout: 4000 })).toBeInTheDocument()
+    expect(await within(max).findByText(/cannot report its skill/, {}, wait)).toBeInTheDocument()
 
     await user.click(within(tg).getByRole("button", { name: /^Update Telegram skill for Codex/ }))
+    const dialog = await screen.findByRole("dialog", { name: /Update the Telegram skill/ })
+    expect(within(dialog).getByText("tg skill install --for agents --json")).toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "Update" }))
     expect(
-      await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Current/ }, { timeout: 4000 }),
+      await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Current/ }, wait),
     ).toBeInTheDocument()
-  }, 15000)
+  }, 20000)
+
+  it("connects a profile over MCP only after the owner confirms the exact command", async () => {
+    const add = vi.spyOn(platform, "mcpAdd")
+    const user = await openAgents()
+    await user.click(await screen.findByRole("button", { name: /^Claude Code/ }, wait))
+
+    const connect = await screen.findByRole("button", { name: "Connect Telegram work to Claude Code" }, wait)
+    await user.click(connect)
+    const dialog = await screen.findByRole("dialog", { name: "Connect Telegram (work) to Claude Code?" }, wait)
+    expect(within(dialog).getByText("tg work mcp add claude-code --json --allow-writes")).toBeInTheDocument()
+    expect(within(dialog).getByText(/9 of them can change things/)).toBeInTheDocument()
+    expect(add).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole("button", { name: "Connect" }))
+    expect(add).toHaveBeenCalledWith("tg", "work", "claude", true)
+    expect(
+      await screen.findByRole("img", { name: "Telegram work for Claude Code: Connected" }, wait),
+    ).toBeInTheDocument()
+  }, 20000)
+
+  it("Check lists what stops the agent, each with its fix, and releases a held task", async () => {
+    const user = await openAgents()
+    await user.click(await screen.findByRole("button", { name: "Check Claude Code" }, wait))
+
+    const fixes = await screen.findByRole("list", { name: "What to fix for Claude Code" }, wait)
+    expect(await within(fixes).findByText("Zoom is not on a terminal's PATH", {}, wait)).toBeInTheDocument()
+    expect(within(fixes).getByText(/^export PATH=/)).toBeInTheDocument()
+    expect(await within(fixes).findByText(/check(s)? passed\.$/, {}, wait)).toBeInTheDocument()
+
+    await user.click(await screen.findByRole("button", { name: "Release Q-15" }, wait))
+    const dialog = await screen.findByRole("dialog", { name: "Release Q-15?" })
+    expect(within(dialog).getByText("tg personal tasks release Q-15 --holder owner --json")).toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "Release" }))
+    expect(await screen.findByText("Claude Code holds no task.", {}, wait)).toBeInTheDocument()
+  }, 20000)
 })

@@ -1,5 +1,5 @@
 import { Bug } from "lucide-react"
-import { useState } from "react"
+import { useNav } from "@/features/nav"
 import { HelpMenu } from "@/features/onboarding/HelpMenu"
 import { Onboarding, SetupSteps } from "@/features/onboarding/Onboarding"
 import { useOnboarding } from "@/features/onboarding/store"
@@ -17,7 +17,8 @@ import { useApplyTheme } from "./theme"
 
 export function App() {
   useApplyTheme()
-  const [active, setActive] = useState("tools")
+  const active = useNav((s) => s.active)
+  const setActive = useNav((s) => s.go)
   const onboarding = useOnboarding((s) => s.open)
   const Page = sections.find((s) => s.id === active)?.page
 

@@ -17,6 +17,8 @@ import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
+import { askSkillInstall } from "./actions"
+import { ConfirmCommand } from "./Confirm"
 import { cellKey, useAgents } from "./store"
 
 const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
@@ -94,7 +96,6 @@ export function useSkillMatrix() {
 export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
   const { detected, agents, found, targets, rows, notInstalled } = useSkillMatrix()
   const load = useAgents((s) => s.load)
-  const install = useAgents((s) => s.install)
   const installedIds = rows.map((r) => r.tool.id).join(",")
 
   useEffect(() => {
@@ -189,7 +190,7 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
                           busy={c.busy}
                           failure={c.failure}
                           label={`${r.tool.name} skill for ${columnName(c.target)}`}
-                          onInstall={() => install(r.tool.id, c.target)}
+                          onInstall={(action) => askSkillInstall(r.tool.id, c.target, action, columnName(c.target))}
                         />
                       </td>
                     ))}
@@ -203,11 +204,18 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
           Not installed: {notInstalled.map((t) => t.name).join(", ")}. A skill comes with its tool.
         </p>
       )}
+      {compact && <ConfirmCommand />}
     </div>
   )
 }
 
-function Cell(props: { cell: SkillCell; busy: boolean; failure: string | null; label: string; onInstall: () => void }) {
+function Cell(props: {
+  cell: SkillCell
+  busy: boolean
+  failure: string | null
+  label: string
+  onInstall: (action: string) => void
+}) {
   const { cell, busy, failure, label, onInstall } = props
   const look = busy ? { tone: "busy" as const, word: "Writing…" } : LOOK[cell.kind]
   const action = cellAction(cell)
@@ -219,7 +227,13 @@ function Cell(props: { cell: SkillCell; busy: boolean; failure: string | null; l
         <span className={cx("text-[0.95rem]", cell.kind === "stale" && !busy && "text-warn-ink")}>{look.word}</span>
         {version && <span className="selectable font-mono text-[0.9rem] text-ink-soft tabular-nums">{version}</span>}
         {action && (
-          <Button size="sm" className="ml-auto" disabled={busy} onClick={onInstall} aria-label={`${action} ${label}`}>
+          <Button
+            size="sm"
+            className="ml-auto"
+            disabled={busy}
+            onClick={() => onInstall(action)}
+            aria-label={`${action} ${label}`}
+          >
             {action}
           </Button>
         )}

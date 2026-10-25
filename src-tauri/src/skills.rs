@@ -91,7 +91,7 @@ pub struct SkillReport {
     pub targets: Vec<TargetStatus>,
 }
 
-fn call(tool: &Tool, args: &[String], timeout: Duration) -> Result<(run::Output, Option<Value>), String> {
+pub(crate) fn call(tool: &Tool, args: &[String], timeout: Duration) -> Result<(run::Output, Option<Value>), String> {
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = run::run(&bin, &refs, Some(&paths::search_path()), timeout).map_err(|e| e.to_string())?;
@@ -100,11 +100,11 @@ fn call(tool: &Tool, args: &[String], timeout: Duration) -> Result<(run::Output,
 }
 
 /// Some commands wrap their answer in `item`, others print it bare.
-fn body(v: &Value) -> &Value {
+pub(crate) fn body(v: &Value) -> &Value {
     v.get("item").unwrap_or(v)
 }
 
-fn failure(out: &run::Output, json: Option<&Value>) -> String {
+pub(crate) fn failure(out: &run::Output, json: Option<&Value>) -> String {
     if let Some(m) = json.and_then(|v| v["error"]["message"].as_str()) {
         return redact::text(m);
     }
@@ -199,6 +199,23 @@ pub fn install(tool: &Tool, target: &str) -> Result<Option<String>, String> {
         Ok(json.as_ref().and_then(|v| body(v)["version"].as_str()).map(str::to_string))
     } else {
         Err(failure(&out, json.as_ref()))
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct SkillText {
+    pub name: String,
+    pub content: String,
+}
+
+/// The SKILL.md this version of the tool ships, printed by the tool. Not masked: it is the tool's own published text.
+pub fn show(tool: &Tool) -> Result<SkillText, String> {
+    let src = tool.skill.as_ref().ok_or(NO_SKILL)?;
+    let (out, json) = call(tool, &src.show, Duration::from_secs(30))?;
+    let item = json.as_ref().map(body).filter(|_| out.code == Some(0));
+    match item.and_then(|v| Some((v["name"].as_str()?, v["content"].as_str()?))) {
+        Some((name, content)) => Ok(SkillText { name: name.into(), content: content.into() }),
+        None => Err(failure(&out, json.as_ref())),
     }
 }
 

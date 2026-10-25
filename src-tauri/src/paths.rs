@@ -153,6 +153,13 @@ pub fn find(bin: &str) -> Option<PathBuf> {
     find_all(bin).into_iter().next()
 }
 
+/// Whether a terminal finds `bin` on its own PATH, without the folders this app adds to find tools. A coding agent
+/// runs commands in such a shell, so a tool only the app can find is one the agent cannot run.
+pub fn in_terminal(bin: &str) -> bool {
+    let path = login_shell().path.clone().or_else(|| std::env::var_os("PATH"));
+    path.is_some_and(|p| which::which_in(bin, Some(p), std::env::temp_dir()).is_ok())
+}
+
 pub fn manager_for(path: &Path) -> &'static str {
     let s = path.to_string_lossy().replace('\\', "/").to_lowercase();
     if s.contains("/pnpm/") {

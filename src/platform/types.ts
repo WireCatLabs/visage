@@ -1,4 +1,4 @@
-import type { Agent, SkillReport, Target } from "./agents-schemas"
+import type { Agent, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
@@ -55,6 +55,20 @@ export type Platform = {
   skillStatus(id: string): Promise<SkillReport>
   /** Resolves with the version written. */
   skillInstall(id: string, target: Target): Promise<string | null>
+  skillShow(id: string): Promise<SkillText>
+  /** By tool id, for installed tools: whether a terminal finds it on its own PATH. */
+  terminalReach(): Promise<Record<string, boolean>>
+  /** WireCat servers an agent has registered; rejects when the agent's list cannot be read. */
+  mcpRegistrations(agent: string): Promise<Registrations>
+  /** The tool's own `mcp check` for one profile; starts the server once, writes nothing. */
+  mcpCheck(id: string, profile: string): Promise<McpHealth>
+  /** The tool's own `mcp add`; `allowWrites` passes `--allow-writes`, which the owner confirmed. */
+  mcpAdd(id: string, profile: string, agent: string, allowWrites: boolean): Promise<void>
+  /** The agent's own `mcp remove` of `<bin>-<profile>`, or of `<bin>` when `profile` is null. */
+  mcpRemove(id: string, profile: string | null, agent: string): Promise<void>
+  taskClaims(id: string, profile: string): Promise<Claims>
+  /** Releases a claim as the owner, who may release any. */
+  taskRelease(id: string, profile: string, task: string): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
   /** What a bug report carries about this computer, masked, including recent failed runs (private). */
   reportContext(): Promise<ReportContext>

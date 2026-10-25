@@ -1,8 +1,12 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach } from "vitest"
+import { useNav } from "@/features/nav"
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  useNav.setState({ active: "tools" })
+})
 
 // jsdom has no matchMedia; the theme follows it.
 window.matchMedia ??= ((query: string) => ({

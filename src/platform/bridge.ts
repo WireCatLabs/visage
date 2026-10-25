@@ -2,7 +2,16 @@ import { Channel, invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
-import { AgentsSchema, SkillReportSchema, SkillWrittenSchema } from "./agents-schemas"
+import {
+  AgentsSchema,
+  ClaimsSchema,
+  McpHealthSchema,
+  RegistrationsSchema,
+  SkillReportSchema,
+  SkillTextSchema,
+  SkillWrittenSchema,
+  TerminalReachSchema,
+} from "./agents-schemas"
 import { StoreCheckSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
@@ -82,6 +91,14 @@ function createTauri(): Platform {
     detectAgents: () => call(AgentsSchema, "detect_agents"),
     skillStatus: (id) => call(SkillReportSchema, "skill_status", { id }),
     skillInstall: (id, target) => call(SkillWrittenSchema, "skill_install", { id, target }),
+    skillShow: (id) => call(SkillTextSchema, "skill_show", { id }),
+    terminalReach: () => call(TerminalReachSchema, "terminal_reach"),
+    mcpRegistrations: (agent) => call(RegistrationsSchema, "mcp_registrations", { agent }),
+    mcpCheck: (id, profile) => call(McpHealthSchema, "mcp_check", { id, profile }),
+    mcpAdd: (id, profile, agent, allowWrites) => invoke("mcp_add", { id, profile, agent, allowWrites }),
+    mcpRemove: (id, profile, agent) => invoke("mcp_remove", { id, profile, agent }),
+    taskClaims: (id, profile) => call(ClaimsSchema, "task_claims", { id, profile }),
+    taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),

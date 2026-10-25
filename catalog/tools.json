@@ -25,7 +25,24 @@
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"]
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
@@ -86,7 +103,24 @@
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"]
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
@@ -146,7 +180,24 @@
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"]
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
@@ -206,8 +257,11 @@
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"]
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
       },
+      "mcp": null,
+      "tasks": null,
       "storeInfo": null,
       "storeTables": null,
       "storeTableSizes": null,
@@ -259,8 +313,11 @@
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
-        "install": ["skill", "install", "--for", "{target}", "--json"]
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
       },
+      "mcp": null,
+      "tasks": null,
       "storeInfo": null,
       "storeTables": null,
       "storeTableSizes": null,
@@ -304,8 +361,11 @@
       "skill": {
         "status": ["skill", "status", "--json"],
         "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"],
         "doctorSkills": ["doctor", "--json"]
       },
+      "mcp": null,
+      "tasks": null,
       "storeInfo": null,
       "storeTables": null,
       "storeTableSizes": null,
@@ -336,6 +396,8 @@
       "runs": null,
       "setup": null,
       "skill": null,
+      "mcp": null,
+      "tasks": null,
       "storeInfo": null,
       "storeTables": null,
       "storeTableSizes": null,

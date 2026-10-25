@@ -1,6 +1,7 @@
 mod archive;
 mod catalog;
 mod install;
+mod mcp;
 mod node;
 mod paths;
 mod permissions;
@@ -13,6 +14,7 @@ mod settings;
 mod skills;
 mod storage;
 mod system;
+mod tasks;
 mod terminal;
 mod tools;
 
@@ -190,6 +192,62 @@ async fn skill_install(id: String, target: String) -> Result<Option<String>, Str
 }
 
 #[tauri::command]
+async fn skill_show(id: String) -> Result<skills::SkillText, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || skills::show(tool)).await?
+}
+
+/// Which installed tools a terminal finds on its own PATH, by tool id.
+#[tauri::command]
+async fn terminal_reach() -> Result<HashMap<String, bool>, String> {
+    blocking(|| {
+        catalog::catalog()
+            .tools
+            .iter()
+            .filter(|t| t.part_of.is_none() && paths::find(&t.bin).is_some())
+            .map(|t| (t.id.clone(), paths::in_terminal(&t.bin)))
+            .collect()
+    })
+    .await
+}
+
+#[tauri::command]
+async fn mcp_registrations(agent: String) -> Result<mcp::Registrations, String> {
+    blocking(move || mcp::registrations(&agent)).await?
+}
+
+#[tauri::command]
+async fn mcp_check(id: String, profile: String) -> Result<mcp::Health, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp::check(tool, &profile)).await?
+}
+
+#[tauri::command]
+async fn mcp_add(id: String, profile: String, agent: String, allow_writes: bool) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp::add(tool, &profile, &agent, allow_writes)).await?
+}
+
+/// `profile: None` removes the bare `<bin>` entry a person may have added by hand.
+#[tauri::command]
+async fn mcp_remove(id: String, profile: Option<String>, agent: String) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp::remove(tool, profile.as_deref(), &agent)).await?
+}
+
+#[tauri::command]
+async fn task_claims(id: String, profile: String) -> Result<tasks::Claims, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || tasks::claims(tool, &profile)).await?
+}
+
+#[tauri::command]
+async fn task_release(id: String, profile: String, task: String) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || tasks::release(tool, &profile, &task)).await?
+}
+
+#[tauri::command]
 async fn list_runs(id: String, query: Option<String>, limit: u32, page: u32) -> Result<serde_json::Value, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || runs::list(tool, query.as_deref(), limit, page)).await?
@@ -287,6 +345,14 @@ pub fn run() {
             detect_agents,
             skill_status,
             skill_install,
+            skill_show,
+            terminal_reach,
+            mcp_registrations,
+            mcp_check,
+            mcp_add,
+            mcp_remove,
+            task_claims,
+            task_release,
             report_context,
             send_report,
             list_runs,

@@ -25,6 +25,9 @@ pub struct Tool {
     /// Only for tools whose `config show` reports `permissions` levels.
     pub permissions: Option<PermissionsSource>,
     pub skill: Option<SkillSource>,
+    /// Only the messenger CLIs register their own MCP server with an agent; every tool can serve one.
+    pub mcp: Option<McpSource>,
+    pub tasks: Option<TasksSource>,
     /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
     pub part_of: Option<String>,
     pub name: String,
@@ -51,6 +54,22 @@ pub struct SkillSource {
     pub install: Vec<String>,
     /// A doctor whose JSON lists `item.skills[]`, asked when the CLI has no `skill status` yet.
     pub doctor_skills: Option<Vec<String>>,
+    /// The SKILL.md this version ships, as `{name, content}`.
+    pub show: Vec<String>,
+}
+
+/// `{client}` is `codex` or `claude-code`, the only agents the tools register themselves with.
+#[derive(Debug, Deserialize)]
+pub struct McpSource {
+    pub check: Vec<String>,
+    pub add: Vec<String>,
+}
+
+/// `{task}` is a validated task id or key; `release` names the owner as holder, who may release any claim.
+#[derive(Debug, Deserialize)]
+pub struct TasksSource {
+    pub list: Vec<String>,
+    pub release: Vec<String>,
 }
 
 /// The tool's own run-log commands; `{run}` is a validated run id.

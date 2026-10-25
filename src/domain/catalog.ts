@@ -32,8 +32,13 @@ const ToolSchema = v.object({
       status: v.array(v.string()),
       install: v.array(v.string()),
       doctorSkills: v.optional(v.array(v.string())),
+      show: v.array(v.string()),
     }),
   ),
+  /** The tool's own `mcp check` and `mcp add`; only the messenger CLIs register themselves with an agent. */
+  mcp: v.nullable(v.object({ check: v.array(v.string()), add: v.array(v.string()) })),
+  /** Open tasks with their claim holders, and releasing a claim as the owner. */
+  tasks: v.nullable(v.object({ list: v.array(v.string()), release: v.array(v.string()) })),
   storeInfo: v.nullable(v.array(v.string())),
   storeTables: v.nullable(v.array(v.string())),
   storeTableSizes: v.nullable(v.array(v.string())),
@@ -121,3 +126,8 @@ export const doctorNeedsProfile = (t: CatalogTool) => t.doctor.includes("{profil
 
 export const PROFILE_NAME = /^[A-Za-z0-9._-]{1,64}$/
 export const isValidProfile = (name: string) => PROFILE_NAME.test(name) && !name.startsWith("-")
+
+/** The command line a catalog template runs, for showing before the owner confirms it. */
+export function catalogCommand(t: CatalogTool, args: readonly string[], fill: Record<string, string>): string {
+  return [t.bin, ...args.map((a) => (/^\{\w+\}$/.test(a) ? (fill[a.slice(1, -1)] ?? a) : a))].join(" ")
+}
