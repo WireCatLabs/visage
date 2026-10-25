@@ -84,16 +84,16 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
     <div className="relative min-w-0 flex-1 basis-[26rem]">
       <div
         className={cx(
-          "relative flex h-[2.4rem] items-center rounded-[0.35rem] border bg-app transition-colors duration-150",
+          "relative flex h-[2.8rem] items-center rounded-[0.4rem] border bg-app transition-colors duration-150",
           "focus-within:border-brand",
           problem ? "border-bad/70" : "border-line-strong",
         )}
       >
-        <Search className="pointer-events-none absolute left-[0.7rem] size-[1rem] text-ink-dim" aria-hidden />
+        <Search className="pointer-events-none absolute left-[0.8rem] size-[1.15rem] text-ink-dim" aria-hidden />
         <div
           ref={mirror}
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-[2.4rem] left-[2.2rem] flex items-center overflow-hidden whitespace-pre font-mono text-[0.95rem]"
+          className="pointer-events-none absolute inset-y-0 right-[2.6rem] left-[2.5rem] flex items-center overflow-hidden whitespace-pre font-mono text-[1.02rem]"
         >
           <Highlight query={query} parsed={parsed} problems={problems} />
         </div>
@@ -123,7 +123,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
           onScroll={sync}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
-          className="selectable h-full min-w-0 flex-1 bg-transparent pr-[2.4rem] pl-[2.2rem] font-mono text-[0.95rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
+          className="selectable h-full min-w-0 flex-1 bg-transparent pr-[2.6rem] pl-[2.5rem] font-mono text-[1.02rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
         />
         {query && (
           <button
@@ -134,7 +134,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
             }}
             aria-label="Clear the search"
             title="Clear"
-            className="absolute right-[0.35rem] grid size-[1.7rem] place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
+            className="absolute right-[0.45rem] grid size-[1.9rem] place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
           >
             <X className="size-[0.95rem]" aria-hidden />
           </button>

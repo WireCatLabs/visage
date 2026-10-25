@@ -21,7 +21,7 @@ type Props<T extends string> = {
   onChange: (value: T) => void
   options: readonly Item<T>[]
   placeholder?: string
-  size?: "md" | "sm"
+  size?: "lg" | "md" | "sm"
   disabled?: boolean
   className?: string
   id?: string
@@ -34,6 +34,7 @@ type Props<T extends string> = {
 const isGroup = <T extends string>(item: Item<T>): item is SelectGroup<T> => "options" in item
 
 const sizes = {
+  lg: { button: "h-[2.8rem] pl-3 pr-2.5 text-[1.02rem] gap-2", option: "min-h-[2.3rem] text-[1rem]" },
   md: { button: "h-[2.4rem] pl-2.5 pr-2 text-[0.95rem] gap-2", option: "min-h-[2.1rem] text-[0.95rem]" },
   sm: { button: "h-8 pl-2 pr-1.5 text-[0.875rem] gap-1.5", option: "min-h-[1.85rem] text-[0.875rem]" },
 }

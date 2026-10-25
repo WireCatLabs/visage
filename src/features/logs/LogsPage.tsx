@@ -183,7 +183,7 @@ export function LogsPage() {
             <Button
               size="sm"
               variant="ghost"
-              className="mt-[0.2rem] lg:hidden"
+              className="mt-[0.4rem] lg:hidden"
               aria-expanded={facetsOpen}
               onClick={() => setFacetsOpen(!facetsOpen)}
               icon={<SlidersHorizontal className="size-4" aria-hidden />}
@@ -465,7 +465,7 @@ function Freshness({ at, reading, asked }: { at: number | null; reading: number;
 function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => void }) {
   const name = useId()
   return (
-    <fieldset className="inline-flex h-[2.4rem] items-center rounded-[0.45rem] border-0 bg-app-3 p-[3px]">
+    <fieldset className="inline-flex h-[2.8rem] items-center rounded-[0.45rem] border-0 bg-app-3 p-[3px]">
       <legend className="sr-only">Time range</legend>
       {RANGES.map((r) => (
         <label key={r.id} className="relative h-full">
@@ -477,7 +477,7 @@ function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => 
             onChange={() => onChange(r.id)}
             className="peer sr-only"
           />
-          <span className="grid h-full min-w-[2.6rem] cursor-pointer place-items-center rounded-[0.35rem] px-[0.55rem] font-mono text-[0.8rem] text-ink-soft transition-colors duration-150 hover:text-ink peer-checked:bg-app peer-checked:text-ink peer-checked:shadow-panel peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
+          <span className="grid h-full min-w-[3rem] cursor-pointer place-items-center rounded-[0.35rem] px-[0.7rem] font-mono text-[0.9rem] text-ink-soft transition-colors duration-150 hover:text-ink peer-checked:bg-app peer-checked:text-ink peer-checked:shadow-panel peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
             {r.id === "all" ? "All" : `Last ${r.label}`}
           </span>
         </label>
@@ -491,12 +491,13 @@ const GROUPABLE: string[] = [...FACETS, "cli_version"]
 function GroupBy({ value, onChange }: { value: string | null; onChange: (f: string | null) => void }) {
   const id = useId()
   return (
-    <div className="flex h-[2.4rem] items-center gap-[0.5rem]">
-      <label htmlFor={id} className="shrink-0 whitespace-nowrap text-[0.85rem] text-ink-dim">
+    <div className="flex h-[2.8rem] items-center gap-[0.5rem]">
+      <label htmlFor={id} className="shrink-0 whitespace-nowrap text-[0.95rem] text-ink-dim">
         Group by
       </label>
       <Select
         id={id}
+        size="lg"
         value={value ?? ""}
         onChange={(f) => onChange(f || null)}
         options={[
