@@ -261,3 +261,8 @@ WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
   логи) · **C** оставить как есть.
 - Я бы: **B** сейчас, **A** потом, если почте нужен свой цикл выпусков.
 - Ответ: «1 B».
+
+**NEED-15 · Запустить агента wirecat-api из этой сессии?** Ответ: «I gave handoff to another agent» — сервер строит
+другой агент, эта сессия его не трогает.
+
+ASK-15 (логи zm, drive, memo): PR zoom-cli#255, drive-cli#219, cli-memo#436; приложение — `ec89d42`.
