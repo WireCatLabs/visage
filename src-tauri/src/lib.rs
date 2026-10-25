@@ -188,8 +188,13 @@ async fn store_check() -> Result<Option<archive::Check>, String> {
 }
 
 #[tauri::command]
-async fn store_backup(running: State<'_, Arc<Running>>, on_event: Channel<backup::BackupEvent>) -> Result<(), String> {
+async fn store_backup(
+    running: State<'_, Arc<Running>>,
+    password: Option<String>,
+    on_event: Channel<backup::BackupEvent>,
+) -> Result<(), String> {
     let running = Arc::clone(&running);
+    let password = password.map(backup::Password::new);
     blocking(move || {
         let send = |e: backup::BackupEvent| {
             let _ = on_event.send(e);
@@ -197,7 +202,7 @@ async fn store_backup(running: State<'_, Arc<Running>>, on_event: Channel<backup
         if running.is_running(backup::RESET) || !running.start(backup::BACKUP) {
             return send(backup::BackupEvent::Failed { message: "A backup or a clear is already running.".into() });
         }
-        backup::backup(&|| !running.is_running(backup::BACKUP), &send);
+        backup::backup(password.as_ref(), &|| !running.is_running(backup::BACKUP), &send);
         running.finish(backup::BACKUP);
     })
     .await

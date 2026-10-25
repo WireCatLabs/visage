@@ -44,6 +44,7 @@ const ToolSchema = v.object({
   storeTableSizes: v.nullable(v.array(v.string())),
   storeCheck: v.nullable(v.array(v.string())),
   storeBackup: v.nullable(v.array(v.string())),
+  storeBackupEncrypted: v.nullable(v.array(v.string())),
   storeResetPreview: v.nullable(v.array(v.string())),
   storeReset: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),

@@ -90,7 +90,7 @@ function createTauri(): Platform {
     storeCompat: () => call(StoreCompatSchema, "store_compat"),
     storeTables: (sizes) => call(TableListSchema, "store_tables", { sizes }),
     storeCheck: () => call(StoreCheckSchema, "store_check"),
-    storeBackup: (onEvent) => {
+    storeBackup: (onEvent, password) => {
       const channel = new Channel<unknown>()
       channel.onmessage = (raw) => {
         const parsed = v.safeParse(BackupEventSchema, raw)
@@ -100,7 +100,7 @@ function createTauri(): Platform {
             : { event: "failed", message: "The app could not read the backup's progress." },
         )
       }
-      return invoke("store_backup", { onEvent: channel })
+      return invoke("store_backup", { password: password ?? null, onEvent: channel })
     },
     cancelStoreBackup: () => invoke("cancel_store_backup"),
     listBackups: () => call(BackupsSchema, "list_backups"),

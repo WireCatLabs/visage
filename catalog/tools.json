@@ -49,6 +49,7 @@
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
       "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
@@ -130,6 +131,7 @@
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
       "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
@@ -210,6 +212,7 @@
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
       "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
       "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
       "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
       "storage": {
@@ -276,6 +279,7 @@
       "storeTableSizes": null,
       "storeCheck": null,
       "storeBackup": null,
+      "storeBackupEncrypted": null,
       "storeResetPreview": null,
       "storeReset": null,
       "storage": {
@@ -335,6 +339,7 @@
       "storeTableSizes": null,
       "storeCheck": null,
       "storeBackup": null,
+      "storeBackupEncrypted": null,
       "storeResetPreview": null,
       "storeReset": null,
       "storage": {
@@ -386,6 +391,7 @@
       "storeTableSizes": null,
       "storeCheck": null,
       "storeBackup": null,
+      "storeBackupEncrypted": null,
       "storeResetPreview": null,
       "storeReset": null,
       "storage": {
@@ -421,6 +427,7 @@
       "storeTableSizes": null,
       "storeCheck": null,
       "storeBackup": null,
+      "storeBackupEncrypted": null,
       "storeResetPreview": null,
       "storeReset": null,
       "storage": {

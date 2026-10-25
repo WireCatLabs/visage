@@ -3,7 +3,7 @@ import type { BackupFile, Backups, ResetPreview } from "@/platform/backup-schema
 import { platform } from "@/platform/bridge"
 import { useStorage } from "./store"
 
-export type Progress = { step: "starting" | "copying" | "compressing"; done: number; total: number }
+export type Progress = { step: "starting" | "copying" | "compressing" | "encrypting"; done: number; total: number }
 export type Made = { file: BackupFile; folder: string; storeBytes: number; millis: number }
 
 type BackupState = {
@@ -21,8 +21,8 @@ type BackupState = {
   /** The empty store's schema once a clear finished. */
   cleared: number | null
   loadBackups(): Promise<void>
-  /** Resolves true once the zip is in the backups folder. */
-  backup(): Promise<boolean>
+  /** Resolves true once the backup is in the backups folder. The password goes to the tool and is not kept here. */
+  backup(password?: string): Promise<boolean>
   cancel(): Promise<void>
   open(name: string | null): Promise<void>
   loadPreview(): Promise<void>
@@ -52,7 +52,7 @@ export const useBackups = create<BackupState>((set, get) => ({
     }
   },
 
-  async backup() {
+  async backup(password) {
     if (get().progress) return false
     set({ progress: { step: "starting", done: 0, total: 0 }, backupError: null, made: null })
     // The result arrives as an event; the call itself only says the command was refused.
@@ -61,6 +61,8 @@ export const useBackups = create<BackupState>((set, get) => ({
         .storeBackup((e) => {
           if (e.event === "copying" || e.event === "compressing") {
             set({ progress: { step: e.event, done: e.done, total: e.total } })
+          } else if (e.event === "encrypting") {
+            set({ progress: { step: "encrypting", done: 0, total: 0 } })
           } else if (e.event === "done") {
             set({
               progress: null,
@@ -71,7 +73,7 @@ export const useBackups = create<BackupState>((set, get) => ({
             set({ progress: null, backupError: e.event === "failed" ? e.message : null })
             resolve(false)
           }
-        })
+        }, password)
         .catch((e) => {
           set({ progress: null, backupError: message(e) })
           resolve(false)

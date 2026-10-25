@@ -41,6 +41,8 @@ pub struct Tool {
     pub store_check: Option<Vec<String>>,
     /// `store backup {file}`: a consistent copy of the store into a new file, while it is in use.
     pub store_backup: Option<Vec<String>>,
+    /// `store backup --encrypt {file}`: the copy compressed and sealed with a password the tool reads from stdin.
+    pub store_backup_encrypted: Option<Vec<String>>,
     /// `store reset --dry-run`: every table a reset would empty; a tool older than it answers without `tables`.
     pub store_reset_preview: Option<Vec<String>>,
     /// `store reset` with no backup beside the store: the app makes its own first, when the owner keeps it.

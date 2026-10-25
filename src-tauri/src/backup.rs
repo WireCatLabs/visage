@@ -16,6 +16,12 @@ pub const RESET: &str = "store-reset";
 const FOLDER: &str = "WireCat backups";
 const PREFIX: &str = "wirecat-store-";
 const ENTRY: &str = "wirecat.db";
+const ZIP: &str = ".zip";
+/// cli-core names a file it seals `<name>.sealed`; the tool's `store restore` opens it after asking for the password.
+const SEALED: &str = ".db.sealed";
+
+/// Wiped from memory when dropped.
+pub type Password = zeroize::Zeroizing<String>;
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +30,8 @@ pub struct BackupFile {
     pub bytes: u64,
     /// Milliseconds since the Unix epoch.
     pub modified: u64,
+    /// Sealed with a password by the tool's `store backup --encrypt`, rather than zipped by the app.
+    pub encrypted: bool,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -37,11 +45,26 @@ pub struct Backups {
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
 pub enum BackupEvent {
-    Copying { done: u64, total: u64 },
-    Compressing { done: u64, total: u64 },
-    Done { file: BackupFile, folder: String, store_bytes: u64, millis: u64 },
+    Copying {
+        done: u64,
+        total: u64,
+    },
+    Compressing {
+        done: u64,
+        total: u64,
+    },
+    /// The tool copies beside the store and seals in one run, printing nothing; there is no progress to show.
+    Encrypting,
+    Done {
+        file: BackupFile,
+        folder: String,
+        store_bytes: u64,
+        millis: u64,
+    },
     Cancelled,
-    Failed { message: String },
+    Failed {
+        message: String,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -80,6 +103,7 @@ fn files_in(dir: &Path) -> Vec<BackupFile> {
             let name = e.file_name().into_string().ok()?;
             let meta = e.metadata().ok()?;
             (is_backup_name(&name) && meta.is_file()).then(|| BackupFile {
+                encrypted: name.ends_with(SEALED),
                 name,
                 bytes: meta.len(),
                 modified: millis_of(&meta),
@@ -98,11 +122,9 @@ fn millis_of(meta: &fs::Metadata) -> u64 {
         .unwrap_or(0)
 }
 
-/// A finished backup only: the copy and the zip being written start with a dot.
+/// A finished backup only: the copy and the file being written start with a dot.
 fn is_backup_name(name: &str) -> bool {
-    name.starts_with(PREFIX)
-        && Path::new(name).extension().is_some_and(|x| x == "zip")
-        && !name.contains(['/', '\\', '\0'])
+    name.starts_with(PREFIX) && (name.ends_with(ZIP) || name.ends_with(SEALED)) && !name.contains(['/', '\\', '\0'])
 }
 
 /// The folder, or one backup shown in it. Only names the list would show are accepted.
@@ -124,14 +146,22 @@ pub fn open(name: Option<&str>) -> Result<(), String> {
     tauri_plugin_opener::reveal_item_in_dir(&file).map_err(|e| e.to_string())
 }
 
-/// `wirecat-store-2026-10-25-1750.zip`, in local time; `-2`, `-3`… when a backup in the same minute exists.
-fn free_name(dir: &Path, stamp: &str) -> String {
-    let taken = |name: &str| dir.join(name).exists() || dir.join(format!(".{name}.partial")).exists();
-    let first = format!("{PREFIX}{stamp}.zip");
-    if !taken(&first) {
-        return first;
-    }
-    (2..10_000).map(|n| format!("{PREFIX}{stamp}-{n}.zip")).find(|name| !taken(name)).unwrap_or(first)
+/// `wirecat-store-2026-10-25-1750.zip`, or `….db.sealed` with a password, in local time; `-2`, `-3`… when a backup of
+/// either kind in the same minute exists.
+fn free_name(dir: &Path, stamp: &str, encrypted: bool) -> String {
+    let ext = if encrypted { SEALED } else { ZIP };
+    let taken = |base: &str| {
+        [ZIP, SEALED]
+            .iter()
+            .any(|x| dir.join(format!("{base}{x}")).exists() || dir.join(format!(".{base}{x}.partial")).exists())
+    };
+    let first = format!("{PREFIX}{stamp}");
+    let base = if taken(&first) {
+        (2..10_000).map(|n| format!("{first}-{n}")).find(|b| !taken(b)).unwrap_or(first)
+    } else {
+        first
+    };
+    format!("{base}{ext}")
 }
 
 /// The copy and the zip are on disk together until the copy is removed; `SQLite` text usually compresses to well under
@@ -163,10 +193,12 @@ fn template(args: &[String], file: &Path) -> Vec<String> {
     args.iter().map(|a| if a == "{file}" { file.to_string_lossy().into_owned() } else { a.clone() }).collect()
 }
 
-/// Runs the tool's own `store backup` into a hidden copy beside the backups, zips it, then removes the copy.
-pub fn backup(cancelled: &(dyn Fn() -> bool + Sync), send: &(dyn Fn(BackupEvent) + Sync)) {
+/// Without a password: the tool's own `store backup` into a hidden copy beside the backups, zipped by the app, then
+/// the copy removed. With one: the tool's `store backup --encrypt`, which compresses and seals by itself.
+pub fn backup(password: Option<&Password>, cancelled: &(dyn Fn() -> bool + Sync), send: &(dyn Fn(BackupEvent) + Sync)) {
     let started = Instant::now();
-    send(match make(cancelled, send) {
+    let password = password.map(|p| p.as_str()).filter(|p| !p.is_empty());
+    send(match make(password, cancelled, send) {
         Ok((file, folder, store_bytes)) => BackupEvent::Done {
             file,
             folder,
@@ -179,53 +211,141 @@ pub fn backup(cancelled: &(dyn Fn() -> bool + Sync), send: &(dyn Fn(BackupEvent)
 }
 
 fn make(
+    password: Option<&str>,
     cancelled: &(dyn Fn() -> bool + Sync),
     send: &(dyn Fn(BackupEvent) + Sync),
 ) -> Result<(BackupFile, String, u64), Stop> {
     let info = archive::info()?.ok_or("Install Telegram, WhatsApp or MAX: the backup is made by a messenger tool.")?;
-    let tool = archive::asked(|t| t.store_backup.as_ref()).ok_or("No installed tool can back up storage.")?;
-    let args = tool.store_backup.as_ref().ok_or("No installed tool can back up storage.")?;
+    let tool = if password.is_some() {
+        archive::asked(|t| t.store_backup_encrypted.as_ref())
+    } else {
+        archive::asked(|t| t.store_backup.as_ref())
+    }
+    .ok_or("No installed tool can back up storage.")?;
+    let args = if password.is_some() { &tool.store_backup_encrypted } else { &tool.store_backup };
+    let args = args.as_ref().ok_or("No installed tool can back up storage.")?;
     if !info.exists {
         return Err("Storage is not created yet, so there is nothing to back up.".into());
     }
     let store_bytes = info.file_bytes + info.wal_bytes;
     let dir = folder()?;
     create_private_dir(&dir).map_err(|e| format!("Could not create {}: {e}", paths::tilde(&dir.to_string_lossy())))?;
-    let free = fs4::available_space(&dir).map_err(|e| format!("Could not read the free disk space: {e}"))?;
-    if free < needed_for(store_bytes) {
+    enough_space(&dir, needed_for(store_bytes))?;
+    // Sealing, the tool puts its plain copy beside the store rather than beside the backup.
+    let store = info.path.as_deref().and_then(untilde);
+    if let (Some(_), Some(store_dir)) = (password, store.as_deref().and_then(Path::parent)) {
+        enough_space(store_dir, store_bytes)?;
+    }
+
+    let bin = paths::find(&tool.bin).ok_or("The tool is not installed.")?;
+    let name = free_name(&dir, &chrono::Local::now().format("%Y-%m-%d-%H%M").to_string(), password.is_some());
+    let partial = dir.join(format!(".{name}.partial"));
+    let made = if let Some(password) = password {
+        send(BackupEvent::Encrypting);
+        run_backup(&bin, &tool.bin, &template(args, &partial), Some(password), cancelled)
+            .and_then(|()| if partial.is_file() { Ok(()) } else { Err(no_file(&tool.bin)) })
+    } else {
+        let copy = dir.join(format!(".{name}.db.partial"));
+        let made = copy_then_zip(&bin, &tool.bin, args, &copy, &partial, store_bytes, cancelled, send);
+        let _ = fs::remove_file(&copy);
+        made
+    };
+    finish(made, &partial, &dir.join(&name)).map(|file| (file, paths::tilde(&dir.to_string_lossy()), store_bytes))
+}
+
+fn enough_space(dir: &Path, needed: u64) -> Result<(), Stop> {
+    let free = fs4::available_space(dir).map_err(|e| format!("Could not read the free disk space: {e}"))?;
+    if free < needed {
         return Err(format!(
             "Not enough free disk space. The backup needs about {} free in {}, and there is {}. Free some space and \
              try again.",
-            size(needed_for(store_bytes)),
+            size(needed),
             paths::tilde(&dir.to_string_lossy()),
             size(free)
         )
         .into());
     }
-
-    let name = free_name(&dir, &chrono::Local::now().format("%Y-%m-%d-%H%M").to_string());
-    let copy = dir.join(format!(".{name}.db.partial"));
-    let partial = dir.join(format!(".{name}.partial"));
-    let made = copy_then_zip(tool, args, &copy, &partial, store_bytes, cancelled, send);
-    finish(made, &copy, &partial, &dir.join(&name))
-        .map(|file| (file, paths::tilde(&dir.to_string_lossy()), store_bytes))
+    Ok(())
 }
 
-/// Names a finished zip; whatever happened, neither the plain copy nor a half-written zip stays behind.
-fn finish(made: Result<(), Stop>, copy: &Path, partial: &Path, target: &Path) -> Result<BackupFile, Stop> {
+fn untilde(path: &str) -> Option<PathBuf> {
+    match path.strip_prefix("~/") {
+        Some(rest) => paths::home().map(|h| h.join(rest)),
+        None => Some(PathBuf::from(path)),
+    }
+}
+
+fn no_file(bin: &str) -> Stop {
+    Stop::Failed(format!("{bin} store backup finished but wrote no file."))
+}
+
+/// Names a finished backup; whatever happened, a half-written one does not stay behind.
+fn finish(made: Result<(), Stop>, partial: &Path, target: &Path) -> Result<BackupFile, Stop> {
     let named = made.and_then(|()| {
         fs::rename(partial, target).map_err(|e| Stop::Failed(format!("Could not name the backup: {e}")))?;
         let meta = fs::metadata(target).map_err(|e| Stop::Failed(e.to_string()))?;
         let name = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        Ok(BackupFile { name, bytes: meta.len(), modified: millis_of(&meta) })
+        Ok(BackupFile { encrypted: name.ends_with(SEALED), name, bytes: meta.len(), modified: millis_of(&meta) })
     });
-    let _ = fs::remove_file(copy);
     let _ = fs::remove_file(partial);
     named
 }
 
+/// Runs the tool to the end; the password, when there is one, goes on stdin and is masked in any message it prints.
+fn run_backup(
+    bin: &Path,
+    name: &str,
+    args: &[String],
+    password: Option<&str>,
+    cancelled: &(dyn Fn() -> bool + Sync),
+) -> Result<(), Stop> {
+    let mut lines = (String::new(), String::new());
+    let code = run::stream_with_input(
+        backup_command(bin, args),
+        password.map(str::as_bytes),
+        Duration::from_hours(3),
+        cancelled,
+        |line| match line {
+            run::Line::Out(l) => lines.0.push_str(&(l + "\n")),
+            run::Line::Err(l) => lines.1.push_str(&(l + "\n")),
+        },
+    );
+    let code = match code {
+        Ok(code) => code,
+        Err(run::RunError::Cancelled) => return Err(Stop::Cancelled),
+        Err(e) => return Err(Stop::Failed(format!("The copy did not finish: {e}"))),
+    };
+    if code == Some(0) {
+        return Ok(());
+    }
+    // Masked before anything reads it: redacting first could split the password so the mask no longer finds it.
+    let output = run::Output { code, stdout: masked(&lines.0, password), stderr: masked(&lines.1, password) };
+    let failure = masked(&failure_of(&output), password);
+    if password.is_some() && failure.contains("unknown option") {
+        return Err(Stop::Failed(format!(
+            "Backups with a password need a newer {name}. Update {name} on the Tools page, or back up without one."
+        )));
+    }
+    Err(Stop::Failed(format!("{name} store backup failed: {failure}")))
+}
+
+fn backup_command(bin: &Path, args: &[String]) -> std::process::Command {
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run::command(bin, &refs, Some(&paths::search_path()))
+}
+
+fn masked(message: &str, password: Option<&str>) -> String {
+    match password {
+        // The tool trims what it reads, so the trimmed form is the one it could print.
+        Some(p) if !p.trim().is_empty() => message.replace(p, "•••").replace(p.trim(), "•••"),
+        _ => message.to_string(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn copy_then_zip(
-    tool: &Tool,
+    bin: &Path,
+    name: &str,
     args: &[String],
     copy: &Path,
     partial: &Path,
@@ -233,12 +353,9 @@ fn copy_then_zip(
     cancelled: &(dyn Fn() -> bool + Sync),
     send: &(dyn Fn(BackupEvent) + Sync),
 ) -> Result<(), Stop> {
-    let bin = paths::find(&tool.bin).ok_or("The tool is not installed.")?;
     let args = template(args, copy);
-    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let copied = AtomicBool::new(false);
-    let mut lines = (String::new(), String::new());
-    let code = thread::scope(|s| {
+    let ran = thread::scope(|s| {
         // `VACUUM INTO` prints nothing while it runs, so the copy's growth is the progress.
         s.spawn(|| {
             while !copied.load(Ordering::Relaxed) {
@@ -247,26 +364,13 @@ fn copy_then_zip(
                 thread::sleep(Duration::from_millis(300));
             }
         });
-        let code = run::stream(
-            run::command(&bin, &refs, Some(&paths::search_path())),
-            Duration::from_hours(3),
-            cancelled,
-            |line| match line {
-                run::Line::Out(l) => lines.0.push_str(&(l + "\n")),
-                run::Line::Err(l) => lines.1.push_str(&(l + "\n")),
-            },
-        );
+        let ran = run_backup(bin, name, &args, None, cancelled);
         copied.store(true, Ordering::Relaxed);
-        code
+        ran
     });
-    let code = match code {
-        Ok(code) => code,
-        Err(run::RunError::Cancelled) => return Err(Stop::Cancelled),
-        Err(e) => return Err(Stop::Failed(format!("The copy did not finish: {e}"))),
-    };
-    let output = run::Output { code, stdout: lines.0, stderr: lines.1 };
-    if code != Some(0) || !copy.is_file() {
-        return Err(Stop::Failed(format!("{} store backup failed: {}", tool.bin, failure_of(&output))));
+    ran?;
+    if !copy.is_file() {
+        return Err(no_file(name));
     }
     send(BackupEvent::Copying { done: store_bytes, total: store_bytes });
     compress(copy, partial, ENTRY, cancelled, &mut |done, total| send(BackupEvent::Compressing { done, total }))
@@ -482,11 +586,13 @@ mod tests {
     #[test]
     fn names_a_backup_by_the_minute_and_never_reuses_one() {
         let dir = scratch("names");
-        assert_eq!(free_name(&dir, "2026-10-25-1750"), "wirecat-store-2026-10-25-1750.zip");
+        assert_eq!(free_name(&dir, "2026-10-25-1750", false), "wirecat-store-2026-10-25-1750.zip");
+        assert_eq!(free_name(&dir, "2026-10-25-1750", true), "wirecat-store-2026-10-25-1750.db.sealed");
         fs::write(dir.join("wirecat-store-2026-10-25-1750.zip"), "x").unwrap();
-        assert_eq!(free_name(&dir, "2026-10-25-1750"), "wirecat-store-2026-10-25-1750-2.zip");
-        fs::write(dir.join(".wirecat-store-2026-10-25-1750-2.zip.partial"), "x").unwrap();
-        assert_eq!(free_name(&dir, "2026-10-25-1750"), "wirecat-store-2026-10-25-1750-3.zip");
+        assert_eq!(free_name(&dir, "2026-10-25-1750", false), "wirecat-store-2026-10-25-1750-2.zip");
+        assert_eq!(free_name(&dir, "2026-10-25-1750", true), "wirecat-store-2026-10-25-1750-2.db.sealed");
+        fs::write(dir.join(".wirecat-store-2026-10-25-1750-2.db.sealed.partial"), "x").unwrap();
+        assert_eq!(free_name(&dir, "2026-10-25-1750", false), "wirecat-store-2026-10-25-1750-3.zip");
     }
 
     #[test]
@@ -495,15 +601,24 @@ mod tests {
         for name in [
             "wirecat-store-2026-10-24-0900.zip",
             "wirecat-store-2026-10-25-1750.zip",
+            "wirecat-store-2026-10-25-1810.db.sealed",
             ".wirecat-store-2026-10-25-1800.zip.partial",
             ".wirecat-store-2026-10-25-1800.zip.db.partial",
+            ".wirecat-store-2026-10-25-1820.db.sealed.partial",
             "notes.zip",
             "wirecat-store-2026-10-25-1750.db",
         ] {
             fs::write(dir.join(name), "abc").unwrap();
         }
-        let names: Vec<String> = files_in(&dir).into_iter().map(|f| f.name).collect();
-        assert_eq!(names, ["wirecat-store-2026-10-25-1750.zip", "wirecat-store-2026-10-24-0900.zip"]);
+        let found: Vec<(String, bool)> = files_in(&dir).into_iter().map(|f| (f.name, f.encrypted)).collect();
+        assert_eq!(
+            found,
+            [
+                ("wirecat-store-2026-10-25-1810.db.sealed".into(), true),
+                ("wirecat-store-2026-10-25-1750.zip".into(), false),
+                ("wirecat-store-2026-10-24-0900.zip".into(), false)
+            ]
+        );
         assert!(files_in(&dir.join("absent")).is_empty());
     }
 
@@ -512,7 +627,10 @@ mod tests {
         assert!(!is_backup_name("../wirecat-store-x.zip"));
         assert!(!is_backup_name("wirecat-store-x.db"));
         assert!(!is_backup_name(".wirecat-store-x.zip.partial"));
+        assert!(!is_backup_name(".wirecat-store-x.db.sealed.partial"));
+        assert!(!is_backup_name("wirecat-store-x.sealed"));
         assert!(is_backup_name("wirecat-store-2026-10-25-1750.zip"));
+        assert!(is_backup_name("wirecat-store-2026-10-25-1750.db.sealed"));
     }
 
     #[test]
@@ -563,8 +681,7 @@ mod tests {
     #[test]
     fn leaves_only_the_named_zip_and_nothing_after_a_failure_or_a_cancel() {
         let dir = scratch("finish");
-        let (copy, partial) = (dir.join(".b.zip.db.partial"), dir.join(".b.zip.partial"));
-        let target = dir.join("wirecat-store-2026-10-25-1750.zip");
+        let partial = dir.join(".b.partial");
         let left = || {
             let mut names: Vec<String> =
                 fs::read_dir(&*dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
@@ -573,17 +690,63 @@ mod tests {
         };
 
         for stop in [Stop::Failed("disk full".into()), Stop::Cancelled] {
-            fs::write(&copy, "plain").unwrap();
             fs::write(&partial, "half").unwrap();
-            assert!(finish(Err(stop), &copy, &partial, &target).is_err());
+            assert!(finish(Err(stop), &partial, &dir.join("wirecat-store-2026-10-25-1750.zip")).is_err());
             assert!(left().is_empty());
         }
 
-        fs::write(&copy, "plain").unwrap();
         fs::write(&partial, "zipped").unwrap();
-        let file = finish(Ok(()), &copy, &partial, &target).unwrap();
-        assert_eq!((file.name.as_str(), file.bytes), ("wirecat-store-2026-10-25-1750.zip", 6));
-        assert_eq!(left(), ["wirecat-store-2026-10-25-1750.zip"]);
+        let file = finish(Ok(()), &partial, &dir.join("wirecat-store-2026-10-25-1750.zip")).unwrap();
+        assert_eq!((file.name.as_str(), file.bytes, file.encrypted), ("wirecat-store-2026-10-25-1750.zip", 6, false));
+        fs::write(&partial, "sealed").unwrap();
+        let file = finish(Ok(()), &partial, &dir.join("wirecat-store-2026-10-25-1751.db.sealed")).unwrap();
+        assert!(file.encrypted);
+        assert_eq!(left(), ["wirecat-store-2026-10-25-1750.zip", "wirecat-store-2026-10-25-1751.db.sealed"]);
+    }
+
+    /// A stand-in tool that prints its arguments, then what it read on stdin, and fails.
+    #[cfg(unix)]
+    fn echoing_tool(dir: &Path) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let bin = dir.join("fake-tg");
+        fs::write(&bin, "#!/bin/sh\necho \"args: $*\" >&2\nread -r p\necho \"read: $p\" >&2\nexit 1\n").unwrap();
+        fs::set_permissions(&bin, fs::Permissions::from_mode(0o755)).unwrap();
+        bin
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_password_goes_only_on_stdin_and_never_into_a_message() {
+        let dir = scratch("secret");
+        let bin = echoing_tool(&dir);
+        let password = Password::new("correct horse battery".into());
+        let args = template(
+            crate::catalog::tool("tg").unwrap().store_backup_encrypted.as_ref().unwrap(),
+            &dir.join(".out.db.sealed.partial"),
+        );
+        assert_eq!(args[..3], ["store", "backup", "--encrypt"]);
+
+        let cmd = backup_command(&bin, &args);
+        let given: Vec<String> = cmd.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        assert!(given.iter().all(|a| !a.contains("horse")), "{given:?}");
+        assert!(cmd.get_envs().all(|(k, v)| {
+            !k.to_string_lossy().contains("horse") && v.is_none_or(|v| !v.to_string_lossy().contains("horse"))
+        }));
+
+        let Err(Stop::Failed(message)) = run_backup(&bin, "tg", &args, Some(&password), &|| false) else {
+            panic!("the stand-in tool fails")
+        };
+        assert_eq!(message, "tg store backup failed: read: •••");
+        assert!(!message.contains("horse"));
+    }
+
+    #[test]
+    fn masks_the_password_as_typed_and_as_the_tool_trims_it() {
+        assert_eq!(
+            masked("unknown option '--encrypt' (pw: hunter2)", Some(" hunter2 ")),
+            "unknown option '--encrypt' (pw: •••)"
+        );
+        assert_eq!(masked("nothing secret", None), "nothing secret");
     }
 
     #[test]
@@ -642,12 +805,47 @@ mod tests {
         let events = std::sync::Mutex::new(Vec::new());
         let bytes = fs::metadata(&store).unwrap().len();
         let send = |e: BackupEvent| events.lock().unwrap().push(e);
-        copy_then_zip(tool, tool.store_backup.as_ref().unwrap(), &copy, &partial, bytes, &|| false, &send).unwrap();
+        let bin = paths::find(&tool.bin).unwrap();
+        let args = tool.store_backup.as_ref().unwrap();
+        copy_then_zip(&bin, &tool.bin, args, &copy, &partial, bytes, &|| false, &send).unwrap();
         let events = events.into_inner().unwrap();
         assert!(events.iter().any(|e| matches!(e, BackupEvent::Copying { done, total } if done == total)));
         assert!(matches!(events.last(), Some(BackupEvent::Compressing { done, total }) if done == total));
         let archive = zip::ZipArchive::new(File::open(&partial).unwrap()).unwrap();
         println!("store {bytes} bytes, zip {} bytes, {} events", fs::metadata(&partial).unwrap().len(), events.len());
         assert_eq!(archive.len(), 1);
+    }
+
+    /// `MESSAGING_STORE=/tmp/x.db cargo test -- --ignored real_sealed`: the installed tg seals a sandbox store, and its
+    /// own `store decrypt` opens it with the same password.
+    #[test]
+    #[ignore = "needs tg installed and MESSAGING_STORE pointing at a sandbox store"]
+    fn real_sealed() {
+        let store = std::env::var("MESSAGING_STORE").expect("MESSAGING_STORE");
+        assert!(!store.ends_with("WireCat/wirecat.db"), "never the owner's store");
+        let tool = crate::catalog::tool("tg").unwrap();
+        let bin = paths::find(&tool.bin).unwrap();
+        let dir = scratch("real-sealed");
+        let sealed = dir.join(".out.db.sealed.partial");
+        let args = template(tool.store_backup_encrypted.as_ref().unwrap(), &sealed);
+        run_backup(&bin, &tool.bin, &args, Some("sandbox pass"), &|| false).unwrap();
+        assert!(fs::read(&sealed).unwrap().starts_with(b"CMSEAL01"));
+
+        let opened = dir.join("opened.db");
+        let decrypt = ["store", "decrypt", &sealed.to_string_lossy(), "--output", &opened.to_string_lossy(), "--json"]
+            .map(String::from);
+        run_backup(&bin, &tool.bin, &decrypt, Some("sandbox pass"), &|| false).unwrap();
+        assert!(fs::read(&opened).unwrap().starts_with(b"SQLite format 3"));
+        let wrong = dir.join("wrong.db");
+        let decrypt = ["store", "decrypt", &sealed.to_string_lossy(), "--output", &wrong.to_string_lossy(), "--json"]
+            .map(String::from);
+        let Err(Stop::Failed(message)) = run_backup(&bin, &tool.bin, &decrypt, Some("not it"), &|| false) else {
+            panic!("a wrong password opens nothing")
+        };
+        println!(
+            "store {} bytes, sealed {} bytes; wrong password: {message}",
+            fs::metadata(&store).unwrap().len(),
+            fs::metadata(&sealed).unwrap().len()
+        );
     }
 }

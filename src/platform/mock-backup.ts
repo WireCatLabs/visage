@@ -4,7 +4,8 @@ import { DATA } from "./mock-archive"
 import { delay } from "./mock-delay"
 import type { Platform } from "./types"
 
-// `?backups=none` starts with no backups; `?backup-fail=disk` refuses for want of disk space. `?clear=old` has a tool
+// `?backups=none` starts with no backups; `?backup-fail=disk` refuses for want of disk space; `?backup-fail=encrypt`
+// has a tool older than `store backup --encrypt`, so only a backup with a password fails. `?clear=old` has a tool
 // older than `store reset --dry-run`, so Clear stays off; `?clear=busy` has a sync holding the store, so it refuses.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
@@ -19,16 +20,19 @@ const stamp = (at: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
 }
 
-const file = (at: number, bytes: number): BackupFile => ({
-  name: `wirecat-store-${stamp(at)}.zip`,
+const file = (at: number, bytes: number, encrypted = false): BackupFile => ({
+  name: `wirecat-store-${stamp(at)}${encrypted ? ".db.sealed" : ".zip"}`,
   bytes,
   modified: at,
+  encrypted,
 })
 
 export function backupMock(asksArchive: () => string | null) {
   const now = Date.now()
   const files: BackupFile[] =
-    params.get("backups") === "none" ? [] : [file(now - 2 * DAY, 391_118_848), file(now - 9 * DAY, 377_487_360)]
+    params.get("backups") === "none"
+      ? []
+      : [file(now - 2 * DAY, 391_118_848), file(now - 5 * DAY, 384_901_120, true), file(now - 9 * DAY, 377_487_360)]
   let cancelled = false
   let cleared = false
 
@@ -36,7 +40,7 @@ export function backupMock(asksArchive: () => string | null) {
     Platform,
     "storeBackup" | "cancelStoreBackup" | "listBackups" | "openBackups" | "storeResetPreview" | "storeReset"
   > = {
-    async storeBackup(onEvent: (e: BackupEvent) => void) {
+    async storeBackup(onEvent: (e: BackupEvent) => void, password?: string) {
       cancelled = false
       const started = Date.now()
       await delay(300)
@@ -48,15 +52,30 @@ export function backupMock(asksArchive: () => string | null) {
         })
         return
       }
+      if (password && params.get("backup-fail") === "encrypt") {
+        onEvent({
+          event: "failed",
+          message: "Backups with a password need a newer tg. Update tg on the Tools page, or back up without one.",
+        })
+        return
+      }
       const total = cleared ? 1_204_224 : STORE_BYTES
-      for (const phase of ["copying", "compressing"] as const) {
-        for (let i = 0; i <= 20; i++) {
+      if (password) {
+        onEvent({ event: "encrypting" })
+        for (let i = 0; i < 20; i++) {
           if (cancelled) return onEvent({ event: "cancelled" })
-          onEvent({ event: phase, done: Math.round((total * i) / 20), total })
           await delay(110)
         }
+      } else {
+        for (const phase of ["copying", "compressing"] as const) {
+          for (let i = 0; i <= 20; i++) {
+            if (cancelled) return onEvent({ event: "cancelled" })
+            onEvent({ event: phase, done: Math.round((total * i) / 20), total })
+            await delay(110)
+          }
+        }
       }
-      const made = file(Date.now(), Math.round(total * 0.27))
+      const made = file(Date.now(), Math.round(total * 0.27), Boolean(password))
       if (!files.some((f) => f.name === made.name)) files.unshift(made)
       onEvent({ event: "done", file: made, folder: FOLDER, storeBytes: total, millis: Date.now() - started })
     },

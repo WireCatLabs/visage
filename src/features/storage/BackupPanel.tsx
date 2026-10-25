@@ -1,11 +1,13 @@
-import { Archive, FolderOpen, Trash2 } from "lucide-react"
+import { Archive, FolderOpen, Lock, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { findTool } from "@/domain/catalog"
 import { formatDuration } from "@/domain/database"
 import { formatBytes } from "@/domain/format"
 import { Button } from "@/ui/Button"
 import { Skeleton } from "@/ui/Skeleton"
+import { BackupPassword } from "./BackupPassword"
 import { BackupProgress } from "./BackupProgress"
+import { passwordProblem } from "./backup-password"
 import { useBackups } from "./backup-store"
 import { ClearStorageDialog } from "./ClearStorageDialog"
 
@@ -22,6 +24,9 @@ export function BackupPanel() {
   const { backups, listError, progress, made, backupError, clearing, preview, clearError, cleared } = useBackups()
   const { loadBackups, backup, cancel, open, loadPreview } = useBackups.getState()
   const [confirming, setConfirming] = useState(false)
+  const [protect, setProtect] = useState(false)
+  const [password, setPassword] = useState("")
+  const [repeat, setRepeat] = useState("")
 
   useEffect(() => {
     loadBackups()
@@ -30,6 +35,16 @@ export function BackupPanel() {
 
   const busy = progress !== null || clearing
   const bin = preview ? (findTool(preview.answeredBy)?.bin ?? preview.answeredBy) : null
+  const blocked = protect && passwordProblem(password, repeat) !== null
+  const start = () => {
+    const given = protect ? password : undefined
+    // Typed once, used once: the fields are emptied as soon as the tool has it.
+    setPassword("")
+    setRepeat("")
+    backup(given)
+  }
+  const kinds = new Set(backups?.files.map((f) => f.encrypted))
+  const restoreBin = bin ?? "tg"
   const clearBlocked =
     preview === undefined
       ? "Asking the tool what clearing would delete…"
@@ -49,20 +64,51 @@ export function BackupPanel() {
             Backups
           </h2>
           <p className="mt-0.5 text-[0.85rem] text-ink-dim">
-            A zip of the whole storage database, in{" "}
-            <span className="selectable font-mono">{backups?.folder ?? "~/WireCat backups"}</span>. It is not encrypted:
-            keep it somewhere private.
+            A copy of the whole storage database, in{" "}
+            <span className="selectable font-mono">{backups?.folder ?? "~/WireCat backups"}</span>. Without a password
+            it is a plain zip: keep it somewhere private.
           </p>
         </div>
         <Button
           variant="primary"
-          onClick={() => backup()}
-          disabled={busy}
+          onClick={start}
+          disabled={busy || blocked}
           icon={<Archive className="size-4" aria-hidden />}
           className="min-w-[9.5rem]"
         >
           Back up now
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3 border-line border-b px-[1.3rem] py-[0.9rem]">
+        <label className="flex items-start gap-2.5 text-ink">
+          <input
+            type="checkbox"
+            checked={protect}
+            disabled={busy}
+            onChange={(e) => {
+              setProtect(e.target.checked)
+              setPassword("")
+              setRepeat("")
+            }}
+            className="mt-[0.3rem] size-[1.05rem] shrink-0 accent-brand"
+          />
+          <span>
+            Protect with a password
+            <span className="block text-[0.85rem] text-ink-soft">
+              The tool compresses and encrypts the backup itself. Opening it later asks for the password.
+            </span>
+          </span>
+        </label>
+        {protect && (
+          <BackupPassword
+            password={password}
+            repeat={repeat}
+            onPassword={setPassword}
+            onRepeat={setRepeat}
+            disabled={busy}
+          />
+        )}
       </div>
 
       <div className="flex min-h-[3.4rem] flex-col justify-center gap-2 px-[1.3rem] py-[0.9rem]">
@@ -74,7 +120,8 @@ export function BackupPanel() {
           </p>
         ) : made ? (
           <p role="status" className="text-[0.95rem] text-ink-soft">
-            Backed up to <span className="selectable font-mono text-ink">{made.file.name}</span> ·{" "}
+            {made.file.encrypted ? "Backed up with a password to" : "Backed up to"}{" "}
+            <span className="selectable font-mono text-ink">{made.file.name}</span> ·{" "}
             <span className="font-mono tabular-nums">{formatBytes(made.file.bytes)}</span> from{" "}
             <span className="font-mono tabular-nums">{formatBytes(made.storeBytes)}</span> in{" "}
             <span className="font-mono tabular-nums">{formatDuration(made.millis)}</span>
@@ -111,8 +158,13 @@ export function BackupPanel() {
             {backups.files.map((f) => (
               <li
                 key={f.name}
-                className="grid grid-cols-[minmax(0,1fr)_6rem_11rem_1.5rem] items-center gap-3 text-[0.85rem]"
+                className="grid grid-cols-[1rem_minmax(0,1fr)_6rem_11rem_1.5rem] items-center gap-3 text-[0.85rem]"
               >
+                {f.encrypted ? (
+                  <Lock className="size-3.5 text-ink-soft" role="img" aria-label="Encrypted with a password" />
+                ) : (
+                  <span />
+                )}
                 <span className="selectable truncate font-mono text-[0.8rem] text-ink">{f.name}</span>
                 <span className="text-right font-mono text-ink-dim tabular-nums">{formatBytes(f.bytes)}</span>
                 <span className="text-ink-dim tabular-nums">{day(f.modified)}</span>
@@ -128,6 +180,27 @@ export function BackupPanel() {
               </li>
             ))}
           </ul>
+        )}
+        {backups && backups.files.length > 0 && (
+          <div
+            aria-label="How to restore"
+            role="note"
+            className="mt-3 flex flex-col gap-0.5 text-[0.85rem] text-ink-soft"
+          >
+            {kinds.has(false) && (
+              <p>
+                To restore a <span className="font-mono">.zip</span>: unzip it, then run{" "}
+                <span className="selectable font-mono text-ink">{restoreBin} store restore wirecat.db</span>.
+              </p>
+            )}
+            {kinds.has(true) && (
+              <p>
+                To restore a <span className="font-mono">.db.sealed</span>: run{" "}
+                <span className="selectable font-mono text-ink">{restoreBin} store restore &lt;file&gt;.db.sealed</span>
+                ; it asks for the password.
+              </p>
+            )}
+          </div>
         )}
         {backups && backups.files.length > 0 && (
           <Button variant="ghost" size="sm" className="mt-2 -ml-3" onClick={() => open(null)}>

@@ -5,6 +5,8 @@ export const BackupFileSchema = v.object({
   bytes: v.number(),
   /** Milliseconds since the Unix epoch. */
   modified: v.number(),
+  /** Sealed with a password by the tool (`.db.sealed`) rather than zipped by the app. */
+  encrypted: v.boolean(),
 })
 
 export const BackupsSchema = v.object({ folder: v.string(), files: v.array(BackupFileSchema) })
@@ -12,6 +14,7 @@ export const BackupsSchema = v.object({ folder: v.string(), files: v.array(Backu
 export const BackupEventSchema = v.variant("event", [
   v.object({ event: v.literal("copying"), done: v.number(), total: v.number() }),
   v.object({ event: v.literal("compressing"), done: v.number(), total: v.number() }),
+  v.object({ event: v.literal("encrypting") }),
   v.object({
     event: v.literal("done"),
     file: BackupFileSchema,

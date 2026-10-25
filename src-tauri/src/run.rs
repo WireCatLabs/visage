@@ -1,5 +1,5 @@
 use crate::catalog;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -199,9 +199,28 @@ pub fn stream(
     cmd: Command,
     timeout: Duration,
     cancelled: impl Fn() -> bool,
+    on_line: impl FnMut(Line),
+) -> Result<Option<i32>, RunError> {
+    stream_with_input(cmd, None, timeout, cancelled, on_line)
+}
+
+/// `stream`, with `input` written to the program's stdin and stdin then closed, so a tool reading to the end gets all
+/// of it. The way to hand a tool a secret: arguments show in the process list, and children inherit the environment.
+pub fn stream_with_input(
+    mut cmd: Command,
+    input: Option<&[u8]>,
+    timeout: Duration,
+    cancelled: impl Fn() -> bool,
     mut on_line: impl FnMut(Line),
 ) -> Result<Option<i32>, RunError> {
+    if input.is_some() {
+        cmd.stdin(Stdio::piped());
+    }
     let mut child = spawn(cmd)?;
+    if let (Some(input), Some(mut stdin)) = (input, child.stdin.take()) {
+        // A tool that exits before reading closes the pipe; its own answer says why.
+        let _ = stdin.write_all(input);
+    }
     let (tx, rx) = mpsc::channel();
     let out = child.stdout.take().unwrap();
     let err = child.stderr.take().unwrap();
@@ -298,6 +317,25 @@ mod tests {
         for name in ["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "WIRECAT_HOLDER"] {
             assert!(removed.contains(&std::ffi::OsString::from(name)), "{name}");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn hands_the_input_on_stdin_and_closes_it() {
+        let mut lines = Vec::new();
+        let code = stream_with_input(
+            command(Path::new("cat"), &[], None),
+            Some(b"secret words"),
+            Duration::from_secs(10),
+            || false,
+            |l| {
+                if let Line::Out(l) = l {
+                    lines.push(l);
+                }
+            },
+        )
+        .unwrap();
+        assert_eq!((code, lines), (Some(0), vec!["secret words".to_string()]));
     }
 
     #[test]

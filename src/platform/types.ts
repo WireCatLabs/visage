@@ -56,8 +56,11 @@ export type Platform = {
   storeTables(sizes: boolean): Promise<TableList | null>
   /** The archive's integrity and health checks; a minute or more on a large archive. */
   storeCheck(): Promise<StoreCheck | null>
-  /** The newest-schema tool's own `store backup`, zipped into the backups folder; progress and the result arrive as events. */
-  storeBackup(onEvent: (e: BackupEvent) => void): Promise<void>
+  /**
+   * The newest-schema tool's own `store backup`, zipped into the backups folder; progress and the result arrive as
+   * events. With a password, the tool's `store backup --encrypt` seals it instead, reading the password on stdin.
+   */
+  storeBackup(onEvent: (e: BackupEvent) => void, password?: string): Promise<void>
   cancelStoreBackup(): Promise<void>
   /** Finished backups in the backups folder, newest first. */
   listBackups(): Promise<Backups>
