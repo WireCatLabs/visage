@@ -62,8 +62,7 @@ fn folders(s: &Storage) -> Vec<(&'static str, PathBuf)> {
 }
 
 pub fn report() -> Vec<Area> {
-    let installed: Vec<String> =
-        tools::detect_owners().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
+    let installed: Vec<String> = tools::owners().filter(|t| tools::installed(t)).map(|t| t.id.clone()).collect();
     let mut areas: Vec<Area> = tools::owners()
         .map(|t| Area {
             id: t.id.clone(),
@@ -146,8 +145,7 @@ fn child_of(folder: &Path, name: &str) -> Result<PathBuf, String> {
 
 /// Deletes a tool's folders, or the shared archive, once nothing installed uses them.
 pub fn clear(id: &str) -> Result<(), String> {
-    let installed: Vec<String> =
-        tools::detect_owners().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
+    let installed: Vec<String> = tools::owners().filter(|t| tools::installed(t)).map(|t| t.id.clone()).collect();
     let storage = if id == SHARED {
         if !installed.is_empty() {
             return Err(format!("Still installed: {}. Uninstall them first.", installed.join(", ")));

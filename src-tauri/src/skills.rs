@@ -1,3 +1,4 @@
+use crate::cache::REFUSED;
 use crate::catalog::{SkillSource, Tool};
 use crate::{paths, redact, run};
 use serde::Serialize;
@@ -162,15 +163,24 @@ fn from_doctor(v: &Value) -> Vec<TargetStatus> {
 
 const NO_SKILL: &str = "this tool has no skill of its own";
 
+const STATUS: &str = "skill status";
+const DOCTOR_SKILLS: &str = "doctor skills";
+
+/// A version that refused `skill status`, or whose doctor lists no skills, is not asked that again until it changes.
 pub fn status(tool: &Tool) -> Result<SkillReport, String> {
     let src: &SkillSource = tool.skill.as_ref().ok_or(NO_SKILL)?;
-    let (out, json) = call(tool, &src.status, Duration::from_secs(30))?;
-    match json {
-        Some(v) if out.code == Some(0) => return Ok(SkillReport { source: "status", targets: from_status(&v) }),
-        ref j if !unsupported(j.as_ref()) => return Err(failure(&out, j.as_ref())),
-        _ => {}
+    let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
+    if REFUSED.known(&tool.id, STATUS, &bin).is_none() {
+        let (out, json) = call(tool, &src.status, Duration::from_secs(30))?;
+        match json {
+            Some(v) if out.code == Some(0) => return Ok(SkillReport { source: "status", targets: from_status(&v) }),
+            ref j if !unsupported(j.as_ref()) => return Err(failure(&out, j.as_ref())),
+            _ => REFUSED.remember(&tool.id, STATUS, &bin, ""),
+        }
     }
-    if let Some(doctor) = &src.doctor_skills {
+    if let Some(doctor) = &src.doctor_skills
+        && REFUSED.known(&tool.id, DOCTOR_SKILLS, &bin).is_none()
+    {
         let (out, json) = call(tool, doctor, Duration::from_mins(1))?;
         if let Some(v) = json.filter(|v| body(v).get("skills").is_some()) {
             return Ok(SkillReport { source: "doctor", targets: from_doctor(&v) });
@@ -178,6 +188,7 @@ pub fn status(tool: &Tool) -> Result<SkillReport, String> {
         if out.code != Some(0) {
             return Err(failure(&out, None));
         }
+        REFUSED.remember(&tool.id, DOCTOR_SKILLS, &bin, "");
     }
     Ok(SkillReport { source: "none", targets: Vec::new() })
 }

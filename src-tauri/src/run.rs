@@ -2,7 +2,8 @@ use crate::catalog;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Condvar, Mutex, OnceLock, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -104,6 +105,49 @@ fn spawn(mut cmd: Command) -> Result<Child, RunError> {
     })
 }
 
+static STARTED: AtomicUsize = AtomicUsize::new(0);
+
+/// Each tool spends most of its start loading its program, so thirty at once only make all of them slow; a page's
+/// first answers come sooner when the rest wait. Installs stream and are never held back.
+struct Slot;
+
+static SLOTS: (Mutex<usize>, Condvar) = (Mutex::new(0), Condvar::new());
+
+fn slots() -> usize {
+    static N: OnceLock<usize> = OnceLock::new();
+    *N.get_or_init(|| (thread::available_parallelism().map_or(8, std::num::NonZero::get) / 2).max(4))
+}
+
+impl Slot {
+    fn take() -> Slot {
+        let (busy, freed) = &SLOTS;
+        let mut n = freed.wait_while(busy.lock().unwrap(), |n| *n >= slots()).unwrap();
+        *n += 1;
+        Slot
+    }
+}
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        let (busy, freed) = &SLOTS;
+        *busy.lock().unwrap() -= 1;
+        freed.notify_one();
+    }
+}
+
+/// Processes `run` has started since launch; what the page-load measurements count.
+#[cfg(test)]
+pub fn started() -> usize {
+    STARTED.load(Ordering::Relaxed)
+}
+
+/// `WIRECAT_TIMING=1` prints each run's program and duration to stderr. Arguments are left out: the first one is
+/// often a profile name.
+fn timing() -> bool {
+    static ON: OnceLock<bool> = OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("WIRECAT_TIMING").is_some_and(|v| v == "1"))
+}
+
 /// Runs to completion and captures output; kills the whole process group on timeout.
 pub fn run(
     program: &Path,
@@ -111,6 +155,23 @@ pub fn run(
     path_env: Option<&std::ffi::OsStr>,
     timeout: Duration,
 ) -> Result<Output, RunError> {
+    let started = Instant::now();
+    let result = run_inner(program, args, path_env, timeout);
+    if timing() {
+        let name = program.file_name().unwrap_or_default().to_string_lossy();
+        eprintln!("[wirecat timing] {name} ({} args) {} ms", args.len(), started.elapsed().as_millis());
+    }
+    result
+}
+
+fn run_inner(
+    program: &Path,
+    args: &[&str],
+    path_env: Option<&std::ffi::OsStr>,
+    timeout: Duration,
+) -> Result<Output, RunError> {
+    let _slot = Slot::take();
+    STARTED.fetch_add(1, Ordering::Relaxed);
     let mut child = spawn(command(program, args, path_env))?;
     let mut out = child.stdout.take().unwrap();
     let mut err = child.stderr.take().unwrap();

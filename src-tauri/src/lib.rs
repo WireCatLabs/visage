@@ -1,9 +1,12 @@
 mod archive;
+mod cache;
 mod catalog;
 mod compat;
 mod install;
 mod mcp;
 mod node;
+#[cfg(test)]
+mod page_loads;
 mod paths;
 mod permissions;
 mod profile;
@@ -101,13 +104,13 @@ async fn set_node_path(add: bool) -> Result<profile::PathPlan, String> {
 }
 
 #[tauri::command]
-async fn detect_tools() -> Result<Vec<tools::ToolState>, String> {
-    blocking(tools::detect_all).await
+async fn detect_tools(fresh: bool) -> Result<Vec<tools::ToolState>, String> {
+    blocking(move || tools::detect_all(fresh)).await
 }
 
 #[tauri::command]
-async fn latest_versions() -> Result<HashMap<String, Option<String>>, String> {
-    blocking(|| tools::latest_versions().into_iter().collect()).await
+async fn latest_versions(fresh: bool) -> Result<HashMap<String, Option<String>>, String> {
+    blocking(move || tools::latest_versions(fresh).into_iter().collect()).await
 }
 
 #[tauri::command]
@@ -324,6 +327,8 @@ fn open_setup(id: String, profile: Option<String>) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // The login shell's PATH takes about half a second; read it while the window opens, not on the first page.
+    std::thread::spawn(paths::search_path);
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Arc::new(Running::default()))

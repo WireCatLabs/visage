@@ -1,11 +1,14 @@
+use crate::cache::Stamp;
 use crate::catalog::{self, Tool};
 use crate::{paths, redact, run};
 use serde::Serialize;
 use serde_json::Value;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Install {
     pub path: String,
@@ -23,8 +26,9 @@ pub struct ToolState {
 }
 
 /// A part reports its owner's copies: it is the same program.
-pub fn detect_all() -> Vec<ToolState> {
-    let owners = detect_owners();
+/// `fresh` runs every copy's `--version` again; otherwise a copy whose program file is unchanged keeps its answer.
+pub fn detect_all(fresh: bool) -> Vec<ToolState> {
+    let owners = detect_owners(fresh);
     catalog::catalog()
         .tools
         .iter()
@@ -42,19 +46,63 @@ pub fn owners() -> impl Iterator<Item = &'static Tool> {
 }
 
 /// One state per package, for what must not count a shared package twice: storage and bug reports.
-pub fn detect_owners() -> Vec<ToolState> {
+pub fn detect_owners(fresh: bool) -> Vec<ToolState> {
     std::thread::scope(|s| {
-        let handles: Vec<_> = owners().map(|t| s.spawn(move || detect(t))).collect();
+        let handles: Vec<_> = owners().map(|t| s.spawn(move || detect(t, fresh))).collect();
         handles.into_iter().map(|h| h.join().expect("detect thread")).collect()
     })
 }
 
-pub fn detect(tool: &Tool) -> ToolState {
+/// Whether any copy is on PATH, which is what "installed" means in `detect`, found without starting the tool.
+pub fn installed(tool: &Tool) -> bool {
+    !paths::find_all(&tool.bin).is_empty()
+}
+
+pub fn detect(tool: &Tool, fresh: bool) -> ToolState {
     let installs = std::thread::scope(|s| {
-        let handles: Vec<_> = paths::find_all(&tool.bin).into_iter().map(|p| s.spawn(move || inspect(&p))).collect();
+        let handles: Vec<_> =
+            paths::find_all(&tool.bin).into_iter().map(|p| s.spawn(move || VERSIONS.inspect(&p, fresh))).collect();
         handles.into_iter().map(|h| h.join().expect("inspect thread")).collect()
     });
     ToolState { id: tool.id.clone(), installs }
+}
+
+/// A working copy's `--version`, kept while its program file is unchanged. It is still asked again after a while:
+/// a broken dependency or a Node.js switch changes no file of the tool's own.
+struct Versions(Mutex<HashMap<PathBuf, (Stamp, Instant, Install)>>);
+
+const VERSION_KEPT: Duration = Duration::from_mins(10);
+
+static VERSIONS: LazyLock<Versions> = LazyLock::new(|| Versions(Mutex::new(HashMap::new())));
+
+impl Versions {
+    fn inspect(&self, path: &Path, fresh: bool) -> Install {
+        self.answer(path, fresh, VERSION_KEPT, inspect)
+    }
+
+    fn answer(&self, path: &Path, fresh: bool, kept: Duration, ask: impl FnOnce(&Path) -> Install) -> Install {
+        let stamp = Stamp::of(path);
+        if !fresh
+            && let Some(now) = &stamp
+            && let Some((known, at, install)) = self.0.lock().unwrap().get(path)
+            && known == now
+            && at.elapsed() < kept
+        {
+            return install.clone();
+        }
+        let install = ask(path);
+        let mut map = self.0.lock().unwrap();
+        match stamp {
+            // Only a working answer is kept, so a start that timed out on a busy machine is asked again next time.
+            Some(stamp) if install.problem.is_none() => {
+                map.insert(path.to_path_buf(), (stamp, Instant::now(), install.clone()));
+            }
+            _ => {
+                map.remove(path);
+            }
+        }
+        install
+    }
 }
 
 fn inspect(path: &Path) -> Install {
@@ -82,13 +130,32 @@ pub fn latest_version(package: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Latest published versions of every tool's package.
-pub fn latest_versions() -> Vec<(String, Option<String>)> {
+/// Releases come a few times a day at most, and `npm view` is the slowest call on the Tools page.
+const LATEST_KEPT: Duration = Duration::from_hours(1);
+
+static LATEST: LazyLock<Mutex<HashMap<String, (Instant, String)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Only an answer is kept: npm offline at launch must not hide updates for an hour.
+fn latest_kept(package: &str, fresh: bool, ask: impl FnOnce(&str) -> Option<String>) -> Option<String> {
+    if !fresh
+        && let Some((at, version)) = LATEST.lock().unwrap().get(package)
+        && at.elapsed() < LATEST_KEPT
+    {
+        return Some(version.clone());
+    }
+    let found = ask(package)?;
+    LATEST.lock().unwrap().insert(package.to_string(), (Instant::now(), found.clone()));
+    Some(found)
+}
+
+/// Latest published versions of every tool's package; `fresh` asks npm even when an answer is kept.
+pub fn latest_versions(fresh: bool) -> Vec<(String, Option<String>)> {
     if paths::find("npm").is_none() {
         return catalog::catalog().tools.iter().map(|t| (t.id.clone(), None)).collect();
     }
     let found: Vec<(String, Option<String>)> = std::thread::scope(|s| {
-        let handles: Vec<_> = owners().map(|t| s.spawn(move || (t.id.clone(), latest_version(&t.package)))).collect();
+        let handles: Vec<_> =
+            owners().map(|t| s.spawn(move || (t.id.clone(), latest_kept(&t.package, fresh, latest_version)))).collect();
         handles.into_iter().map(|h| h.join().expect("npm view thread")).collect()
     });
     catalog::catalog()
@@ -180,7 +247,52 @@ fn last_line(s: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::tests::TempProgram;
     use serde_json::json;
+    use std::cell::Cell;
+
+    fn working(version: &str) -> Install {
+        Install { path: "~/bin/zm".into(), version: Some(version.into()), manager: "npm", problem: None }
+    }
+
+    #[test]
+    fn a_changed_program_is_asked_again_and_an_unchanged_one_is_not() {
+        let p = TempProgram::new("versions");
+        let versions = Versions(Mutex::new(HashMap::new()));
+        let asked = Cell::new(0);
+        let ask = |v: &'static str| {
+            let asked = &asked;
+            move |_: &Path| {
+                asked.set(asked.get() + 1);
+                working(v)
+            }
+        };
+        let kept = Duration::from_mins(10);
+        assert_eq!(versions.answer(&p.0, false, kept, ask("1.0.0")).version.as_deref(), Some("1.0.0"));
+        assert_eq!(versions.answer(&p.0, false, kept, ask("never")).version.as_deref(), Some("1.0.0"));
+        assert_eq!(asked.get(), 1);
+
+        p.update("2.0.0");
+        assert_eq!(versions.answer(&p.0, false, kept, ask("2.0.0")).version.as_deref(), Some("2.0.0"));
+        assert_eq!(asked.get(), 2);
+
+        // Check again over an unchanged file whose dependency broke.
+        let broken = |_: &Path| Install { problem: Some("Cannot find module".into()), version: None, ..working("") };
+        assert!(versions.answer(&p.0, true, kept, broken).problem.is_some());
+        assert_eq!(versions.answer(&p.0, false, kept, ask("2.0.0")).version.as_deref(), Some("2.0.0"));
+        assert_eq!(asked.get(), 3, "a problem is never kept");
+
+        assert_eq!(versions.answer(&p.0, false, Duration::ZERO, ask("2.0.1")).version.as_deref(), Some("2.0.1"));
+    }
+
+    #[test]
+    fn npm_answers_are_kept_and_its_silence_is_not() {
+        let package = "@wirecat/kept-test";
+        assert_eq!(latest_kept(package, false, |_| None), None);
+        assert_eq!(latest_kept(package, false, |_| Some("1.0.0".into())).as_deref(), Some("1.0.0"));
+        assert_eq!(latest_kept(package, false, |_| panic!("asked twice")).as_deref(), Some("1.0.0"));
+        assert_eq!(latest_kept(package, true, |_| Some("1.1.0".into())).as_deref(), Some("1.1.0"));
+    }
 
     #[test]
     fn profiles_from_each_shape() {

@@ -1,3 +1,4 @@
+use crate::cache::REFUSED;
 use crate::catalog::{RunsSource, Tool};
 use crate::{paths, redact, run};
 use serde_json::Value;
@@ -49,9 +50,25 @@ fn show_args(src: &RunsSource, run: &str) -> Result<Vec<String>, String> {
     Ok(src.show.iter().map(|a| if a == "{run}" { run.to_string() } else { a.clone() }).collect())
 }
 
+const LIST: &str = "runs list";
+
+/// An older zm, drive or memo refuses `runs list`; its refusal is given back without asking again until it changes,
+/// word for word, because the interface reads it as "update the tool".
 pub fn list(tool: &Tool, query: Option<&str>, limit: u32, page: u32) -> Result<Value, String> {
     let args = list_args(source(tool)?, query, limit, page)?;
-    call(tool, &args)
+    let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
+    if let Some(refusal) = REFUSED.known(&tool.id, LIST, &bin) {
+        return Err(refusal);
+    }
+    call(tool, &args).inspect_err(|e| {
+        if too_old(e) {
+            REFUSED.remember(&tool.id, LIST, &bin, e);
+        }
+    })
+}
+
+fn too_old(error: &str) -> bool {
+    error.starts_with("unknown command 'runs'") || error.starts_with("unknown command 'list'")
 }
 
 pub fn show(tool: &Tool, run: &str) -> Result<Value, String> {
@@ -120,6 +137,13 @@ mod tests {
         assert!(list_args(src, None, 0, 1).is_err());
         assert!(list_args(src, None, MAX_LIMIT + 1, 1).is_err());
         assert!(list_args(src, None, 10, 0).is_err());
+    }
+
+    #[test]
+    fn only_an_unknown_command_is_remembered() {
+        assert!(too_old("unknown command 'runs'"));
+        assert!(too_old("unknown command 'list' (Did you mean last?)"));
+        assert!(!too_old("database is locked"));
     }
 
     #[test]

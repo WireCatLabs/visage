@@ -107,7 +107,7 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
             ),
         ));
     }
-    let existing = tools::detect(tool).installs.into_iter().next();
+    let existing = tools::detect(tool, false).installs.into_iter().next();
     let manager = existing.as_ref().map_or("npm", |i| i.manager);
     // The exact version, not `@latest`: a manager that still holds new releases back then fails loudly instead of
     // quietly installing an older one.
@@ -140,7 +140,7 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
     send(InstallEvent::Step { step: Step::Verify });
     let extra: Vec<_> = system::npm_prefix().map(|p| system::npm_bin_dir(&p)).into_iter().collect();
     paths::refresh(&extra);
-    let state = tools::detect(tool);
+    let state = tools::detect(tool, true);
     let first = state.installs.first().ok_or_else(|| {
         Failure(
             Reason::Verify,

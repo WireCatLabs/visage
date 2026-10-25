@@ -1,13 +1,19 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::sync::{OnceLock, RwLock};
+use std::sync::{Mutex, OnceLock, RwLock};
 use std::time::Duration;
 
 static SEARCH_PATH: RwLock<Option<OsString>> = RwLock::new(None);
+/// Building starts node and npm; a page that asks while the launch warm-up builds waits for it instead.
+static BUILDING: Mutex<()> = Mutex::new(());
 
 /// The PATH a terminal would have. Apps started from a desktop launcher miss what shell
 /// profiles add (nvm, pnpm, Volta), so we merge the login shell's PATH and known folders.
 pub fn search_path() -> OsString {
+    if let Some(p) = SEARCH_PATH.read().unwrap().as_ref() {
+        return p.clone();
+    }
+    let _one = BUILDING.lock().unwrap();
     if let Some(p) = SEARCH_PATH.read().unwrap().as_ref() {
         return p.clone();
     }

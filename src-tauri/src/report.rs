@@ -42,7 +42,7 @@ pub struct Sent {
 
 pub fn context() -> Context {
     let readiness = system::readiness();
-    let tools: Vec<Value> = tools::detect_owners()
+    let tools: Vec<Value> = tools::detect_owners(false)
         .into_iter()
         .filter_map(|t| {
             let first = t.installs.first()?;

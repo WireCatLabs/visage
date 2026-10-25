@@ -426,7 +426,7 @@ fn extract(kind: Archive, archive: &Path, into: &Path) -> Result<(), Failure> {
 pub fn remove() -> Result<(), String> {
     let found = installed().ok_or("WireCat has not set up Node.js on this computer.")?;
     let bin = canonical(&bin_dir(&found.dir));
-    let using: Vec<String> = tools::detect_owners()
+    let using: Vec<String> = tools::detect_owners(false)
         .into_iter()
         .filter(|t| t.installs.iter().any(|i| canonical(&expand(&i.path)).starts_with(&bin)))
         .map(|t| t.id)
