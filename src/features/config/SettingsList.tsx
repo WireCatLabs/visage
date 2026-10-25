@@ -22,29 +22,13 @@ const ORIGIN: Record<Origin, string> = {
 const isModified = (r: SettingRow) => r.origin !== "default" && r.origin !== "computed"
 
 export function SettingsList({ rows, disabled }: { rows: readonly SettingRow[]; disabled: boolean }) {
-  const own = rows.filter((r) => !r.scope)
-  const shared = rows.filter((r) => r.scope)
   if (rows.length === 0) return <p className="px-[1.3rem] py-6 text-[0.95rem] text-ink-soft">No setting matches.</p>
   return (
-    <div>
-      <ul aria-label="Settings">
-        {own.map((r) => (
-          <Row key={r.key} row={r} disabled={disabled} />
-        ))}
-      </ul>
-      {shared.length > 0 && (
-        <>
-          <h3 className="border-line border-b bg-app-2 px-[1.3rem] py-2.5 text-[0.85rem] font-medium text-ink-dim">
-            Shared by every profile and by the other messengers on this computer
-          </h3>
-          <ul aria-label="Shared settings">
-            {shared.map((r) => (
-              <Row key={r.key} row={r} disabled={disabled} />
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
+    <ul aria-label="Settings">
+      {rows.map((r) => (
+        <Row key={r.key} row={r} disabled={disabled} />
+      ))}
+    </ul>
   )
 }
 

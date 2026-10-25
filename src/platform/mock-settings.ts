@@ -27,19 +27,55 @@ const BUILT_IN: Layer = {
 }
 const NUMBERS = new Set(["limit", "timeout_ms", "keep_runs_for_days", "sends_per_hour", "requests_per_minute"])
 const BOOLEANS = new Set(["record", "search_catch_up", "picture_search", "update_check"])
-const STORE_BUILT_IN: Layer = { "task_categories.bills": "invoice,receipt,payment", task_first_pass_per_chat: 3 }
+const STORE_BUILT_IN: Layer = {
+  "search_stemmers.latin": "english",
+  phone_countries: "ES,GB",
+  task_agent_close: "off",
+  task_first_pass_per_chat: 3,
+}
+const CATEGORY = "task_categories."
+const BUILT_IN_CATEGORIES: [string, string][] = [
+  ["travel", "flights, hotels, visas | en:flight, en:hotel, en:visa, ru:билет, es:vuelo"],
+  ["garden", "plants, seeds, the allotment | en:seeds, en:watering, en:compost"],
+  ["bills", "a recurring bill: power, phone, internet | en:utility, en:electricity, ru:квитанция, es:recibo"],
+  ["health", "a doctor, a pharmacy, a check-up | en:doctor, en:pharmacy, ru:врач"],
+  ["other", "anything no other category fits"],
+]
 
-type MessengerState = { defaults: Layer; profiles: Record<string, Layer>; store: Layer }
+type MessengerState = { defaults: Layer; profiles: Record<string, Layer> }
 
 const messengers: Record<string, MessengerState> = {
   tg: {
     defaults: { sends_per_hour: 10 },
     profiles: { personal: { limit: 20, record: true, proxy: "socks5://•••" }, work: { color: "always" } },
-    store: {},
   },
-  max: { defaults: {}, profiles: { personal: { limit: 30 } }, store: {} },
-  wa: { defaults: {}, profiles: {}, store: {} },
+  max: { defaults: {}, profiles: { personal: { limit: 30 } } },
+  wa: { defaults: {}, profiles: {} },
 }
+
+/** One store and one shared file for every messenger, as on a real computer. */
+const shared = { store: {} as Layer, categories: [...BUILT_IN_CATEGORIES], edited: new Set<string>() }
+
+function setCategory(name: string, value: string): string | null {
+  if (!/^[a-z][a-z0-9-]{0,29}$/.test(name)) return `a category name is a lower-case word, not "${name}"`
+  if (!value.split("|")[0]?.trim()) return 'a category takes "<meaning> | <trigger words, comma-separated>"'
+  const at = shared.categories.findIndex(([n]) => n === name)
+  if (at >= 0) shared.categories[at] = [name, value]
+  else shared.categories.splice(shared.categories.length - 1, 0, [name, value])
+  shared.edited.add(name)
+  return null
+}
+
+function unsetCategory(name: string): string | null {
+  if (name === "other") return "other stays: a rule picks it when no trigger word matches"
+  const at = shared.categories.findIndex(([n]) => n === name)
+  if (at < 0) return `no task category ${name}`
+  shared.categories.splice(at, 1)
+  shared.edited.add(name)
+  return null
+}
+
+const isShared = (key: string) => key in STORE_BUILT_IN || key.startsWith(CATEGORY)
 
 /** Whether a messenger records every run for this profile, so the runs mock keeps its successes too. */
 export function recordOn(id: string, profile: string | undefined): boolean {
@@ -103,12 +139,21 @@ function messengerRows(id: string, profile: string | null): SettingRow[] {
     }),
   )
   for (const key of Object.keys(STORE_BUILT_IN)) {
-    const set = key in state.store
+    const set = key in shared.store
     rows.push(
-      row(key, set ? state.store[key] : STORE_BUILT_IN[key], set ? "store" : "default", {
+      row(key, set ? shared.store[key] : STORE_BUILT_IN[key], set ? "store" : "default", {
         from: set ? "store" : "default",
-        scope: key.startsWith("task_categories.") ? "shared" : "store",
+        scope: "store",
         resettable: set,
+      }),
+    )
+  }
+  for (const [name, value] of shared.categories) {
+    const edited = shared.edited.has(name)
+    rows.push(
+      row(`${CATEGORY}${name}`, value, edited ? "other" : "default", {
+        from: edited ? "~/.config/WireCat/config.json" : "default",
+        scope: "shared",
       }),
     )
   }
@@ -137,7 +182,7 @@ function parseText(key: string, value: string): Scalar | Error {
   if (BOOLEANS.has(key)) {
     return value === "true" || value === "false" ? value === "true" : new Error(`${key} is true or false`)
   }
-  if (key in BUILT_IN || key in STORE_BUILT_IN || key.startsWith("task_categories.")) return value
+  if (key in BUILT_IN || isShared(key)) return value
   return new Error(`unknown setting: ${key}`)
 }
 
@@ -184,9 +229,13 @@ export const settingsMock: Pick<Platform, "settingsShow" | "settingsSet" | "sett
     if (!state) return reject("This tool has no settings command.")
     const parsed = parseText(setting, value)
     if (parsed instanceof Error) return reject(parsed.message)
-    if (setting in STORE_BUILT_IN || setting.startsWith("task_categories.")) {
+    if (isShared(setting)) {
       if (defaults) return reject(`${setting} is store-wide — --defaults, --personal and --bot do not apply`)
-      state.store[setting] = parsed
+      if (setting.startsWith(CATEGORY)) {
+        const refused = setCategory(setting.slice(CATEGORY.length), value)
+        return refused ? reject(refused) : undefined
+      }
+      shared.store[setting] = parsed
       return
     }
     if (defaults) state.defaults[setting] = parsed
@@ -198,8 +247,14 @@ export const settingsMock: Pick<Platform, "settingsShow" | "settingsSet" | "sett
     await delay(250)
     const state = messengers[id]
     if (!state) return reject("This tool cannot remove a setting; give it a value instead.")
-    if (setting in state.store) delete state.store[setting]
-    else if (defaults) delete state.defaults[setting]
+    if (isShared(setting)) {
+      if (defaults) return reject(`${setting} is store-wide — --defaults, --personal and --bot do not apply`)
+      if (!setting.startsWith(CATEGORY)) delete shared.store[setting]
+      else {
+        const refused = unsetCategory(setting.slice(CATEGORY.length))
+        if (refused) return reject(refused)
+      }
+    } else if (defaults) delete state.defaults[setting]
     else if (profile) delete state.profiles[profile]?.[setting]
   },
 }

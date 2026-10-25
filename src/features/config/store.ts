@@ -4,6 +4,7 @@ import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 import type { SettingRow, Settings } from "@/platform/settings-schemas"
 import { change, format, type Op, type Problem, parse, plan, toDocument } from "./diff"
+import { rowsFor, sharedDocument, sharedPlan, type View } from "./scope"
 
 /** `profile: null` is the defaults every profile gets (or the one file of a tool without per-profile settings). */
 export type Target = { profile: string | null }
@@ -12,6 +13,8 @@ export type Step = { op: Op; state: "waiting" | "running" | "done" | "failed" | 
 type RowState = { state: "saving" } | { state: "failed"; message: string }
 
 type ConfigState = {
+  view: View
+  /** In the shared view, the tool whose commands read and change the shared settings. */
   tool: string | null
   /** undefined while loading; null when the tool keeps one file for every profile. */
   profiles: Profile[] | null | undefined
@@ -30,8 +33,10 @@ type ConfigState = {
   saving: boolean
   rows: Record<string, RowState>
   /** Opens the last tool and view the owner used, or the first installed tool's defaults. */
-  start(installed: readonly string[]): Promise<void>
+  start(installed: readonly string[], shared: readonly string[]): Promise<void>
   chooseTool(id: string): Promise<void>
+  /** `candidates` in order of preference; the first that reports shared settings answers for all of them. */
+  chooseShared(candidates: readonly string[]): Promise<void>
   chooseTarget(target: Target): Promise<void>
   setTab(tab: Tab): void
   setQuery(query: string): void
@@ -40,11 +45,13 @@ type ConfigState = {
   revert(): void
   saveDraft(): Promise<void>
   apply(row: SettingRow, value: unknown): Promise<void>
+  /** Runs one prepared change for a single row, as the categories editor does. */
+  applyOp(op: Op): Promise<void>
 }
 
 // Only what the owner picked last time; a profile is never chosen for them, the shared defaults are.
 const LAST = "wirecat.config.last"
-type Last = { tool?: string; targets?: Record<string, string | null> }
+type Last = { view?: View; tool?: string; targets?: Record<string, string | null> }
 export function readLast(): Last {
   try {
     return JSON.parse(localStorage.getItem(LAST) ?? "{}") as Last
@@ -66,18 +73,28 @@ export const sourceOf = (id: string | null): SettingsSource | null => (id ? (fin
 export const isDefaultsView = (src: SettingsSource | null, target: Target | null) =>
   Boolean(src?.perProfile && target && target.profile === null)
 
-export const documentText = (s: Settings | null) => format(s ? toDocument(s.rows) : {})
+type ViewOf = Pick<ConfigState, "view" | "settings" | "tool" | "target">
+
+export const documentText = (st: Pick<ConfigState, "view" | "settings">) => {
+  const rows = st.settings?.rows ?? []
+  return format(st.view === "shared" ? sharedDocument(rows) : toDocument(rows))
+}
+
+function planFor(st: ViewOf, edited: Record<string, unknown>) {
+  const src = sourceOf(st.tool)
+  if (!src || !st.settings) return null
+  if (st.view === "shared") return sharedPlan(st.settings.rows, edited, src)
+  return plan(st.settings.rows, edited, src, isDefaultsView(src, st.target))
+}
 
 /** Unsaved JSON: the draft would still change something, or does not parse. */
-export function isDirty(st: Pick<ConfigState, "draft" | "settings" | "tool" | "target">): boolean {
+export function isDirty(st: ViewOf & Pick<ConfigState, "draft">): boolean {
   if (st.draft === null || !st.settings) return false
-  if (st.draft === documentText(st.settings)) return false
+  if (st.draft === documentText(st)) return false
   const parsed = parse(st.draft)
   if (!parsed.ok) return true
-  const src = sourceOf(st.tool)
-  if (!src) return false
-  const p = plan(st.settings.rows, parsed.value, src, isDefaultsView(src, st.target))
-  return p.ops.length > 0 || p.problems.length > 0
+  const p = planFor(st, parsed.value)
+  return p !== null && (p.ops.length > 0 || p.problems.length > 0)
 }
 
 const fresh = {
@@ -94,12 +111,15 @@ export const useConfig = create<ConfigState>((set, get) => {
   let generation = 0
 
   const load = async () => {
-    const { tool, target } = get()
+    const { tool, target, view } = get()
     if (!tool || !target) return
     const mine = ++generation
     set({ loading: true, error: null })
     try {
-      const settings = await platform.settingsShow(tool, target.profile)
+      const shown = await platform.settingsShow(tool, target.profile)
+      const rows = rowsFor(shown.rows, view)
+      // The shared view reads through one tool; its own file and profile notice are not what is shown.
+      const settings = view === "shared" ? { rows, configFile: null, notice: null } : { ...shown, rows }
       if (mine === generation) set({ settings, loading: false })
     } catch (e) {
       if (mine === generation) set({ settings: null, error: message(e), loading: false })
@@ -114,7 +134,24 @@ export const useConfig = create<ConfigState>((set, get) => {
       : platform.settingsUnset(tool, target.profile, op.defaults, op.key)
   }
 
+  const runRow = async (key: string, op: Op) => {
+    const setRow = (state: RowState | null) =>
+      set((st) => {
+        const { [key]: _, ...rest } = st.rows
+        return { rows: state ? { ...rest, [key]: state } : rest }
+      })
+    setRow({ state: "saving" })
+    try {
+      await run(op)
+      await load()
+      setRow(null)
+    } catch (e) {
+      setRow({ state: "failed", message: message(e) })
+    }
+  }
+
   return {
+    view: "tool",
     tool: null,
     profiles: undefined,
     profilesError: null,
@@ -125,19 +162,49 @@ export const useConfig = create<ConfigState>((set, get) => {
     saving: false,
     ...fresh,
 
-    async start(installed) {
+    async start(installed, shared) {
       if (get().tool) return
       const usable = installed.filter((id) => sourceOf(id))
-      const last = readLast().tool
-      const id = last && usable.includes(last) ? last : usable[0]
+      const last = readLast()
+      if (last.view === "shared" && shared.length > 0) return get().chooseShared(shared)
+      const id = last.tool && usable.includes(last.tool) ? last.tool : usable[0]
       if (id) await get().chooseTool(id)
+    },
+
+    async chooseShared(candidates) {
+      remember((l) => ({ ...l, view: "shared" }))
+      const mine = ++generation
+      const target = { profile: null }
+      set({ view: "shared", tool: null, target, profiles: null, profilesError: null, loading: true, ...fresh })
+      let failure: string | null = null
+      for (const id of candidates) {
+        const src = sourceOf(id)
+        if (!src || (src.perProfile && !src.defaults)) continue
+        try {
+          const shown = await platform.settingsShow(id, null)
+          if (mine !== generation) return
+          const rows = rowsFor(shown.rows, "shared")
+          if (rows.length === 0) continue
+          set({ tool: id, settings: { rows, configFile: null, notice: null }, loading: false })
+          return
+        } catch (e) {
+          failure ??= message(e)
+        }
+      }
+      if (mine === generation)
+        set({
+          loading: false,
+          error:
+            failure ??
+            "None of the installed tools reports shared settings. Update Telegram, MAX or WhatsApp in Tools.",
+        })
     },
 
     async chooseTool(id) {
       const src = sourceOf(id)
-      remember((l) => ({ ...l, tool: id }))
+      remember((l) => ({ ...l, view: "tool", tool: id }))
       generation++
-      set({ tool: id, target: null, profiles: undefined, profilesError: null, loading: false, ...fresh })
+      set({ view: "tool", tool: id, target: null, profiles: undefined, profilesError: null, loading: false, ...fresh })
       if (!src) return
       if (!src.perProfile) {
         set({ profiles: null })
@@ -159,7 +226,7 @@ export const useConfig = create<ConfigState>((set, get) => {
 
     async chooseTarget(target) {
       const tool = get().tool
-      if (tool) remember((l) => ({ ...l, targets: { ...l.targets, [tool]: target.profile } }))
+      if (tool && get().view === "tool") remember((l) => ({ ...l, targets: { ...l.targets, [tool]: target.profile } }))
       set({ target, ...fresh })
       await load()
     },
@@ -182,15 +249,16 @@ export const useConfig = create<ConfigState>((set, get) => {
     revert: () => set({ draft: null, jsonError: null, problems: [], steps: [] }),
 
     async saveDraft() {
-      const { draft, settings, tool, target } = get()
-      const src = sourceOf(tool)
-      if (draft === null || !settings || !src) return
+      const { draft } = get()
+      if (draft === null) return
       const parsed = parse(draft)
       if (!parsed.ok) {
         set({ jsonError: { message: parsed.message, line: parsed.line } })
         return
       }
-      const { ops, problems } = plan(settings.rows, parsed.value, src, isDefaultsView(src, target))
+      const planned = planFor(get(), parsed.value)
+      if (!planned) return
+      const { ops, problems } = planned
       if (problems.length > 0) {
         set({ problems, steps: [] })
         return
@@ -227,25 +295,16 @@ export const useConfig = create<ConfigState>((set, get) => {
       const { tool, target } = get()
       const src = sourceOf(tool)
       if (!src) return
-      const result = change(src, isDefaultsView(src, target), row, row.key, value)
+      const defaultsView = get().view === "tool" && isDefaultsView(src, target)
+      const result = change(src, defaultsView, row, row.key, value)
       if (!result) return
-      const setRow = (state: RowState | null) =>
-        set((st) => {
-          const { [row.key]: _, ...rest } = st.rows
-          return { rows: state ? { ...rest, [row.key]: state } : rest }
-        })
       if (!("kind" in result)) {
-        setRow({ state: "failed", message: result.message })
+        set((st) => ({ rows: { ...st.rows, [row.key]: { state: "failed", message: result.message } } }))
         return
       }
-      setRow({ state: "saving" })
-      try {
-        await run(result)
-        await load()
-        setRow(null)
-      } catch (e) {
-        setRow({ state: "failed", message: message(e) })
-      }
+      await runRow(row.key, result)
     },
+
+    applyOp: (op) => runRow(op.key, op),
   }
 })

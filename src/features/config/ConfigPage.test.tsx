@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { platform } from "@/platform/bridge"
 import { useTools } from "../tools/store"
 import { ConfigPage } from "./ConfigPage"
 import { useConfig } from "./store"
@@ -9,6 +10,7 @@ beforeEach(() => {
   useConfig.setState(useConfig.getInitialState(), true)
   localStorage.clear()
 })
+afterEach(() => vi.restoreAllMocks())
 
 const edit = (text: string, change: (doc: Record<string, unknown>) => void) => {
   const doc = JSON.parse(text)
@@ -79,5 +81,49 @@ describe("Config", () => {
     const dialog = await screen.findByRole("dialog", { name: "Discard unsaved JSON changes?" })
     await user.click(within(dialog).getByRole("button", { name: "Keep editing" }))
     expect(screen.getByRole("radio", { name: "personal" })).toBeChecked()
+  }, 15000)
+
+  it("keeps shared settings out of a profile's list", async () => {
+    const user = userEvent.setup()
+    render(<ConfigPage />)
+    await user.click(screen.getByRole("radio", { name: /Telegram/ }))
+    await user.click(await screen.findByRole("radio", { name: "work" }))
+    const list = await screen.findByRole("list", { name: "Settings" }, { timeout: 3000 })
+    expect(within(list).getByText("limit")).toBeInTheDocument()
+    expect(within(list).queryByText(/task_categories|phone_countries/)).not.toBeInTheDocument()
+  })
+
+  it("edits and removes a task category through config set without a profile or --defaults", async () => {
+    const user = userEvent.setup()
+    const set = vi.spyOn(platform, "settingsSet")
+    const unset = vi.spyOn(platform, "settingsUnset")
+    useTools.setState({ installs: installed })
+    render(<ConfigPage />)
+    await user.click(await screen.findByRole("radio", { name: "WireCat (shared)" }))
+    const list = await screen.findByRole("list", { name: "Task categories" }, { timeout: 3000 })
+    expect(screen.getByText(/Read through/)).toHaveTextContent("tg 0.88.0")
+    expect(screen.queryByRole("radio", { name: "work" })).not.toBeInTheDocument()
+
+    await user.click(within(list).getByRole("button", { name: "Edit travel" }))
+    const meaning = screen.getByRole("textbox", { name: "What it is for" })
+    await user.clear(meaning)
+    await user.type(meaning, "trips abroad")
+    await user.click(screen.getByRole("button", { name: "Save" }))
+    await waitFor(() =>
+      expect(set).toHaveBeenCalledWith(
+        "tg",
+        null,
+        false,
+        "task_categories.travel",
+        "trips abroad | flight, hotel, visa, билет, es:vuelo",
+      ),
+    )
+    expect(await within(list).findByText("trips abroad")).toBeInTheDocument()
+
+    await user.click(within(list).getByRole("button", { name: "Remove garden" }))
+    await waitFor(() => expect(unset).toHaveBeenCalledWith("tg", null, false, "task_categories.garden"))
+    expect(await screen.findByText(/Removed/)).toBeInTheDocument()
+    expect(within(list).queryByText("garden")).not.toBeInTheDocument()
+    expect(within(list).queryByRole("button", { name: "Remove other" })).not.toBeInTheDocument()
   }, 15000)
 })
