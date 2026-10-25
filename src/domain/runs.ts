@@ -132,6 +132,11 @@ export function errorOf(run: Run): RunError | null {
 export const isBareCommand = (value: string) => value !== "" && !value.includes(" ")
 export const BARE_COMMAND_HINT = "The tool was started without a known command — often a typo or a missing profile."
 export const commandLabel = (value: string) => (isBareCommand(value) ? `${value} (no command)` : value)
+/** A field the runs do not carry: "true" when the tool was started without a command it knows. */
+export const NO_COMMAND = "no_command"
+/** The default query: runs with no command are mostly typos, noise next to the runs that did something. */
+export const NO_COMMAND_HIDDEN = `-${NO_COMMAND}:true`
+const bare = (run: Run) => isBareCommand(typeof run.cli_command === "string" ? run.cli_command : run.command)
 
 const ALIASES: Record<string, string> = { operation: "operations", code: "codes", duration: "duration_ms" }
 const FIELD = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i
@@ -216,6 +221,7 @@ export function parseQuery(query: string): Parsed {
 
 /** Every scalar at a dotted path; arrays on the way are walked, so `codes` or `partial.failures.stage` match any. */
 export function valuesAt(run: Run, path: string): string[] {
+  if (path === NO_COMMAND) return [String(bare(run))]
   let current: unknown[] = [run]
   for (const key of (PATHS[path] ?? path).split(".")) {
     const next: unknown[] = []

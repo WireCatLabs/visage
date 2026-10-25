@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { platform } from "@/platform/bridge"
 import { LogsPage } from "./LogsPage"
-import { useLogs } from "./store"
+import { timing, useLogs } from "./store"
 
 beforeEach(() => useLogs.setState(useLogs.getInitialState(), true))
 afterEach(() => vi.restoreAllMocks())
@@ -30,12 +30,9 @@ describe("Logs", () => {
     release()
     await loaded()
 
-    const commands = screen.getByRole("region", { name: "Command" })
-    expect(within(commands).getAllByText("(no command)").length).toBeGreaterThan(0)
-
     const tools = screen.getByRole("region", { name: "Tool" })
     await user.click(within(tools).getByRole("button", { name: /WhatsApp/ }))
-    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("tool:wa")
+    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("-no_command:true tool:wa")
     const rows = screen.getAllByRole("button", { name: /^Show run wa / })
     expect(rows.length).toBeGreaterThan(0)
     expect(screen.queryByRole("cell", { name: /Telegram/ })).not.toBeInTheDocument()
@@ -109,7 +106,7 @@ describe("Logs", () => {
 
     const status = screen.getByRole("region", { name: "HTTP status" })
     await user.click(within(status).getByRole("button", { name: /^429/ }))
-    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("error.http.status:429")
+    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("-no_command:true error.http.status:429")
 
     const [first] = screen.getAllByRole("button", { name: /^Show run / })
     await user.click(first as HTMLElement)
@@ -123,7 +120,180 @@ describe("Logs", () => {
     const [session] = screen.getAllByTitle(/^Only runs of session /)
     await user.click(session as HTMLElement)
     expect((screen.getByRole("combobox", { name: "Search runs" }) as HTMLInputElement).value).toMatch(
-      /^error\.http\.status:429 session_id:[0-9a-f-]+$/,
+      /^-no_command:true error\.http\.status:429 session_id:[0-9a-f-]+$/,
     )
   }, 15000)
+
+  it("hides runs with no command by default, counts them, and lists them again once that filter is removed", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+
+    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("-no_command:true")
+    const commands = screen.getByRole("region", { name: "Command" })
+    expect(within(commands).queryByText("(no command)")).not.toBeInTheDocument()
+    expect(screen.queryAllByRole("button", { name: /^Show run \S+ \(no command\)/ })).toHaveLength(0)
+
+    const show = screen.getByRole("button", { name: "Show them" })
+    expect(show.parentElement).toHaveTextContent(/^\d+ runs with no command hidden Show them$/)
+    await user.click(show)
+    expect(screen.getByRole("combobox", { name: "Search runs" })).toHaveValue("")
+    expect(within(commands).getAllByText("(no command)").length).toBeGreaterThan(0)
+    expect(screen.queryByRole("button", { name: "Show them" })).not.toBeInTheDocument()
+  }, 15000)
+})
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const rows = () => screen.queryAllByRole("button", { name: /^Show run / })
+
+describe("Logs snapshot", () => {
+  const saved = { ...timing }
+  afterEach(() => Object.assign(timing, saved))
+
+  it("shows the table once, after every tool has answered", async () => {
+    const listRuns = platform.listRuns.bind(platform)
+    let release = () => {}
+    const held = new Promise<void>((r) => {
+      release = r
+    })
+    vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
+      if (id === "tg") await held
+      return listRuns(id, ...rest)
+    })
+    render(<LogsPage />)
+
+    const progress = await screen.findByRole("progressbar", { name: "Tools read" })
+    const total = Number(progress.getAttribute("aria-valuemax"))
+    await waitFor(() => expect(progress).toHaveAttribute("aria-valuenow", String(total - 1)), { timeout: 4000 })
+    expect(rows()).toHaveLength(0)
+    expect(progress.parentElement).toHaveTextContent(/of \d+ tools done, reading Telegram…$/)
+
+    release()
+    await loaded()
+    expect(rows().length).toBeGreaterThan(0)
+    const sources = screen.getByRole("list", { name: "Where the runs come from" })
+    expect(within(sources).getByText("Telegram").nextSibling).toHaveTextContent(/^\d+\+? runs$/)
+  }, 15000)
+
+  it("stops waiting for a tool that does not answer and says so", async () => {
+    timing.answer = 1500
+    const listRuns = platform.listRuns.bind(platform)
+    vi.spyOn(platform, "listRuns").mockImplementation((id, ...rest) =>
+      id === "tg" ? new Promise(() => {}) : listRuns(id, ...rest),
+    )
+    render(<LogsPage />)
+    await loaded()
+
+    expect(rows().length).toBeGreaterThan(0)
+    const sources = screen.getByRole("list", { name: "Where the runs come from" })
+    expect(within(sources).getByText("did not answer in 1.5 s")).toBeInTheDocument()
+  }, 15000)
+})
+
+describe("Logs live", () => {
+  const saved = { ...timing }
+  afterEach(() => {
+    Object.assign(timing, saved)
+    Reflect.deleteProperty(document, "visibilityState")
+  })
+
+  it("reads again while Live is on, one round at a time, and waits while the window is hidden", async () => {
+    timing.live = 100
+    const user = userEvent.setup()
+    const listRuns = platform.listRuns.bind(platform)
+    let calls = 0
+    let inFlight = 0
+    let most = 0
+    vi.spyOn(platform, "listRuns").mockImplementation(async (...args) => {
+      calls++
+      inFlight++
+      most = Math.max(most, inFlight)
+      try {
+        return await listRuns(...args)
+      } finally {
+        inFlight--
+      }
+    })
+    render(<LogsPage />)
+    await loaded()
+    const perRound = calls
+
+    const live = screen.getByRole("button", { name: "Live" })
+    expect(live).toHaveAttribute("aria-pressed", "false")
+    await user.click(live)
+    expect(live).toHaveAttribute("aria-pressed", "true")
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(perRound * 3), { timeout: 8000 })
+    expect(most).toBe(perRound)
+    expect(screen.getByText(/^Updated \d+ s ago$/)).toBeInTheDocument()
+
+    let visibility = "hidden"
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility })
+    await waitFor(() => expect(inFlight).toBe(0), { timeout: 4000 })
+    const paused = calls
+    await sleep(1500)
+    expect(calls).toBe(paused)
+
+    visibility = "visible"
+    await waitFor(() => expect(calls).toBeGreaterThan(paused), { timeout: 4000 })
+    await user.click(live)
+    expect(live).toHaveAttribute("aria-pressed", "false")
+  }, 20000)
+
+  it("puts new runs on top, and holds them behind a button while the reader is scrolled down", async () => {
+    timing.live = 100
+    const user = userEvent.setup()
+    const listRuns = platform.listRuns.bind(platform)
+    let added = 0
+    vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
+      const res = await listRuns(id, ...rest)
+      const model = res.items[0]
+      if (id !== "tg" || !model) return res
+      const items = Array.from({ length: added }, (_, i) => ({
+        ...model,
+        run_id: `new-${i}`,
+        command: `watch ${i}`,
+        cli_command: `tg watch ${i}`,
+        status: "failed",
+        started_at: new Date().toISOString(),
+      }))
+      return { ...res, items: [...items, ...res.items] }
+    })
+    let down = true
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const top = this.tagName === "MAIN" ? 0 : down ? -400 : 10
+      return { x: 0, y: top, top, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}) }
+    })
+    const scrollTo = vi.fn(() => {
+      down = false
+    })
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: scrollTo })
+    try {
+      render(
+        <main>
+          <LogsPage />
+        </main>,
+      )
+      await loaded()
+      added = 2
+      await user.click(screen.getByRole("button", { name: "Live" }))
+
+      const more = await screen.findByRole("button", { name: "2 new runs" }, { timeout: 4000 })
+      expect(screen.queryByRole("button", { name: /^Show run tg watch/ })).not.toBeInTheDocument()
+      await user.click(more)
+      expect(scrollTo).toHaveBeenCalled()
+      const [first, second] = rows()
+      expect(first).toHaveAccessibleName(/^Show run tg watch \d/)
+      expect(second).toHaveAccessibleName(/^Show run tg watch \d/)
+      expect(screen.queryByRole("button", { name: /new runs?$/ })).not.toBeInTheDocument()
+
+      added = 3
+      expect(
+        await screen.findByRole("button", { name: /^Show run tg watch 2 / }, { timeout: 4000 }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /new runs?$/ })).not.toBeInTheDocument()
+      await user.click(screen.getByRole("button", { name: "Live" }))
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollTo")
+    }
+  }, 20000)
 })

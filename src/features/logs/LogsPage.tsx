@@ -1,5 +1,5 @@
-import { ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
-import { useDeferredValue, useEffect, useId, useMemo, useState } from "react"
+import { ArrowUp, ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   FACET_LABELS,
   FACETS,
@@ -8,10 +8,12 @@ import {
   groupRuns,
   inRange,
   matcher,
+  NO_COMMAND,
   newestFirst,
   parseQuery,
   RANGES,
   type RangeId,
+  type Run,
   toggleTerm,
   unknownFields,
 } from "@/domain/runs"
@@ -25,34 +27,61 @@ import { ReportThis } from "../report/ReportThis"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
 import { KeepRuns } from "./KeepRuns"
+import { useLive } from "./live"
 import { LOGS_DOCS, toolName } from "./names"
 import { QueryBar } from "./QueryBar"
 import { RunsTable } from "./RunsTable"
-import { type Source, useLogs, useShownLogs } from "./store"
+import { runKey, type Source, useLogs, useShownLogs } from "./store"
 
 const STEP = 100
+const NONE = new Set<string>()
 
 export function LogsPage() {
-  const { loadedAt, query, range, groupBy, expanded, details } = useLogs()
+  const { loadedAt, liveRound, reading, asked, live, query, range, groupBy, expanded, details } = useLogs()
   const sources = useShownLogs((s) => s.sources)
-  const { load, loadMore, setQuery, setRange, setGroupBy, toggle } = useLogs.getState()
+  const { load, loadMore, setQuery, setRange, setGroupBy, toggle, setLive } = useLogs.getState()
   const [newest, setNewest] = useState(true)
   const [shown, setShown] = useState(STEP)
   const [facetsOpen, setFacetsOpen] = useState(false)
   const deferred = useDeferredValue(query)
+  useLive(live)
 
   useEffect(() => {
     if (Object.keys(useLogs.getState().sources).length === 0) load()
   }, [load])
 
   const list = useMemo(() => Object.values(sources), [sources])
-  const reading = list.filter((s) => s.state === "loading")
+  const older = list.filter((s) => s.state === "loading")
   const withLogs = list.filter((s) => s.state !== "none" && s.state !== "missing")
-  const firstLoad = reading.length > 0 && list.every((s) => s.runs.length === 0)
-  const now = useMemo(() => new Date(loadedAt), [loadedAt])
+  const firstLoad = loadedAt === null
+  const now = useMemo(() => new Date(loadedAt ?? Date.now()), [loadedAt])
 
-  const all = useMemo(() => list.flatMap((s) => s.runs), [list])
-  const ranged = useMemo(() => inRange(all, range, loadedAt), [all, range, loadedAt])
+  // A live round's new runs go on top. Under a reader who scrolled down they wait behind a "new runs" button,
+  // because inserting them would push the rows being read out of place.
+  const tableRef = useRef<HTMLDivElement>(null)
+  const seen = useRef<Set<string> | null>(null)
+  const [released, setReleased] = useState(0)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `released` asks to show held runs again
+  const { all, held, fresh } = useMemo(() => {
+    const runs = list.flatMap((s) => s.runs)
+    const before = seen.current
+    if (!liveRound || before === null) return { all: runs, held: 0, fresh: NONE }
+    const isNew = (r: Run) => !before.has(runKey(r))
+    if (scrolledPast(tableRef.current)) {
+      const kept = runs.filter((r) => !isNew(r))
+      return { all: kept, held: runs.length - kept.length, fresh: NONE }
+    }
+    return { all: runs, held: 0, fresh: new Set(runs.filter(isNew).map(runKey)) }
+  }, [list, liveRound, released])
+  useEffect(() => {
+    if (held === 0) seen.current = new Set(all.map(runKey))
+  }, [all, held])
+  const showHeld = () => {
+    tableRef.current?.closest("main")?.scrollTo({ top: 0 })
+    setReleased((n) => n + 1)
+  }
+
+  const ranged = useMemo(() => inRange(all, range, loadedAt ?? Date.now()), [all, range, loadedAt])
   const parsed = useMemo(() => parseQuery(deferred), [deferred])
   const problems = useMemo(() => [...parsed.problems, ...unknownFields(parsed, all)], [parsed, all])
   const matched = useMemo(() => {
@@ -65,6 +94,10 @@ export function LogsPage() {
     [ranged, parsed],
   )
   const groups = useMemo(() => (groupBy ? groupRuns(matched, groupBy) : []), [matched, groupBy])
+  const bareHidden = useMemo(() => {
+    const hides = parsed.terms.some((t) => t.kind === "field" && t.field === NO_COMMAND && t.negate)
+    return hides ? ranged.filter(matcher(parsed.terms, NO_COMMAND)).length - matched.length : 0
+  }, [parsed, ranged, matched])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new filter starts the list from the top again
   useEffect(() => setShown(STEP), [deferred, range, newest])
@@ -91,13 +124,32 @@ export function LogsPage() {
             </button>
           </p>
         </div>
-        <Button
-          onClick={() => load()}
-          disabled={reading.length > 0}
-          icon={<RefreshCw className={cx("size-4", reading.length > 0 && "animate-spin")} aria-hidden />}
-        >
-          <StableText value={reading.length > 0 ? "Reading…" : "Read again"} variants={["Reading…", "Read again"]} />
-        </Button>
+        <div className="flex items-center gap-[0.7rem]">
+          <Freshness at={loadedAt} reading={reading.length} asked={asked} />
+          <Button
+            aria-pressed={live}
+            onClick={() => setLive(!live)}
+            title={live ? "Stop reading the runs every 5 seconds" : "Read the runs again every 5 seconds"}
+            icon={
+              <span
+                aria-hidden
+                className={cx(
+                  "size-[0.6rem] rounded-full",
+                  live ? "animate-[lamp-pulse_1.4s_ease-in-out_infinite] bg-ok" : "ring-[1.5px] ring-idle ring-inset",
+                )}
+              />
+            }
+          >
+            Live
+          </Button>
+          <Button
+            onClick={() => load()}
+            disabled={reading.length > 0}
+            icon={<RefreshCw className={cx("size-4", reading.length > 0 && "animate-spin")} aria-hidden />}
+          >
+            <StableText value={reading.length > 0 ? "Reading…" : "Read again"} variants={["Reading…", "Read again"]} />
+          </Button>
+        </div>
       </div>
 
       <KeepRuns />
@@ -128,7 +180,12 @@ export function LogsPage() {
           </div>
 
           {firstLoad ? (
-            <Loading reading={reading} total={withLogs.length} facetsOpen={facetsOpen} newest={newest} />
+            <Loading
+              reading={asked ? reading : withLogs.map((s) => s.id)}
+              total={asked || withLogs.length}
+              facetsOpen={facetsOpen}
+              newest={newest}
+            />
           ) : (
             <div className="grid gap-[1.5rem] lg:grid-cols-[13.5rem_minmax(0,1fr)]">
               <div className={cx(facetsOpen ? "block" : "hidden", "lg:block")}>
@@ -147,10 +204,20 @@ export function LogsPage() {
                   total={all.length}
                   failed={failed}
                   since={oldest}
-                  reading={reading}
+                  reading={older}
                   grouped={groupBy ? groups.length : null}
+                  bareHidden={bareHidden}
+                  onShowBare={() => setQuery(toggleTerm(query, NO_COMMAND, "true", true))}
                 />
-                <div className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
+                <div className="sticky top-[0.8rem] z-10 -mb-[0.7rem] flex h-0 justify-center">
+                  {held > 0 && (
+                    <Button size="sm" variant="primary" className="reveal shadow-panel" onClick={showHeld}>
+                      <ArrowUp className="size-4" aria-hidden />
+                      {held} new {held === 1 ? "run" : "runs"}
+                    </Button>
+                  )}
+                </div>
+                <div ref={tableRef} className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
                   {matched.length === 0 ? (
                     <p className="flex flex-wrap items-center gap-3 px-[1.3rem] py-[1.6rem] text-[0.95rem] text-ink-soft">
                       {all.length === 0
@@ -180,6 +247,7 @@ export function LogsPage() {
                   ) : (
                     <RunsTable
                       runs={matched.slice(0, shown)}
+                      fresh={fresh}
                       now={now}
                       expanded={expanded}
                       details={details}
@@ -240,9 +308,18 @@ function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => voi
 }
 
 const sourceTone = (s: Source) =>
-  s.state === "loading" ? "busy" : s.state === "error" ? "bad" : s.state === "ready" ? "ok" : "idle"
+  s.state === "loading"
+    ? "busy"
+    : s.state === "error"
+      ? "bad"
+      : s.state === "late"
+        ? "warn"
+        : s.state === "ready"
+          ? "ok"
+          : "idle"
 
 function sourceWords(s: Source): string {
+  if (s.state === "late") return s.runs.length ? `${s.error}, showing its last answer` : (s.error ?? "")
   if (s.state === "none") return "keeps no run logs yet"
   if (s.state === "missing") return "not installed"
   if (s.state === "update") return `arrives with the next update of ${toolName(s.id)}`
@@ -255,7 +332,7 @@ function sourceWords(s: Source): string {
 // The table's own header and rows at their real height, so the first tool's runs land where the placeholders were.
 const PLACEHOLDER_ROWS = 20
 
-function Loading(props: { reading: Source[]; total: number; facetsOpen: boolean; newest: boolean }) {
+function Loading(props: { reading: string[]; total: number; facetsOpen: boolean; newest: boolean }) {
   const { reading, total, facetsOpen, newest } = props
   const done = total - reading.length
   return (
@@ -268,9 +345,6 @@ function Loading(props: { reading: Source[]; total: number; facetsOpen: boolean;
       </div>
       <div className="flex min-w-0 flex-col gap-[0.7rem]">
         <p className="flex flex-wrap items-center gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
-          <span>
-            Reading {reading.map((s) => toolName(s.id)).join(", ")} run logs… {done} of {total} tools done
-          </span>
           <span
             role="progressbar"
             aria-label="Tools read"
@@ -283,6 +357,12 @@ function Loading(props: { reading: Source[]; total: number; facetsOpen: boolean;
               className="block h-full rounded-full bg-brand transition-[width] duration-500 ease-out-quart"
               style={{ width: `${Math.max(8, (done / Math.max(total, 1)) * 100)}%` }}
             />
+          </span>
+          <span>
+            <span className="tabular-nums">
+              {done} of {total}
+            </span>{" "}
+            tools done, reading {reading.map(toolName).join(", ")}…
           </span>
         </p>
         <div className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
@@ -311,8 +391,10 @@ function Summary(props: {
   since: string
   reading: Source[]
   grouped: number | null
+  bareHidden: number
+  onShowBare: () => void
 }) {
-  const { matched, total, failed, since, reading, grouped } = props
+  const { matched, total, failed, since, reading, grouped, bareHidden, onShowBare } = props
   return (
     <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
       <span>
@@ -325,6 +407,14 @@ function Summary(props: {
           over the last {total} kept runs{since ? ` since ${formatDay(since)}` : ""}; {failed} of them failed
         </span>
       )}
+      {bareHidden > 0 && (
+        <span className="text-ink-dim">
+          <span className="tabular-nums">{bareHidden}</span> {bareHidden === 1 ? "run" : "runs"} with no command hidden{" "}
+          <button type="button" onClick={onShowBare} className="font-medium text-brand hover:text-brand-hover">
+            Show them
+          </button>
+        </span>
+      )}
       {reading.length > 0 && (
         <span className="inline-flex items-center gap-[0.4rem] text-ink-dim">
           <Lamp tone="busy" size="sm" />
@@ -333,6 +423,30 @@ function Summary(props: {
       )}
     </p>
   )
+}
+
+const scrolledPast = (el: HTMLElement | null) => {
+  const main = el?.closest("main")
+  return Boolean(el && main && el.getBoundingClientRect().top < main.getBoundingClientRect().top)
+}
+
+function ago(ms: number) {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `${s} s ago`
+  const m = Math.round(s / 60)
+  return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`
+}
+
+// Its own one-second clock, so only this line renders again as the time passes.
+function Freshness({ at, reading, asked }: { at: number | null; reading: number; asked: number }) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const text =
+    at === null ? "" : reading ? `Reading ${asked - reading} of ${asked} tools…` : `Updated ${ago(Date.now() - at)}`
+  return <span className="min-w-[10.5rem] text-right text-[0.85rem] text-ink-dim tabular-nums">{text}</span>
 }
 
 function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => void }) {

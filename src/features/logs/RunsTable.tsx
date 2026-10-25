@@ -24,6 +24,8 @@ type Props = {
   runs: Run[]
   /** Rows to hold at the real row height while the first runs are read. */
   placeholders?: number
+  /** Runs a live round just added; they fade in. */
+  fresh?: ReadonlySet<string>
   now: Date
   expanded: string | null
   details: Record<string, Detail>
@@ -91,6 +93,7 @@ const STATUS_WORD: Record<string, string> = {
 export function RunsTable({
   runs,
   placeholders = 0,
+  fresh,
   now,
   expanded,
   details,
@@ -154,6 +157,7 @@ export function RunsTable({
                   className={cx(
                     "group h-[2.6rem] cursor-pointer border-line border-b transition-colors duration-150 hover:bg-app-2",
                     open && "bg-app-2",
+                    fresh?.has(key) && "reveal",
                   )}
                 >
                   <td className="pl-[0.55rem]">

@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { findTool, ownerId, runTool, tools } from "@/domain/catalog"
-import { cliCommand, type RangeId, type Run } from "@/domain/runs"
+import { cliCommand, NO_COMMAND_HIDDEN, type RangeId, type Run } from "@/domain/runs"
 import { platform } from "@/platform/bridge"
 import type { RunDetail, RunItem } from "@/platform/runs-schemas"
 import { useTools } from "../tools/store"
@@ -8,8 +8,17 @@ import { useTools } from "../tools/store"
 /** Runs fetched per tool and page: about a month of a busy tool's failures. */
 export const PAGE = 500
 
-/** `update`: the installed version predates its `runs` commands; the next release of the tool brings them. */
-export type SourceState = "loading" | "ready" | "error" | "missing" | "none" | "update"
+/**
+ * `answer`: how long a round waits for the slowest tool before it shows what arrived.
+ * `live`: the pause between live rounds; each round starts one process per tool, so it is not shorter.
+ */
+export const timing = { answer: 8000, live: 5000 }
+
+/**
+ * `update`: the installed version predates its `runs` commands; the next release of the tool brings them.
+ * `late`: it did not answer within `timing.answer`; the runs shown are from its last answer, if any.
+ */
+export type SourceState = "loading" | "ready" | "error" | "missing" | "none" | "update" | "late"
 export type Source = {
   id: string
   state: SourceState
@@ -35,15 +44,24 @@ export type Keeping =
     }
 
 type LogsState = {
+  /** The last snapshot: every tool's answer to one round, shown at once. */
   sources: Record<string, Source>
   keeping: Record<string, Keeping>
-  loadedAt: number
+  /** When the snapshot was taken; null until the first round ends. */
+  loadedAt: number | null
+  /** A live round's snapshot adds runs under the reader instead of replacing the table. */
+  liveRound: boolean
+  /** Tools the running round still waits for, and how many it asked. */
+  reading: string[]
+  asked: number
+  live: boolean
   query: string
   range: RangeId
   groupBy: string | null
   expanded: string | null
   details: Record<string, Detail>
-  load(): Promise<void>
+  load(opts?: { live?: boolean }): Promise<void>
+  setLive(on: boolean): void
   loadMore(id: string): Promise<void>
   setRecord(id: string, on: boolean): Promise<void>
   setQuery(query: string): void
@@ -119,7 +137,14 @@ export const useShownLogs = <T>(pick: (s: Pick<LogsState, "sources" | "keeping">
     return pick(firstFrame)
   })
 
+const withOlder = (fresh: Run[], old: Run[]) => {
+  const known = new Set(fresh.map(runKey))
+  return [...fresh, ...old.filter((r) => !known.has(runKey(r)))]
+}
+
 export const useLogs = create<LogsState>((set, get) => {
+  let running: Promise<void> | null = null
+  let round = 0
   const patch = (id: string, f: (s: Source) => Partial<Source>) =>
     set((st) => {
       const s = st.sources[id]
@@ -127,20 +152,59 @@ export const useLogs = create<LogsState>((set, get) => {
     })
   const keep = (id: string, k: Keeping) => set((st) => ({ keeping: { ...st.keeping, [id]: k } }))
 
-  const fetchPage = async (id: string, page: number) => {
+  const fetchPage = async (id: string, page: number): Promise<Partial<Source>> => {
     try {
       const res = await platform.listRuns(id, null, PAGE, page)
-      patch(id, (s) => ({
-        state: "ready",
-        runs: page === 1 ? res.items.map(toRun(id)) : [...s.runs, ...res.items.map(toRun(id))],
-        hasMore: res.page.has_more,
-        pages: page,
-        error: null,
-      }))
+      return { state: "ready", runs: res.items.map(toRun(id)), hasMore: res.page.has_more, pages: page, error: null }
     } catch (e) {
       const error = message(e)
-      patch(id, () => (tooOld(error) ? { state: "update", error: null } : { state: "error", error }))
+      return tooOld(error) ? { state: "update", error: null } : { state: "error", error }
     }
+  }
+
+  // Every tool's answer is collected first and shown in one step, so rows on screen do not move as each tool answers.
+  const readRound = async (live: boolean) => {
+    const id = ++round
+    const fresh = fromCatalog()
+    const ids = Object.values(fresh.sources)
+      .filter((s) => s.state === "loading")
+      .map((s) => s.id)
+    // A live round stays quiet: no progress, no placeholders, the keeping rows are not read again.
+    if (!live)
+      set({
+        reading: ids,
+        asked: ids.length,
+        keeping: fresh.keeping,
+        ...(get().loadedAt === null ? { sources: fresh.sources } : {}),
+      })
+    const answers: Record<string, Partial<Source>> = {}
+    const asking = ids.map(async (tool) => {
+      answers[tool] = await fetchPage(tool, 1)
+      if (round === id && !live) set((st) => ({ reading: st.reading.filter((r) => r !== tool) }))
+    })
+    const keepingRead = live ? [] : Object.keys(fresh.keeping).map((k) => readKeeping(k))
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+      Promise.all(asking),
+      new Promise<void>((r) => {
+        timer = setTimeout(r, timing.answer)
+      }),
+    ])
+    clearTimeout(timer)
+    // A live round keeps what "Load older" added; a read the owner asked for starts again from page one.
+    const base = live ? get().sources : fresh.sources
+    const sources = Object.fromEntries(
+      Object.values(fresh.sources).map((f): [string, Source] => {
+        if (f.state !== "loading") return [f.id, f]
+        const s = base[f.id] ?? f
+        const a = answers[f.id]
+        if (!a) return [f.id, { ...s, state: "late", error: `did not answer in ${timing.answer / 1000} s` }]
+        if (a.state !== "ready" || !(live && s.pages > 1)) return [f.id, { ...s, ...a }]
+        return [f.id, { ...s, ...a, runs: withOlder(a.runs ?? [], s.runs), pages: s.pages, hasMore: s.hasMore }]
+      }),
+    )
+    set({ sources, loadedAt: Date.now(), liveRound: live, reading: [], ...(live ? {} : { details: {} }) })
+    await Promise.all(keepingRead)
   }
 
   const readKeeping = async (id: string, error: string | null = null) => {
@@ -168,28 +232,33 @@ export const useLogs = create<LogsState>((set, get) => {
   return {
     sources: {},
     keeping: {},
-    loadedAt: Date.now(),
-    query: "",
+    loadedAt: null,
+    liveRound: false,
+    reading: [],
+    asked: 0,
+    live: false,
+    query: NO_COMMAND_HIDDEN,
     range: "30d",
     groupBy: null,
     expanded: null,
     details: {},
 
-    async load() {
-      const { sources, keeping } = fromCatalog()
-      const reading = Object.values(sources).filter((s) => s.state === "loading")
-      set({ sources, keeping, loadedAt: Date.now(), details: {} })
-      await Promise.all([
-        ...reading.map((s) => fetchPage(s.id, 1)),
-        ...Object.keys(keeping).map((id) => readKeeping(id)),
-      ])
+    // A round already running answers every caller, so a live tick never overlaps "Read again".
+    load({ live = false } = {}) {
+      running ??= readRound(live).finally(() => {
+        running = null
+      })
+      return running
     },
+
+    setLive: (live) => set({ live }),
 
     async loadMore(id) {
       const s = get().sources[id]
       if (!s?.hasMore || s.state === "loading") return
       patch(id, () => ({ state: "loading" }))
-      await fetchPage(id, s.pages + 1)
+      const a = await fetchPage(id, s.pages + 1)
+      patch(id, (cur) => (a.state === "ready" ? { ...a, runs: [...cur.runs, ...(a.runs ?? [])] } : a))
     },
 
     async setRecord(id, on) {
