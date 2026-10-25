@@ -1,15 +1,15 @@
 import { useState } from "react"
-import { breakdownRows, DIMENSIONS, type Dimension, totals, UNIT } from "@/domain/archive"
-import { findTool } from "@/domain/catalog"
+import { breakdownRows, DIMENSIONS, type Dimension, TOTALS, totals, UNIT } from "@/domain/archive"
+import { findTool, tools } from "@/domain/catalog"
 import { formatBytes } from "@/domain/format"
 import type { StoreInfo } from "@/platform/archive-schemas"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
-import { DatabaseFacts } from "./DatabaseFacts"
+import { DatabaseFacts, DatabaseFactsSkeleton } from "./DatabaseFacts"
 import { useStorage } from "./store"
-import { TablesExplorer } from "./TablesExplorer"
+import { TablesExplorer, TablesSkeleton } from "./TablesExplorer"
 
 const n = (x: number) => x.toLocaleString("en-US")
 const clock = (at: number) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
@@ -25,8 +25,13 @@ export function ArchiveSummary() {
         <h2 id="archive-title" className="text-[1.08rem] font-semibold">
           In storage
         </h2>
-        {info && (
+        {info === undefined && (
           <p className="text-[0.85rem] text-ink-dim">
+            <Skeleton chars={44} />
+          </p>
+        )}
+        {info && (
+          <p className="reveal text-[0.85rem] text-ink-dim">
             Counted by <span className="font-mono">{findTool(info.answeredBy)?.bin ?? info.answeredBy} store info</span>
             {infoAt !== null && (
               <>
@@ -44,7 +49,7 @@ export function ArchiveSummary() {
       </div>
       <div className="px-[1.3rem] py-[1.1rem]">
         {info === undefined ? (
-          <Skeleton className="h-16 w-full" label="Reading storage" />
+          <ContentsSkeleton />
         ) : infoError ? (
           <ErrorNotice inline action={<ReportThis what="Reading the message storage" error={infoError} />}>
             Could not read storage: {infoError}
@@ -64,6 +69,16 @@ export function ArchiveSummary() {
           <Contents info={info} />
         )}
       </div>
+      {info === undefined && (
+        <>
+          <div className="border-line border-t px-[1.3rem] py-[1.1rem]">
+            <DatabaseFactsSkeleton />
+          </div>
+          <div className="border-line border-t px-[1.3rem] py-[1.1rem]">
+            <TablesSkeleton />
+          </div>
+        </>
+      )}
       {info?.exists && !info.problem && (
         <>
           <div className="border-line border-t px-[1.3rem] py-[1.1rem]">
@@ -84,7 +99,7 @@ function Contents({ info }: { info: StoreInfo }) {
   const rows = info.breakdown ? breakdownRows(info.breakdown, dim, formatBytes) : []
 
   return (
-    <div className="flex flex-col gap-[1.2rem]">
+    <div className="reveal flex flex-col gap-[1.2rem]">
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-[1.2rem] gap-y-3">
         {items.map((t) => (
           <div key={t.key}>
@@ -158,6 +173,63 @@ function Contents({ info }: { info: StoreInfo }) {
           {findTool(info.answeredBy)?.name ?? info.answeredBy}.
         </p>
       )}
+    </div>
+  )
+}
+
+function ContentsSkeleton() {
+  return (
+    <div className="flex flex-col gap-[1.2rem]">
+      <dl className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-[1.2rem] gap-y-3">
+        {TOTALS.map((t, i) => (
+          <div key={t.key}>
+            <dt className="text-[0.85rem] text-ink-dim">{t.label}</dt>
+            <dd className="font-mono text-[1.02rem]">
+              <Skeleton chars={6} {...(i === 0 ? { label: "Reading storage" } : {})} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-col gap-3">
+        <fieldset disabled className="m-0 flex min-w-0 flex-wrap items-center gap-1 border-0 p-0">
+          <legend className="float-left mr-2 text-[0.85rem] text-ink-dim">Break down by</legend>
+          {DIMENSIONS.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              aria-pressed={d.id === "provider"}
+              className={cx(
+                "rounded-[0.35rem] px-2.5 py-1 text-[0.875rem]",
+                d.id === "provider" ? "bg-app-3 font-medium text-ink" : "text-ink-soft",
+              )}
+            >
+              {d.label}
+            </button>
+          ))}
+        </fieldset>
+        <table aria-hidden className="w-full">
+          <tbody>
+            {tools.map((t) => (
+              <tr key={t.id} className="align-middle">
+                <th className="w-[40%] py-1.5 pr-4 text-left font-normal">
+                  <span className="block text-[0.95rem]">
+                    <Skeleton chars={9} />
+                  </span>
+                  <span className="block font-mono text-[0.8rem]">
+                    <Skeleton chars={34} />
+                  </span>
+                </th>
+                <td className="py-1.5 pr-4">
+                  <Skeleton className="h-2 w-full rounded-[0.15rem]" />
+                </td>
+                <td className="w-[7.5rem] py-1.5 text-right font-mono text-[0.95rem]">
+                  <Skeleton chars={11} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

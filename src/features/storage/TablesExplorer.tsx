@@ -5,7 +5,8 @@ import { formatDuration, KIND_LABEL, sortTables, splitTables, type TableSort, to
 import { formatBytes } from "@/domain/format"
 import type { Table } from "@/platform/archive-schemas"
 import { Button } from "@/ui/Button"
-import { Disclosure } from "@/ui/Disclosure"
+import { cx } from "@/ui/cx"
+import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
@@ -26,6 +27,7 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
   const [sort, setSort] = useState<TableSort>({ key: "name", descending: false })
   const tool = findTool(answeredBy)?.name ?? answeredBy
 
+  if (tables === undefined) return <TablesSkeleton />
   if (tables && !tables.available)
     return (
       <Frame count={null}>
@@ -42,15 +44,13 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
     )
 
   return (
-    <Frame count={tables ? main.length + search.length : null}>
+    <Frame count={tables ? main.length + search.length : null} className="reveal">
       {tablesError && (
         <ErrorNotice inline action={<ReportThis what="Listing the storage tables" error={tablesError} />}>
           Could not list the tables: {tablesError}
         </ErrorNotice>
       )}
-      {tables === undefined ? (
-        <Skeleton className="h-24 w-full" label="Counting rows" />
-      ) : tables === null ? null : (
+      {tables === null ? null : (
         <>
           <div className="flex flex-wrap items-center gap-3">
             <label className="relative flex min-w-[14rem] flex-1 items-center sm:max-w-[22rem]">
@@ -105,9 +105,38 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
   )
 }
 
-function Frame({ count, children }: { count: number | null; children: React.ReactNode }) {
+/** A full table list, sized as it arrives: the list box is at its maximum height whenever there are many tables. */
+export function TablesSkeleton() {
   return (
-    <section aria-labelledby="tables-title" className="flex flex-col gap-3">
+    <Frame count={null}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-8 min-w-[14rem] flex-1 sm:max-w-[22rem]" label="Counting rows" />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="sm" disabled>
+            Measure sizes
+          </Button>
+          <span className="text-[0.85rem] text-ink-dim">
+            Reads the whole file: seconds, or a few minutes when storage is large
+          </span>
+        </div>
+      </div>
+      <Skeleton className="h-[26rem] w-full rounded-[0.45rem]" />
+      <DisclosureSkeleton chars={24} />
+    </Frame>
+  )
+}
+
+function Frame({
+  count,
+  className,
+  children,
+}: {
+  count: number | null
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section aria-labelledby="tables-title" className={cx("flex flex-col gap-3", className)}>
       <h3 id="tables-title" className="text-[1rem] font-semibold">
         Tables
         {count !== null && <span className="ml-2 font-mono text-[0.9rem] font-normal text-ink-dim">{count}</span>}

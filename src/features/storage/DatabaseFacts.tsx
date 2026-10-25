@@ -5,8 +5,9 @@ import { formatBytes } from "@/domain/format"
 import type { StoreInfo } from "@/platform/archive-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
-import { Disclosure } from "@/ui/Disclosure"
+import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { Lamp } from "@/ui/Lamp"
+import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useStorage } from "./store"
 import { useElapsed } from "./useElapsed"
@@ -120,6 +121,62 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
           Journal mode, unused space, migration history and the last backup arrive with the next update of {tool}.
         </p>
       )}
+    </section>
+  )
+}
+
+/** The section as it will look with a current tool, while the tool is still being asked. */
+export function DatabaseFactsSkeleton() {
+  return (
+    <section aria-labelledby="database-title" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 id="database-title" className="text-[1rem] font-semibold">
+          Storage file
+        </h3>
+        <CheckButton />
+      </div>
+      <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-[1.2rem] gap-y-2 text-[0.95rem]">
+        <Fact label="File">
+          <span className="block font-mono text-[0.85rem]">
+            <Skeleton chars={34} />
+          </span>
+        </Fact>
+        <Fact label="Size">
+          <span className="font-mono">
+            <Skeleton chars={44} />
+          </span>
+        </Fact>
+        <Fact label="Journal mode">
+          <span className="font-mono">
+            <Skeleton chars={3} />
+          </span>
+        </Fact>
+        <Fact label="Schema">
+          <span className="inline-flex items-center gap-2">
+            <Lamp tone="idle" size="sm" />
+            <span className="font-mono">
+              <Skeleton chars={16} />
+            </span>
+          </span>
+        </Fact>
+        <Fact label="Unused space">
+          <span className="font-mono">
+            <Skeleton chars={52} />
+          </span>
+        </Fact>
+        <Fact label="Last backup">
+          <span className="inline-flex items-start gap-2">
+            <span className="pt-[0.35rem]">
+              <Lamp tone="idle" size="sm" />
+            </span>
+            <Skeleton chars={58} />
+          </span>
+        </Fact>
+        <Fact label="Health">
+          <Health />
+        </Fact>
+      </dl>
+      <DisclosureSkeleton chars={20} />
     </section>
   )
 }

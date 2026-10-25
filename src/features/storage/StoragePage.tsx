@@ -1,12 +1,12 @@
 import { Database, FolderOpen, KeyRound, LoaderCircle, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { findTool, sharedStorage } from "@/domain/catalog"
+import { findTool, sharedStorage, tools } from "@/domain/catalog"
 import { describeEntry } from "@/domain/files"
 import { formatBytes } from "@/domain/format"
 import type { StorageArea, StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
-import { Disclosure } from "@/ui/Disclosure"
+import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
@@ -19,11 +19,15 @@ import { areaBytes, useStorage } from "./store"
 const areaName = (id: string) => (id === "shared" ? sharedStorage.label : (findTool(id)?.name ?? id))
 const kindLabel: Record<StorageFolder["kind"], string> = { config: "Settings", state: "Data", cache: "Cache" }
 
+// The same areas, in the same order, as storage.rs reports: every tool that owns its data, then shared storage.
+const AREA_IDS = [...tools.filter((t) => !t.partOf).map((t) => t.id), "shared"]
+
 const toolNames = (ids: string[]) => ids.map((id) => findTool(id)?.name ?? id).join(", ")
 
 export function StoragePage() {
   const { areas, error, clearing, revalidating, refresh, clear, clearAll } = useStorage()
   const [confirm, setConfirm] = useState<StorageArea | "all" | null>(null)
+  const compatAsked = useCompat((s) => s.compat !== undefined)
 
   useEffect(() => {
     refresh()
@@ -66,7 +70,10 @@ export function StoragePage() {
         </ErrorNotice>
       )}
 
-      <StorageSummary />
+      {/* Room for the one-line warning box, so it arriving after the page does not push everything down. */}
+      <div className="flex min-h-[2.75rem] flex-col justify-center">
+        {compatAsked ? <StorageSummary /> : <Skeleton className="h-[2.75rem] w-full rounded-[0.2rem]" />}
+      </div>
 
       <ArchiveSummary />
 
@@ -75,15 +82,7 @@ export function StoragePage() {
         className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app"
       >
         {areas === null
-          ? [0, 1, 2].map((i) => (
-              <li key={i} className="border-line border-b px-[1.3rem] py-5 last:border-b-0">
-                {i === 0 ? (
-                  <Skeleton className="h-10 w-full" label="Measuring folders" />
-                ) : (
-                  <Skeleton className="h-10 w-full" />
-                )}
-              </li>
-            ))
+          ? AREA_IDS.map((id, i) => <RowSkeleton key={id} id={id} first={i === 0} />)
           : areas.map((a) => <Row key={a.id} area={a} busy={clearing === a.id} onDelete={() => setConfirm(a)} />)}
       </ul>
 
@@ -117,11 +116,7 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
 
   return (
     <li className="grid min-h-[4.5rem] grid-cols-[1.8rem_minmax(0,1fr)_7rem_9.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-4 last:border-b-0">
-      {area.id === "shared" ? (
-        <Database className="size-[1.6rem] text-ink" strokeWidth={1.75} aria-hidden />
-      ) : (
-        <ToolIcon id={area.id} className="size-[1.6rem] text-ink" />
-      )}
+      <AreaIcon id={area.id} />
       <div className="min-w-0">
         <h3 className="text-[1.08rem] font-semibold leading-tight">{areaName(area.id)}</h3>
         <p className={`mt-1 text-[0.9rem] ${!empty && !inUse ? "text-warn-ink" : "text-ink-soft"}`}>{status}</p>
@@ -155,6 +150,44 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
         )}
       </div>
       {!empty && <Entries area={area} />}
+    </li>
+  )
+}
+
+function AreaIcon({ id }: { id: string }) {
+  return id === "shared" ? (
+    <Database className="size-[1.6rem] text-ink" strokeWidth={1.75} aria-hidden />
+  ) : (
+    <ToolIcon id={id} className="size-[1.6rem] text-ink" />
+  )
+}
+
+function RowSkeleton({ id, first }: { id: string; first: boolean }) {
+  return (
+    <li className="grid min-h-[4.5rem] grid-cols-[1.8rem_minmax(0,1fr)_7rem_9.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-4 last:border-b-0">
+      <AreaIcon id={id} />
+      <div className="min-w-0">
+        <h3 className="text-[1.08rem] font-semibold leading-tight">{areaName(id)}</h3>
+        <p className="mt-1 text-[0.9rem]">
+          <Skeleton chars={30} {...(first ? { label: "Measuring folders" } : {})} />
+        </p>
+        <ul className="mt-1.5 flex flex-col gap-0.5">
+          {(["config", "state"] as const).map((kind) => (
+            <li key={kind} className="flex h-6 min-w-0 items-center gap-2 text-[0.8rem]">
+              <span className="w-[3.6rem] shrink-0 text-ink-soft">{kindLabel[kind]}</span>
+              <span className="font-mono">
+                <Skeleton chars={28} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <span className="font-mono text-[1rem]">
+        <Skeleton chars={7} />
+      </span>
+      <div className="col-start-2 -col-end-1 mt-1">
+        <DisclosureSkeleton chars={18} />
+      </div>
     </li>
   )
 }
