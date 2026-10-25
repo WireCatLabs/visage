@@ -52,6 +52,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-10 · Кнопка «Report this» у каждой ошибки.** «when smth broke in wirecat appears - allow a butto to report it as well automatically». Статус: агент делает общий блок ошибки с кнопкой, заполняющей отчёт сам (инструмент, что сломалось, команда, версии), защиту страниц от падения отрисовки и сбор последних необработанных ошибок. Отправка — только по нажатию Send в заполненном окне.
 
+- **TASK-11 · Резервная копия и очистка хранилища.** «Let's add buttons to backup the storage (create a local backup for now in say zip) and clear storage with confirmation warning.» Копия — собственной командой инструмента `store backup` (уже есть, VACUUM INTO) и сжатие в zip в Rust. Команды очистки всего хранилища нет (`store clear` убирает только покинутые чаты) — агент открывает PR в cli-core, а кнопка в приложении выключена с объяснением, пока инструменты её не знают. Перед очисткой — предложение сделать копию и ввод слова-подтверждения.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -180,6 +182,8 @@ memo с пометкой «About: Email»; чтение логов для отч
 редактором категорий задач; из видов профиля они уходят.
 
 - **ASK-30 · «explain why not just wirecat/tg? what are name patterns, why dev».** Ответ: в реестре MCP имя — `<пространство>/<сервер>`, и пространство должно доказывать владение: `io.github.<org>` — вход через GitHub, или домен наоборот (`dev.wirecat` = wirecat.dev) — запись TXT в DNS или файл `/.well-known/mcp-registry-auth`. Голое `wirecat/` ничем не подтверждается, поэтому не принимается. Источник: https://modelcontextprotocol.io/registry/authentication
+
+- **ASK-31 · «I still don't see the tables count/sizes etc displayed in storage, and I dont see data like segments in messages by cli or similar. is smone working on it?»** Ответ: экран готов, данных нет, потому что установленные инструменты этих команд ещё не знают. Разбивка (cli-core #1959) слита в 16:33, после выпуска 0.424.0 (16:10) — ждёт следующего выпуска cli-core. Таблицы (cli-core #1967) открыты, CI падает — их ведёт агент выпуска. После выпуска cli-core нужно обновить tg/max/wa и поставить новые версии.
 
 ## 3. Находки
 
