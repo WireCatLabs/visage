@@ -89,7 +89,7 @@ export function backupMock(asksArchive: () => string | null) {
       await delay(1200)
       if (params.get("clear") === "busy") {
         throw new Error(
-          "Storage is in use: a sync, an import or a server has it open. Nothing was deleted. Try again when it finishes. (the store is open in process 4242 — stop it first)",
+          "Storage is in use: a sync, an import, a server or an agent's WireCat MCP connection has it open. Nothing was deleted. Try again when it finishes, or close the agent sessions that use WireCat. (the store is open in process 4242 — stop it first)",
         )
       }
       cleared = true

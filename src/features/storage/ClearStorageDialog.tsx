@@ -112,7 +112,8 @@ export function ClearStorageDialog({ open, onClose }: { open: boolean; onClose: 
 
           {preview.inUse && (
             <p role="alert" className="mt-3 rounded-[0.3rem] border border-warn/50 bg-warn/10 px-3 py-2 text-warn-ink">
-              A sync, an import or a server has storage open right now. Clearing is refused until it finishes.
+              A sync, an import, a server or an agent's WireCat MCP connection has storage open right now. Clearing is
+              refused until it finishes, or until you close those agent sessions.
             </p>
           )}
 

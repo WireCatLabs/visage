@@ -72,7 +72,8 @@ cli-base): `<PREFIX>_{CONFIG,STATE,CACHE}_DIR` first, then the XDG layout on Lin
 every tool shares (`sharedStorage`: `WireCat`, `WIRECAT`). Keep `storage.rs` in step if cli-base changes.
 
 Deleting is refused while a tool that uses the data is installed: a tool's own folders until it is uninstalled,
-the shared archive until no tool is installed. Before `remove_dir_all`, each path must be absolute, at least four
+the shared archive until no tool is installed (emptying it while tools are installed goes through the tool's own
+`store reset`, see "Backups and clearing storage"). Before `remove_dir_all`, each path must be absolute, at least four
 components deep, not the home folder, and named for the tool. A store moved with `MESSAGING_STORE` and sign-in
 tokens in the system keyring are never touched. After the last tool is uninstalled the app offers, once, to delete
 everything that is left.

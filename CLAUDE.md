@@ -37,7 +37,8 @@ unreachable), `?report=queued` (stored, no issue yet); the real app sends to `WI
    interface, the clipboard or a log.
 5. **Deleting data stays narrow.** Only folders computed in `storage.rs` from the catalog, only when nothing
    installed uses them, only after the user confirms in a dialog that lists every path. Never widen it to a
-   pattern: `~/.cache` is full of unrelated files with tool-like names.
+   pattern: `~/.cache` is full of unrelated files with tool-like names. Emptying the shared store is the one
+   exception: the tool's own `store reset`, behind a dialog that lists every file and table it deletes.
 6. **No administrator rights.** Never call `sudo`, never install into a system folder; explain the fix instead.
 7. **Adding a tool** is an entry in [`catalog/tools.json`](catalog/tools.json) plus an icon in
    `src/features/tools/ToolIcon.tsx`. If it needs more, the catalog shape is what changes.

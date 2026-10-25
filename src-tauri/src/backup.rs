@@ -206,15 +206,22 @@ fn make(
     let name = free_name(&dir, &chrono::Local::now().format("%Y-%m-%d-%H%M").to_string());
     let copy = dir.join(format!(".{name}.db.partial"));
     let partial = dir.join(format!(".{name}.partial"));
-    let result = copy_then_zip(tool, args, &copy, &partial, store_bytes, cancelled, send).and_then(|()| {
-        let target = dir.join(&name);
-        fs::rename(&partial, &target).map_err(|e| Stop::Failed(format!("Could not name the backup: {e}")))?;
-        let meta = fs::metadata(&target).map_err(|e| Stop::Failed(e.to_string()))?;
-        Ok(BackupFile { name: name.clone(), bytes: meta.len(), modified: millis_of(&meta) })
+    let made = copy_then_zip(tool, args, &copy, &partial, store_bytes, cancelled, send);
+    finish(made, &copy, &partial, &dir.join(&name))
+        .map(|file| (file, paths::tilde(&dir.to_string_lossy()), store_bytes))
+}
+
+/// Names a finished zip; whatever happened, neither the plain copy nor a half-written zip stays behind.
+fn finish(made: Result<(), Stop>, copy: &Path, partial: &Path, target: &Path) -> Result<BackupFile, Stop> {
+    let named = made.and_then(|()| {
+        fs::rename(partial, target).map_err(|e| Stop::Failed(format!("Could not name the backup: {e}")))?;
+        let meta = fs::metadata(target).map_err(|e| Stop::Failed(e.to_string()))?;
+        let name = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        Ok(BackupFile { name, bytes: meta.len(), modified: millis_of(&meta) })
     });
-    let _ = fs::remove_file(&copy);
-    let _ = fs::remove_file(&partial);
-    result.map(|file| (file, paths::tilde(&dir.to_string_lossy()), store_bytes))
+    let _ = fs::remove_file(copy);
+    let _ = fs::remove_file(partial);
+    named
 }
 
 fn copy_then_zip(
@@ -436,8 +443,8 @@ fn reset_failure(message: &str) -> String {
     let busy = ["is open in process", "a write to the store is under way", "serve is running"];
     if busy.iter().any(|b| message.contains(b)) {
         format!(
-            "Storage is in use: a sync, an import or a server has it open. Nothing was deleted. Try again when it \
-             finishes. ({message})"
+            "Storage is in use: a sync, an import, a server or an agent's WireCat MCP connection has it open. Nothing \
+             was deleted. Try again when it finishes, or close the agent sessions that use WireCat. ({message})"
         )
     } else {
         format!("Storage was not cleared: {message}")
@@ -551,6 +558,32 @@ mod tests {
         };
         assert_eq!(compress(&src, &dest, ENTRY, &cancel, &mut |_, _| {}), Err(Stop::Cancelled));
         assert!(matches!(compress(&src, &dest, ENTRY, &|| false, &mut |_, _| {}), Err(Stop::Failed(_))));
+    }
+
+    #[test]
+    fn leaves_only_the_named_zip_and_nothing_after_a_failure_or_a_cancel() {
+        let dir = scratch("finish");
+        let (copy, partial) = (dir.join(".b.zip.db.partial"), dir.join(".b.zip.partial"));
+        let target = dir.join("wirecat-store-2026-10-25-1750.zip");
+        let left = || {
+            let mut names: Vec<String> =
+                fs::read_dir(&*dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+            names.sort();
+            names
+        };
+
+        for stop in [Stop::Failed("disk full".into()), Stop::Cancelled] {
+            fs::write(&copy, "plain").unwrap();
+            fs::write(&partial, "half").unwrap();
+            assert!(finish(Err(stop), &copy, &partial, &target).is_err());
+            assert!(left().is_empty());
+        }
+
+        fs::write(&copy, "plain").unwrap();
+        fs::write(&partial, "zipped").unwrap();
+        let file = finish(Ok(()), &copy, &partial, &target).unwrap();
+        assert_eq!((file.name.as_str(), file.bytes), ("wirecat-store-2026-10-25-1750.zip", 6));
+        assert_eq!(left(), ["wirecat-store-2026-10-25-1750.zip"]);
     }
 
     #[test]
