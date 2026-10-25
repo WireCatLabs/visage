@@ -77,7 +77,9 @@ export const samePackage = (id: string) => tools.filter((t) => ownerId(t.id) ===
 
 /** The tool a run belongs to: the owner's, or a part's when the run's command is in the part's command group. */
 export function runTool(owner: string, command: string): string {
-  const word = command.split(" ")[0]
+  // memo puts `mcp` before the command words of a run an agent started through its MCP server.
+  const words = command.split(" ")
+  const word = words[0] === "mcp" && words.length > 1 ? words[1] : words[0]
   return tools.find((t) => t.partOf === owner && t.commandPrefix === word)?.id ?? owner
 }
 

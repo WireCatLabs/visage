@@ -25,6 +25,8 @@ describe("catalog", () => {
     expect(runTool("memo", "mail inspect")).toBe("email")
     expect(runTool("memo", "sync")).toBe("memo")
     expect(runTool("memo", "mailbox")).toBe("memo")
+    expect(runTool("memo", "mcp mail inspect")).toBe("email")
+    expect(runTool("memo", "mcp")).toBe("memo")
     expect(runTool("tg", "mail x")).toBe("tg")
   })
 

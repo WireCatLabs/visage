@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react"
 import { Fragment, useState } from "react"
+import { findTool } from "@/domain/catalog"
 import { agentName, agentOf, commandLine, errorOf, formatDuration, type Run } from "@/domain/runs"
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
@@ -154,7 +155,7 @@ function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter
 
 function Facts({ run }: { run: Run }) {
   const facts = [
-    run.cli_version ? `${run.tool} ${String(run.cli_version)}` : null,
+    run.cli_version ? `${findTool(run.tool)?.bin ?? run.tool} ${String(run.cli_version)}` : null,
     typeof run.requests === "number" ? `${run.requests} ${run.requests === 1 ? "request" : "requests"}` : null,
     run.duration_ms !== undefined ? formatDuration(run.duration_ms) : null,
     [run.runtime, run.platform, run.arch].filter(Boolean).join(" · ") || null,
