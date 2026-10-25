@@ -130,6 +130,12 @@ GNOME связывает окно с .desktop-файлом по app id; у Tauri
 (`tauri icon`), ярлык переустановлен (`ed0dae1`). Сервер: Hetzner 142.132.239.135 (AlignIO scheduler, Asturio, n8n;
 `AlignIO/Code/scheduler/docs/DEPLOYMENT.md:3`, SSH `deploy@… -p 25222`). Записано в хендофф wirecat-api.
 
+**ASK-21 · «report a problem needs design improvement… a tempate to fill… About dropdown shoulb empty by default and trigger validation error… I'd always send logs to our server… I don't think we need to let user select it» и «make report a problem a button next to ?»**
+Агент переделывает диалог: шаблон (что делали / что произошло / что ожидали), «About» пустой и обязательный с
+ошибкой, логи прикрепляются всегда с честным предупреждением, кнопка «Report a problem» рядом с «?». Ответ про
+галочку: галочка не нужна, достаточно ясной строки. Но по GDPR владелец обязан сказать об этом в политике
+конфиденциальности (NEED-16).
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -266,3 +272,20 @@ WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
 другой агент, эта сессия его не трогает.
 
 ASK-15 (логи zm, drive, memo): PR zoom-cli#255, drive-cli#219, cli-memo#436; приложение — `ec89d42`.
+
+**NEED-16 · Добавить в политику конфиденциальности wirecat.dev абзац о логах в отчётах об ошибках?**
+- Сейчас: `cli-docs/lib/privacy.ts:47` говорит только о «support data» общими словами; приложение будет всегда
+  отправлять замаскированные логи на сервер WireCat и хранить их 90 дней.
+- Варианты: **A** добавить абзац (что отправляется, зачем, 90 дней, как попросить удалить по hello@wirecat.dev) ·
+  **B** оставить как есть.
+- Я бы: **A** — отправка без выбора честна, только если политика это прямо называет; пользователи из ЕС.
+- Ответ: ещё нет.
+
+**NEED-17 · Сделать ли агенту cli-core общее определение агента и для подписей автора в memo и задачах?**
+- Сейчас: журнал запусков узнаёт Claude Code, Codex, Gemini CLI, Cursor, OpenCode; подпись автора (`src/cli/author.ts`)
+  — только Claude Code, остальные подписываются как владелец.
+- Варианты: **A** одно правило в обоих местах · **B** оставить.
+- Я бы: **A** — работа агентов не будет записана на владельца.
+- Ответ: ещё нет.
+
+ASK-13 (контекст запусков): PR cli-core#1963; приложение — `a2ce308`.
