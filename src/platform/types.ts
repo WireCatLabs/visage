@@ -20,7 +20,8 @@ export type Platform = {
   clearStorage(id: string): Promise<void>
   openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
-  listRuns(id: string, query: string | null): Promise<RunsPage>
+  /** `query` is the CLI's own filter (exact `field:value` terms); `page` starts at 1. */
+  listRuns(id: string, query: string | null, limit: number, page: number): Promise<RunsPage>
   showRun(id: string, run: string): Promise<RunDetail>
   /** `defaults` changes what every profile gets instead of one profile. */
   settingsShow(id: string, profile: string): Promise<Settings>

@@ -19,7 +19,7 @@
       },
       "doctor": ["{profile}", "doctor", "--json"],
       "runs": {
-        "list": ["runs", "list", "--json"],
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],
@@ -48,7 +48,7 @@
       },
       "doctor": ["{profile}", "doctor", "--json"],
       "runs": {
-        "list": ["runs", "list", "--json"],
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],
@@ -77,7 +77,7 @@
       },
       "doctor": ["{profile}", "doctor", "--json"],
       "runs": {
-        "list": ["runs", "list", "--json"],
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
       "setup": ["{profile}", "setup"],

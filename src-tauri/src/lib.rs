@@ -85,9 +85,9 @@ async fn open_folder(id: String, kind: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn list_runs(id: String, query: Option<String>) -> Result<serde_json::Value, String> {
+async fn list_runs(id: String, query: Option<String>, limit: u32, page: u32) -> Result<serde_json::Value, String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || runs::list(tool, query.as_deref())).await?
+    blocking(move || runs::list(tool, query.as_deref(), limit, page)).await?
 }
 
 #[tauri::command]

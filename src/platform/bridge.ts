@@ -48,7 +48,7 @@ function createTauri(): Platform {
     openFolder: (id, kind) => invoke("open_folder", { id, kind }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
-    listRuns: (id, query) => call(RunsPageSchema, "list_runs", { id, query }),
+    listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
     settingsShow: (id, profile) => call(SettingsSchema, "settings_show", { id, profile }),
     settingsSet: (id, profile, defaults, setting, value) =>
