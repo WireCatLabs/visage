@@ -106,11 +106,13 @@ Then read `~/.cache/wirecat-api-orient.txt`. It shows:
 6. **README, `AI_CODESTYLE.md`, `CLAUDE.md`/`AGENTS.md`, `.github/workflows`.** Rewrite them for wirecat-api.
    Check: CI is green on the first pull request.
 
-Not in this handoff: deploying. The owner chose a Hetzner server, deployed with Kamal like trustie, and
-`wirecat.dev`'s DNS is on Hetzner. The server itself, the `api.wirecat.dev` record and the GitHub App installation are
-the owner's to create; the server's first-boot template is
-`/home/leemour/Projects/DevOps/ubuntu_setup/server/hetzner/init-config.yaml`. Write `config/deploy.yml` for that host
-with the IP as a placeholder. List exactly what you need from them (secret names, DNS record, App permissions) in the
+Deploy target: the owner's existing Hetzner server, **142.132.239.135**, shared with AlignIO, Asturio and n8n, with
+Kamal behind Caddy on the host. SSH is `deploy@142.132.239.135 -p 25222`. Copy the layout from a sibling that already
+deploys there instead of trustie's Selectel setup: `/home/leemour/Projects/AlignIO/Code/scheduler/config/deploy.yml`
+and its `docs/DEPLOYMENT.md` and `docs/deploy/SERVER_LOCATIONS.md` (Caddy site files, the `/mnt/data` volume,
+Postgres/Redis accessories). Check that ports, container names and the Postgres database do not clash with them.
+`wirecat.dev`'s DNS is on Hetzner. The `api.wirecat.dev` A record and the GitHub App installation are the owner's to
+create; list exactly what you need from them in the pull request. List exactly what you need from them (secret names, DNS record, App permissions) in the
 pull request description, never the values.
 
 ## 5. What bites

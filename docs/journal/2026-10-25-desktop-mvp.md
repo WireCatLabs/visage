@@ -125,6 +125,11 @@ GNOME связывает окно с .desktop-файлом по app id; у Tauri
 появится после создания сервера — в консоли Hetzner. Шаблон первого запуска:
 `/home/leemour/Projects/DevOps/ubuntu_setup/server/hetzner/init-config.yaml`.
 
+**ASK-20 · «there is no logo on icon… let's use my existing hetzner server»**
+Иконки были пустым синим квадратом; теперь все размеры из `cli-docs/design/logo/png/mark-blue-1024.png`
+(`tauri icon`), ярлык переустановлен (`ed0dae1`). Сервер: Hetzner 142.132.239.135 (AlignIO scheduler, Asturio, n8n;
+`AlignIO/Code/scheduler/docs/DEPLOYMENT.md:3`, SSH `deploy@… -p 25222`). Записано в хендофф wirecat-api.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
