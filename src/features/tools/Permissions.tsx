@@ -188,11 +188,21 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
             {tool.name} blocks some commands whatever the levels below say: {reason}.
           </p>
         ))}
-      {data && <Notes tool={tool} data={data} defaultsView={defaultsView} />}
-      {data && <Totals summaries={summaries} />}
+      <Notes tool={tool} data={data} defaultsView={defaultsView} />
+      {data ? <Totals summaries={summaries} /> : !error && !defaultsView && <Skeleton chars={44} />}
 
       {!data && !error ? (
-        <Skeleton className="h-40 w-full" label="Loading permissions" />
+        <ul className="divide-y divide-line rounded-[0.45rem] border border-line bg-app">
+          {groups.map((g, n) => (
+            <li key={g.key} className={ROW}>
+              <div className={ROW_GRID}>
+                <GroupName label={g.label} groupKey={g.key} detail={null} />
+                <Skeleton chars={9} label={n === 0 ? "Loading permissions" : ""} />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : data ? (
         <ul
           aria-label={`${tool.name} permissions`}
@@ -253,13 +263,14 @@ function Totals({ summaries }: { summaries: GroupSummary[] }) {
   )
 }
 
-function Notes({ tool, data, defaultsView }: { tool: CatalogTool; data: Data; defaultsView: boolean }) {
+function Notes({ tool, data, defaultsView }: { tool: CatalogTool; data: Data | null; defaultsView: boolean }) {
   if (defaultsView)
     return (
       <p className="text-[0.875rem] text-ink-soft">
         Choose a profile to see which commands it may run. A level a profile sets wins over these defaults.
       </p>
     )
+  if (!data) return null
   if (data.commandsError)
     return (
       <ErrorNotice
@@ -302,6 +313,21 @@ function Ceiling({ tool, profile, ceiling }: { tool: CatalogTool; profile: strin
   )
 }
 
+const ROW = "flex flex-col gap-2 px-3 py-2.5"
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_7.5rem_9.5rem] items-center gap-x-3"
+
+function GroupName({ label, groupKey, detail }: { label: string; groupKey: string; detail: string | null }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="truncate font-medium text-ink">{label}</span>
+        <span className="font-mono text-[0.8rem] text-ink-dim">{groupKey}</span>
+      </div>
+      {detail && <p className="text-[0.85rem] text-ink-soft">{detail}</p>}
+    </div>
+  )
+}
+
 function GroupRow(props: {
   tool: CatalogTool
   summary: GroupSummary
@@ -321,15 +347,9 @@ function GroupRow(props: {
   const separately = s.overrides.length
 
   return (
-    <li className="flex flex-col gap-2 px-3 py-2.5">
-      <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_9.5rem] items-center gap-x-3">
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-medium text-ink">{s.group.label}</span>
-            <span className="font-mono text-[0.8rem] text-ink-dim">{s.group.key}</span>
-          </div>
-          {detail && <p className="text-[0.85rem] text-ink-soft">{detail}</p>}
-        </div>
+    <li className={ROW}>
+      <div className={ROW_GRID}>
+        <GroupName label={s.group.label} groupKey={s.group.key} detail={detail} />
         <span className="flex items-center gap-2 text-[0.875rem] text-ink">
           <Lamp tone={TONE[s.state]} size="sm" />
           {stateLabel(s)}

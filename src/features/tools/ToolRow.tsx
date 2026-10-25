@@ -145,7 +145,8 @@ type ActionProps = {
 }
 
 function Action({ status, expanded, disabled, disabledReason, controls, onInstall, onToggle, onCancel }: ActionProps) {
-  if (status.kind === "checking") return <Skeleton className="h-[2.75rem] w-[7.6rem]" />
+  // The column's full width: "Update to 0.95.0" is wider than the other buttons.
+  if (status.kind === "checking") return <Skeleton className="h-[2.4rem] w-full" />
   if (status.kind === "working") {
     return (
       <Button variant="secondary" onClick={onCancel} className="min-w-[7.6rem]">

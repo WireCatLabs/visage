@@ -3,13 +3,17 @@ import { useEffect } from "react"
 import { tools } from "@/domain/catalog"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
+import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
+import { useCompat } from "./compat-store"
 import { StorageSummary } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolRow } from "./ToolRow"
 import { UpgradeWarning } from "./UpgradeWarning"
+
+const CHECK_LABELS = ["Check again", "Checking…"] as const
 
 export function ToolsPage() {
   const refreshing = useTools((s) => s.refreshing)
@@ -17,6 +21,11 @@ export function ToolsPage() {
   const systemError = useSystem((s) => s.error)
   const latestUnknown = useTools((s) => s.latest !== null && Object.keys(s.latest).length === 0)
   const askingNpm = useTools((s) => s.checkingLatest)
+  // The storage line answers only after every tool is found and asked, and grows a button once npm answers; its slot
+  // keeps that room throughout, unless nothing is installed or no answer is coming.
+  const compat = useCompat((s) => s.compat)
+  const mayHaveTools = useTools((s) => !s.checked || Object.values(s.installs).some((copies) => copies.length > 0))
+  const storageSlot = mayHaveTools && !error && compat !== null
   const progress = refreshing
     ? "Looking for WireCat tools on this computer…"
     : askingNpm
@@ -49,7 +58,7 @@ export function ToolsPage() {
           className="inline-flex items-center gap-1.5 rounded-[0.35rem] px-2 py-1 text-[0.875rem] text-ink-dim transition-colors hover:bg-app-3 hover:text-ink disabled:opacity-60"
         >
           <RefreshCw className={cx("size-4", refreshing && "animate-spin")} aria-hidden />
-          {refreshing ? "Checking…" : "Check again"}
+          <StableText value={refreshing ? "Checking…" : "Check again"} variants={CHECK_LABELS} />
         </button>
       </div>
 
@@ -65,7 +74,17 @@ export function ToolsPage() {
         </ErrorNotice>
       )}
 
-      <StorageSummary />
+      {storageSlot ? (
+        <div className="flex min-h-[3.4rem] flex-col justify-center">
+          {compat === undefined ? (
+            <Skeleton className="h-[3.4rem] w-full rounded-[0.2rem]" label="Checking storage" />
+          ) : (
+            <StorageSummary />
+          )}
+        </div>
+      ) : (
+        <StorageSummary />
+      )}
 
       <ul aria-label="WireCat tools" className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
         {tools.map((t) => (

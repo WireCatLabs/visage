@@ -94,10 +94,17 @@ function ProfileList(props: {
       </ErrorNotice>
     )
   }
-  if (profiles === undefined) return <Skeleton className="h-10 w-full" label="Loading profiles" />
   return (
     <div className="flex flex-col gap-2">
-      {profiles && profiles.length > 0 ? (
+      {profiles === undefined ? (
+        <ul className="divide-y divide-line overflow-hidden rounded-[0.45rem] border border-line bg-app">
+          {[0, 1].map((n) => (
+            <li key={n} className="flex h-8 box-content items-center px-3 py-2">
+              <Skeleton className="h-4 w-28" label={n === 0 ? "Loading profiles" : ""} />
+            </li>
+          ))}
+        </ul>
+      ) : profiles && profiles.length > 0 ? (
         <ul className="divide-y divide-line overflow-hidden rounded-[0.45rem] border border-line bg-app">
           {profiles.map((p) => (
             <li key={p.name} className="flex items-center gap-3 px-3 py-2">
