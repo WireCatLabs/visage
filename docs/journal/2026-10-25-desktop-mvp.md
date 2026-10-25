@@ -68,6 +68,21 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 `config set`/`config unset`, файл приложение само не пишет. План:
 `docs/dev/plans/2026-10-25-round-2.md`, раздел 8.
 
+**ASK-6 · Welcome: «the next button should be bigger… a lot of space below… the overall window size might be smaller»**
+Отдано агенту онбординга: большая кнопка под текстом, без пустоты, окно по умолчанию меньше.
+
+**ASK-7 · «Connect in terminal - what does it do?» и Sign in «not clear what this is for, what user will get»**
+Кнопка открывает терминал и запускает вход самого инструмента (`tg <профиль> setup`, `zm <профиль> session start`,
+`drive <профиль> session start`). Экран переписывается: что даёт вход, что спросит инструмент, зачем имя профиля.
+
+**ASK-8 · «in logs I don't see successful logs» и ещё 6 правок Logs**
+Успешные запуски не хранятся: настройка `record` = false по умолчанию (проверено: tg 477 из 478 failed, max 500 из
+500). Агент Logs добавляет переключатель «хранить все запуски» через `config set record true --defaults`, команды с
+именем инструмента, порядок фильтров, объяснение событий, короткий JSON в строку, крупнее текст, group by у значения.
+
+**ASK-9 · «for storage I still didnt see the database explorer»**
+Ещё строится агентом Agents/Storage; CLI-разбивки готовы на ветке cli-core (FIND-8).
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -113,6 +128,14 @@ wirecat.dev — статика на Cloudflare Pages; GitHub App нет; ток�
 
 **FIND-6 · zm пишет журналы запусков, но команды `runs` у него нет; drive и memo журналов не пишут**
 Страница Logs покажет для них пустое состояние. Недостающая команда — дело CLI (правило 1).
+
+**FIND-7 · `command` = имя инструмента в 82 запусках tg и 372 max**
+Это запуски без распознанной подкоманды (опечатка или нет профиля). Показываются как «max (no command)».
+
+**FIND-8 · `skill status` (cli-base `ba9d3a8`) и разбивки `store info` (cli-core `d11d6563`) готовы на ветках**
+Не отправлены. До пользователей дойдут цепочкой выпусков: cli-base → cli-core (с 0.53 через 0.55) → tg/max.
+`store info` теперь открывает базу только на чтение. В базе есть провайдер `chat` с 4 сообщениями — похоже на
+тестовые данные, не тронуто.
 
 ## 4. Вопросы к Славе
 
