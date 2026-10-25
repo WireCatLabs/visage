@@ -48,6 +48,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-8 · OpenClaw и Hermes как агенты, публикация коннекторов.** «I'd add OpenClaw and Hermes to agents as well. also let's build an integration for them in subagents - plan and let me review. And I think we should publish the connectors and update the docs and include that in desktop with activations etc. And we might want to publish the connectors/mcps smwhere». Статус: исследование тремя агентами (OpenClaw, Hermes, каталоги MCP и навыков), затем план на ревью в `docs/dev/plans/2026-10-25-agents-openclaw-hermes.md`. Hermes установлен здесь (`~/.hermes`, 0.21.0), OpenClaw — нет.
 
+- **TASK-9 · Загрузка без сдвигов макета (UX-3).** «when elements start loading they arent the size of final versions eg tools load with small skeleton then appear cli name and then blocks expand … avoid layout shift. same in other pages. first find the solution in subagent, then use subagent for each page to fix that». Статус: агент фазы 1 измеряет сдвиги на каждой странице и строит общие заготовки в `src/ui`; затем по агенту на страницу (Tools — после слияния работы о совместимости хранилища).
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
