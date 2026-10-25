@@ -114,6 +114,17 @@ Database и Tables в Storage.
 Сейчас не нужны. Ответ: упавшие запуски — то, что нужно для диагностики; успешные полезны для статистики и для
 случая «агент сказал, что сделал, а результата нет». По умолчанию оставить выключенными; переключатель в Logs есть.
 
+**ASK-17 · «set a proper icon… in ubuntu I get a default gear… call it WireCat and allow finding it through apps»**
+GNOME связывает окно с .desktop-файлом по app id; у Tauri на Linux это имя бинарника `wirecat-desktop`. Скрипт
+`bin/install-desktop-entry` собирает релиз, ставит бинарник, иконки и ярлык «WireCat» в `~/.local` (без sudo),
+`--remove` убирает. Запущен на этой машине: бинарник `~/.local/bin/wirecat-desktop`, ярлык проходит
+`desktop-file-validate`. Проверить: Super → WireCat.
+
+**ASK-18 · «give me hetzner ip»**
+Сервера WireCat на Hetzner ещё нет (FIND-5), поэтому и IP нет; в проектах и заметках DevOps адреса тоже нет. IP
+появится после создания сервера — в консоли Hetzner. Шаблон первого запуска:
+`/home/leemour/Projects/DevOps/ubuntu_setup/server/hetzner/init-config.yaml`.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -230,7 +241,7 @@ wirecat.dev — статика на Cloudflare Pages; GitHub App нет; ток�
 - Варианты: **A** сервер Hetzner, деплой Kamal как у trustie · **B** сервер Selectel с Uptime Kuma и `api.neirox.ai` ·
   **C** решить, когда код сервера будет готов.
 - Я бы: **A** — WireCat отдельно от NBZB и Neirox, Hetzner — обычный хостинг владельца.
-- Ответ: ещё нет. (Записано с опозданием: в ответах появлялся раньше, в журнал не попал — **поправка**.)
+- Ответ: «2 A, I got set dns to hetzner». (Записано с опозданием: в ответах появлялся раньше, в журнал не попал — **поправка**.)
 
 **NEED-9 · Отправить ветки cli-base и cli-core и открыть PR?** Ответ: «2 A». PR: WireCatLabs/cli-base#332,
 WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
@@ -244,4 +255,4 @@ WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
   хранилище настроек · **B** отдельная строка «Email» в каталоге приложения поверх того же `memo` (свои вход, проверка,
   логи) · **C** оставить как есть.
 - Я бы: **B** сейчас, **A** потом, если почте нужен свой цикл выпусков.
-- Ответ: ещё нет.
+- Ответ: «1 B».

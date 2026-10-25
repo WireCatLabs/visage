@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Installs WireCat into this user's app launcher on Linux: a release build, its icons and a .desktop entry.
+# Everything goes under ~/.local, so no sudo. `--remove` takes it all out again.
+#
+# GNOME matches a window to its .desktop file by the window's app id, which for a Tauri app is the binary
+# name (wirecat-desktop). So the same entry also gives `pnpm app` windows the WireCat name and icon.
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+id="wirecat-desktop"
+data="${XDG_DATA_HOME:-$HOME/.local/share}"
+bin_dir="$HOME/.local/bin"
+entry="$data/applications/$id.desktop"
+icons="$data/icons/hicolor"
+sizes=(32 64 128 256 512)
+
+refresh() {
+  update-desktop-database "$data/applications" 2>/dev/null || true
+  gtk-update-icon-cache -q -t "$icons" 2>/dev/null || true
+}
+
+if [[ "${1:-}" == "--remove" ]]; then
+  rm -f "$entry" "$bin_dir/$id"
+  for s in "${sizes[@]}"; do rm -f "$icons/${s}x${s}/apps/$id.png"; done
+  refresh
+  echo "WireCat removed from the app launcher."
+  exit 0
+fi
+
+echo "Building WireCat (release, no installer package)…"
+(cd "$root" && pnpm tauri build --no-bundle)
+
+mkdir -p "$bin_dir" "$data/applications"
+install -m 755 "$root/src-tauri/target/release/$id" "$bin_dir/$id"
+
+src="$root/src-tauri/icons"
+declare -A from=([32]=32x32.png [64]=64x64.png [128]=128x128.png [256]=128x128@2x.png [512]=icon.png)
+for s in "${sizes[@]}"; do
+  install -Dm 644 "$src/${from[$s]}" "$icons/${s}x${s}/apps/$id.png"
+done
+
+cat >"$entry" <<EOF
+[Desktop Entry]
+Type=Application
+Name=WireCat
+GenericName=Tool manager
+Comment=Install and manage the WireCat tools that connect your AI agent to your data
+Exec=$bin_dir/$id
+Icon=$id
+StartupWMClass=$id
+Terminal=false
+Categories=Utility;
+Keywords=wirecat;agent;claude;codex;telegram;whatsapp;cli;
+EOF
+refresh
+
+echo "WireCat is in the app launcher: press Super and type WireCat."
+echo "Remove it with: $0 --remove"

@@ -12,6 +12,7 @@ The repository is `visage`; the product is **WireCat**. The name `visage` never 
 | --- | --- |
 | Run the interface in a browser, Rust mocked | `pnpm dev` → <http://localhost:1420> |
 | Run the real app | `pnpm app` (Linux needs `bin/install-linux-deps` once) |
+| Put WireCat in the Linux app launcher | `bin/install-desktop-entry` (`--remove` takes it out) |
 | Everything CI runs | `pnpm check` |
 | Screenshot the browser build | `node scripts/capture.mjs out.png "?state=fresh" [--dark] [--width 1280]` |
 
