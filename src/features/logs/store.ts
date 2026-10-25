@@ -162,6 +162,18 @@ export const useLogs = create<LogsState>((set, get) => {
     }
   }
 
+  // A tool slower than `timing.answer` is still running when the next round starts (Rust allows it 30 s); that round
+  // waits for the same answer instead of starting a second process for it.
+  const pending = new Map<string, Promise<Partial<Source>>>()
+  const firstPage = (tool: string) => {
+    let answer = pending.get(tool)
+    if (!answer) {
+      answer = fetchPage(tool, 1).finally(() => pending.delete(tool))
+      pending.set(tool, answer)
+    }
+    return answer
+  }
+
   // Every tool's answer is collected first and shown in one step, so rows on screen do not move as each tool answers.
   const readRound = async (live: boolean) => {
     const id = ++round
@@ -179,7 +191,7 @@ export const useLogs = create<LogsState>((set, get) => {
       })
     const answers: Record<string, Partial<Source>> = {}
     const asking = ids.map(async (tool) => {
-      answers[tool] = await fetchPage(tool, 1)
+      answers[tool] = await firstPage(tool)
       if (round === id && !live) set((st) => ({ reading: st.reading.filter((r) => r !== tool) }))
     })
     const keepingRead = live ? [] : Object.keys(fresh.keeping).map((k) => readKeeping(k))

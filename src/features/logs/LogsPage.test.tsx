@@ -180,20 +180,38 @@ describe("Logs snapshot", () => {
     expect(within(sources).getByText("Telegram").nextSibling).toHaveTextContent(/^\d+\+? runs$/)
   }, 15000)
 
-  it("stops waiting for a tool that does not answer and says so", async () => {
-    timing.answer = 1500
+  it("stops waiting for a slow tool, says so, and takes its answer in the next round without asking twice", async () => {
+    timing.answer = 2000
+    const user = userEvent.setup()
     const listRuns = platform.listRuns.bind(platform)
-    vi.spyOn(platform, "listRuns").mockImplementation((id, ...rest) =>
-      id === "tg" ? new Promise(() => {}) : listRuns(id, ...rest),
-    )
+    const spy = vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
+      if (id === "tg") await sleep(1800)
+      return listRuns(id, ...rest)
+    })
     render(<LogsPage />)
     await loaded()
 
     expect(rows().length).toBeGreaterThan(0)
     const sources = screen.getByRole("list", { name: "Where the runs come from" })
-    expect(within(sources).getByText("did not answer in 1.5 s")).toBeInTheDocument()
+    expect(within(sources).getByText("did not answer in 2 s")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Read again" }))
+    await loaded()
+    expect(within(sources).getByText("Telegram").nextSibling).toHaveTextContent(/^\d+\+? runs$/)
+    expect(spy.mock.calls.filter(([id]) => id === "tg")).toHaveLength(1)
   }, 15000)
 })
+
+// Live rounds answered at once from each tool's first answer, so a round takes no mock wait.
+function answeredOnce() {
+  const listRuns = platform.listRuns.bind(platform)
+  const first = new Map<string, ReturnType<typeof listRuns>>()
+  return (...args: Parameters<typeof listRuns>) => {
+    const [id] = args
+    if (!first.has(id)) first.set(id, listRuns(...args))
+    return first.get(id) as ReturnType<typeof listRuns>
+  }
+}
 
 describe("Logs live", () => {
   const saved = { ...timing }
@@ -205,7 +223,7 @@ describe("Logs live", () => {
   it("reads again while Live is on, one round at a time, and waits while the window is hidden", async () => {
     timing.live = 100
     const user = userEvent.setup()
-    const listRuns = platform.listRuns.bind(platform)
+    const listRuns = answeredOnce()
     let calls = 0
     let inFlight = 0
     let most = 0
@@ -227,7 +245,7 @@ describe("Logs live", () => {
     expect(live).toHaveAttribute("aria-pressed", "false")
     await user.click(live)
     expect(live).toHaveAttribute("aria-pressed", "true")
-    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(perRound * 3), { timeout: 8000 })
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(perRound * 3), { timeout: 4000 })
     expect(most).toBe(perRound)
     expect(screen.getByText(/^Updated \d+ s ago$/)).toBeInTheDocument()
 
@@ -247,7 +265,7 @@ describe("Logs live", () => {
   it("puts new runs on top, and holds them behind a button while the reader is scrolled down", async () => {
     timing.live = 100
     const user = userEvent.setup()
-    const listRuns = platform.listRuns.bind(platform)
+    const listRuns = answeredOnce()
     let added = 0
     vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
       const res = await listRuns(id, ...rest)

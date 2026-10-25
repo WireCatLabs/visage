@@ -19,6 +19,10 @@ export function KeepRuns() {
   const ids = Object.keys(keeping)
   if (ids.length === 0) return null
 
+  const refused = ids.flatMap((id) => {
+    const k = keeping[id]
+    return k?.state === "ready" && k.error ? [[id, k.error] as const] : []
+  })
   const name = ask ? toolName(ask.id) : ""
   const bin = ask ? (findTool(ask.id)?.bin ?? ask.id) : ""
 
@@ -30,6 +34,14 @@ export function KeepRuns() {
           <Chip key={id} id={id} k={keeping[id] as Keeping} first={id === ids[0]} onAsk={setAsk} />
         ))}
       </ul>
+      {refused.map(([id, error]) => (
+        <p key={id} role="alert" className="flex w-full flex-wrap items-center gap-x-3 text-[0.85rem]">
+          <span className="selectable text-bad">
+            {toolName(id)} refused the change: {error}
+          </span>
+          <ReportThis what={`Changing whether ${toolName(id)} keeps runs`} tool={id} error={error} />
+        </p>
+      ))}
 
       <Dialog
         open={ask !== null}
@@ -111,7 +123,11 @@ function Chip({ id, k, first, onAsk }: { id: string; k: Keeping; first: boolean;
       {k.state === "loading" && (
         <Skeleton className="h-8 w-[9.4rem]" {...(first && { label: "Reading which runs each tool keeps" })} />
       )}
-      {k.state === "error" && <ReportThis what={`Reading ${name} run settings`} tool={id} error={k.error} />}
+      {k.state === "error" && (
+        <span className="flex w-[9.4rem] items-center">
+          <ReportThis what={`Reading ${name} run settings`} tool={id} error={k.error} />
+        </span>
+      )}
       {k.state === "ready" && (
         <>
           <Select<Choice>
@@ -125,7 +141,6 @@ function Chip({ id, k, first, onAsk }: { id: string; k: Keeping; first: boolean;
             }}
             className="w-[9.4rem]"
           />
-          {k.error && <ReportThis what={`Changing whether ${name} keeps runs`} tool={id} error={k.error} />}
         </>
       )}
     </li>
