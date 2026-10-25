@@ -359,6 +359,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 
 - **IDEA-6 · Рекомендуемые MCP-серверы не от WireCat (браузер).** Например Playwright MCP (`@playwright/mcp`) или Chrome DevTools MCP — ставить в выбранного агента его же командой, со страницы Agents. Вне продукта WireCat (данные владельца), поэтому только по решению NEED-40.
 
+- **UX-6 · Строки «Keep every run…» в Logs длинные и странные.** Слава: «mb make smaller blocks for each cli with name and color for status or smth and a dropdown toggle to switch to keep all etc». Передано агенту Logs: компактные плашки (значок, имя, цветная точка состояния) с выпадающим списком «Failed runs only» / «Every run»; «только неудачные» по-прежнему через `config unset --defaults record` (BUG-3).
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
