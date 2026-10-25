@@ -328,6 +328,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 
 - **UX-4 · Список «About» в отчёте об ошибке некрасивый.** Слава: «about dropdown doesnt look pretty, need to style it including options and align text etc». Причина: родной `<select>` с группами; в WebKitGTK открытый список рисует система, CSS его не меняет. Агент делает общий `Select` в `src/ui` и заменяет им все родные списки (отчёт, Logs, Permissions, Config).
 
+- **UX-5 · В правах «Tool default» вместо настоящего уровня.** Слава: «in permissions I see Tool default - instead why dont we show the actual permissions. if mixed we can use a standard status like partial write or similar». Сделано: пустой пункт списка показывает действующее состояние, которое сообщил инструмент («Read only (default)», «Partial write (default)»); «Tool default» остался только когда инструмент не говорит. Статус «Partial» стал «Partial write»/«Partial read». И: «also let's style all dropdowns so they aren't native and look nice» — передано агенту UX-4, все `<select>`.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**

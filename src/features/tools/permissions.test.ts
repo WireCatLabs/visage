@@ -7,6 +7,7 @@ import {
   locks,
   partialDetail,
   removalWidens,
+  stateLabel,
   stillAllowed,
   summarize,
   widens,
@@ -48,6 +49,7 @@ describe("summarize", () => {
     )
     expect(s.state).toBe("partial")
     expect(partialDetail(s)).toBe("1 of 3 changes allowed")
+    expect(stateLabel(s)).toBe("Partial write")
     expect(s.overrides.map((o) => o.key)).toEqual(["messages.send"])
     expect(s.commands).toHaveLength(4)
   })
@@ -66,6 +68,7 @@ describe("summarize", () => {
     )
     expect(contacts.state).toBe("partial")
     expect(partialDetail(contacts)).toBe("1 of 2 reads allowed")
+    expect(stateLabel(contacts)).toBe("Partial read")
     expect(stillAllowed(contacts).map((c) => c.path.join(" "))).toEqual(["contacts context"])
   })
 

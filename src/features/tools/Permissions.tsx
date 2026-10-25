@@ -27,7 +27,7 @@ import {
   locks,
   partialDetail,
   removalWidens,
-  STATE_LABEL,
+  stateLabel,
   stillAllowed,
   summarize,
   widens,
@@ -317,11 +317,12 @@ function GroupRow(props: {
         </div>
         <span className="flex items-center gap-2 text-[0.875rem] text-ink">
           <Lamp tone={TONE[s.state]} size="sm" />
-          {STATE_LABEL[s.state]}
+          {stateLabel(s)}
         </span>
         <LevelSelect
           label={`${s.group.label} permission`}
           own={s.own}
+          inherited={s.state === "default" ? null : stateLabel(s)}
           defaultsView={defaultsView}
           disabled={Boolean(lock) || status?.state === "saving"}
           onChange={(level) =>
@@ -414,11 +415,13 @@ const disclosureLabel = (blocked: number, separately: number) =>
 function LevelSelect(props: {
   label: string
   own: OwnLevel | undefined
+  /** What the group gets with no level of its own, as the tool reports it; null when the tool does not say. */
+  inherited?: string | null
   defaultsView: boolean
   disabled: boolean
   onChange: (level: Level | null) => void
 }) {
-  const { label, own, defaultsView, disabled, onChange } = props
+  const { label, own, inherited, defaultsView, disabled, onChange } = props
   const removable = own !== undefined && layerOf(own, defaultsView) === "here"
   return (
     <select
@@ -430,7 +433,7 @@ function LevelSelect(props: {
     >
       {(own === undefined || removable) && (
         <option value="" disabled={!removable}>
-          Tool default
+          {inherited ? `${inherited} (default)` : "Tool default"}
         </option>
       )}
       {LEVELS.map((l) => (

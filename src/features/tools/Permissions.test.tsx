@@ -25,9 +25,10 @@ describe("Permissions", () => {
     const picker = await screen.findByRole("combobox", { name: "Profile" })
     await within(picker).findByRole("option", { name: "personal" })
     await user.selectOptions(picker, "personal")
-    await waitFor(() => expect(within(row("Messages")).getByText("Partial")).toBeInTheDocument())
+    await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
     expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument()
     expect(within(row("Contacts")).getByText("Allowed")).toBeInTheDocument()
+    expect(within(row("Contacts")).getByRole("option", { name: "Allowed (default)" })).toBeInTheDocument()
 
     await user.click(within(row("Messages")).getByText(/4 blocked commands · 1 set separately/))
     expect(within(row("Messages")).getByText("tg messages edit")).toBeInTheDocument()
@@ -39,7 +40,7 @@ describe("Permissions", () => {
     const set = vi.spyOn(platform, "settingsSet")
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
     render(<Permissions tool={tg} />)
-    await waitFor(() => expect(within(row("Messages")).getByText("Partial")).toBeInTheDocument())
+    await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
 
     await user.selectOptions(row("Messages").querySelector("select") as HTMLSelectElement, "allow")
     const dialog = await screen.findByRole("dialog", { name: "Allow: Messages?" })

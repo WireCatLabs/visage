@@ -76,6 +76,12 @@ export const STATE_LABEL: Record<GroupState, string> = {
 
 const mixed = (c: Count) => c.allowed > 0 && c.allowed < c.total
 
+/** The state in words; a partial group says which half is partly blocked, as `partialDetail` counts it. */
+export function stateLabel(s: GroupSummary): string {
+  if (s.state !== "partial" || !s.reads || !s.writes) return STATE_LABEL[s.state]
+  return mixed(s.writes) || !mixed(s.reads) ? "Partial write" : "Partial read"
+}
+
 /** "3 of 8 changes allowed", for the half that is partly blocked. */
 export function partialDetail(s: GroupSummary): string | null {
   if (s.state !== "partial" || !s.reads || !s.writes) return null
