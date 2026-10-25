@@ -49,25 +49,30 @@ describe("Logs", () => {
     await loaded()
 
     const keeping = screen.getByRole("region", { name: "Which runs each tool keeps" })
-    const [telegram] = await within(keeping).findAllByRole("button", { name: "Keep every run…" })
-    expect(within(keeping).getAllByText("Successful runs are not kept").length).toBe(3)
+    const telegram = await within(keeping).findByRole("combobox", { name: "Which Telegram runs to keep" })
+    expect(within(keeping).getAllByRole("img", { name: /keeps failed runs only$/ })).toHaveLength(3)
+    expect(telegram).toHaveTextContent("Failed runs only")
 
-    await user.click(telegram as HTMLElement)
+    await user.click(telegram)
+    await user.click(screen.getByRole("option", { name: "Every run" }))
     const dialog = screen.getByRole("dialog", { name: "Keep every Telegram run?" })
     expect(dialog).toHaveTextContent(/kept for 30 days/)
     expect(set).not.toHaveBeenCalled()
 
     await user.click(within(dialog).getByRole("button", { name: "Keep every run" }))
     expect(set).toHaveBeenCalledWith("tg", null, true, "record", "true")
-    expect(await within(keeping).findByText("Keeps every run")).toBeInTheDocument()
+    expect(await within(keeping).findByRole("img", { name: "Telegram keeps every run for 30 days" })).toBeVisible()
+    expect(telegram).toHaveTextContent("Every run")
+
     const unset = vi.spyOn(platform, "settingsUnset")
-    await user.click(within(keeping).getByRole("button", { name: "Keep failed runs only…" }))
-    await user.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: /Keep failed runs only|Keep failed/ }),
-    )
+    await user.click(telegram)
+    await user.click(screen.getByRole("option", { name: "Failed runs only" }))
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Keep failed runs only" }))
     // record: false would stop keeping failed runs too, so going back removes the setting.
     expect(unset).toHaveBeenCalledWith("tg", null, true, "record")
-    await waitFor(() => expect(within(keeping).getAllByText("Successful runs are not kept")).toHaveLength(3))
+    await waitFor(() =>
+      expect(within(keeping).getAllByRole("img", { name: /keeps failed runs only$/ })).toHaveLength(3),
+    )
   }, 15000)
 
   it("says an older tool gets its logs with the next update instead of failing", async () => {

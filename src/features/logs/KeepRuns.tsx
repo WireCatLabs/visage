@@ -2,6 +2,8 @@ import { useState } from "react"
 import { findTool } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
+import { Lamp, type LampTone } from "@/ui/Lamp"
+import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
@@ -21,10 +23,11 @@ export function KeepRuns() {
   const bin = ask ? (findTool(ask.id)?.bin ?? ask.id) : ""
 
   return (
-    <section aria-label="Which runs each tool keeps" className="rounded-[0.2rem] border border-line-strong bg-app">
-      <ul>
+    <section aria-label="Which runs each tool keeps" className="flex flex-wrap items-center gap-x-[0.9rem] gap-y-2">
+      <h2 className="text-[0.85rem] text-ink-dim">Runs each tool keeps</h2>
+      <ul className="flex flex-wrap items-center gap-[0.6rem]">
         {ids.map((id) => (
-          <Row key={id} id={id} k={keeping[id] as Keeping} onAsk={setAsk} />
+          <Chip key={id} id={id} k={keeping[id] as Keeping} first={id === ids[0]} onAsk={setAsk} />
         ))}
       </ul>
 
@@ -77,61 +80,52 @@ export function KeepRuns() {
   )
 }
 
-function Row({ id, k, onAsk }: { id: string; k: Keeping; onAsk: (a: Ask) => void }) {
+type Choice = "failed" | "every"
+const CHOICES = [
+  { value: "failed", label: "Failed runs only" },
+  { value: "every", label: "Every run" },
+] as const
+
+const tone = (k: Keeping): LampTone =>
+  k.state === "loading" ? "busy" : k.state === "error" || k.error ? "bad" : k.record ? "ok" : "idle"
+
+function words(k: Keeping): string {
+  if (k.state === "loading") return "is reading its settings"
+  if (k.state === "error") return `could not say whether it keeps successful runs: ${k.error}`
+  const now = k.record ? `keeps every run${k.days !== null ? ` for ${k.days} days` : ""}` : "keeps failed runs only"
+  return [now, k.locked, k.error && `the tool refused the change: ${k.error}`].filter(Boolean).join(". ")
+}
+
+// A chip is as tall as the select it ends with, so the setting arriving moves nothing.
+function Chip({ id, k, first, onAsk }: { id: string; k: Keeping; first: boolean; onAsk: (a: Ask) => void }) {
+  const name = toolName(id)
+  const said = `${name} ${words(k)}`
   return (
-    <li className="flex min-h-[3rem] flex-wrap items-center gap-x-[0.9rem] gap-y-1 border-line border-b px-[1.3rem] py-[0.5rem] last:border-b-0">
-      <span className="flex w-[8.5rem] shrink-0 items-center gap-[0.5rem] font-medium">
-        <ToolIcon id={id} className="size-[1.05rem] shrink-0 text-ink-soft" />
-        {toolName(id)}
-      </span>
+    <li
+      title={said}
+      className="flex h-[2.6rem] items-center gap-[0.5rem] rounded-[0.4rem] border border-line-strong bg-app pr-[0.3rem] pl-[0.7rem]"
+    >
+      <Lamp tone={tone(k)} size="sm" label={said} />
+      <ToolIcon id={id} className="size-[1rem] shrink-0 text-ink-soft" />
+      <span className="font-medium text-[0.9rem]">{name}</span>
       {k.state === "loading" && (
-        <>
-          <span className="min-w-0 flex-1">
-            <Skeleton className="h-[1.2rem] w-[18rem] max-w-full" label={`Reading ${toolName(id)} settings`} />
-          </span>
-          {/* The button that comes with the setting is taller than the text line. */}
-          <Skeleton className="h-8 w-[8.6rem]" />
-        </>
+        <Skeleton className="h-8 w-[9.4rem]" {...(first && { label: "Reading which runs each tool keeps" })} />
       )}
-      {k.state === "error" && (
-        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[0.95rem] text-ink-soft">
-          <span>
-            Could not read whether it keeps successful runs: <span className="selectable text-bad">{k.error}</span>
-          </span>
-          <ReportThis what={`Reading ${toolName(id)} run settings`} tool={id} error={k.error} />
-        </span>
-      )}
+      {k.state === "error" && <ReportThis what={`Reading ${name} run settings`} tool={id} error={k.error} />}
       {k.state === "ready" && (
         <>
-          <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
-            {k.record ? (
-              <>
-                <span className="text-ink">Keeps every run</span>
-                {k.days !== null ? `, for ${k.days} days.` : "."}
-              </>
-            ) : (
-              <>
-                <span className="text-ink">Successful runs are not kept</span>, only failed ones.
-              </>
-            )}
-            {k.locked && <span className="block text-[0.85rem] text-ink-dim">{k.locked}</span>}
-            {k.error && (
-              <span role="alert" className="flex flex-wrap items-center gap-x-3 text-[0.85rem]">
-                <span className="selectable text-bad">The tool refused the change: {k.error}</span>
-                <ReportThis what={`Changing whether ${toolName(id)} keeps runs`} tool={id} error={k.error} />
-              </span>
-            )}
-          </span>
-          {!k.locked && (
-            <Button
-              size="sm"
-              variant={k.record ? "ghost" : "secondary"}
-              disabled={k.saving}
-              onClick={() => onAsk({ id, on: !k.record, days: k.days })}
-            >
-              {k.saving ? "Saving…" : k.record ? "Keep failed runs only…" : "Keep every run…"}
-            </Button>
-          )}
+          <Select<Choice>
+            size="sm"
+            aria-label={`Which ${name} runs to keep`}
+            value={k.record ? "every" : "failed"}
+            options={CHOICES}
+            disabled={k.saving || Boolean(k.locked)}
+            onChange={(v) => {
+              if ((v === "every") !== k.record) onAsk({ id, on: v === "every", days: k.days })
+            }}
+            className="w-[9.4rem]"
+          />
+          {k.error && <ReportThis what={`Changing whether ${name} keeps runs`} tool={id} error={k.error} />}
         </>
       )}
     </li>
