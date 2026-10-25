@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
@@ -21,10 +21,9 @@ describe("First start", () => {
     expect(await screen.findByText("Ready to install WireCat tools.")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Continue" }))
 
-    const drive = await screen.findByRole("checkbox", { name: /Google Drive/ })
-    expect(
-      screen.getAllByRole("checkbox").filter((c) => (c as HTMLInputElement).checked && !c.hasAttribute("disabled")),
-    ).toHaveLength(0)
+    await waitFor(() => expect(screen.getAllByRole("checkbox")).toHaveLength(1))
+    const drive = screen.getByRole("checkbox", { name: /Google Drive/ })
+    expect(drive).not.toBeChecked()
     await user.click(drive)
     await user.click(screen.getByRole("button", { name: "Install 1 tool" }))
 
@@ -56,8 +55,21 @@ describe("First start", () => {
   })
 })
 
-describe("Help tour", () => {
+describe("Help", () => {
   beforeEach(() => useOnboarding.setState({ status: "done", open: false }))
+
+  it("shows the welcome again without undoing a finished setup", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole("button", { name: "Help" }))
+    await user.click(screen.getByRole("button", { name: "Show the welcome again" }))
+    expect(screen.getByRole("heading", { level: 1, name: "Welcome to WireCat" })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Set up later" }))
+
+    expect(useOnboarding.getState().status).toBe("done")
+    expect(screen.queryByRole("button", { name: "Finish setup" })).not.toBeInTheDocument()
+  })
 
   it("walks through the window and closes with Escape", async () => {
     const user = userEvent.setup()

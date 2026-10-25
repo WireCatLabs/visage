@@ -120,32 +120,39 @@ export function Choose() {
           const copies = installs[t.id]
           const installed = Boolean(copies?.length)
           const checked = chosen.includes(t.id)
+          const cell = "flex h-full items-start gap-[0.8rem] px-[1.1rem] py-[1rem]"
+          const body = (
+            <>
+              <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-baseline gap-x-[0.5rem]">
+                  <span className="text-[1.02rem] font-semibold">{t.name}</span>
+                  <span className="font-mono text-[0.9rem] text-ink-soft">{t.bin}</span>
+                  {installed && <Pill tone="brand">installed</Pill>}
+                </span>
+                <span className="mt-0.5 block text-[0.9rem] leading-snug text-ink-soft">{t.tagline}</span>
+              </span>
+            </>
+          )
+          // An installed tool gets no checkbox: a ticked, greyed box would read as a choice made for the owner.
           return (
             <li key={t.id} className="-mr-px -mb-px border-line border-r border-b">
-              <label
-                className={cx(
-                  "flex h-full items-start gap-[0.8rem] px-[1.1rem] py-[1rem]",
-                  !installed && "hover:bg-app-2",
-                  checked && "bg-brand-soft/50 hover:bg-brand-soft/70",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={installed || checked}
-                  disabled={installed}
-                  onChange={() => toggle(t.id)}
-                  className="mt-[0.2rem] size-[1.05rem] shrink-0 accent-brand disabled:opacity-60"
-                />
-                <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-baseline gap-x-[0.5rem]">
-                    <span className="text-[1.02rem] font-semibold">{t.name}</span>
-                    <span className="font-mono text-[0.9rem] text-ink-soft">{t.bin}</span>
-                    {installed && <Pill tone="brand">installed</Pill>}
-                  </span>
-                  <span className="mt-0.5 block text-[0.9rem] leading-snug text-ink-soft">{t.tagline}</span>
-                </span>
-              </label>
+              {installed ? (
+                <div className={cell}>
+                  <span aria-hidden className="size-[1.05rem] shrink-0" />
+                  {body}
+                </div>
+              ) : (
+                <label className={cx(cell, checked ? "bg-brand-soft/50 hover:bg-brand-soft/70" : "hover:bg-app-2")}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(t.id)}
+                    className="mt-[0.2rem] size-[1.05rem] shrink-0 accent-brand"
+                  />
+                  {body}
+                </label>
+              )}
             </li>
           )
         })}

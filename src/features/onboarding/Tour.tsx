@@ -53,7 +53,10 @@ export const useTour = create<TourState>((set, get) => ({
   start: () =>
     set({ open: true, returnTo: document.activeElement instanceof HTMLElement ? document.activeElement : null }),
   close: () => {
-    get().returnTo?.focus()
+    // Started from the setup's last step, the button that opened it is gone by now.
+    const back = get().returnTo
+    const fallback = document.querySelector<HTMLElement>('[data-tour="help"]')
+    ;(back?.isConnected ? back : fallback)?.focus()
     set({ open: false, returnTo: null })
   },
 }))

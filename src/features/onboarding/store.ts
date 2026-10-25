@@ -60,7 +60,7 @@ export const useOnboarding = create<OnboardingState>()(
       go: (step) => set({ step }),
       toggle: (id) =>
         set((s) => ({ chosen: s.chosen.includes(id) ? s.chosen.filter((c) => c !== id) : [...s.chosen, id] })),
-      later: () => set({ status: "later", open: false }),
+      later: () => set((s) => ({ status: s.status === "done" ? "done" : "later", open: false })),
       finish: () => set({ status: "done", open: false }),
       reopen: (step) => set((s) => ({ open: true, step: step ?? s.step })),
       hide: () => set({ open: false }),
