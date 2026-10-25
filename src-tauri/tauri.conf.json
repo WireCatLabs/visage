@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "WireCat",
-        "width": 1280,
-        "height": 840,
+        "width": 1120,
+        "height": 760,
         "minWidth": 960,
         "minHeight": 640,
         "center": true,

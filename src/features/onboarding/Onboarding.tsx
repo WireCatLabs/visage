@@ -33,12 +33,12 @@ const pages: Record<StepId, Page> = {
   },
   agents: {
     title: "Connect agents",
-    lead: "Your agent learns to use each tool from a skill.",
+    lead: "Your agent learns to use each tool from a skill: a short guide to the tool's commands and when to use them.",
     body: Agents,
   },
   signin: {
     title: "Sign in",
-    lead: "Each tool signs in with its own setup, in a terminal window. Name a profile for each account, such as personal or work.",
+    lead: "Signing in connects a tool to your account, so your agent can reach it. Each tool runs its own sign-in in a terminal window; you come back here when it is done.",
     body: SignIn,
   },
   done: {
@@ -182,7 +182,12 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
 
   return (
     <main ref={scroller} aria-labelledby={headingId} className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex min-h-full max-w-[48rem] flex-col gap-[1.5rem] px-[2.1rem] pt-[2.4rem] pb-[2.2rem]">
+      <div
+        className={cx(
+          "mx-auto flex min-h-full max-w-[48rem] flex-col gap-[1.5rem] px-[2.1rem] pt-[2.4rem] pb-[2.2rem]",
+          step === "welcome" && "justify-center pb-[4rem]",
+        )}
+      >
         <div className="flex flex-col gap-[0.8rem]">
           <h1
             ref={heading}
@@ -198,23 +203,31 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
 
         <Body />
 
-        <div className="mt-auto flex items-center gap-2 border-line border-t pt-[1.2rem]">
-          {i > 0 && (
-            <Button variant="ghost" onClick={() => go(STEPS[i - 1]?.id ?? "welcome")}>
-              Back
+        {step === "welcome" ? (
+          <div>
+            <Button variant="primary" size="lg" onClick={primary.run}>
+              {primary.label}
             </Button>
-          )}
-          <span className="flex-1" />
-          {skip && (
-            <Button variant="ghost" onClick={skip}>
-              Skip
+          </div>
+        ) : (
+          <div className="mt-[0.5rem] flex items-center gap-2 border-line border-t pt-[1.2rem]">
+            {i > 0 && (
+              <Button variant="ghost" onClick={() => go(STEPS[i - 1]?.id ?? "welcome")}>
+                Back
+              </Button>
+            )}
+            <span className="flex-1" />
+            {skip && (
+              <Button variant="ghost" onClick={skip}>
+                Skip
+              </Button>
+            )}
+            {step === "done" && <Button onClick={() => close(true)}>Take the tour</Button>}
+            <Button variant="primary" size="lg" onClick={primary.run}>
+              {primary.label}
             </Button>
-          )}
-          {step === "done" && <Button onClick={() => close(true)}>Take the tour</Button>}
-          <Button variant="primary" onClick={primary.run}>
-            {primary.label}
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
     </main>
   )
