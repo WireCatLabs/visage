@@ -36,6 +36,14 @@ describe("WireCat Desktop", () => {
     expect(await within(zoom).findByText("Not installed")).toBeInTheDocument()
   }, 15000)
 
+  it("says what it is checking while it loads", async () => {
+    render(<App />)
+    expect(await screen.findByText("Looking for WireCat tools on this computer…")).toBeInTheDocument()
+    expect(await screen.findByText("Checking npm for newer versions…")).toBeInTheDocument()
+    await screen.findByRole("button", { name: /Update to 0.7.0/ }, { timeout: 4000 })
+    expect(screen.queryByText("Checking npm for newer versions…")).not.toBeInTheDocument()
+  })
+
   it("shows the computer's readiness", async () => {
     render(<App />)
     expect(await screen.findByText("Node.js 24.19.0")).toBeInTheDocument()

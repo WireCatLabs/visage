@@ -24,7 +24,8 @@ export type ToolStatus =
   | { kind: "working"; operation: Operation; step: InstallStep }
   | { kind: "broken"; problem: string }
   | { kind: "outdated"; version: string; latest: string }
-  | { kind: "ready"; version: string }
+  /** `checkingUpdates` while npm has not answered yet: the tool may still turn out to be outdated. */
+  | { kind: "ready"; version: string; checkingUpdates: boolean }
 
 export function toolStatus(
   installs: readonly InstallRecord[] | undefined,
@@ -37,7 +38,7 @@ export function toolStatus(
   if (!active) return { kind: "missing" }
   if (!active.version) return { kind: "broken", problem: active.problem ?? "does not start" }
   if (latest && isNewer(latest, active.version)) return { kind: "outdated", version: active.version, latest }
-  return { kind: "ready", version: active.version }
+  return { kind: "ready", version: active.version, checkingUpdates: latest === undefined }
 }
 
 const parts = (v: string) =>

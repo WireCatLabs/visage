@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react"
 import type { CatalogTool } from "@/domain/catalog"
 import { type ToolStatus, toolStatus } from "@/domain/status"
 import { Button } from "@/ui/Button"
@@ -26,7 +27,7 @@ const lampLabel = (s: ToolStatus) =>
     working: s.kind === "working" && s.operation === "uninstall" ? "Uninstalling" : "Installing",
     broken: "Installed, but it does not start",
     outdated: "Update available",
-    ready: "Installed and up to date",
+    ready: s.kind === "ready" && s.checkingUpdates ? "Installed, checking for updates" : "Installed and up to date",
   })[s.kind]
 
 export function ToolRow({ tool }: { tool: CatalogTool }) {
@@ -101,6 +102,9 @@ function Version({ status, installed }: { status: ToolStatus; installed: string 
       )}
     >
       {text ?? "Not installed"}
+      {status.kind === "ready" && status.checkingUpdates && (
+        <LoaderCircle className="ml-1.5 inline size-3.5 animate-spin align-[-0.15em] text-ink-dim" aria-hidden />
+      )}
     </span>
   )
 }

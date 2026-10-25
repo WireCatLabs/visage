@@ -95,7 +95,12 @@ export const useTools = create<ToolsState>((set, get) => {
     error: null,
 
     async refresh() {
-      set({ refreshing: true, error: null })
+      set({ refreshing: true, error: null, latest: null })
+      // npm answers slowly, so the update check runs alongside detection instead of after it.
+      platform.latestVersions().then(
+        (latest) => set({ latest }),
+        () => set({ latest: {} }),
+      )
       try {
         await Promise.all([useSystem.getState().refresh(), redetect()])
       } catch (e) {
@@ -103,10 +108,6 @@ export const useTools = create<ToolsState>((set, get) => {
       } finally {
         set({ refreshing: false })
       }
-      platform.latestVersions().then(
-        (latest) => set({ latest }),
-        () => set({ latest: {} }),
-      )
     },
 
     install: (id) => enqueue(id, "install"),
