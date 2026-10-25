@@ -41,6 +41,60 @@ const PACKAGES: Record<string, string> = {
   memo: "@wirecat/cli-memo",
 }
 
+// Doctor's configuration checks: Telegram's personal profile has every warning kind, work has a broken file, and MAX
+// is a released version that still sends one error string. Tools never put a setting's value into these.
+const TG_CONFIG = "~/.config/tg-cli/config.json"
+const MOCK_CONFIG: Record<string, { issues?: Record<string, unknown>[]; error?: string }> = {
+  "tg/personal": {
+    issues: [
+      {
+        kind: "unknown_permission",
+        file: TG_CONFIG,
+        profile: "personal",
+        key: "permissions.bot.store.fetch",
+        what: "permissions.bot.store.fetch is not a permission tg knows, so it has no effect.",
+        fix: "tg personal config unset permissions.bot.store.fetch",
+      },
+      {
+        kind: "unknown_setting",
+        file: TG_CONFIG,
+        profile: "personal",
+        key: "sync.colour",
+        what: "sync.colour is not a setting tg knows. It may be misspelled.",
+        fix: "tg personal config unset sync.colour",
+      },
+      {
+        kind: "missing_setting",
+        file: TG_CONFIG,
+        profile: "personal",
+        key: "api_id",
+        what: "api_id is not set. Sign-in needs it.",
+      },
+      {
+        kind: "invalid_value",
+        file: TG_CONFIG,
+        profile: "personal",
+        key: "sync.limit",
+        line: 14,
+        column: 18,
+        what: "sync.limit must be a whole number from 1 to 1000.",
+      },
+    ],
+  },
+  "tg/work": {
+    issues: [
+      {
+        kind: "invalid_json",
+        file: TG_CONFIG,
+        line: 9,
+        column: 3,
+        what: "The settings file is not valid JSON: a comma is missing before this line.",
+      },
+    ],
+  },
+  "max/personal": { error: "Could not read ~/.config/max-cli/config.json: Unexpected token } in JSON at position 212" },
+}
+
 // Each tool's data folder as the real tools lay it out: name, is a folder, share of the folder's size.
 const STATE_ENTRIES: Record<string, [string, boolean, number][]> = {
   tg: [
@@ -280,6 +334,17 @@ export function createMock(os: Platform["os"]): Platform {
               ],
             },
           },
+          stderr: "",
+        }
+      }
+      const config = MOCK_CONFIG[`${id}/${profile ?? ""}`]
+      if (config) {
+        const broken = config.issues?.some((i) => i.kind === "invalid_json") || "error" in config
+        return {
+          command,
+          exitCode: broken ? 1 : 0,
+          durationMs: 884,
+          report: { item: { profile, config: { found: true, path: `~/.config/${id}-cli/config.json`, ...config } } },
           stderr: "",
         }
       }

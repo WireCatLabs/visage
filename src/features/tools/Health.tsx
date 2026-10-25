@@ -1,7 +1,7 @@
-import { AlertTriangle, CheckCircle2, RefreshCw, Stethoscope, Terminal, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle2, FolderOpen, RefreshCw, Stethoscope, Terminal, XCircle } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { type CatalogTool, doctorNeedsProfile, isValidProfile, setupCommand, usesProfiles } from "@/domain/catalog"
-import { type Finding, summarize } from "@/domain/doctor"
+import { type ConfigPlace, type Finding, summarize } from "@/domain/doctor"
 import { platform } from "@/platform/bridge"
 import type { Diagnosis, Profile } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
@@ -65,7 +65,7 @@ export function Health({ tool }: { tool: CatalogTool }) {
       )}
 
       {checkError && <p className="text-[0.9rem] text-bad">{checkError}</p>}
-      {check && <Result check={check} />}
+      {check && <Result check={check} toolId={tool.id} />}
     </section>
   )
 }
@@ -245,29 +245,80 @@ const findingIcon = (f: Finding) =>
     <XCircle className="mt-0.5 size-4 shrink-0 text-bad" aria-hidden />
   )
 
-function Result({ check }: { check: Check }) {
+const findingKey = (f: Finding) =>
+  [f.text, f.config?.file, f.config?.profile, f.config?.key, f.config?.line].filter(Boolean).join("|")
+
+function where({ file, profile, key, line, column }: ConfigPlace) {
+  const at = file && line !== undefined ? `${file}:${line}${column !== undefined ? `:${column}` : ""}` : file
+  return [at, profile && `profile ${profile}`, key && `key ${key}`].filter(Boolean).join(" · ")
+}
+
+function ConfigProblems({ findings, toolId }: { findings: Finding[]; toolId: string }) {
+  const [openError, setOpenError] = useState<string | null>(null)
+  const open = async () => {
+    try {
+      await platform.openFolder(toolId, "config")
+      setOpenError(null)
+    } catch (e) {
+      setOpenError(String(e))
+    }
+  }
+  return (
+    <section aria-label="Configuration problems" className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <h5 className="text-[0.85rem] font-medium text-ink-dim">Configuration problems</h5>
+        <Button size="sm" variant="ghost" onClick={open} icon={<FolderOpen className="size-4" aria-hidden />}>
+          Open settings folder
+        </Button>
+      </div>
+      {openError && <p className="text-[0.85rem] text-bad">{openError}</p>}
+      <ul className="flex flex-col gap-3">
+        {findings.map((f) => {
+          const at = f.config ? where(f.config) : ""
+          return (
+            <li key={findingKey(f)} className="flex items-start gap-2 text-[0.9rem]">
+              {findingIcon(f)}
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span>{f.text}</span>
+                {at && <code className="selectable font-mono text-[0.8rem] break-all text-ink-soft">{at}</code>}
+                {f.fix && <CopyField value={f.fix} label="Copy the fix command" />}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+function Result({ check, toolId }: { check: Check; toolId: string }) {
   if (check.state === "running") return <Skeleton className="h-16 w-full" label="Running the check" />
   const { result } = check
   const findings = summarize(result.report, result.exitCode)
+  const config = findings.filter((f) => f.config)
+  const other = findings.filter((f) => !f.config)
   return (
     <div className="flex flex-col gap-2 rounded-[0.45rem] border border-line bg-app p-3" aria-live="polite">
-      <ul className="flex flex-col gap-1.5">
-        {findings.map((f) => (
-          <li key={f.text} className="flex items-start gap-2 text-[0.9rem]">
-            {findingIcon(f)}
-            <span>
-              {f.text}
-              {f.fix && (
-                <>
-                  {" "}
-                  <span className="text-ink-dim">Fix:</span>{" "}
-                  <code className="selectable font-mono text-[0.85rem]">{f.fix}</code>
-                </>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {config.length > 0 && <ConfigProblems findings={config} toolId={toolId} />}
+      {other.length > 0 && (
+        <ul className={cx("flex flex-col gap-1.5", config.length > 0 && "border-line border-t pt-2.5")}>
+          {other.map((f) => (
+            <li key={findingKey(f)} className="flex items-start gap-2 text-[0.9rem]">
+              {findingIcon(f)}
+              <span>
+                {f.text}
+                {f.fix && (
+                  <>
+                    {" "}
+                    <span className="text-ink-dim">Fix:</span>{" "}
+                    <code className="selectable font-mono text-[0.85rem]">{f.fix}</code>
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       <Disclosure summary="Technical details">
         <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.8rem] text-ink-soft">
           <dt>Command</dt>
