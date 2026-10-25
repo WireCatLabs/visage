@@ -47,6 +47,20 @@ impl std::fmt::Display for RunError {
     }
 }
 
+const AGENT_ENV: [&str; 11] = [
+    "AI_AGENT",
+    "CLAUDECODE",
+    "CLAUDE_CODE_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "CODEX_SESSION_ID",
+    "CODEX_SANDBOX",
+    "GEMINI_CLI",
+    "OPENCODE",
+    "OPENCODE_SESSION_ID",
+    "CURSOR_AGENT",
+    "WIRECAT_HOLDER",
+];
+
 pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>) -> Command {
     let mut cmd = Command::new(program);
     cmd.args(args)
@@ -59,6 +73,11 @@ pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>
     // A `<PREFIX>_PROFILE` in the app's own environment would let a tool pick a profile the owner never chose here.
     for prefix in catalog::catalog().tools.iter().map(|t| t.storage.env.as_str()) {
         cmd.env_remove(format!("{prefix}_PROFILE"));
+    }
+    // An app started from an agent's terminal would otherwise have its own runs recorded, and its writes authored, as
+    // that agent's session (cli-core `agentOf` and `holderOf` read these).
+    for name in AGENT_ENV {
+        cmd.env_remove(name);
     }
     if let Some(p) = path_env {
         cmd.env("PATH", p);
@@ -214,6 +233,9 @@ mod tests {
         let removed: Vec<_> = cmd.get_envs().filter(|(_, v)| v.is_none()).map(|(k, _)| k.to_owned()).collect();
         for prefix in ["TG", "MAX", "WA", "ZM", "DRIVE", "MEMO"] {
             assert!(removed.contains(&std::ffi::OsString::from(format!("{prefix}_PROFILE"))), "{prefix}_PROFILE");
+        }
+        for name in ["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "WIRECAT_HOLDER"] {
+            assert!(removed.contains(&std::ffi::OsString::from(name)), "{name}");
         }
     }
 

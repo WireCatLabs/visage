@@ -108,7 +108,10 @@ agent's recent sessions and the tasks it holds.
   `codex mcp list --json`, and from the agents' settings files where no command lists without starting every server:
   `~/.claude.json` (`mcpServers`, user scope), `~/.cursor/mcp.json`, `~/.gemini/settings.json`,
   `~/.config/opencode/opencode.json` (`mcp`). Only names that look like a WireCat server leave Rust; commands,
-  environment and headers never do. zm, drive and memo serve MCP but cannot register themselves yet.
+  environment and headers never do. zm, drive and memo serve MCP but cannot register themselves yet. Not read yet: a
+  Claude Code home moved with `CLAUDE_CONFIG_DIR`, OpenCode's `opencode.jsonc` (JSON with comments) and project-level
+  servers. `run::command` drops the agents' own variables (`CLAUDECODE`, `CODEX_THREAD_ID`…), so the tools never
+  record the app's calls as an agent session even when the app was started from an agent's terminal.
 - **Sessions** come from the runs the Logs page already read: runs grouped by `agent.kind` and `agent.session_id`
   (`src/domain/agents.ts`). A run with `argv` and no agent was started by a person; one without either comes from a
   tool too old to record it.

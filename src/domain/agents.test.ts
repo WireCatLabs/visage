@@ -115,6 +115,12 @@ describe("buildCheck", () => {
     expect(items.some((i) => i.id === "permissions")).toBe(false)
   })
 
+  it("names the folder instead of a shell line on Windows", () => {
+    const item = buildCheck({ ...base, windows: true }).find((i) => i.id === "zm:path")
+    expect(item?.fix).toBeUndefined()
+    expect(item?.detail).toMatch(/Add \/usr\/lib\/node\/bin to your user Path/)
+  })
+
   it("turns the home folder into $HOME so the line works in a shell", () => {
     const items = buildCheck({ ...base, reach: { tg: false } })
     expect(items.find((i) => i.id === "tg:path")?.fix).toEqual({

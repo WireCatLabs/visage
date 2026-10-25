@@ -126,6 +126,8 @@ export type CheckInput = {
   /** `<tool>/<profile>` → the tool's own `mcp check`, or the reason it failed. */
   health: Readonly<Record<string, { healthy: boolean; signedIn: boolean } | string>>
   profiles: Readonly<Record<string, readonly string[]>>
+  /** A shell `export` line means nothing on Windows; the folder is named instead. */
+  windows?: boolean
   /** `<tool>/<profile>` → commands its permissions block, from the tool's own `commands --json`; absent until Check. */
   access?: Readonly<Record<string, { blocked: number; total: number } | string>>
 }
@@ -145,8 +147,12 @@ export function buildCheck(input: CheckInput): CheckItem[] {
         id: `${tool.id}:path`,
         tone: "bad",
         title: `${tool.name} is not on a terminal's PATH`,
-        detail: `${agent.name} runs commands in a terminal, and a new terminal does not find ${tool.bin}. Add its folder to PATH in your shell profile, then restart ${agent.name}.`,
-        ...(tool.path ? { fix: { kind: "command", command: `export PATH="${folderOf(tool.path)}:$PATH"` } } : {}),
+        detail: input.windows
+          ? `${agent.name} runs commands in a terminal, and a new terminal does not find ${tool.bin}. Add ${tool.path ? folderOf(tool.path) : "its folder"} to your user Path in Windows settings, then restart ${agent.name}.`
+          : `${agent.name} runs commands in a terminal, and a new terminal does not find ${tool.bin}. Add its folder to PATH in your shell profile, then restart ${agent.name}.`,
+        ...(tool.path && !input.windows
+          ? { fix: { kind: "command", command: `export PATH="${folderOf(tool.path)}:$PATH"` } }
+          : {}),
       })
     }
 

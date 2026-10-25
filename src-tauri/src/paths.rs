@@ -190,4 +190,13 @@ mod tests {
         assert_eq!(manager_for(Path::new("/home/u/.nvm/versions/node/v24.1.0/bin/zm")), "npm");
         assert_eq!(manager_for(Path::new(r"C:\Users\u\AppData\Local\pnpm\tg.cmd")), "pnpm");
     }
+
+    /// `cargo test -- --ignored real_terminal`: which tools a terminal finds, names and booleans only.
+    #[test]
+    #[ignore = "reads this computer's shell"]
+    fn real_terminal() {
+        for bin in ["tg", "max", "wa", "zm", "drive", "memo"] {
+            println!("{bin}: app finds {}, terminal finds {}", find(bin).is_some(), in_terminal(bin));
+        }
+    }
 }

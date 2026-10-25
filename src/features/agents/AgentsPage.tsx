@@ -5,6 +5,7 @@ import { findTool } from "@/domain/catalog"
 import { agentName } from "@/domain/runs"
 import { type SkillCell, type SkillTarget, TARGET_FOLDER } from "@/domain/skills"
 import type { Agent } from "@/platform/agents-schemas"
+import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
@@ -102,6 +103,7 @@ export function AgentsPage() {
             health: connect.health,
             profiles: connect.profiles,
             access: connect.access,
+            windows: platform.os === "windows",
           })
         : null
     const mine: AgentClaim[] = claims
