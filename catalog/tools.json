@@ -37,6 +37,10 @@
         "jsonValues": false,
         "keys": null,
         "readOnly": ["default_profile"]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your Telegram chats, and send messages when you ask.",
+        "asks": "The first time, your phone number and the code Telegram sends, to register your own Telegram app. Then a QR code to scan in Telegram: Settings → Devices → Link Desktop Device."
       }
     },
     {
@@ -72,6 +76,10 @@
         "jsonValues": false,
         "keys": null,
         "readOnly": ["default_profile"]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your MAX chats, and send messages when you ask.",
+        "asks": "A QR code to scan with the MAX app on your phone."
       }
     },
     {
@@ -107,6 +115,10 @@
         "jsonValues": false,
         "keys": null,
         "readOnly": ["default_profile"]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",
+        "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device."
       }
     },
     {
@@ -144,6 +156,11 @@
           "files_timezone": "files.timezone"
         },
         "readOnly": []
+      },
+      "signIn": {
+        "gives": "Lets your agent find your Zoom meetings and read their transcripts and summaries.",
+        "asks": "Your browser opens Zoom to approve access. Zoom first needs an app of your own, made once in the Zoom App Marketplace.",
+        "guide": "https://github.com/WireCatLabs/zoom-cli/blob/main/docs/zoom-app.md"
       }
     },
     {
@@ -176,6 +193,10 @@
         "jsonValues": true,
         "keys": null,
         "readOnly": ["principal", "roots", "mirrors", "storage"]
+      },
+      "signIn": {
+        "gives": "Lets your agent find and read your Google Drive files. It cannot change them.",
+        "asks": "Your browser opens Google: choose the account and allow read-only access to Drive."
       }
     },
     {
@@ -195,7 +216,8 @@
         "app": "cli-memo",
         "env": "MEMO"
       },
-      "settings": null
+      "settings": null,
+      "signIn": null
     }
   ],
   "sharedStorage": {

@@ -1,11 +1,12 @@
-import { AlertTriangle, CheckCircle2, Stethoscope, Terminal, XCircle } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { AlertTriangle, CheckCircle2, RefreshCw, Stethoscope, Terminal, XCircle } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { type CatalogTool, doctorNeedsProfile, isValidProfile, setupCommand, usesProfiles } from "@/domain/catalog"
 import { type Finding, summarize } from "@/domain/doctor"
 import { platform } from "@/platform/bridge"
 import type { Diagnosis, Profile } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
+import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
@@ -13,21 +14,9 @@ import { Skeleton } from "@/ui/Skeleton"
 type Check = { profile: string | null; state: "running" } | { profile: string | null; state: "done"; result: Diagnosis }
 
 export function Health({ tool }: { tool: CatalogTool }) {
-  const [profiles, setProfiles] = useState<Profile[] | null | undefined>(undefined)
-  const [profilesError, setProfilesError] = useState<string | null>(null)
+  const { profiles, error: profilesError, loading: reloading, reload } = useProfiles(tool.id)
   const [check, setCheck] = useState<Check | null>(null)
   const [checkError, setCheckError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let live = true
-    platform.listProfiles(tool.id).then(
-      (p) => live && setProfiles(p),
-      (e) => live && setProfilesError(String(e)),
-    )
-    return () => {
-      live = false
-    }
-  }, [tool.id])
 
   const run = useCallback(
     async (profile: string | null) => {
@@ -70,6 +59,8 @@ export function Health({ tool }: { tool: CatalogTool }) {
           busy={running}
           activeProfile={check?.profile ?? null}
           onCheck={doctorNeedsProfile(tool) ? run : undefined}
+          onReload={reload}
+          reloading={reloading}
         />
       )}
 
@@ -86,8 +77,10 @@ function ProfileList(props: {
   busy: boolean
   activeProfile: string | null
   onCheck: ((profile: string) => void) | undefined
+  onReload: () => void
+  reloading: boolean
 }) {
-  const { tool, profiles, error, busy, activeProfile, onCheck } = props
+  const { tool, profiles, error, busy, activeProfile, onCheck, onReload, reloading } = props
   if (error) return <p className="text-[0.9rem] text-bad">Could not list profiles: {error}</p>
   if (profiles === undefined) return <Skeleton className="h-10 w-full" label="Loading profiles" />
   return (
@@ -113,25 +106,82 @@ function ProfileList(props: {
           ))}
         </ul>
       ) : (
-        <p className="text-[0.9rem] text-ink-soft">No profile yet. Name one to connect your account.</p>
+        <p className="text-[0.9rem] text-ink-soft">No profile yet. Name one to sign in to your account.</p>
       )}
-      {tool.setup && <NewProfile tool={tool} />}
+      {tool.setup && <NewProfile tool={tool} onCheck={onReload} checking={reloading} />}
     </div>
   )
 }
 
-export function NewProfile({ tool }: { tool: CatalogTool }) {
+/** Re-reading is how the app learns that a sign-in finished: the terminal reports nothing back. */
+export function useProfiles(id: string) {
+  const [profiles, setProfiles] = useState<Profile[] | null | undefined>(undefined)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const latest = useRef(0)
+
+  const reload = useCallback(() => {
+    const call = ++latest.current
+    setLoading(true)
+    platform
+      .listProfiles(id)
+      .then(
+        (p) => {
+          if (call !== latest.current) return
+          setProfiles(p)
+          setError(null)
+        },
+        (e) => call === latest.current && setError(String(e)),
+      )
+      .finally(() => call === latest.current && setLoading(false))
+  }, [id])
+
+  useEffect(() => {
+    reload()
+    return () => {
+      latest.current++
+    }
+  }, [reload])
+
+  return { profiles, error, loading, reload }
+}
+
+export function FinishInTerminal({ onCheck, checking }: { onCheck: () => void; checking: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[0.35rem] bg-brand-soft/60 px-3 py-2">
+      <p role="status" className="min-w-0 flex-1 text-[0.9rem] text-ink">
+        Finish signing in in the terminal window, then press Check sign-in.
+      </p>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={onCheck}
+        disabled={checking}
+        icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
+      >
+        {checking ? "Checking…" : "Check sign-in"}
+      </Button>
+    </div>
+  )
+}
+
+export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; checking: boolean; label?: string }) {
+  const { tool, onCheck, checking, label = "Name for this account" } = props
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [opened, setOpened] = useState(false)
   const valid = isValidProfile(name)
   const command = setupCommand(tool, valid ? name : null)
+  const id = `profile-${tool.id}`
 
   const open = async () => {
     try {
       await platform.openSetup(tool.id, name)
       setError(null)
+      setOpened(true)
     } catch (e) {
       setError(String(e))
+      setOpened(false)
     }
   }
 
@@ -143,27 +193,39 @@ export function NewProfile({ tool }: { tool: CatalogTool }) {
         if (valid) open()
       }}
     >
-      <div className="flex gap-2">
-        <label className="sr-only" htmlFor={`profile-${tool.id}`}>
-          New profile name
-        </label>
+      <label className="text-[0.85rem] font-medium text-ink" htmlFor={id}>
+        {label}
+        <span className="sr-only">, {tool.name}</span>
+      </label>
+      <div className="flex flex-wrap gap-2">
         <input
-          id={`profile-${tool.id}`}
+          id={id}
           value={name}
-          onChange={(e) => setName(e.target.value.trim())}
-          placeholder="New profile, e.g. personal"
+          onChange={(e) => {
+            setName(e.target.value.trim())
+            setOpened(false)
+          }}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={name !== "" && !valid}
-          className="h-8 min-w-0 flex-1 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.875rem] text-ink placeholder:font-sans placeholder:text-ink-dim aria-[invalid=true]:border-bad"
+          aria-describedby={`${id}-hint`}
+          className="h-8 min-w-[9rem] flex-1 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.875rem] text-ink aria-[invalid=true]:border-bad"
         />
         <Button size="sm" type="submit" disabled={!valid} icon={<Terminal className="size-4" aria-hidden />}>
-          Connect in terminal
+          Open terminal to sign in
         </Button>
       </div>
-      {name !== "" && !valid && (
-        <p className="text-[0.85rem] text-bad">Use letters, digits, dots, dashes or underscores.</p>
+      {name !== "" && !valid ? (
+        <p id={`${id}-hint`} className="text-[0.85rem] text-bad">
+          Use letters, digits, dots, dashes or underscores.
+        </p>
+      ) : (
+        <p id={`${id}-hint`} className="text-[0.85rem] leading-snug text-ink-soft">
+          Any short name, such as personal or work: one name per account. The terminal window runs{" "}
+          <code className="font-mono whitespace-nowrap text-ink">{setupCommand(tool, valid ? name : "<name>")}</code>.
+        </p>
       )}
+      {opened && <FinishInTerminal onCheck={onCheck} checking={checking} />}
       {error && (
         <div className="flex flex-col gap-1.5">
           <p className="text-[0.85rem] text-ink-soft">No terminal could be opened. Run this yourself:</p>

@@ -34,6 +34,11 @@ describe("First start", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }))
     const signIn = screen.getByRole("list", { name: "Tools to sign in to" })
     expect(await within(signIn).findByText("Google Drive")).toBeInTheDocument()
+    const telegram = await within(signIn).findByRole("list", { name: "Telegram accounts" })
+    expect(within(telegram).getByText(/Signed in as profile/)).toHaveTextContent("Signed in as profile personal")
+    await user.click(within(telegram).getByRole("button", { name: "Open terminal to sign in" }))
+    expect(await within(signIn).findByRole("button", { name: "Check sign-in" })).toBeInTheDocument()
+    expect(within(signIn).getByRole("textbox", { name: "Name for this account, Google Drive" })).toHaveValue("")
     await user.click(screen.getByRole("button", { name: "Continue" }))
     await user.click(screen.getByRole("button", { name: "Open Tools" }))
 

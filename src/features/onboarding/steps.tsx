@@ -1,14 +1,17 @@
 import { Bot, HardDrive, RefreshCw, Terminal } from "lucide-react"
-import type { ReactNode } from "react"
+import { type ReactNode, useState } from "react"
 import { type CatalogTool, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
+import { platform } from "@/platform/bridge"
+import type { Profile } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
+import { Skeleton } from "@/ui/Skeleton"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
-import { NewProfile } from "../tools/Health"
+import { FinishInTerminal, NewProfile, useProfiles } from "../tools/Health"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { useOnboarding } from "./store"
@@ -260,43 +263,171 @@ export function Install() {
   )
 }
 
-export function Agents() {
+/** The tools this setup is about: the ones chosen in this flow and the ones already on the computer. */
+function useSetupTools() {
+  const installs = useTools((s) => s.installs)
+  const chosen = useOnboarding((s) => s.chosen)
+  return tools.filter((t) => chosen.includes(t.id) || installs[t.id]?.length)
+}
+
+/**
+ * `matrix` is the slot for the Agents feature's compact agents-by-skills matrix; until it is passed, the step says
+ * how a skill gets added today.
+ */
+export function Agents({ matrix }: { matrix?: ReactNode }) {
+  const list = useSetupTools()
+  if (matrix) return <>{matrix}</>
   return (
     <div className={cx(rack, "flex items-start gap-[0.9rem] px-[1.3rem] py-[1.1rem]")}>
       <Bot className="mt-[0.1rem] size-[1.5rem] shrink-0 text-brand" strokeWidth={1.6} aria-hidden />
-      <div className="min-w-0">
-        <h3 className="flex items-center gap-2 text-[1.08rem] font-semibold leading-tight">
-          Skills for agents <Pill>Soon</Pill>
-        </h3>
-        <p className="mt-1 max-w-[70ch] text-[0.95rem] leading-relaxed text-ink-soft">
-          A skill is a short guide that tells Claude Code, Codex or another agent which commands a tool has and when to
-          use them. The Agents section will add each tool's skill to the agents on this computer. Until then, every tool
-          you installed can add its own skill later.
+      <div className="flex min-w-0 flex-col gap-[0.7rem]">
+        <h3 className="text-[1.08rem] font-semibold leading-tight">How a tool adds its skill</h3>
+        <p className="max-w-[65ch] text-[0.95rem] leading-relaxed text-ink-soft">
+          Some tools offer to add their skill while you sign in, in the next step: the terminal asks which agent should
+          get it. Any tool can also add its own skill from a terminal, for Claude Code, Codex and Gemini CLI.
         </p>
+        {list.length > 0 && (
+          <ul aria-label="Skill commands" className="flex flex-col gap-1">
+            {list.map((t) => (
+              <li key={t.id} className="flex items-baseline gap-3 text-[0.95rem]">
+                <span className="w-[7.5rem] shrink-0 text-ink-soft">{t.name}</span>
+                <code className="selectable font-mono text-[0.9rem] text-ink">{t.bin} skill install</code>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
 }
 
+function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: () => void }) {
+  const name = <span className="font-mono font-medium text-ink">{profile.name}</span>
+  return (
+    <li className="flex min-h-8 flex-wrap items-center gap-x-[0.6rem] gap-y-1">
+      <Lamp size="sm" tone={profile.signedIn ? "ok" : "idle"} />
+      <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
+        {profile.signedIn === true ? (
+          <>Signed in as profile {name}</>
+        ) : profile.signedIn === false ? (
+          <>Profile {name} is not signed in</>
+        ) : (
+          <>Profile {name}: sign-in not reported</>
+        )}
+      </span>
+      {profile.signedIn !== true && (
+        <Button
+          size="sm"
+          variant={profile.signedIn === false ? "secondary" : "ghost"}
+          onClick={onSignIn}
+          icon={<Terminal className="size-4" aria-hidden />}
+        >
+          Open terminal to sign in
+        </Button>
+      )}
+    </li>
+  )
+}
+
+function SignInRow({ tool }: { tool: CatalogTool }) {
+  const { profiles, error, loading, reload } = useProfiles(tool.id)
+  const [waiting, setWaiting] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [openError, setOpenError] = useState<string | null>(null)
+  const signedIn = profiles?.some((p) => p.signedIn === true) ?? false
+  const showForm = !signedIn || adding
+
+  const signInAgain = async (profile: string) => {
+    try {
+      await platform.openSetup(tool.id, profile)
+      setOpenError(null)
+      setWaiting(true)
+    } catch (e) {
+      setOpenError(String(e))
+    }
+  }
+
+  return (
+    <li className="flex flex-col gap-[0.9rem] border-line border-b px-[1.3rem] py-[1.1rem] last:border-b-0">
+      <div className="flex items-start gap-[0.9rem]">
+        <ToolIcon id={tool.id} className="mt-[0.05rem] size-[1.5rem] shrink-0 text-ink" />
+        <div className="min-w-0">
+          <h3 className="text-[1.08rem] font-semibold leading-tight">{tool.name}</h3>
+          {tool.signIn && <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-soft">{tool.signIn.gives}</p>}
+        </div>
+      </div>
+      <div className="flex flex-col gap-[0.9rem] sm:pl-[2.4rem]">
+        {error ? (
+          <p className="text-[0.9rem] text-bad">Could not list the accounts: {error}</p>
+        ) : profiles === undefined ? (
+          <Skeleton className="h-8 w-full" label={`Reading ${tool.name} accounts`} />
+        ) : profiles && profiles.length > 0 ? (
+          <ul aria-label={`${tool.name} accounts`} className="flex flex-col gap-1">
+            {profiles.map((p) => (
+              <ProfileState key={p.name} profile={p} onSignIn={() => signInAgain(p.name)} />
+            ))}
+          </ul>
+        ) : null}
+        {openError && <p className="text-[0.9rem] text-bad">{openError}</p>}
+        {waiting && <FinishInTerminal onCheck={reload} checking={loading} />}
+        {showForm ? (
+          <>
+            {tool.signIn && (
+              <p className="max-w-[65ch] text-[0.9rem] leading-relaxed text-ink-soft">
+                <span className="font-medium text-ink">It will ask for: </span>
+                {tool.signIn.asks}
+                {tool.signIn.guide && (
+                  <>
+                    {" "}
+                    <a
+                      href={tool.signIn.guide}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (tool.signIn?.guide) platform.openUrl(tool.signIn.guide)
+                      }}
+                      className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
+                    >
+                      How to make it
+                    </a>
+                  </>
+                )}
+              </p>
+            )}
+            <NewProfile
+              tool={tool}
+              label={profiles?.length ? "Name for another account" : "Name for this account"}
+              onCheck={reload}
+              checking={loading}
+            />
+          </>
+        ) : (
+          <div>
+            <Button size="sm" variant="ghost" className="-ml-3" onClick={() => setAdding(true)}>
+              Add another account
+            </Button>
+          </div>
+        )}
+      </div>
+    </li>
+  )
+}
+
 export function SignIn() {
   const installs = useTools((s) => s.installs)
-  const chosen = useOnboarding((s) => s.chosen)
-  const ready = tools.filter((t) => t.setup && installs[t.id]?.length)
-  const waiting = tools.filter((t) => t.setup && chosen.includes(t.id) && !installs[t.id]?.length)
-  const noSignIn = tools.filter((t) => !t.setup && (chosen.includes(t.id) || installs[t.id]?.length))
+  const refreshing = useTools((s) => s.refreshing)
+  const list = useSetupTools()
+  const ready = list.filter((t) => t.setup && installs[t.id]?.length)
+  const waiting = list.filter((t) => t.setup && !installs[t.id]?.length)
+  const noSignIn = list.filter((t) => !t.setup)
+
+  if (ready.length === 0 && refreshing) return <Skeleton className="h-24 w-full" label="Looking for installed tools" />
 
   return (
     <>
       {ready.length > 0 ? (
         <ul aria-label="Tools to sign in to" className={rack}>
           {ready.map((t) => (
-            <li key={t.id} className={cx(row, "flex-wrap gap-y-3")}>
-              <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
-              <span className="w-[9rem] shrink-0 font-semibold">{t.name}</span>
-              <div className="min-w-[16rem] flex-1">
-                <NewProfile tool={t} />
-              </div>
-            </li>
+            <SignInRow key={t.id} tool={t} />
           ))}
         </ul>
       ) : (
