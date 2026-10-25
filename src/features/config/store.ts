@@ -51,7 +51,9 @@ type ConfigState = {
 
 // Only what the owner picked last time; a profile is never chosen for them, the shared defaults are.
 const LAST = "wirecat.config.last"
-type Last = { view?: View; tool?: string; targets?: Record<string, string | null> }
+/** How the last list of a view looked, so its placeholder can take the same room next time. */
+export type Shape = { rows: number; categories: number; file: boolean }
+type Last = { view?: View; tool?: string; targets?: Record<string, string | null>; shapes?: Record<string, Shape> }
 export function readLast(): Last {
   try {
     return JSON.parse(localStorage.getItem(LAST) ?? "{}") as Last

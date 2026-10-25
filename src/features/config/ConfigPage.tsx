@@ -10,15 +10,28 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
-import { CategoriesEditor } from "./CategoriesEditor"
+import { CategoriesEditor, CategoriesPlaceholder } from "./CategoriesEditor"
 import { Choice, Choices } from "./Choices"
 import { JsonActions, JsonTab } from "./JsonTab"
-import { SettingsList } from "./SettingsList"
+import { SettingsList, SettingsPlaceholder } from "./SettingsList"
 import { isCategory, sharedCandidates } from "./scope"
-import { isDefaultsView, isDirty, sourceOf, type Tab, type Target, useConfig } from "./store"
+import {
+  isDefaultsView,
+  isDirty,
+  readLast,
+  remember,
+  type Shape,
+  sourceOf,
+  type Tab,
+  type Target,
+  useConfig,
+} from "./store"
 
 const configurable = tools.filter((t) => t.settings !== null)
 const DEFAULTS = "\u0000defaults"
+// First visit, before any list was seen: the messengers report 16 settings, the shared view 5 categories and 4 more.
+const TOOL_SHAPE: Shape = { rows: 16, categories: 0, file: true }
+const SHARED_SHAPE: Shape = { rows: 4, categories: 5, file: false }
 
 type Switch = { kind: "tool"; id: string } | { kind: "shared" } | { kind: "target"; target: Target }
 
@@ -109,7 +122,7 @@ export function ConfigPage() {
         </ErrorNotice>
       )}
 
-      {(tool || shared) && st.target && !st.error && (
+      {(tool || shared) && (st.target || st.profiles === undefined) && !st.error && (
         <Panel label={shared ? "Shared WireCat settings" : `${tool?.name} settings`} dirty={dirty} />
       )}
 
@@ -149,7 +162,19 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
   const target = useConfig((s) => s.target)
   const current = target === null ? null : (target.profile ?? DEFAULTS)
 
-  if (profiles === undefined) return <Skeleton className="h-8 w-[22rem]" label="Reading profiles" />
+  if (profiles === undefined) {
+    return (
+      <Choices label="Profile">
+        <Skeleton className="h-8 w-[5.5rem] rounded-[0.35rem]" label="Reading profiles" />
+        <Skeleton className="h-8 w-[4.5rem] rounded-[0.35rem]" />
+        {defaults && (
+          <Choice group="profile" checked={false} disabled onSelect={() => undefined}>
+            Defaults (all profiles)
+          </Choice>
+        )}
+      </Choices>
+    )
+  }
   if (profiles !== null && profiles.length === 0 && !defaults) {
     return (
       <p className="text-[0.95rem] text-ink-soft">
@@ -194,10 +219,18 @@ function ScopeLine() {
   const id = useConfig((s) => s.tool)
   const target = useConfig((s) => s.target)
   const installs = useTools((s) => s.installs)
+  const profiles = useConfig((s) => s.profiles)
   const tool = id ? findTool(id) : undefined
   const src = sourceOf(id)
   let text: ReactNode = null
-  if (view === "shared") {
+  if (view === "shared" && !tool) {
+    text = (
+      <>
+        Settings every WireCat tool reads, not tied to one tool or profile: a change here applies to all of them.{" "}
+        <Skeleton chars={22} />
+      </>
+    )
+  } else if (view === "shared") {
     const version = id ? installs[id]?.[0]?.version : null
     text = (
       <>
@@ -226,6 +259,8 @@ function ScopeLine() {
     )
   } else if (tool && target) {
     text = `What every ${tool.name} profile gets unless it sets its own. Settings shared by every tool are under WireCat (shared).`
+  } else if (tool && profiles === undefined) {
+    text = <Skeleton chars={96} />
   }
   return text && <p className="max-w-[80ch] text-[0.95rem] text-ink-soft">{text}</p>
 }
@@ -237,11 +272,28 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
   const shared = st.view === "shared"
   const all = st.settings?.rows ?? []
   const categories = shared ? all.filter(isCategory) : []
+  const others = useMemo(
+    () => (st.settings?.rows ?? []).filter((r) => !isCategory(r) && r.key !== "task_categories"),
+    [st.settings],
+  )
   const rows = useMemo(() => {
     const q = st.query.trim().toLowerCase()
-    const list = (st.settings?.rows ?? []).filter((r) => !isCategory(r) && r.key !== "task_categories")
-    return q ? list.filter((r) => r.key.toLowerCase().includes(q)) : list
-  }, [st.settings, st.query])
+    return q ? others.filter((r) => r.key.toLowerCase().includes(q)) : others
+  }, [others, st.query])
+
+  const shapeKey = shared ? "shared" : (st.tool ?? "")
+  const loaded = st.settings
+  const waiting = loaded === null
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again only when a new placeholder is about to show
+  const shape = useMemo(
+    () => readLast().shapes?.[shapeKey] ?? (shared ? SHARED_SHAPE : TOOL_SHAPE),
+    [shapeKey, shared, waiting],
+  )
+  useEffect(() => {
+    if (!loaded) return
+    const next = { rows: others.length, categories: categories.length, file: Boolean(loaded.configFile) }
+    remember((l) => ({ ...l, shapes: { ...l.shapes, [shapeKey]: next } }))
+  }, [loaded, others, categories.length, shapeKey])
 
   const where = shared
     ? "every tool and profile"
@@ -311,12 +363,16 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
       </div>
 
       <div id={`${tabsId}-${st.tab}-panel`} role="tabpanel" aria-labelledby={`${tabsId}-${st.tab}`}>
-        {st.settings === null ? (
-          <div className="flex flex-col gap-3 px-[1.3rem] py-5">
-            <Skeleton className="h-8 w-full" label="Reading settings" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+        {st.settings === null && st.tab === "settings" ? (
+          shared ? (
+            <>
+              <CategoriesPlaceholder count={shape.categories} />
+              {shape.rows > 0 && <OthersHeading />}
+              <SettingsPlaceholder count={shape.rows} />
+            </>
+          ) : (
+            <SettingsPlaceholder count={shape.rows} label="Reading settings" />
+          )
         ) : st.tab === "settings" ? (
           <>
             {dirty && (
@@ -332,23 +388,27 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
                 disabled={dirty}
               />
             )}
-            {shared && rows.length > 0 && (
-              <h3 className="border-line border-b px-[1.3rem] pt-4 pb-2.5 text-[1.08rem] font-semibold leading-tight">
-                Other shared settings
-              </h3>
-            )}
+            {shared && rows.length > 0 && <OthersHeading />}
             {(!shared || rows.length > 0) && <SettingsList rows={rows} disabled={dirty} />}
           </>
         ) : (
           <JsonTab />
         )}
       </div>
-      {st.settings?.configFile && (
+      {(st.settings ? st.settings.configFile : shape.file) && (
         <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.85rem] text-ink-dim">
-          File: <span className="selectable font-mono">{st.settings.configFile}</span>
+          File: <span className="selectable font-mono">{st.settings?.configFile ?? <Skeleton chars={28} />}</span>
         </p>
       )}
     </section>
+  )
+}
+
+function OthersHeading() {
+  return (
+    <h3 className="border-line border-b px-[1.3rem] pt-4 pb-2.5 text-[1.08rem] font-semibold leading-tight">
+      Other shared settings
+    </h3>
   )
 }
 

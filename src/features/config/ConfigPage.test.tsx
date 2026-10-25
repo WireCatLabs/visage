@@ -25,7 +25,7 @@ describe("Config", () => {
     const user = userEvent.setup()
     useTools.setState({ installs: installed })
     const { unmount } = render(<ConfigPage />)
-    expect(await screen.findByRole("radio", { name: "Defaults (all profiles)" })).toBeChecked()
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Defaults (all profiles)" })).toBeChecked())
     await user.click(await screen.findByRole("radio", { name: "work" }))
     unmount()
 
@@ -39,7 +39,7 @@ describe("Config", () => {
     render(<ConfigPage />)
 
     await user.click(screen.getByRole("radio", { name: /Telegram/ }))
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument()
     await user.click(await screen.findByRole("radio", { name: "work" }))
     expect((await screen.findAllByRole("switch", {}, { timeout: 3000 })).length).toBeGreaterThan(0)
     expect(screen.getByText(/TG_REQUESTS_PER_MINUTE/)).toBeInTheDocument()

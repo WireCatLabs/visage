@@ -4,6 +4,7 @@ import type { SettingRow } from "@/platform/settings-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
+import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { isReadOnly, type Op } from "./diff"
 import { CATEGORY, type Category, categoryValue, FALLBACK, removeCategory, setCategory, toCategory } from "./scope"
@@ -57,31 +58,26 @@ export function CategoriesEditor(props: {
 
   return (
     <section aria-labelledby={headingId} className="border-line border-b">
-      <div className="flex flex-wrap items-start justify-between gap-3 px-[1.3rem] pt-4 pb-3">
-        <div className="min-w-0">
-          <h3 id={headingId} className="text-[1.08rem] font-semibold leading-tight">
-            Task categories <span className="font-normal text-ink-dim tabular-nums">{all.length}</span>
-          </h3>
-          <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
-            A new task takes the category whose trigger words its message matches best; with no match it goes to{" "}
-            <span className="font-mono">other</span>. Order breaks ties.
-          </p>
-        </div>
-        {!adding && (
-          <Button
-            id={ids.add}
-            size="sm"
-            disabled={disabled}
-            onClick={() => {
-              setAdding(true)
-              setEditing(null)
-            }}
-            icon={<Plus className="size-3.5" aria-hidden />}
-          >
-            Add category
-          </Button>
-        )}
-      </div>
+      <Header
+        headingId={headingId}
+        count={all.length}
+        action={
+          !adding && (
+            <Button
+              id={ids.add}
+              size="sm"
+              disabled={disabled}
+              onClick={() => {
+                setAdding(true)
+                setEditing(null)
+              }}
+              icon={<Plus className="size-3.5" aria-hidden />}
+            >
+              Add category
+            </Button>
+          )
+        }
+      />
 
       {removed && (
         <p
@@ -151,6 +147,61 @@ export function CategoriesEditor(props: {
   )
 }
 
+function Header(props: { headingId: string; count: ReactNode; action: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 px-[1.3rem] pt-4 pb-3">
+      <div className="min-w-0">
+        <h3 id={props.headingId} className="text-[1.08rem] font-semibold leading-tight">
+          Task categories <span className="font-normal text-ink-dim tabular-nums">{props.count}</span>
+        </h3>
+        <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
+          A new task takes the category whose trigger words its message matches best; with no match it goes to{" "}
+          <span className="font-mono">other</span>. Order breaks ties.
+        </p>
+      </div>
+      {props.action}
+    </div>
+  )
+}
+
+const CATEGORY_ROW =
+  "grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] items-start gap-x-[1.2rem] border-line border-t px-[1.3rem] py-2.5"
+
+/** The editor as it will look, with a row per category the tool reported last time. */
+export function CategoriesPlaceholder({ count }: { count: number }) {
+  const headingId = useId()
+  return (
+    <section aria-labelledby={headingId} className="border-line border-b">
+      <Header
+        headingId={headingId}
+        count={<Skeleton chars={1} label="Reading settings" />}
+        action={
+          <Button size="sm" disabled icon={<Plus className="size-3.5" aria-hidden />}>
+            Add category
+          </Button>
+        }
+      />
+      {Array.from({ length: count }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity of their own
+        <div key={i} className={CATEGORY_ROW}>
+          <span className="pt-[0.1rem] font-mono text-[0.95rem]">
+            <Skeleton chars={5 + (i % 3)} />
+          </span>
+          <div>
+            <p className="text-[0.95rem]">
+              <Skeleton chars={24 + ((i * 7) % 16)} />
+            </p>
+            <p className="mt-0.5 text-[0.85rem]">
+              <Skeleton chars={36 + ((i * 11) % 20)} />
+            </p>
+          </div>
+          <span className="w-[4.25rem]" />
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function CategoryRow(props: {
   category: Category
   editId: string
@@ -164,7 +215,7 @@ function CategoryRow(props: {
   const busy = status?.state === "saving"
   const readOnly = isReadOnly(c.row)
   return (
-    <li className="grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] items-start gap-x-[1.2rem] border-line border-t px-[1.3rem] py-2.5">
+    <li className={CATEGORY_ROW}>
       <span className="selectable truncate pt-[0.1rem] font-mono text-[0.95rem] text-ink">{c.name}</span>
       <div className="min-w-0">
         <p className="selectable text-[0.95rem] text-ink">

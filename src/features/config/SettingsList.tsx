@@ -5,6 +5,7 @@ import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Pill } from "@/ui/Pill"
+import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { isReadOnly } from "./diff"
 import { useConfig } from "./store"
@@ -22,6 +23,27 @@ const ORIGIN: Record<Origin, string> = {
 
 /** Values someone wrote into a file, as opposed to built-in defaults. */
 const isModified = (r: SettingRow) => r.origin !== "default" && r.origin !== "computed"
+
+const ROW =
+  "grid min-h-[3.6rem] grid-cols-[minmax(0,1fr)_minmax(11rem,19rem)_5.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-2.5 last:border-b-0"
+
+/** Rows at the real row's height while the tool answers; the first one is announced. */
+export function SettingsPlaceholder({ count, label = "" }: { count: number; label?: string }) {
+  return (
+    <div>
+      {Array.from({ length: count }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity of their own
+        <div key={i} className={ROW}>
+          <span className="font-mono text-[0.95rem]">
+            <Skeleton chars={10 + ((i * 5) % 9)} label={i === 0 ? label : ""} />
+          </span>
+          <Skeleton className="h-8 w-full" />
+          <span />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function SettingsList({ rows, disabled }: { rows: readonly SettingRow[]; disabled: boolean }) {
   if (rows.length === 0) return <p className="px-[1.3rem] py-6 text-[0.95rem] text-ink-soft">No setting matches.</p>
@@ -46,7 +68,7 @@ function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
     (row.masked ? "Hidden because it may hold a secret or a personal path. Change it in a terminal." : null)
 
   return (
-    <li className="grid min-h-[3.6rem] grid-cols-[minmax(0,1fr)_minmax(11rem,19rem)_5.6rem] items-center gap-x-[1.2rem] border-line border-b px-[1.3rem] py-2.5 last:border-b-0">
+    <li className={ROW}>
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           {isModified(row) && (

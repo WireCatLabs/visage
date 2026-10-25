@@ -1,6 +1,7 @@
 import { AlignLeft, Check, LoaderCircle, Undo2, X } from "lucide-react"
 import { type ReactNode, useMemo } from "react"
 import { Button } from "@/ui/Button"
+import { Skeleton } from "@/ui/Skeleton"
 import { lineOf } from "./diff"
 import { JsonEditor } from "./JsonEditor"
 import { documentText, type Step, useConfig } from "./store"
@@ -54,16 +55,20 @@ export function JsonTab() {
 
   return (
     <div>
-      <JsonEditor
-        label="Settings as JSON"
-        value={text}
-        onChange={st.edit}
-        onSave={() => {
-          if (!st.saving) st.saveDraft()
-        }}
-        marks={marks}
-        readOnly={st.saving}
-      />
+      {st.settings === null ? (
+        <Skeleton className="h-[min(60vh,34rem)] min-h-[16rem] w-full rounded-none" label="Reading settings" />
+      ) : (
+        <JsonEditor
+          label="Settings as JSON"
+          value={text}
+          onChange={st.edit}
+          onSave={() => {
+            if (!st.saving) st.saveDraft()
+          }}
+          marks={marks}
+          readOnly={st.saving}
+        />
+      )}
       <div aria-live="polite" className="border-line border-t empty:hidden">
         {st.jsonError && (
           <Message tone="bad" where={`Line ${st.jsonError.line}`}>
