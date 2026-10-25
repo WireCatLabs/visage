@@ -38,14 +38,19 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 export const pairKey = (tool: string, profile: string | null) => `${tool}/${profile ?? ""}`
 
 export const useConnect = create<ConnectState>((set, get) => {
+  const asked: Record<string, number> = {}
   const loadClaims = async (tool: string, profile: string) => {
     const key = pairKey(tool, profile)
-    set((s) => ({ claims: { ...s.claims, [key]: { state: "loading" } } }))
+    const ask = (asked[key] ?? 0) + 1
+    asked[key] = ask
+    // A revisit keeps the last answer on screen while asking again, so the tasks box does not vanish and return.
+    set((s) => (s.claims[key]?.state === "ready" ? {} : { claims: { ...s.claims, [key]: { state: "loading" } } }))
     const next: ProfileClaims = await platform.taskClaims(tool, profile).then(
       (c) => ({ state: "ready", data: { items: c.items, more: c.more } }),
       (e) => ({ state: "error", error: message(e) }),
     )
-    set((s) => ({ claims: { ...s.claims, [key]: next } }))
+    // The last answer stays on screen now, so an older ask finishing late must not replace a newer one.
+    if (ask === asked[key]) set((s) => ({ claims: { ...s.claims, [key]: next } }))
   }
 
   const readAccess = async (tool: string, profile: string) => {

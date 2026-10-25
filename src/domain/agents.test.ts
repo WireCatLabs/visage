@@ -1,5 +1,15 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { buildCheck, type CheckInput, connections, groupSessions, overall, parseHolder, sessionQuery } from "./agents"
+import {
+  buildCheck,
+  type CheckInput,
+  connections,
+  groupSessions,
+  KNOWN_AGENTS,
+  overall,
+  parseHolder,
+  sessionQuery,
+} from "./agents"
 import type { Run } from "./runs"
 
 const run = (over: Partial<Run>): Run => ({
@@ -127,5 +137,14 @@ describe("buildCheck", () => {
       kind: "command",
       command: 'export PATH="$HOME/.local/share/pnpm:$PATH"',
     })
+  })
+})
+
+describe("KNOWN_AGENTS", () => {
+  it("matches the agents skills.rs detects, in its order, so the placeholder rows are the real rows", () => {
+    const rust = readFileSync("src-tauri/src/skills.rs", "utf8")
+    const block = rust.slice(rust.indexOf("const AGENTS"), rust.indexOf("];", rust.indexOf("const AGENTS")))
+    const specs = [...block.matchAll(/id: "([^"]+)",\s*name: "([^"]+)"/g)].map(([, id, name]) => ({ id, name }))
+    expect(KNOWN_AGENTS).toEqual(specs)
   })
 })

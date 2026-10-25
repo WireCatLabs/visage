@@ -1,4 +1,4 @@
-import { agentOf, type Run, termText } from "./runs"
+import { agentName, agentOf, type Run, termText } from "./runs"
 import { cellAction, type SkillCell, type SkillTarget, TARGET_FOLDER } from "./skills"
 
 /** The app's agent ids, as `skills.rs` detects them, and the `kind` the tools record for each in runs and claims. */
@@ -9,6 +9,9 @@ export const AGENT_KIND: Record<string, string> = {
   gemini: "gemini-cli",
   opencode: "opencode",
 }
+
+/** Every agent detection reports on, in its order, so the page can draw their rows before it answers. */
+export const KNOWN_AGENTS = Object.entries(AGENT_KIND).map(([id, kind]) => ({ id, name: agentName(kind) }))
 
 const agentForKind = (kind: string) => Object.keys(AGENT_KIND).find((id) => AGENT_KIND[id] === kind) ?? null
 

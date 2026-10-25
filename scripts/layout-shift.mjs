@@ -2,7 +2,7 @@
 //   pnpm build && pnpm preview --port 1478 --strictPort      (the dev server adds a shift of its own as CSS loads)
 //   node scripts/layout-shift.mjs [page…] --port 1478 [--slow 1] [--width 1536] [--height 1024] [--dark]
 //                                 [--sources 5] [--shots ms,ms,…] [--out dir] [--budget 0.01] [--grow 8]
-// Pages: tools tools-manage agents storage logs config config-telegram onboarding-<step> (default: all).
+// Pages: tools tools-manage agents agents-revisit storage logs config config-telegram onboarding-<step> (default: all).
 // Needs a local Chrome.
 // Prints the Cumulative Layout Shift (CLS: the sum of every shift's score, 0 = nothing moved) per page, and the
 // elements that moved most, with when and how far. CLS misses a block growing at the bottom (nothing below it
@@ -40,6 +40,7 @@ const PAGES = {
   tools: { query: "?onboarding=off&section=tools" },
   "tools-manage": { query: "?onboarding=off&section=tools", clicks: ['button:has-text("Manage") >> nth=0'] },
   agents: { query: "?onboarding=off&section=agents" },
+  "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("Tools"), nav("Agents")] },
   storage: { query: "?onboarding=off&section=storage" },
   logs: { query: "?onboarding=off&section=logs" },
   config: { query: "?onboarding=off&section=tools", clicks: [nav("Config")] },

@@ -10,7 +10,7 @@ import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
-import { Skeleton } from "@/ui/Skeleton"
+import { Skeleton, StableText } from "@/ui/Skeleton"
 import { useLogs } from "../logs/store"
 import { useNav } from "../nav"
 import { ReportThis } from "../report/ReportThis"
@@ -54,6 +54,26 @@ const TONE_WORD: Record<Tone, string> = {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
+const rowGrid =
+  "grid min-h-[4.5rem] grid-cols-[1.2rem_minmax(0,1fr)_auto] items-center gap-x-[0.9rem] px-[1.3rem] xl:grid-cols-[1.6rem_minmax(0,1fr)_auto] xl:gap-x-[1.2rem]"
+
+/** A known agent before detection answers, or one not found: the same row box, so the list never changes height. */
+export function QuietAgentRow({ name, note, first = false }: { name: string; note: string | null; first?: boolean }) {
+  return (
+    <li className="border-line border-b last:border-b-0">
+      <div className={rowGrid}>
+        <Lamp tone="idle" label={`${name}: ${note ?? "Looking for it"}`} />
+        <div className={cx("min-w-0 py-3", note && "text-ink-soft")}>
+          <h3 className="text-[1.08rem] font-semibold leading-tight">{name}</h3>
+          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">
+            {note ?? <Skeleton chars={22} {...(first ? { label: "Looking for agents" } : {})} />}
+          </p>
+        </div>
+      </div>
+    </li>
+  )
+}
+
 export function AgentRow(props: Props) {
   const { agent, sessions, claims, tone, expanded, onToggle, onCheck } = props
   const checking = useConnect((s) => s.checking[agent.id] === true)
@@ -68,7 +88,7 @@ export function AgentRow(props: Props) {
 
   return (
     <li className="border-line border-b last:border-b-0">
-      <div className="grid min-h-[4.5rem] grid-cols-[1.2rem_minmax(0,1fr)_auto] items-center gap-x-[0.9rem] px-[1.3rem] xl:grid-cols-[1.6rem_minmax(0,1fr)_auto] xl:gap-x-[1.2rem]">
+      <div className={rowGrid}>
         <Lamp
           tone={checking ? "busy" : (tone ?? "idle")}
           label={`${agent.name}: ${checking ? "Checking" : tone ? TONE_WORD[tone] : "Checking"}`}
@@ -93,7 +113,7 @@ export function AgentRow(props: Props) {
           aria-label={`Check ${agent.name}`}
           icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
         >
-          {checking ? "Checking…" : "Check"}
+          <StableText value={checking ? "Checking…" : "Check"} variants={["Check", "Checking…"]} />
         </Button>
       </div>
       <div

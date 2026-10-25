@@ -165,7 +165,7 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
     async taskRelease(id, profile, task) {
       await delay(600)
       const key = `${id}/${profile}`
-      claims[key] = (claims[key] ?? []).filter((c) => c.id !== task)
+      claims[key] = (claims[key] ?? []).filter((c) => c.id !== task && c.key !== task)
     },
   }
   return mock

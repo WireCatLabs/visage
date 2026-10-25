@@ -116,6 +116,9 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
   const pad = compact ? "px-[1rem] py-[0.7rem]" : "px-[1.3rem] py-[0.9rem]"
   const pending = catalogTools.filter((t) => expected.includes(t.id))
   const silent = rows.filter((r) => r.source === "none")
+  const firstChecking = rows
+    .flatMap((r) => r.cells.map((c) => ({ tool: r.tool.id, target: c.target, kind: c.cell.kind })))
+    .find((c) => c.kind === "checking")
 
   if (detected && rows.length === 0) {
     return (
@@ -127,7 +130,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
 
   return (
     <div className="flex flex-col gap-3">
-      {found !== null && found.length === 0 && (
+      {compact && found !== null && found.length === 0 && (
         <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">
           No AI agent was found on this computer. Skills can still be written; an agent installed later reads them.
         </p>
@@ -190,18 +193,11 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
                     <tr key={r.tool.id} className="border-line border-b align-top last:border-b-0">
                       <th scope="row" className={cx(pad, "font-normal")}>
                         <ToolName tool={r.tool} version={r.cliVersion ?? ""} />
-                        {r.source === "none" && !compact && (
-                          <p className="mt-1.5 max-w-[34ch] text-[0.8rem] leading-snug text-ink-soft">
-                            This version cannot report its skill.{" "}
-                            {r.newer
-                              ? `Update ${r.tool.name} to ${r.newer} on the Tools page to see it.`
-                              : "A coming release will."}
-                          </p>
-                        )}
                       </th>
                       {r.cells.map((c) => (
                         <td key={c.target} className={pad}>
                           <Cell
+                            first={r.tool.id === firstChecking?.tool && c.target === firstChecking.target}
                             cell={c.cell}
                             busy={c.busy}
                             failure={c.failure}
@@ -221,12 +217,20 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
           Not installed: {notInstalled.map((t) => t.name).join(", ")}. A skill comes with its tool.
         </p>
       )}
-      {compact && silent.length > 0 && (
-        // Below the table, where it moves nothing: inside a row it would push every row under it down.
-        <p className="text-[0.85rem] leading-snug text-ink-soft">
+      {silent.length > 0 && (
+        // Last under the table, as it arrives last: inside a row it would push every row under it down.
+        <p className={cx("leading-snug text-ink-soft", compact ? "text-[0.85rem]" : "text-[0.9rem]")}>
           The installed {silent.map((r) => r.tool.name).join(" and ")} cannot report{" "}
           {silent.length === 1 ? "its skill" : "their skills"}, so {silent.length === 1 ? "it shows" : "they show"} as
-          Unknown. {silent.some((r) => r.newer) ? "Updating on the Tools page fixes that." : "A coming release will."}
+          Unknown.{" "}
+          {silent.some((r) => r.newer)
+            ? compact
+              ? "Updating on the Tools page fixes that."
+              : `Updating on the Tools page fixes that: ${silent
+                  .filter((r) => r.newer)
+                  .map((r) => `${r.tool.name} to ${r.newer}`)
+                  .join(", ")}.`
+            : "A coming release will."}
         </p>
       )}
       {compact && <ConfirmCommand />}
@@ -249,6 +253,7 @@ function ToolName({ tool, version }: { tool: CatalogTool; version: ReactNode }) 
 }
 
 function Cell(props: {
+  first: boolean
   cell: SkillCell
   busy: boolean
   failure: string | null
@@ -256,7 +261,15 @@ function Cell(props: {
   label: string
   onInstall: (action: string) => void
 }) {
-  const { cell, busy, failure, tool, label, onInstall } = props
+  const { first, cell, busy, failure, tool, label, onInstall } = props
+  if (cell.kind === "checking" && !busy)
+    return (
+      <div aria-live="polite">
+        <div className="flex min-h-8 items-center">
+          <Skeleton chars={12} {...(first ? { label: "Checking skills" } : {})} />
+        </div>
+      </div>
+    )
   const look = busy ? { tone: "busy" as const, word: "Writing…" } : LOOK[cell.kind]
   const action = cellAction(cell)
   const version = cell.kind === "current" || cell.kind === "stale" ? cell.installed : null

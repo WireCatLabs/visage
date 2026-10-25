@@ -1,20 +1,21 @@
 import { RefreshCw } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { buildCheck, groupSessions, overall, parseHolder, sessionsOf } from "@/domain/agents"
-import { findTool } from "@/domain/catalog"
+import { buildCheck, groupSessions, KNOWN_AGENTS, overall, parseHolder, sessionsOf } from "@/domain/agents"
+import { tools as catalogTools, findTool } from "@/domain/catalog"
 import { agentName } from "@/domain/runs"
 import { type SkillCell, type SkillTarget, TARGET_FOLDER } from "@/domain/skills"
 import type { Agent } from "@/platform/agents-schemas"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
-import { Disclosure } from "@/ui/Disclosure"
+import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
+import { StableText } from "@/ui/Skeleton"
 import { useLogs } from "../logs/store"
 import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
-import { type AgentClaim, AgentRow, type AgentTool, ClaimRow } from "./AgentRow"
+import { type AgentClaim, AgentRow, type AgentTool, ClaimRow, QuietAgentRow } from "./AgentRow"
 import { AgentsMatrix, useSkillMatrix } from "./AgentsMatrix"
 import { askSkillInstallAll } from "./actions"
 import { ConfirmCommand } from "./Confirm"
@@ -28,6 +29,9 @@ const foundWords = (a: Agent) =>
     : a.foundBy === "folder"
       ? "Found by its settings folder; the program itself is not on PATH"
       : "Not found on this computer"
+
+// Until the installed tools are known, every tool that has a skill stands in; the ones not installed drop off the end.
+const SKILL_TOOLS = catalogTools.filter((t) => t.skill !== null).map((t) => t.id)
 
 // A skill helps an agent when any place it reads has a usable copy; the best one is shown.
 const PREFER: SkillCell["kind"][] = ["current", "stale", "unversioned", "unknown", "failed", "missing", "checking"]
@@ -151,7 +155,7 @@ export function AgentsPage() {
           onClick={checkAll}
           icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
         >
-          {checking ? "Checking…" : "Check again"}
+          <StableText value={checking ? "Checking…" : "Check again"} variants={["Check again", "Checking…"]} />
         </Button>
       </div>
 
@@ -166,25 +170,75 @@ export function AgentsPage() {
         </p>
       )}
 
-      {found && found.length > 0 && (
+      {!agentsError && (
         <ul aria-label="Agents" className="rounded-[0.2rem] border border-line-strong bg-app">
-          {cards.map((c) => (
-            <AgentRow
-              key={c.agent.id}
-              agent={c.agent}
-              tools={c.tools}
-              sessions={c.sessions}
-              claims={c.claims}
-              items={c.items}
-              tone={c.items ? overall(c.items) : null}
-              expanded={expanded === c.agent.id}
-              onToggle={() => setExpanded((e) => (e === c.agent.id ? null : c.agent.id))}
-              onCheck={() => checkOne(c.agent.id)}
-            />
-          ))}
+          {agents === null
+            ? KNOWN_AGENTS.map((a, i) => <QuietAgentRow key={a.id} name={a.name} note={null} first={i === 0} />)
+            : agents.map((agent) => {
+                const c = cards.find((card) => card.agent.id === agent.id)
+                if (!c) return <QuietAgentRow key={agent.id} name={agent.name} note="Not found on this computer" />
+                return (
+                  <AgentRow
+                    key={c.agent.id}
+                    agent={c.agent}
+                    tools={c.tools}
+                    sessions={c.sessions}
+                    claims={c.claims}
+                    items={c.items}
+                    tone={c.items ? overall(c.items) : null}
+                    expanded={expanded === c.agent.id}
+                    onToggle={() => setExpanded((e) => (e === c.agent.id ? null : c.agent.id))}
+                    onCheck={() => checkOne(c.agent.id)}
+                  />
+                )
+              })}
         </ul>
       )}
 
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-[1.2rem] font-semibold">Skills</h2>
+            <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
+              A skill is a short guide that tells an agent which commands a tool has and when to use them. Each tool
+              writes its skill to two folders; the agents on this computer read one or both.
+            </p>
+          </div>
+          {stale.length > 0 && (
+            <Button variant="primary" disabled={anyBusy} onClick={() => askSkillInstallAll(stale)}>
+              Update all old skills ({stale.length})
+            </Button>
+          )}
+        </div>
+        <AgentsMatrix expected={SKILL_TOOLS} />
+        <ReadsBoth agents={agents} />
+      </section>
+
+      {!agents ? (
+        <DisclosureSkeleton chars={21} />
+      ) : (
+        <Disclosure summary="Agents this app knows">
+          <ul className="flex max-w-[70ch] flex-col gap-1.5">
+            {agents.map((a) => (
+              <li key={a.id} className="flex items-start gap-2.5 text-[0.9rem]">
+                <span className="mt-[0.35rem]">
+                  <Lamp size="sm" tone={a.foundBy ? "ok" : "idle"} />
+                </span>
+                <span>
+                  <span className="font-medium text-ink">{a.name}</span>
+                  <span className="text-ink-soft">
+                    {" "}
+                    · {foundWords(a)} · reads{" "}
+                    <span className="font-mono text-[0.8rem]">{a.reads.map((t) => TARGET_FOLDER[t]).join(", ")}</span>
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      )}
+
+      {/* Below Skills: these arrive last, and here they push nothing that is already on screen. */}
       {(otherClaims.length > 0 || claimErrors.length > 0 || unknownRuns > 0) && (
         <div className="flex max-w-[80ch] flex-col gap-2 text-[0.9rem] text-ink-soft">
           {unknownRuns > 0 && (
@@ -234,47 +288,6 @@ export function AgentsPage() {
             </section>
           )}
         </div>
-      )}
-
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="text-[1.2rem] font-semibold">Skills</h2>
-            <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
-              A skill is a short guide that tells an agent which commands a tool has and when to use them. Each tool
-              writes its skill to two folders; the agents on this computer read one or both.
-            </p>
-          </div>
-          {stale.length > 0 && (
-            <Button variant="primary" disabled={anyBusy} onClick={() => askSkillInstallAll(stale)}>
-              Update all old skills ({stale.length})
-            </Button>
-          )}
-        </div>
-        <AgentsMatrix />
-        <ReadsBoth agents={agents} />
-      </section>
-
-      {agents && (
-        <Disclosure summary="Agents this app knows">
-          <ul className="flex max-w-[70ch] flex-col gap-1.5">
-            {agents.map((a) => (
-              <li key={a.id} className="flex items-start gap-2.5 text-[0.9rem]">
-                <span className="mt-[0.35rem]">
-                  <Lamp size="sm" tone={a.foundBy ? "ok" : "idle"} />
-                </span>
-                <span>
-                  <span className="font-medium text-ink">{a.name}</span>
-                  <span className="text-ink-soft">
-                    {" "}
-                    · {foundWords(a)} · reads{" "}
-                    <span className="font-mono text-[0.8rem]">{a.reads.map((t) => TARGET_FOLDER[t]).join(", ")}</span>
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Disclosure>
       )}
 
       <ConfirmCommand />

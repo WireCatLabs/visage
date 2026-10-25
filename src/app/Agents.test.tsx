@@ -27,8 +27,7 @@ describe("Agents", () => {
     expect(await within(table).findByRole("columnheader", { name: /Claude Code, Cursor/ }, wait)).toBeInTheDocument()
     const tg = (await within(table).findByRole("rowheader", { name: /Telegram/ }, wait)).closest("tr") as HTMLElement
     expect(await within(tg).findByRole("img", { name: /Telegram skill for Codex.*: Old/ }, wait)).toBeInTheDocument()
-    const max = within(table).getByRole("rowheader", { name: /MAX/ })
-    expect(await within(max).findByText(/cannot report its skill/, {}, wait)).toBeInTheDocument()
+    expect(await screen.findByText(/MAX and Zoom cannot report their skills/, {}, wait)).toBeInTheDocument()
 
     await user.click(within(tg).getByRole("button", { name: /^Update Telegram skill for Codex/ }))
     const dialog = await screen.findByRole("dialog", { name: /Update the Telegram skill/ })
