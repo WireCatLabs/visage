@@ -8,9 +8,9 @@ export type Run = {
   command: string
   status: string
   started_at: string
-  profile?: string
-  duration_ms?: number
-  error_code?: string
+  profile?: string | undefined
+  duration_ms?: number | undefined
+  error_code?: string | undefined
   [key: string]: unknown
 }
 
