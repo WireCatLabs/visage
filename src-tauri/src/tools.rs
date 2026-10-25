@@ -72,31 +72,23 @@ fn inspect(path: &Path) -> Install {
     }
 }
 
-/// Latest published versions, via the user's npm so registry and proxy settings apply.
+/// The registry's latest version of one package, via the user's npm so registry and proxy settings apply.
+pub fn latest_version(package: &str) -> Option<String> {
+    let npm = paths::find("npm")?;
+    run::run(&npm, &["view", package, "version"], Some(&paths::search_path()), Duration::from_secs(20))
+        .ok()
+        .filter(|o| o.code == Some(0))
+        .map(|o| o.stdout.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+/// Latest published versions of every tool's package.
 pub fn latest_versions() -> Vec<(String, Option<String>)> {
-    let Some(npm) = paths::find("npm") else {
+    if paths::find("npm").is_none() {
         return catalog::catalog().tools.iter().map(|t| (t.id.clone(), None)).collect();
-    };
+    }
     let found: Vec<(String, Option<String>)> = std::thread::scope(|s| {
-        let handles: Vec<_> = owners()
-            .map(|t| {
-                let npm = npm.clone();
-                s.spawn(move || {
-                    let out = run::run(
-                        &npm,
-                        &["view", &t.package, "version"],
-                        Some(&paths::search_path()),
-                        Duration::from_secs(20),
-                    );
-                    let v = out
-                        .ok()
-                        .filter(|o| o.code == Some(0))
-                        .map(|o| o.stdout.trim().to_string())
-                        .filter(|v| !v.is_empty());
-                    (t.id.clone(), v)
-                })
-            })
-            .collect();
+        let handles: Vec<_> = owners().map(|t| s.spawn(move || (t.id.clone(), latest_version(&t.package)))).collect();
         handles.into_iter().map(|h| h.join().expect("npm view thread")).collect()
     });
     catalog::catalog()

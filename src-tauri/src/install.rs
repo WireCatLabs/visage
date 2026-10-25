@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::ipc::Channel;
 
+const PNPM_WIRECAT_NOW: &str = "--config.minimum-release-age-exclude=@wirecat/*";
 const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
 
 #[derive(Serialize, Clone)]
@@ -108,9 +109,13 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
     }
     let existing = tools::detect(tool).installs.into_iter().next();
     let manager = existing.as_ref().map_or("npm", |i| i.manager);
-    let spec = format!("{}@latest", tool.package);
+    // The exact version, not `@latest`: a manager that still holds new releases back then fails loudly instead of
+    // quietly installing an older one.
+    let wanted = tools::latest_version(&tool.package);
+    let spec = format!("{}@{}", tool.package, wanted.as_deref().unwrap_or("latest"));
     let (program, args): (&str, Vec<&str>) = match manager {
-        "pnpm" => ("pnpm", vec!["add", "--global", &spec]),
+        // pnpm 11+ waits a day before installing a new release; WireCat's own packages are exempt (owner, NEED-26).
+        "pnpm" => ("pnpm", vec!["add", "--global", &spec, PNPM_WIRECAT_NOW]),
         "bun" => ("bun", vec!["add", "--global", &spec]),
         _ => ("npm", vec!["install", "--global", &spec, "--no-fund", "--no-audit"]),
     };
@@ -151,6 +156,18 @@ fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
         )
     })?;
     let ours = state.installs.iter().find(|i| i.manager == manager).unwrap_or(first);
+    if let (Some(wanted), Some(got)) = (wanted.as_deref(), ours.version.as_deref())
+        && wanted != got
+    {
+        return Err(Failure(
+            Reason::Verify,
+            format!("{manager} installed {} {got}, not {wanted}.", tool.bin),
+            Some(format!(
+                "{manager} may hold back new releases for a while. Try again later, or run `{manager} add --global {}@{wanted}` yourself.",
+                tool.package
+            )),
+        ));
+    }
     let shadowed_by = (ours.path != first.path).then(|| first.path.clone());
     Ok(InstallEvent::Done { version, path: ours.path.clone(), shadowed_by })
 }
