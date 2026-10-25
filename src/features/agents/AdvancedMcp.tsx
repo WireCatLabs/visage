@@ -1,0 +1,116 @@
+import { ChevronRight } from "lucide-react"
+import { connections, serverName } from "@/domain/agents"
+import { tools as catalogTools } from "@/domain/catalog"
+import type { Agent } from "@/platform/agents-schemas"
+import { Button } from "@/ui/Button"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { Skeleton } from "@/ui/Skeleton"
+import { ReportThis } from "../report/ReportThis"
+import { askMcpRemove, mcpKey } from "./actions"
+import { useConnect } from "./connect"
+
+// Email shares memo's program, so one entry per program keeps a server from being listed twice.
+const PROGRAMS = catalogTools.filter((t) => !t.partOf)
+
+/** Read-only: agents here use the tools through their skill, so MCP is never offered, only cleaned up. */
+export function AdvancedMcp({ agent }: { agent: Agent }) {
+  return (
+    <details className="group">
+      <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-[0.2rem] text-[0.85rem] font-medium text-ink-dim hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          aria-hidden
+        />
+        Advanced: MCP
+      </summary>
+      <div className="mt-2 flex flex-col gap-2 pl-[1.4rem]">
+        <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
+          For chat apps and agents on another computer. Agents on this computer use the tools directly through their
+          skill.
+        </p>
+        <Servers agent={agent} />
+      </div>
+    </details>
+  )
+}
+
+function Servers({ agent }: { agent: Agent }) {
+  const servers = useConnect((s) => s.servers[agent.id])
+  if (!servers || servers.state === "loading") return <Skeleton className="h-8 w-full" label="Reading MCP servers" />
+  if (servers.state === "error")
+    return (
+      <ErrorNotice inline action={<ReportThis what={`Reading ${agent.name} MCP servers`} error={servers.error} />}>
+        {servers.error}
+      </ErrorNotice>
+    )
+  const { names, canRemove, source } = servers.data
+  const rows = PROGRAMS.flatMap((tool) =>
+    connections(names, tool.bin, []).map((row) => ({ tool, profile: row.profile })),
+  )
+  return (
+    <>
+      {rows.length === 0 ? (
+        <p className="text-[0.85rem] text-ink-soft">{agent.name} has no WireCat MCP server registered.</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5" aria-label={`WireCat MCP servers in ${agent.name}`}>
+          {rows.map(({ tool, profile }) => (
+            <ServerRow
+              key={serverName(tool.bin, profile)}
+              agent={agent}
+              toolId={tool.id}
+              toolName={tool.name}
+              name={serverName(tool.bin, profile)}
+              profile={profile}
+              canRemove={canRemove}
+            />
+          ))}
+        </ul>
+      )}
+      <p className="text-[0.8rem] text-ink-dim">
+        Read from <span className="selectable font-mono">{source}</span>
+      </p>
+    </>
+  )
+}
+
+function ServerRow(props: {
+  agent: Agent
+  toolId: string
+  toolName: string
+  name: string
+  profile: string | null
+  canRemove: boolean
+}) {
+  const { agent, toolId, toolName, name, profile, canRemove } = props
+  const key = mcpKey(agent.id, toolId, profile)
+  const busy = useConnect((s) => s.busy[key] === true)
+  const failure = useConnect((s) => s.failures[key])
+  return (
+    <li>
+      <div className="flex min-h-8 flex-wrap items-center gap-2 text-[0.85rem]">
+        <span className="selectable font-mono text-ink">{name}</span>
+        <span className="text-ink-soft">{toolName}</span>
+        {canRemove && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            disabled={busy}
+            onClick={() => askMcpRemove(toolId, profile, agent)}
+            aria-label={`Remove the ${name} MCP server from ${agent.name}`}
+          >
+            {busy ? "Removing…" : "Remove"}
+          </Button>
+        )}
+      </div>
+      {failure && !busy && (
+        <ErrorNotice
+          inline
+          action={<ReportThis what={`Removing ${name} from ${agent.name}`} tool={toolId} error={failure} />}
+        >
+          {failure}
+        </ErrorNotice>
+      )}
+    </li>
+  )
+}

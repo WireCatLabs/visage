@@ -15,7 +15,7 @@ async function openAgents() {
 }
 
 // Mock: Telegram has `skill status` with an old ~/.agents copy, MAX and Zoom are too old to report, memo answers
-// through doctor; Claude Code, Codex and Cursor are found. Claude Code has tg-personal over MCP and holds Q-15;
+// through doctor; Claude Code, Codex and Cursor are found. Claude Code has tg-personal registered over MCP and holds Q-15;
 // Zoom is not on a terminal's PATH.
 describe("Agents", () => {
   beforeEach(() => useOnboarding.setState({ status: "done", open: false }))
@@ -47,23 +47,39 @@ describe("Agents", () => {
     ).toBeInTheDocument()
   }, 20000)
 
-  it("connects a profile over MCP only after the owner confirms the exact command", async () => {
+  it("keeps MCP out of the main flow and lists existing servers read-only under Advanced", async () => {
     const add = vi.spyOn(platform, "mcpAdd")
+    const check = vi.spyOn(platform, "mcpCheck")
+    const remove = vi.spyOn(platform, "mcpRemove")
     const user = await openAgents()
     await user.click(await screen.findByRole("button", { name: "Manage Claude Code" }, wait))
+    const details = screen.getByRole("region", { name: "Claude Code details" })
+    await within(details).findByText(/check(s)? passed\.$/, {}, wait)
 
-    const connect = await screen.findByRole("button", { name: "Connect Telegram work to Claude Code" }, wait)
-    await user.click(connect)
-    const dialog = await screen.findByRole("dialog", { name: "Connect Telegram (work) to Claude Code?" }, wait)
-    expect(within(dialog).getByText("tg work mcp add claude-code --json --allow-writes")).toBeInTheDocument()
-    expect(within(dialog).getByText(/9 of them can change things/)).toBeInTheDocument()
-    expect(add).not.toHaveBeenCalled()
+    expect(within(details).queryByRole("button", { name: /Connect/ })).not.toBeInTheDocument()
+    expect(within(details).queryByRole("columnheader", { name: /MCP/ })).not.toBeInTheDocument()
+    expect(screen.getByRole("list", { name: "What to fix for Claude Code" })).not.toHaveTextContent(/MCP/)
+    expect(screen.getByRole("list", { name: "Agents" })).not.toHaveTextContent(/MCP/)
+    expect(check).not.toHaveBeenCalled()
 
-    await user.click(within(dialog).getByRole("button", { name: "Connect" }))
-    expect(add).toHaveBeenCalledWith("tg", "work", "claude", true)
+    const advanced = within(details).getByText("Advanced: MCP")
+    expect(advanced.closest("details")).not.toHaveAttribute("open")
+    await user.click(advanced)
+    expect(within(details).getByText(/Agents on this computer use the tools directly/)).toBeVisible()
+    const servers = await within(details).findByRole("list", { name: "WireCat MCP servers in Claude Code" }, wait)
+    expect(within(servers).getByText("tg-personal")).toBeInTheDocument()
+
+    await user.click(
+      within(servers).getByRole("button", { name: "Remove the tg-personal MCP server from Claude Code" }),
+    )
+    const dialog = await screen.findByRole("dialog", { name: "Remove the tg-personal MCP server from Claude Code?" })
+    expect(within(dialog).getByText("claude mcp remove tg-personal --scope user")).toBeInTheDocument()
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }))
+    expect(remove).toHaveBeenCalledWith("tg", "personal", "claude")
     expect(
-      await screen.findByRole("img", { name: "Telegram work for Claude Code: Connected" }, wait),
+      await within(details).findByText("Claude Code has no WireCat MCP server registered.", {}, wait),
     ).toBeInTheDocument()
+    expect(add).not.toHaveBeenCalled()
   }, 20000)
 
   it("Manage checks the agent, lists what stops it with each fix, and releases a held task", async () => {

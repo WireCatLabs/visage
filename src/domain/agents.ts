@@ -118,7 +118,7 @@ export type Fix =
 
 export type CheckItem = { id: string; tone: Tone; title: string; detail: string; fix?: Fix }
 
-export type CheckTool = { id: string; name: string; bin: string; path: string | null; hasMcp: boolean }
+export type CheckTool = { id: string; name: string; bin: string; path: string | null }
 
 export type CheckInput = {
   agent: { id: string; name: string; reads: readonly SkillTarget[] }
@@ -127,11 +127,6 @@ export type CheckInput = {
   reach: Readonly<Record<string, boolean>> | null
   /** By tool id, then by the places this agent reads. */
   skills: Readonly<Record<string, Partial<Record<SkillTarget, SkillCell>>>>
-  /** WireCat server names the agent has registered; null when its list could not be read. */
-  servers: { names: readonly string[]; canAdd: boolean } | null
-  /** `<tool>/<profile>` → the tool's own `mcp check`, or the reason it failed. */
-  health: Readonly<Record<string, { healthy: boolean; signedIn: boolean } | string>>
-  profiles: Readonly<Record<string, readonly string[]>>
   /** A shell `export` line means nothing on Windows; the folder is named instead. */
   windows?: boolean
   /** `<tool>/<profile>` → commands its permissions block, from the tool's own `commands --json`; absent until Check. */
@@ -140,10 +135,10 @@ export type CheckInput = {
 
 const folderOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "").replace(/^~(?=\/)/, "$HOME")
 
-/** What stops this agent from using the tools, worst first, each with the one thing that fixes it. MCP is optional,
- * so a tool without a connection is not listed; a connected server that fails is. */
+/** What stops this agent from using the tools, worst first, each with the one thing that fixes it. Agents here run
+ * the commands through their skill, so MCP is never part of it. */
 export function buildCheck(input: CheckInput): CheckItem[] {
-  const { agent, tools, reach, skills, servers, health, profiles, access } = input
+  const { agent, tools, reach, skills, access } = input
   const items: CheckItem[] = []
   const unreported: string[] = []
 
@@ -173,26 +168,6 @@ export function buildCheck(input: CheckInput): CheckItem[] {
         known.find((c) => c.cell.kind === "unknown")
       if (worst?.cell.kind === "unknown") unreported.push(tool.name)
       else if (worst) items.push(skillItem(tool, agent.name, worst.target, worst.cell))
-    }
-
-    if (!tool.hasMcp) continue
-    const names = servers?.names ?? []
-    const connected = (profiles[tool.id] ?? []).filter((p) => names.includes(serverName(tool.bin, p)))
-    for (const profile of connected) {
-      const h = health[`${tool.id}/${profile}`]
-      if (h === undefined) continue
-      const id = `${tool.id}/${profile}:mcp`
-      if (typeof h === "string")
-        items.push({ id, tone: "bad", title: `${tool.name} (${profile}) MCP failed`, detail: h })
-      else if (!h.signedIn)
-        items.push({
-          id,
-          tone: "warn",
-          title: `${tool.name} (${profile}) is not signed in`,
-          detail: "The MCP server starts, but its commands will fail until the profile signs in.",
-          fix: { kind: "command", command: `${tool.bin} ${profile} setup` },
-        })
-      else items.push({ id, tone: "ok", title: `${tool.name} (${profile}) MCP answers`, detail: "" })
     }
   }
 

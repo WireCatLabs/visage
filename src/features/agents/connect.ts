@@ -1,7 +1,6 @@
 import { create } from "zustand"
-import { serverName } from "@/domain/agents"
 import { findTool } from "@/domain/catalog"
-import type { Claim, McpHealth, Registrations } from "@/platform/agents-schemas"
+import type { Claim, Registrations } from "@/platform/agents-schemas"
 import { platform } from "@/platform/bridge"
 
 export type Loaded<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; error: string }
@@ -13,8 +12,6 @@ type ConnectState = {
   servers: Record<string, Loaded<Registrations>>
   /** By tool id; tools without profiles are absent. */
   profiles: Record<string, string[]>
-  /** `<tool>/<profile>` → the tool's own `mcp check`, or why it failed. */
-  health: Record<string, McpHealth | string>
   /** `<tool>/<profile>`. */
   claims: Record<string, ProfileClaims>
   /** `<tool>/<profile>` → commands its permissions block, or why they could not be read. Filled by Check. */
@@ -26,10 +23,8 @@ type ConnectState = {
   failures: Record<string, string>
   load(agents: readonly string[], tools: readonly string[]): Promise<void>
   loadServers(agent: string): Promise<void>
-  /** The tool's own `mcp check` for every profile this agent has connected. */
+  /** PATH, MCP registrations (for Advanced) and every profile's permissions; starts no server. */
   check(agent: string): Promise<void>
-  probe(tool: string, profile: string): Promise<McpHealth | string>
-  add(tool: string, profile: string, agent: string, allowWrites: boolean): Promise<boolean>
   remove(tool: string, profile: string | null, agent: string): Promise<boolean>
   release(tool: string, profile: string, task: string): Promise<boolean>
 }
@@ -81,7 +76,6 @@ export const useConnect = create<ConnectState>((set, get) => {
     reach: null,
     servers: {},
     profiles: {},
-    health: {},
     claims: {},
     access: {},
     checked: {},
@@ -114,12 +108,6 @@ export const useConnect = create<ConnectState>((set, get) => {
       set((s) => ({ servers: { ...s.servers, [agent]: next } }))
     },
 
-    async probe(tool, profile) {
-      const result = await platform.mcpCheck(tool, profile).catch((e) => message(e))
-      set((s) => ({ health: { ...s.health, [pairKey(tool, profile)]: result } }))
-      return result
-    },
-
     async check(agent) {
       if (get().checking[agent]) return
       set((s) => ({ checking: { ...s.checking, [agent]: true } }))
@@ -131,31 +119,14 @@ export const useConnect = create<ConnectState>((set, get) => {
             .catch(() => undefined),
           get().loadServers(agent),
         ])
-        const servers = get().servers[agent]
-        const names = servers?.state === "ready" ? servers.data.names : []
-        const pairs = Object.entries(get().profiles).flatMap(([tool, profiles]) =>
-          findTool(tool)?.mcp
-            ? profiles.filter((p) => names.includes(serverName(findTool(tool)?.bin ?? tool, p))).map((p) => [tool, p])
-            : [],
-        )
         const everyProfile = Object.entries(get().profiles).flatMap(([tool, profiles]) =>
           findTool(tool)?.permissions ? profiles.map((p) => [tool, p] as const) : [],
         )
-        await Promise.all([
-          ...pairs.map(([tool, profile]) => get().probe(tool as string, profile as string)),
-          ...everyProfile.map(([tool, profile]) => readAccess(tool, profile)),
-        ])
+        await Promise.all(everyProfile.map(([tool, profile]) => readAccess(tool, profile)))
       } finally {
         set((s) => ({ checking: without(s.checking, agent), checked: { ...s.checked, [agent]: true } }))
       }
     },
-
-    add: (tool, profile, agent, allowWrites) =>
-      write(
-        `mcp:${agent}:${pairKey(tool, profile)}`,
-        () => platform.mcpAdd(tool, profile, agent, allowWrites),
-        () => get().loadServers(agent),
-      ),
 
     remove: (tool, profile, agent) =>
       write(

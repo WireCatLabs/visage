@@ -92,32 +92,26 @@ export function AgentsPage() {
       return { tool: r.tool, skill: best ? { cell: best.cell, target: best.target } : null }
     })
     const skillsLoaded = rows.every((r) => r.cells.every((c) => c.cell.kind !== "checking"))
-    const servers = connect.servers[agent.id]
-    const items =
-      skillsLoaded && servers && servers.state !== "loading"
-        ? buildCheck({
-            agent,
-            tools: rows.map((r) => ({
-              id: r.tool.id,
-              name: r.tool.name,
-              bin: r.tool.bin,
-              path: installs[r.tool.id]?.[0]?.path ?? null,
-              hasMcp: r.tool.mcp !== null,
-            })),
-            reach: connect.reach,
-            skills: Object.fromEntries(
-              rows.map((r) => [
-                r.tool.id,
-                Object.fromEntries(r.cells.map((c) => [c.target, c.cell])) as Partial<Record<SkillTarget, SkillCell>>,
-              ]),
-            ),
-            servers: servers.state === "ready" ? servers.data : null,
-            health: connect.health,
-            profiles: connect.profiles,
-            access: connect.access,
-            windows: platform.os === "windows",
-          })
-        : null
+    const items = skillsLoaded
+      ? buildCheck({
+          agent,
+          tools: rows.map((r) => ({
+            id: r.tool.id,
+            name: r.tool.name,
+            bin: r.tool.bin,
+            path: installs[r.tool.id]?.[0]?.path ?? null,
+          })),
+          reach: connect.reach,
+          skills: Object.fromEntries(
+            rows.map((r) => [
+              r.tool.id,
+              Object.fromEntries(r.cells.map((c) => [c.target, c.cell])) as Partial<Record<SkillTarget, SkillCell>>,
+            ]),
+          ),
+          access: connect.access,
+          windows: platform.os === "windows",
+        })
+      : null
     const mine: AgentClaim[] = claims
       .filter((c) => c.holder.type === "agent" && c.holder.agent === agent.id)
       .map((c) => ({ ...c, session: c.holder.type === "agent" ? c.holder.session : null }))
@@ -141,7 +135,7 @@ export function AgentsPage() {
     load(rows.map((r) => r.tool.id))
     useConnect.getState().check(id)
   }
-  // Opening an agent the first time runs its check: permissions and MCP answers are read only by it.
+  // Opening an agent the first time runs its check: permissions are read only by it.
   const manage = (id: string) => {
     const opening = expanded !== id
     setExpanded(opening ? id : null)
@@ -162,8 +156,7 @@ export function AgentsPage() {
           <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Agents</h1>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
             Whether each AI agent on this computer can use your tools, and what it has done with them. An agent learns a
-            tool from its skill and runs its commands; that is all it needs. MCP is optional, for apps that cannot run
-            commands.
+            tool from its skill and runs its commands; that is all it needs.
           </p>
         </div>
         <Button

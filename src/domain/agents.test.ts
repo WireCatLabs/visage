@@ -75,9 +75,9 @@ describe("buildCheck", () => {
   const base: CheckInput = {
     agent: { id: "claude", name: "Claude Code", reads: ["claude"] },
     tools: [
-      { id: "tg", name: "Telegram", bin: "tg", path: "~/.local/share/pnpm/tg", hasMcp: true },
-      { id: "zm", name: "Zoom", bin: "zm", path: "/usr/lib/node/bin/zm", hasMcp: false },
-      { id: "max", name: "MAX", bin: "max", path: null, hasMcp: true },
+      { id: "tg", name: "Telegram", bin: "tg", path: "~/.local/share/pnpm/tg" },
+      { id: "zm", name: "Zoom", bin: "zm", path: "/usr/lib/node/bin/zm" },
+      { id: "max", name: "MAX", bin: "max", path: null },
     ],
     reach: { tg: true, zm: false, max: true },
     skills: {
@@ -85,9 +85,6 @@ describe("buildCheck", () => {
       zm: { claude: { kind: "missing" } },
       max: { claude: { kind: "unknown" } },
     },
-    servers: { names: ["tg-personal", "tg-work"], canAdd: true },
-    health: { "tg/personal": { healthy: true, signedIn: true }, "tg/work": { healthy: false, signedIn: false } },
-    profiles: { tg: ["personal", "work"], max: ["personal"] },
   }
 
   it("lists what to fix worst first, each with its fix", () => {
@@ -96,10 +93,8 @@ describe("buildCheck", () => {
     expect(items[0]?.id).toBe("zm:path")
     expect(by("zm:path")?.fix).toEqual({ kind: "command", command: 'export PATH="/usr/lib/node/bin:$PATH"' })
     expect(by("zm:skill")).toMatchObject({ tone: "warn", fix: { kind: "skill", tool: "zm", target: "claude" } })
-    expect(by("tg/work:mcp")).toMatchObject({ tone: "warn", fix: { kind: "command", command: "tg work setup" } })
-    expect(by("tg/personal:mcp")?.tone).toBe("ok")
     expect(by("skill:unknown")?.title).toBe("MAX cannot report its skill")
-    expect(items.some((i) => i.id.startsWith("mcp:"))).toBe(false)
+    expect(items.some((i) => /mcp/i.test(i.id + i.title + i.detail))).toBe(false)
     expect(overall(items)).toBe("bad")
     expect(overall(items, base.tools)).toBe("warn")
     expect(
@@ -114,8 +109,6 @@ describe("buildCheck", () => {
     const items = buildCheck({
       ...base,
       tools: base.tools.slice(0, 1),
-      health: { "tg/personal": { healthy: true, signedIn: true } },
-      servers: { names: ["tg-personal"], canAdd: true },
     })
     expect(overall(items)).toBe("ok")
     expect(items.filter((i) => i.tone !== "ok" && i.tone !== "idle")).toEqual([])

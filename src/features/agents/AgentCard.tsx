@@ -1,6 +1,6 @@
 import { RefreshCw, X } from "lucide-react"
-import type { CheckItem, Connection, Session, Tone } from "@/domain/agents"
-import { connections, sessionQuery } from "@/domain/agents"
+import type { CheckItem, Session, Tone } from "@/domain/agents"
+import { sessionQuery } from "@/domain/agents"
 import type { CatalogTool } from "@/domain/catalog"
 import { formatWhen, shortSession, termText } from "@/domain/runs"
 import { type SkillCell, TARGET_FOLDER } from "@/domain/skills"
@@ -15,8 +15,9 @@ import { useLogs } from "../logs/store"
 import { useNav } from "../nav"
 import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
-import { askMcpAdd, askMcpRemove, askRelease, askSkillInstall, mcpKey, releaseKey } from "./actions"
-import { type Loaded, useConnect } from "./connect"
+import { AdvancedMcp } from "./AdvancedMcp"
+import { askRelease, askSkillInstall, releaseKey } from "./actions"
+import { useConnect } from "./connect"
 import { useSkillPreview } from "./SkillPreview"
 
 export type AgentTool = { tool: CatalogTool; skill: { cell: SkillCell; target: string } | null }
@@ -108,12 +109,9 @@ export function SeenAgentCard({ kind, name, sessions }: { kind: string; name: st
 export function AgentCard(props: Props & { selected: boolean; onManage(): void }) {
   const { agent, sessions, claims, tone, selected, onManage } = props
   const checking = useConnect((s) => s.checking[agent.id] === true)
-  const servers = useConnect((s) => s.servers[agent.id])
-  const connected = servers?.state === "ready" ? servers.data.names.length : 0
   const summary = [
     sessions === null ? null : plural(sessions.length, "session"),
     claims.length > 0 ? `${plural(claims.length, "task")} held` : null,
-    connected > 0 ? plural(connected, "MCP server") : null,
   ].filter(Boolean)
   const word = checking ? "Checking…" : tone ? TONE_WORD[tone] : null
 
@@ -147,7 +145,6 @@ const foundWords = (a: Agent) =>
 
 export function AgentDetails(props: Props & { onClose(): void; onCheck(): void }) {
   const { agent, tools, sessions, claims, items, onClose, onCheck } = props
-  const servers = useConnect((s) => s.servers[agent.id])
   const checking = useConnect((s) => s.checking[agent.id] === true)
   return (
     <section
@@ -189,7 +186,7 @@ export function AgentDetails(props: Props & { onClose(): void; onCheck(): void }
         <CheckList agent={agent} items={items} />
       </Section>
       <Section title="Tools">
-        <ToolsTable agent={agent} tools={tools} servers={servers} />
+        <ToolsTable agent={agent} tools={tools} />
       </Section>
       <Section title="Recent sessions">
         <Sessions agent={agent} sessions={sessions} />
@@ -197,6 +194,7 @@ export function AgentDetails(props: Props & { onClose(): void; onCheck(): void }
       <Section title="Tasks it holds">
         <Claims agent={agent} claims={claims} />
       </Section>
+      <AdvancedMcp agent={agent} />
     </section>
   )
 }
@@ -214,7 +212,6 @@ const box = "rounded-[0.45rem] border border-line bg-app"
 
 function CheckList({ agent, items }: { agent: Agent; items: readonly CheckItem[] | null }) {
   const go = useNav((s) => s.go)
-  const checked = useConnect((s) => s.checked[agent.id] === true)
   if (!items) return <Skeleton className="h-10 w-full" label="Checking" />
   const shown = items.filter((i) => i.tone !== "ok")
   const fine = items.filter((i) => i.tone === "ok").length
@@ -256,21 +253,12 @@ function CheckList({ agent, items }: { agent: Agent; items: readonly CheckItem[]
       ))}
       <li className="px-4 py-2.5 text-[0.85rem] text-ink-soft">
         {fine > 0 ? `${plural(fine, "check")} passed.` : "No check passed yet."}
-        {!checked && " Checking this agent also starts each connected MCP server to see that it answers."}
       </li>
     </ul>
   )
 }
 
-function ToolsTable({
-  agent,
-  tools,
-  servers,
-}: {
-  agent: Agent
-  tools: readonly AgentTool[]
-  servers: Loaded<{ names: string[]; canAdd: boolean; canRemove: boolean; source: string }> | undefined
-}) {
+function ToolsTable({ agent, tools }: { agent: Agent; tools: readonly AgentTool[] }) {
   const openSkill = useSkillPreview((s) => s.open)
   if (tools.length === 0) return <p className="text-[0.9rem] text-ink-soft">No WireCat tool is installed yet.</p>
   return (
@@ -283,9 +271,6 @@ function ToolsTable({
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
               Skill
-            </th>
-            <th scope="col" className="px-4 py-2 font-medium">
-              MCP <span className="font-normal">(optional)</span>
             </th>
           </tr>
         </thead>
@@ -321,133 +306,12 @@ function ToolsTable({
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2.5">
-                  <McpCell agent={agent} tool={tool} servers={servers} />
-                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
-      <p className="border-line border-t px-4 py-2 text-[0.8rem] text-ink-dim">
-        The skill is all {agent.name} needs: it runs the commands itself. Connect over MCP only for an app that cannot
-        run commands, such as a chat app.
-        {servers?.state === "ready" && (
-          <>
-            {" "}
-            MCP servers read from <span className="selectable font-mono">{servers.data.source}</span>
-          </>
-        )}
-      </p>
     </div>
-  )
-}
-
-function McpCell({
-  agent,
-  tool,
-  servers,
-}: {
-  agent: Agent
-  tool: CatalogTool
-  servers: Loaded<{ names: string[]; canAdd: boolean; canRemove: boolean }> | undefined
-}) {
-  const profiles = useConnect((s) => s.profiles[tool.id])
-  if (!servers || servers.state === "loading" || (tool.profiles && !profiles))
-    return <Skeleton className="h-5 w-32" label="Reading MCP servers" />
-  if (servers.state === "error")
-    return (
-      <ErrorNotice
-        inline
-        action={<ReportThis what={`Reading ${agent.name} MCP servers`} tool={tool.id} error={servers.error} />}
-      >
-        {servers.error}
-      </ErrorNotice>
-    )
-  const { names, canAdd, canRemove } = servers.data
-  const rows = connections(names, tool.bin, profiles ?? [])
-  const shown = tool.mcp ? rows : rows.filter((r) => r.connected)
-  return (
-    <ul className="flex flex-col gap-1.5">
-      {shown.map((row) => (
-        <McpRow key={row.profile ?? ""} agent={agent} tool={tool} row={row} canAdd={canAdd} canRemove={canRemove} />
-      ))}
-      {tool.mcp && rows.length === 0 && (
-        <li className="text-[0.85rem] text-ink-soft">No profile yet. Sign in on the Tools page first.</li>
-      )}
-      {!tool.mcp && (
-        <li className="text-[0.85rem] text-ink-dim">
-          {shown.length === 0 ? "Not connected. " : ""}Connecting {tool.name} from here arrives with a tool update.
-        </li>
-      )}
-    </ul>
-  )
-}
-
-function McpRow(props: { agent: Agent; tool: CatalogTool; row: Connection; canAdd: boolean; canRemove: boolean }) {
-  const { agent, tool, row, canAdd, canRemove } = props
-  const key = mcpKey(agent.id, tool.id, row.profile)
-  const busy = useConnect((s) => s.busy[key] === true)
-  const failure = useConnect((s) => s.failures[key])
-  const label = row.profile ?? `${tool.bin} (no profile)`
-  return (
-    <li>
-      <div className="flex min-h-8 flex-wrap items-center gap-2">
-        <Lamp
-          size="sm"
-          tone={busy ? "busy" : row.connected ? "ok" : "idle"}
-          label={`${tool.name} ${label} for ${agent.name}: ${row.connected ? "Connected" : "Not connected"}`}
-        />
-        <span className="font-mono text-[0.85rem]">{label}</span>
-        <span className="text-[0.85rem] text-ink-soft">{row.connected ? "Connected" : "Not connected"}</span>
-        {row.connected && canRemove && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto"
-            disabled={busy}
-            onClick={() => askMcpRemove(tool.id, row.profile, agent)}
-            aria-label={`Disconnect ${tool.name} ${label} from ${agent.name}`}
-          >
-            Disconnect
-          </Button>
-        )}
-        {!row.connected && canAdd && row.profile && (
-          <Button
-            size="sm"
-            className="ml-auto"
-            disabled={busy}
-            onClick={() => row.profile && askMcpAdd(tool.id, row.profile, agent)}
-            aria-label={`Connect ${tool.name} ${label} to ${agent.name}`}
-          >
-            {busy ? "Starting it…" : "Connect"}
-          </Button>
-        )}
-      </div>
-      {!row.connected && !canAdd && row.profile && (
-        <p className="text-[0.8rem] text-ink-soft">
-          Add it in {agent.name}'s settings with the entry{" "}
-          <code className="selectable font-mono">
-            {tool.bin} {row.profile} mcp config
-          </code>{" "}
-          prints.
-        </p>
-      )}
-      {failure && !busy && (
-        <ErrorNotice
-          inline
-          action={
-            <ReportThis
-              what={`${row.connected ? "Disconnecting" : "Connecting"} ${tool.name} ${label} and ${agent.name}`}
-              tool={tool.id}
-              error={failure}
-            />
-          }
-        >
-          {failure}
-        </ErrorNotice>
-      )}
-    </li>
   )
 }
 
