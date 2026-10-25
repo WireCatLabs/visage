@@ -37,7 +37,7 @@ pub struct Sent {
     pub issue_url: Option<String>,
 }
 
-pub fn context(attach_logs: bool) -> Context {
+pub fn context() -> Context {
     let readiness = system::readiness();
     let tools: Vec<Value> = tools::detect_owners()
         .into_iter()
@@ -46,7 +46,7 @@ pub fn context(attach_logs: bool) -> Context {
             Some(json!({ "id": t.id, "version": first.version, "manager": first.manager }))
         })
         .collect();
-    let attachments = attach_logs.then(|| json!({ "runs": recent_failures(&tools) }));
+    let attachments = Some(json!({ "runs": recent_failures(&tools) }));
     Context {
         app: json!({ "name": "wirecat-desktop", "version": env!("CARGO_PKG_VERSION") }),
         system: json!({
@@ -75,11 +75,7 @@ fn recent_failures(installed: &[Value]) -> Vec<Value> {
 pub fn send(draft: Draft, mut context: Context) -> Result<Sent, String> {
     let body = body(draft, &mut context)?;
     let key = body["idempotencyKey"].as_str().unwrap_or_default().to_string();
-    let payload = json!({ "report": body["report"] });
-    let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
-    if bytes.len() > MAX_BODY {
-        return Err("The report is too large. Send it without logs.".into());
-    }
+    let bytes = payload(body["report"].clone())?;
 
     let url = format!("{}/v1/reports", api_base()?);
     let agent: ureq::Agent = ureq::Agent::config_builder()
@@ -97,6 +93,22 @@ pub fn send(draft: Draft, mut context: Context) -> Result<Sent, String> {
     let status = response.status().as_u16();
     let answer: Value = response.body_mut().read_json().unwrap_or(Value::Null);
     accepted(status, &answer)
+}
+
+/// Logs are always attached, so a report that outgrows the limit sheds the failed runs before it gives up.
+fn payload(mut report: Value) -> Result<Vec<u8>, String> {
+    let bytes = serde_json::to_vec(&json!({ "report": report })).map_err(|e| e.to_string())?;
+    if bytes.len() <= MAX_BODY {
+        return Ok(bytes);
+    }
+    if let Some(a) = report["attachments"].as_object_mut() {
+        a.remove("runs");
+    }
+    let bytes = serde_json::to_vec(&json!({ "report": report })).map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BODY {
+        return Err("The report is too large. Shorten the description.".into());
+    }
+    Ok(bytes)
 }
 
 fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
@@ -215,6 +227,15 @@ mod tests {
         let mut d = draft("x", "x");
         d.idempotency_key = "--help".into();
         assert!(body(d, &mut context()).is_err());
+    }
+
+    #[test]
+    fn drops_failed_runs_before_refusing_a_large_report() {
+        let big =
+            json!({ "summary": "x", "attachments": { "runs": ["x".repeat(MAX_BODY)], "installLog": ["npm ERR!"] } });
+        let sent: Value = serde_json::from_slice(&payload(big).unwrap()).unwrap();
+        assert_eq!(sent["report"]["attachments"], json!({ "installLog": ["npm ERR!"] }));
+        assert!(payload(json!({ "details": "x".repeat(MAX_BODY) })).is_err());
     }
 
     #[test]

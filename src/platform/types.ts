@@ -50,8 +50,8 @@ export type Platform = {
   /** Resolves with the version written. */
   skillInstall(id: string, target: Target): Promise<string | null>
   openSetup(id: string, profile: string | null): Promise<void>
-  /** What a bug report would carry about this computer, masked; `attachLogs` adds recent failed runs (private). */
-  reportContext(attachLogs: boolean): Promise<ReportContext>
+  /** What a bug report carries about this computer, masked, including recent failed runs (private). */
+  reportContext(): Promise<ReportContext>
   sendReport(draft: ReportDraft, context: ReportContext): Promise<ReportSent>
   /** `query` is the CLI's own filter (exact `field:value` terms); `page` starts at 1. */
   listRuns(id: string, query: string | null, limit: number, page: number): Promise<RunsPage>

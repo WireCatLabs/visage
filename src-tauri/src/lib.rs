@@ -216,8 +216,8 @@ async fn settings_unset(id: String, profile: Option<String>, defaults: bool, set
 }
 
 #[tauri::command]
-async fn report_context(attach_logs: bool) -> Result<report::Context, String> {
-    blocking(move || report::context(attach_logs)).await
+async fn report_context() -> Result<report::Context, String> {
+    blocking(report::context).await
 }
 
 #[tauri::command]

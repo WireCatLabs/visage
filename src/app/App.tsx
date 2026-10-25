@@ -1,3 +1,4 @@
+import { Bug } from "lucide-react"
 import { useState } from "react"
 import { HelpMenu } from "@/features/onboarding/HelpMenu"
 import { Onboarding, SetupSteps } from "@/features/onboarding/Onboarding"
@@ -7,6 +8,7 @@ import { ReportDialog } from "@/features/report/ReportDialog"
 import { useReport } from "@/features/report/store"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
+import { Button } from "@/ui/Button"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { Sidebar } from "./Sidebar"
 import { sections } from "./sections"
@@ -32,11 +34,18 @@ export function App() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar>
           {!onboarding && (
-            <HelpMenu
-              onTour={startTour}
-              onWelcome={() => useOnboarding.getState().reopen("welcome")}
-              onReport={() => useReport.getState().start()}
-            />
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="Tell the WireCat team what went wrong"
+                icon={<Bug className="size-4" strokeWidth={1.8} aria-hidden />}
+                onClick={() => useReport.getState().start()}
+              >
+                Report a problem
+              </Button>
+              <HelpMenu onTour={startTour} onWelcome={() => useOnboarding.getState().reopen("welcome")} />
+            </>
           )}
         </TopBar>
         {onboarding ? (

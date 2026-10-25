@@ -70,7 +70,7 @@ function createTauri(): Platform {
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
-    reportContext: (attachLogs) => call(ReportContextSchema, "report_context", { attachLogs }),
+    reportContext: () => call(ReportContextSchema, "report_context"),
     sendReport: (draft, context) => call(ReportSentSchema, "send_report", { draft, context }),
     settingsShow: (id, profile) => call(SettingsSchema, "settings_show", { id, profile }),
     settingsSet: (id, profile, defaults, setting, value) =>

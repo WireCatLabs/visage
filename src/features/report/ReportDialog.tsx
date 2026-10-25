@@ -1,60 +1,81 @@
-import { CircleCheck, ExternalLink, Globe, LoaderCircle, Lock, Send } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import { CircleAlert, CircleCheck, ExternalLink, LoaderCircle, LockKeyhole, Send } from "lucide-react"
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react"
 import { tools } from "@/domain/catalog"
-import { issueBody, newIssueUrl } from "@/domain/report"
+import { issueBody, LIMITS, newIssueUrl, type ReportFields, type ReportProblem, validateReport } from "@/domain/report"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
+import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
-import { useReport } from "./store"
+import { attachmentsOf, useReport } from "./store"
 
 const SECURITY_POLICY = "https://github.com/WireCatLabs/.github/blob/main/SECURITY.md"
-const field =
-  "w-full rounded-[0.35rem] border border-line-strong bg-app px-2.5 py-1.5 text-[0.95rem] text-ink placeholder:text-ink-dim aria-[invalid=true]:border-bad"
-const label = "text-[0.875rem] font-medium text-ink"
+const control =
+  "w-full rounded-[0.35rem] border border-line-strong bg-app px-2.5 py-1.5 text-[0.95rem] leading-normal text-ink placeholder:text-ink-dim disabled:opacity-60 aria-[invalid=true]:border-bad"
+const empty: ReportFields = { summary: "", about: "", steps: "", happened: "", expected: "" }
+
+type FieldId = keyof ReportFields
 
 export function ReportDialog() {
   const { open, prefill, phase, close } = useReport()
-  const [summary, setSummary] = useState("")
-  const [details, setDetails] = useState("")
-  const [expected, setExpected] = useState("")
-  const [tool, setTool] = useState<string | null>(null)
-  const ids = { summary: useId(), details: useId(), expected: useId(), tool: useId() }
+  const [fields, setFields] = useState<ReportFields>(empty)
+  const [tried, setTried] = useState(false)
+  const form = useRef<HTMLFormElement>(null)
+  const base = useId()
+  const id = (f: FieldId) => `${base}-${f}`
 
   useEffect(() => {
     if (!open) return
-    setSummary(prefill.summary ?? "")
-    setDetails(prefill.details ?? "")
-    setExpected("")
-    setTool(prefill.tool ?? null)
+    setFields({ ...empty, summary: prefill.summary ?? "", about: prefill.tool ?? "", happened: prefill.details ?? "" })
+    setTried(false)
   }, [open, prefill])
 
-  const fields = { summary, details, expected, tool }
-  const ready = summary.trim().length > 0 && summary.trim().length <= 120 && details.trim().length > 0
+  const set = (f: FieldId) => (e: { target: { value: string } }) => setFields((s) => ({ ...s, [f]: e.target.value }))
+  const problems = tried ? validateReport(fields) : []
+  const problem = (f: FieldId) => problems.find((p) => p.field === f)
   const sending = phase === "sending"
+
+  const submit = () => {
+    const found = validateReport(fields)
+    setTried(true)
+    const first = found[0]
+    if (first) document.getElementById(id(first.field))?.focus()
+    else if (!sending) void useReport.getState().send(fields)
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      form.current?.requestSubmit()
+    }
+  }
 
   return (
     <Dialog
       open={open}
       wide
+      scroll
       title={phase === "sent" ? "Report sent" : "Report a problem"}
       onClose={close}
-      actions={<Actions fields={fields} ready={ready} />}
+      actions={<Actions fields={fields} />}
     >
       {phase === "sent" ? (
         <Sent />
       ) : (
         <form
+          ref={form}
           id="report-form"
-          className="flex max-h-[min(36rem,calc(100vh-12rem))] flex-col gap-4 overflow-y-auto pr-1"
+          noValidate
+          className="flex flex-col gap-5 pb-4"
+          onKeyDown={onKeyDown}
           onSubmit={(e) => {
             e.preventDefault()
-            if (ready && !sending) useReport.getState().send(fields)
+            submit()
           }}
         >
-          <p>
-            The report becomes a public GitHub issue, so the team can track it and you can follow it. Email addresses,
-            phone numbers and tokens in your text are masked before it leaves this computer. Security problems go to the{" "}
+          <p className="max-w-[70ch] text-[0.875rem]">
+            Your report becomes a public issue on GitHub, so you can follow it. Email addresses, phone numbers and
+            tokens in your text are masked before it leaves this computer. For a security problem, use the{" "}
             <button
               type="button"
               className="font-medium text-brand hover:text-brand-hover"
@@ -65,166 +86,238 @@ export function ReportDialog() {
             instead.
           </p>
 
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem]">
-            <div className="flex flex-col gap-1">
-              <label htmlFor={ids.summary} className={label}>
-                Summary
-              </label>
-              <input
-                id={ids.summary}
-                data-autofocus
-                value={summary}
-                maxLength={120}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="Installing Google Drive fails at the last step"
-                className={field}
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_15rem]">
+            <Field
+              id={id("summary")}
+              label="Summary"
+              problem={problem("summary")}
+              aside={<Counter value={fields.summary} limit={LIMITS.summary} id={`${id("summary")}-count`} />}
+              extraDescribedBy={`${id("summary")}-count`}
+            >
+              {(a11y) => (
+                <input
+                  {...a11y}
+                  data-autofocus
+                  value={fields.summary}
+                  maxLength={LIMITS.summary}
+                  onChange={set("summary")}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || e.ctrlKey || e.metaKey) return
+                    e.preventDefault()
+                    document.getElementById(id("about"))?.focus()
+                  }}
+                  placeholder="Installing Google Drive stops at “Verifying”"
+                  className={control}
+                  disabled={sending}
+                />
+              )}
+            </Field>
+            <Field id={id("about")} label="About" problem={problem("about")}>
+              {(a11y) => (
+                <select
+                  {...a11y}
+                  value={fields.about}
+                  onChange={set("about")}
+                  className={cx(control, "h-[2.4rem]", !fields.about && "text-ink-dim")}
+                  disabled={sending}
+                >
+                  <option value="" disabled>
+                    Choose…
+                  </option>
+                  <optgroup label="The app">
+                    <option value="app">WireCat Desktop</option>
+                  </optgroup>
+                  <optgroup label="A tool">
+                    {tools.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.bin})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              )}
+            </Field>
+          </div>
+
+          <Field
+            id={id("steps")}
+            label="What were you doing?"
+            optional
+            hint="The steps that lead to the problem, one per line. Numbered steps help the most."
+          >
+            {(a11y) => (
+              <textarea
+                {...a11y}
+                value={fields.steps}
+                rows={4}
+                maxLength={LIMITS.steps}
+                onChange={set("steps")}
+                placeholder={"1. Opened Tools\n2. Pressed Install on Google Drive\n3. Waited at “Verifying”"}
+                className={cx(control, "resize-y")}
                 disabled={sending}
               />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor={ids.tool} className={label}>
-                About
-              </label>
-              <select
-                id={ids.tool}
-                value={tool ?? ""}
-                onChange={(e) => setTool(e.target.value || null)}
-                className={`${field} h-[2.3rem]`}
+            )}
+          </Field>
+
+          <Field
+            id={id("happened")}
+            label="What happened?"
+            problem={problem("happened")}
+            hint="What you saw. Copy the exact message if there was one."
+          >
+            {(a11y) => (
+              <textarea
+                {...a11y}
+                value={fields.happened}
+                rows={4}
+                maxLength={LIMITS.happened}
+                onChange={set("happened")}
+                placeholder="The install stopped and said “EACCES: permission denied”."
+                className={cx(control, "resize-y")}
                 disabled={sending}
-              >
-                <option value="">WireCat Desktop</option>
-                {tools.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.bin})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+              />
+            )}
+          </Field>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor={ids.details} className={label}>
-              What happened
-            </label>
-            <textarea
-              id={ids.details}
-              value={details}
-              rows={5}
-              maxLength={10000}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="What you did, and what the app or the tool said."
-              className={`${field} resize-y`}
-              disabled={sending}
-            />
-          </div>
+          <Field id={id("expected")} label="What did you expect?" optional>
+            {(a11y) => (
+              <textarea
+                {...a11y}
+                value={fields.expected}
+                rows={2}
+                maxLength={LIMITS.expected}
+                onChange={set("expected")}
+                placeholder="Google Drive to install and show a green lamp."
+                className={cx(control, "resize-y")}
+                disabled={sending}
+              />
+            )}
+          </Field>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor={ids.expected} className={label}>
-              What you expected <span className="font-normal text-ink-dim">(optional)</span>
-            </label>
-            <textarea
-              id={ids.expected}
-              value={expected}
-              rows={2}
-              maxLength={5000}
-              onChange={(e) => setExpected(e.target.value)}
-              className={`${field} resize-y`}
-              disabled={sending}
-            />
-          </div>
-
-          <Preview fields={fields} />
+          <WhatIsSent fields={fields} />
         </form>
       )}
     </Dialog>
   )
 }
 
-function Preview({ fields }: { fields: { summary: string; details: string; expected: string; tool: string | null } }) {
-  const { context, contextError, attachLogs, setAttachLogs, phase, prefill } = useReport()
-  const runs = (context?.attachments?.runs as { tool: string; runs: unknown[] }[] | undefined) ?? []
-  const runCount = runs.reduce((n, r) => n + (Array.isArray(r.runs) ? r.runs.length : 0), 0)
+type A11y = { id: string; "aria-invalid": boolean; "aria-describedby"?: string | undefined }
 
+function Field({
+  id,
+  label,
+  optional = false,
+  hint,
+  problem,
+  aside,
+  extraDescribedBy,
+  children,
+}: {
+  id: string
+  label: string
+  optional?: boolean
+  hint?: string
+  problem?: ReportProblem | undefined
+  aside?: ReactNode
+  extraDescribedBy?: string
+  children: (a11y: A11y) => ReactNode
+}) {
+  const describedBy = [problem && `${id}-error`, hint && `${id}-hint`, extraDescribedBy].filter(Boolean).join(" ")
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <section className="flex flex-col gap-2 rounded-[0.4rem] border border-line bg-app-2/60 p-3">
-        <h3 className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-ink">
-          <Globe className="size-4" aria-hidden /> Public on GitHub
-        </h3>
-        <p className="text-[0.85rem]">
-          Your summary and description, and the versions of the app, the system and your tools.
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="flex items-baseline gap-1.5">
+          <label htmlFor={id} className="text-[0.875rem] font-medium text-ink">
+            {label}
+          </label>
+          {optional && <span className="text-[0.85rem] text-ink-dim">optional</span>}
+        </span>
+        {aside}
+      </div>
+      {hint && (
+        <p id={`${id}-hint`} className="-mt-1 text-[0.85rem] leading-snug text-ink-dim">
+          {hint}
         </p>
-        {context ? (
-          <Disclosure summary="Show the issue text">
-            <pre className="selectable max-h-48 overflow-auto whitespace-pre-wrap rounded-[0.3rem] bg-app p-2 font-mono text-[0.78rem] text-ink">
-              {`${fields.summary || "(summary)"}\n\n${issueBody(fields, context)}`}
-            </pre>
-          </Disclosure>
-        ) : (
-          <p className="flex items-center gap-1.5 text-[0.85rem] text-ink-dim">
-            {contextError ? (
-              `Could not read the versions: ${contextError}`
-            ) : (
-              <>
-                <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Reading versions…
-              </>
-            )}
-          </p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-[0.4rem] border border-line bg-app-2/60 p-3">
-        <h3 className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-ink">
-          <Lock className="size-4" aria-hidden /> Kept private
-        </h3>
-        <label className="flex items-start gap-2 text-[0.85rem] text-ink">
-          <input
-            type="checkbox"
-            className="mt-0.5 accent-[var(--brand)]"
-            checked={attachLogs}
-            disabled={phase === "sending"}
-            onChange={(e) => setAttachLogs(e.target.checked)}
-          />
-          <span>
-            Attach recent error logs. They are masked, stored on the WireCat server for 90 days, and never shown in the
-            issue.
-          </span>
-        </label>
-        {attachLogs && !context && !contextError && (
-          <p className="flex items-center gap-1.5 text-[0.85rem] text-ink-dim">
-            <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Collecting failed runs from your tools…
-          </p>
-        )}
-        {attachLogs && context && (
-          <>
-            <p className="text-[0.85rem]">
-              {runCount} failed {runCount === 1 ? "run" : "runs"} from {runs.map((r) => r.tool).join(", ") || "no tool"}
-              {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}.
-            </p>
-            <Disclosure summary="Show what is attached">
-              <pre className="selectable max-h-48 overflow-auto rounded-[0.3rem] bg-app p-2 font-mono text-[0.78rem] text-ink">
-                {JSON.stringify(
-                  { ...context.attachments, ...(prefill.log?.length ? { installLog: prefill.log } : {}) },
-                  null,
-                  2,
-                )}
-              </pre>
-            </Disclosure>
-          </>
-        )}
-      </section>
+      )}
+      {children({ id, "aria-invalid": Boolean(problem), "aria-describedby": describedBy || undefined })}
+      {problem && (
+        <p id={`${id}-error`} className="flex items-center gap-1.5 text-[0.85rem] text-bad">
+          <CircleAlert className="size-3.5 shrink-0" aria-hidden />
+          {problem.message}
+        </p>
+      )}
     </div>
   )
 }
 
-function Actions({ fields, ready }: { fields: Parameters<typeof newIssueUrl>[0]; ready: boolean }) {
-  const { phase, error, context, close } = useReport()
+function Counter({ value, limit, id }: { value: string; limit: number; id: string }) {
+  const n = value.length
+  return (
+    <span
+      id={id}
+      className={cx("font-mono text-[0.78rem] tabular-nums", n >= limit - 10 ? "text-warn-ink" : "text-ink-dim")}
+    >
+      <span className="sr-only">Characters used: </span>
+      {n}/{limit}
+    </span>
+  )
+}
+
+function WhatIsSent({ fields }: { fields: ReportFields }) {
+  const { context, contextError, prefill } = useReport()
+  const runs = (context?.attachments?.runs as { tool: string; runs: unknown[] }[] | undefined) ?? []
+  const runCount = runs.reduce((n, r) => n + (Array.isArray(r.runs) ? r.runs.length : 0), 0)
+  const pre =
+    "selectable max-h-56 overflow-auto whitespace-pre-wrap rounded-[0.3rem] border border-line bg-app p-2.5 font-mono text-[0.78rem] leading-relaxed text-ink"
+
+  return (
+    <section
+      aria-label="What is sent"
+      className="flex flex-col gap-3 rounded-[0.45rem] bg-app-2 px-4 py-3.5 text-[0.875rem]"
+    >
+      <p className="flex gap-2.5">
+        <LockKeyhole className="mt-[0.2rem] size-4 shrink-0 text-ink-dim" aria-hidden />
+        <span>
+          Recent error logs from your tools are attached. They are masked, kept only on WireCat’s server for 90 days,
+          and never shown on GitHub. They can still contain personal details you typed into a command, such as a search
+          query.
+        </span>
+      </p>
+      {context ? (
+        <div className="flex flex-col gap-2 pl-[1.6rem]">
+          <Disclosure summary="See what is attached">
+            <p className="mb-2">
+              {runCount} failed {runCount === 1 ? "run" : "runs"}
+              {runs.length ? ` from ${runs.map((r) => r.tool).join(", ")}` : ""}
+              {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}.
+            </p>
+            <pre className={pre}>{JSON.stringify(attachmentsOf(context, prefill), null, 2)}</pre>
+          </Disclosure>
+          <Disclosure summary="See the public issue">
+            <pre className={pre}>{`${fields.summary.trim() || "(summary)"}\n\n${issueBody(fields, context)}`}</pre>
+          </Disclosure>
+        </div>
+      ) : (
+        !contextError && (
+          <p className="flex items-center gap-2 pl-[1.6rem] text-ink-dim" role="status">
+            <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Collecting versions and recent errors…
+          </p>
+        )
+      )}
+    </section>
+  )
+}
+
+function Actions({ fields }: { fields: ReportFields }) {
+  const { phase, error, context, contextError, close } = useReport()
   if (phase === "sent") return <Button onClick={close}>Done</Button>
+  const preparing = !context && !contextError
+  const alert = phase === "failed" ? error : contextError && `Could not read this computer’s details: ${contextError}`
   return (
     <div className="flex w-full flex-wrap items-center justify-end gap-2">
-      {phase === "failed" && error && (
+      {alert && (
         <p role="alert" className="mr-auto max-w-[24rem] text-[0.875rem] text-bad">
-          {error}
+          {alert}
         </p>
       )}
       {phase === "failed" && context && (
@@ -243,16 +336,18 @@ function Actions({ fields, ready }: { fields: Parameters<typeof newIssueUrl>[0];
         variant="primary"
         type="submit"
         form="report-form"
-        disabled={!ready || !context || phase === "sending"}
+        title="Send report (Ctrl+Enter)"
+        aria-keyshortcuts="Control+Enter Meta+Enter"
+        disabled={!context || phase === "sending"}
         icon={
-          phase === "sending" ? (
+          phase === "sending" || preparing ? (
             <LoaderCircle className="size-4 animate-spin" aria-hidden />
           ) : (
             <Send className="size-4" aria-hidden />
           )
         }
       >
-        {phase === "sending" ? "Sending…" : phase === "failed" ? "Try again" : "Send report"}
+        {phase === "sending" ? "Sending…" : preparing ? "Preparing…" : phase === "failed" ? "Try again" : "Send report"}
       </Button>
     </div>
   )
@@ -262,7 +357,7 @@ function Sent() {
   const sent = useReport((s) => s.sent)
   if (!sent) return null
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 pb-4">
       <p className="flex items-center gap-2 text-ink">
         <CircleCheck className="size-5 text-ok" aria-hidden />
         {sent.issueUrl ? `Thank you. The report is issue #${sent.issueNumber}.` : "Thank you. The report is saved."}

@@ -32,7 +32,7 @@ Body, at most 1 MB:
 {
   "report": {
     "summary": "Install of Google Drive fails with EACCES",
-    "details": "What happened, in the user's words.",
+    "details": "### What I was doing\n\n1. Opened Tools …\n\n### What happened\n\nThe install stopped …",
     "expected": "What the user expected instead, or null.",
     "tool": "drive",
     "app": { "name": "wirecat-desktop", "version": "0.1.0" },
@@ -46,11 +46,11 @@ Body, at most 1 MB:
 | Field | Rules |
 | --- | --- |
 | `summary` | required, 1–120 characters, becomes the issue title |
-| `details` | required, 1–10 000 characters |
+| `details` | required, 1–10 000 characters. Markdown: the desktop form is a template, and its answers arrive as a `### What I was doing` section (left out when empty) and a `### What happened` section. Render it as given |
 | `expected` | optional, up to 5 000 characters |
 | `tool` | optional, one of `tg max wa zm drive memo`, or null for the app itself |
 | `app`, `system`, `tools` | required objects; versions may be null when unknown |
-| `attachments` | optional object; **private**, stored on the server only, never copied into the issue. Today: `runs` (each installed tool's last 20 failed runs, from its `runs list`) and `installLog` (the masked output of a failed install, up to 200 lines). Store it as given; new keys may appear |
+| `attachments` | optional object; **private**, stored on the server only, never copied into the issue. The desktop app always sends `runs` (each installed tool's last 20 failed runs, from its `runs list`), plus `installLog` (the masked output of a failed install, up to 200 lines) when a failed install opened the report. A body over 1 MB loses `runs` first. Store it as given; new keys may appear |
 
 Responses:
 
@@ -65,6 +65,17 @@ Responses:
 
 Error body: `{"error": {"code": "validation_error", "message": "…", "fields": {"summary": ["is too long"]}}}`. The
 client shows `message` and, when present, the field messages next to the fields.
+
+## Issue body
+
+The desktop app previews the public issue and opens the same text on GitHub when the server cannot be reached
+(`issueBody` in `src/domain/report.ts`). The server renders the issue in the same order:
+
+1. `details` as given (the template's sections).
+2. `### Expected` with `expected`, only when present.
+3. `### Environment`: `- App: <name> <version>`, `- OS: <os> <arch>`, `- Node: <node>, npm: <npm>` (`not found` when
+   null), `- Tool: <tool>` when set, then `- <id> <version> (<manager>)` for each installed tool.
+4. The report id, in small text.
 
 ## Health
 

@@ -5,8 +5,8 @@ const mode = new URLSearchParams(typeof window === "undefined" ? "" : window.loc
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export const reportMock: Pick<Platform, "reportContext" | "sendReport"> = {
-  async reportContext(attachLogs) {
-    await delay(attachLogs ? 700 : 200)
+  async reportContext() {
+    await delay(700)
     return {
       app: { name: "wirecat-desktop", version: "0.1.0" },
       system: { os: "Linux", arch: "x86_64", node: "24.19.0", npm: "11.6.2" },
@@ -14,19 +14,17 @@ export const reportMock: Pick<Platform, "reportContext" | "sendReport"> = {
         { id: "tg", version: "0.88.0", manager: "pnpm" },
         { id: "zm", version: "0.42.0", manager: "pnpm" },
       ],
-      attachments: attachLogs
-        ? {
+      attachments: {
+        runs: [
+          {
+            tool: "tg",
             runs: [
-              {
-                tool: "tg",
-                runs: [
-                  { run_id: "20261025T113409Z-chats-list-ccf6d5", command: "chats list", error_code: "rate_limited" },
-                  { run_id: "20261025T101502Z-sync-1a2b3c", command: "sync", error_code: "timeout" },
-                ],
-              },
+              { run_id: "20261025T113409Z-chats-list-ccf6d5", command: "chats list", error_code: "rate_limited" },
+              { run_id: "20261025T101502Z-sync-1a2b3c", command: "sync", error_code: "timeout" },
             ],
-          }
-        : null,
+          },
+        ],
+      },
     }
   },
   async sendReport() {
