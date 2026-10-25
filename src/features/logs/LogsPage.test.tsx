@@ -63,7 +63,14 @@ describe("Logs", () => {
     await user.click(within(dialog).getByRole("button", { name: "Keep every run" }))
     expect(set).toHaveBeenCalledWith("tg", null, true, "record", "true")
     expect(await within(keeping).findByText("Keeps every run")).toBeInTheDocument()
-    expect(within(keeping).getByRole("button", { name: "Keep failed runs only…" })).toBeInTheDocument()
+    const unset = vi.spyOn(platform, "settingsUnset")
+    await user.click(within(keeping).getByRole("button", { name: "Keep failed runs only…" }))
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /Keep failed runs only|Keep failed/ }),
+    )
+    // record: false would stop keeping failed runs too, so going back removes the setting.
+    expect(unset).toHaveBeenCalledWith("tg", null, true, "record")
+    await waitFor(() => expect(within(keeping).getAllByText("Successful runs are not kept")).toHaveLength(3))
   }, 15000)
 
   it("groups by a field from a facet header", async () => {

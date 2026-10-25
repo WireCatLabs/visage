@@ -153,7 +153,10 @@ export const useLogs = create<LogsState>((set, get) => {
       keep(id, { ...k, saving: true, error: null })
       let error: string | null = null
       try {
-        await platform.settingsSet(id, null, true, "record", on ? "true" : "false")
+        // `record: false` also stops keeping failed runs (cli-core settings.ts: kept when true or left at the default),
+        // so going back means removing the setting, not setting it false.
+        if (on) await platform.settingsSet(id, null, true, "record", "true")
+        else await platform.settingsUnset(id, null, true, "record")
       } catch (e) {
         error = message(e)
       }

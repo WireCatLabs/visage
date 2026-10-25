@@ -66,8 +66,9 @@ export function KeepRuns() {
           <p>
             From now on {name} keeps a run only when it fails, as it does out of the box. Successful runs it already
             kept stay until the tool removes old runs{typeof ask?.days === "number" ? `, after ${ask.days} days` : ""}.
-            This sets{" "}
-            <code className="font-mono text-[0.88rem] text-ink">{`${bin} config set --defaults record false`}</code>.
+            This runs{" "}
+            <code className="font-mono text-[0.88rem] text-ink">{`${bin} config unset --defaults record`}</code>, which
+            puts the setting back to the tool's default.
           </p>
         )}
       </Dialog>
