@@ -11,7 +11,7 @@ const fields = { summary: "Install fails", about: "drive", steps: "", happened: 
 describe("report", () => {
   it("files tool problems with the tool and app problems with the app", () => {
     expect(reportRepo("drive")).toBe("https://github.com/WireCatLabs/drive-cli")
-    expect(reportRepo(null)).toBe("https://github.com/WireCatLabs/visage")
+    expect(reportRepo(null)).toBe("https://github.com/WireCatLabs/wirecat-desktop")
   })
 
   it("asks for a summary, a choice of app or tool, and what happened", () => {

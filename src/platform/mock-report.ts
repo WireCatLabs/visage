@@ -31,6 +31,6 @@ export const reportMock: Pick<Platform, "reportContext" | "sendReport"> = {
     await delay(900)
     if (mode === "fail") throw new Error("Could not reach the WireCat server: connection refused")
     if (mode === "queued") return { id: "rep_01JB7Q", issueNumber: null, issueUrl: null }
-    return { id: "rep_01JB7Q", issueNumber: 42, issueUrl: "https://github.com/WireCatLabs/visage/issues/42" }
+    return { id: "rep_01JB7Q", issueNumber: 42, issueUrl: "https://github.com/WireCatLabs/wirecat-desktop/issues/42" }
   },
 }

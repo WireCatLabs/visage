@@ -4,7 +4,8 @@
 request travels from a button to a process. Product truth is [`PRODUCT.md`](PRODUCT.md); visual decisions are
 [`DESIGN.md`](DESIGN.md) once it exists, and `.impeccable/` holds the approved mock-up and design review material.
 
-The repository is `visage`; the product is **WireCat**. The name `visage` never appears in the interface.
+The repository is `wirecat-desktop` (the local folder may still be called `visage`, its old name); the product is
+**WireCat**. The old name `visage` never appears in the interface.
 
 ## Commands
 

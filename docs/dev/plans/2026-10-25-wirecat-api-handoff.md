@@ -95,7 +95,7 @@ Then read `~/.cache/wirecat-api-orient.txt`. It shows:
    Decisions yours:
    - **GitHub auth:** a GitHub App with Issues write on the target repositories only, or a fine-grained token. It
      leans **App**, because it is not tied to a person and its token expires.
-   - **Issue target:** everything goes to `WireCatLabs/visage`, or the report's `tool` picks that tool's repository
+   - **Issue target:** everything goes to `WireCatLabs/wirecat-desktop`, or the report's `tool` picks that tool's repository
      (catalog `repo` field in `/home/leemour/Projects/AI/visage/catalog/tools.json`). It leans **per tool, with
      visage for the app itself**.
    - **Where logs live:** Postgres `jsonb`, or S3 through Shrine (already in trustie). It leans **jsonb** while

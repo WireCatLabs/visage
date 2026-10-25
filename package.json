@@ -68,7 +68,7 @@
   "author": "Viacheslav Ptsarev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WireCatLabs/visage.git"
+    "url": "git+https://github.com/WireCatLabs/wirecat-desktop.git"
   },
   "engines": {
     "node": ">=22.16"

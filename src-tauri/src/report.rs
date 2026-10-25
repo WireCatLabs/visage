@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn reads_created_queued_and_failed_answers() {
-        let created = json!({ "report": { "id": "r1", "issue": { "number": 12, "url": "https://github.com/WireCatLabs/visage/issues/12" } } });
+        let created = json!({ "report": { "id": "r1", "issue": { "number": 12, "url": "https://github.com/WireCatLabs/wirecat-desktop/issues/12" } } });
         let sent = accepted(201, &created).unwrap();
         assert_eq!(sent.issue_number, Some(12));
         let queued = accepted(202, &json!({ "report": { "id": "r2", "issue": null } })).unwrap();

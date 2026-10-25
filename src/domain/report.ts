@@ -13,7 +13,7 @@ export type ReportFacts = {
 
 export const LIMITS = { summary: 120, steps: 4000, happened: 5000, expected: 5000 } as const
 
-const APP_REPO = "https://github.com/WireCatLabs/visage"
+const APP_REPO = "https://github.com/WireCatLabs/wirecat-desktop"
 // GitHub rejects very long prefilled URLs; the text is cut well before that.
 const URL_BODY_LIMIT = 6000
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "WireCat Desktop: install and manage WireCat tools"
 authors = ["Viacheslav Ptsarev"]
 license = "Apache-2.0"
-repository = "https://github.com/WireCatLabs/visage"
+repository = "https://github.com/WireCatLabs/wirecat-desktop"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
