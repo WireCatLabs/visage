@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { tools as catalogTools } from "@/domain/catalog"
+import { tools } from "@/domain/catalog"
 import {
   cellAction,
   needsUpdate,
@@ -30,6 +30,9 @@ const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
 }
 
 const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
+
+// A part of another tool's package (Email in memo) has no skill of its own; its owner's skill covers it.
+const catalogTools = tools.filter((t) => t.skill !== null)
 
 /** Everything the matrix shows, so the page can offer "Update all" over the same cells. */
 export function useSkillMatrix() {

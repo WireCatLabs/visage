@@ -39,7 +39,7 @@ pub struct Sent {
 
 pub fn context(attach_logs: bool) -> Context {
     let readiness = system::readiness();
-    let tools: Vec<Value> = tools::detect_all()
+    let tools: Vec<Value> = tools::detect_owners()
         .into_iter()
         .filter_map(|t| {
             let first = t.installs.first()?;

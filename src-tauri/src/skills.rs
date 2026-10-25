@@ -164,8 +164,10 @@ fn from_doctor(v: &Value) -> Vec<TargetStatus> {
         .collect()
 }
 
+const NO_SKILL: &str = "this tool has no skill of its own";
+
 pub fn status(tool: &Tool) -> Result<SkillReport, String> {
-    let src: &SkillSource = &tool.skill;
+    let src: &SkillSource = tool.skill.as_ref().ok_or(NO_SKILL)?;
     let (out, json) = call(tool, &src.status, Duration::from_secs(30))?;
     match json {
         Some(v) if out.code == Some(0) => return Ok(SkillReport { source: "status", targets: from_status(&v) }),
@@ -195,7 +197,7 @@ fn install_args(src: &SkillSource, target: &str) -> Result<Vec<String>, String> 
 
 /// Returns the version written, which is the CLI's own.
 pub fn install(tool: &Tool, target: &str) -> Result<Option<String>, String> {
-    let args = install_args(&tool.skill, target)?;
+    let args = install_args(tool.skill.as_ref().ok_or(NO_SKILL)?, target)?;
     let (out, json) = call(tool, &args, Duration::from_mins(1))?;
     if out.code == Some(0) {
         Ok(json.as_ref().and_then(|v| body(v)["version"].as_str()).map(str::to_string))
@@ -212,7 +214,7 @@ mod tests {
 
     #[test]
     fn target_is_one_place_and_never_a_flag() {
-        let src = &catalog::tool("tg").unwrap().skill;
+        let src = catalog::tool("tg").unwrap().skill.as_ref().unwrap();
         assert_eq!(install_args(src, "agents").unwrap(), ["skill", "install", "--for", "agents", "--json"]);
         assert!(install_args(src, "all").is_err());
         assert!(install_args(src, "--help").is_err());
@@ -258,7 +260,7 @@ mod tests {
         let found: Vec<_> =
             agents().into_iter().filter_map(|a| a.found_by.map(|f| format!("{} ({f})", a.name))).collect();
         println!("agents: {found:?}");
-        for tool in &catalog::catalog().tools {
+        for tool in catalog::catalog().tools.iter().filter(|t| t.skill.is_some()) {
             match status(tool) {
                 Ok(r) => println!(
                     "{}: {} {:?}",

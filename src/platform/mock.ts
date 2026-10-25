@@ -1,3 +1,4 @@
+import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
 import { storeInfoMock } from "./mock-archive"
 import { reportMock } from "./mock-report"
@@ -283,30 +284,34 @@ export function createMock(os: Platform["os"]): Platform {
     },
     async detectTools(): Promise<ToolState[]> {
       await delay(800)
-      return Object.keys(PACKAGES).map((id) => ({
-        id,
-        installs: installed.has(id)
-          ? [
-              {
-                path: `~/.local/share/pnpm/bin/${id}`,
-                version: installed.get(id) ?? null,
-                manager: "pnpm",
-                problem: null,
-              },
-              ...(id === "zm"
-                ? [{ path: "~/.nvm/versions/node/v24.19.0/bin/zm", version: "0.40.0", manager: "npm", problem: null }]
-                : []),
-            ]
-          : [],
-      }))
+      return tools.map(({ id: tool }) => {
+        const id = ownerId(tool)
+        return {
+          id: tool,
+          installs: installed.has(id)
+            ? [
+                {
+                  path: `~/.local/share/pnpm/bin/${tools.find((t) => t.id === id)?.bin ?? id}`,
+                  version: installed.get(id) ?? null,
+                  manager: "pnpm",
+                  problem: null,
+                },
+                ...(id === "zm"
+                  ? [{ path: "~/.nvm/versions/node/v24.19.0/bin/zm", version: "0.40.0", manager: "npm", problem: null }]
+                  : []),
+              ]
+            : [],
+        }
+      })
     },
     async latestVersions() {
       await delay(1300)
-      return { ...LATEST }
+      return Object.fromEntries(tools.map((t) => [t.id, LATEST[ownerId(t.id)] ?? null]))
     },
     async listProfiles(id): Promise<Profile[] | null> {
       await delay(350)
       if (id === "memo") return null
+      if (id === "email") return scenario === "mixed" ? [{ name: "personal", signedIn: null }] : []
       if (id === "wa") return []
       if (id === "tg") {
         return [
@@ -319,6 +324,15 @@ export function createMock(os: Platform["os"]): Platform {
     async diagnose(id, profile): Promise<Diagnosis> {
       await delay(1000)
       const command = `${id} ${profile ? `${profile} ` : ""}doctor --json`
+      if (id === "email") {
+        return {
+          command: `memo mail check ${profile ?? ""} --json`,
+          exitCode: 0,
+          durationMs: 240,
+          report: { item: { name: "•••", address: "[email]" } },
+          stderr: "",
+        }
+      }
       if (id === "memo") {
         return {
           command,
@@ -364,7 +378,8 @@ export function createMock(os: Platform["os"]): Platform {
         stderr: "",
       }
     },
-    async install(id, onEvent: (e: InstallEvent) => void) {
+    async install(given, onEvent: (e: InstallEvent) => void) {
+      const id = ownerId(given)
       cancelled = false
       const pkg = PACKAGES[id] ?? id
       onEvent({ event: "step", step: "check" })
@@ -397,7 +412,8 @@ export function createMock(os: Platform["os"]): Platform {
       installed.set(id, version)
       onEvent({ event: "done", version, path: `~/.nvm/versions/node/v24.19.0/bin/${id}`, shadowedBy: null })
     },
-    async uninstall(id, onEvent: (e: InstallEvent) => void) {
+    async uninstall(given, onEvent: (e: InstallEvent) => void) {
+      const id = ownerId(given)
       cancelled = false
       onEvent({ event: "step", step: "check" })
       await delay(500)

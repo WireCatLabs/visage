@@ -4,6 +4,8 @@ import raw from "../../catalog/tools.json"
 const ToolSchema = v.object({
   id: v.pipe(v.string(), v.regex(/^[a-z]+$/)),
   name: v.string(),
+  /** Another tool's id: this one ships in that tool's package and has no install of its own. */
+  partOf: v.optional(v.pipe(v.string(), v.regex(/^[a-z]+$/))),
   tagline: v.pipe(v.string(), v.maxLength(55)),
   bin: v.string(),
   package: v.pipe(v.string(), v.startsWith("@wirecat/")),
@@ -14,12 +16,22 @@ const ToolSchema = v.object({
   doctor: v.array(v.string()),
   runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
   setup: v.nullable(v.array(v.string())),
-  signIn: v.nullable(v.object({ gives: v.string(), asks: v.string(), guide: v.optional(v.pipe(v.string(), v.url())) })),
-  skill: v.object({
-    status: v.array(v.string()),
-    install: v.array(v.string()),
-    doctorSkills: v.optional(v.array(v.string())),
-  }),
+  signIn: v.nullable(
+    v.object({
+      gives: v.string(),
+      asks: v.string(),
+      guide: v.optional(v.pipe(v.string(), v.url())),
+      /** Shown for the owner to run when the tool has no interactive `setup`; the app never runs it. */
+      command: v.optional(v.string()),
+    }),
+  ),
+  skill: v.nullable(
+    v.object({
+      status: v.array(v.string()),
+      install: v.array(v.string()),
+      doctorSkills: v.optional(v.array(v.string())),
+    }),
+  ),
   storeInfo: v.nullable(v.array(v.string())),
   storage: v.object({ app: v.string(), env: v.string() }),
   settings: v.nullable(
@@ -54,6 +66,18 @@ export const sharedStorage = catalog.sharedStorage
 export function findTool(id: string): CatalogTool | undefined {
   return tools.find((t) => t.id === id)
 }
+
+/** The tool whose package is installed for `id`: installs, updates and uninstalls run once, under this id. */
+export const ownerId = (id: string) => findTool(id)?.partOf ?? id
+
+/** Every tool that one install brings, the owner first. */
+export const samePackage = (id: string) => tools.filter((t) => ownerId(t.id) === ownerId(id))
+
+/** "Memo and Email" for a shared package, the tool's own name otherwise. */
+export const packageNames = (id: string) =>
+  samePackage(id)
+    .map((t) => t.name)
+    .join(" and ")
 
 export const installCommand = (t: CatalogTool) => `npm install -g ${t.package}`
 

@@ -1,10 +1,24 @@
 import { describe, expect, it } from "vitest"
-import { doctorCommand, findTool, isValidProfile, setupCommand, tools } from "./catalog"
+import { doctorCommand, findTool, isValidProfile, ownerId, samePackage, setupCommand, tools } from "./catalog"
 
 describe("catalog", () => {
-  it("lists the six tools with unique ids and binaries", () => {
-    expect(tools.map((t) => t.id)).toEqual(["tg", "max", "wa", "zm", "drive", "memo"])
-    expect(new Set(tools.map((t) => t.bin)).size).toBe(tools.length)
+  it("lists the tools with unique ids, and a binary of their own unless part of another", () => {
+    expect(tools.map((t) => t.id)).toEqual(["tg", "max", "wa", "zm", "drive", "memo", "email"])
+    const owners = tools.filter((t) => !t.partOf)
+    expect(new Set(owners.map((t) => t.bin)).size).toBe(owners.length)
+  })
+
+  it("installs a part through the tool that owns its package", () => {
+    expect(ownerId("email")).toBe("memo")
+    expect(ownerId("memo")).toBe("memo")
+    expect(ownerId("tg")).toBe("tg")
+    expect(samePackage("email").map((t) => t.id)).toEqual(["memo", "email"])
+    expect(samePackage("tg").map((t) => t.id)).toEqual(["tg"])
+    for (const part of tools.filter((t) => t.partOf)) {
+      const owner = findTool(ownerId(part.id))
+      expect(owner && !owner.partOf).toBe(true)
+      expect([part.bin, part.package]).toEqual([owner?.bin, owner?.package])
+    }
   })
 
   it("fills the profile into setup and doctor commands", () => {

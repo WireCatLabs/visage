@@ -86,10 +86,20 @@ catalog). `archive.rs` picks known fields by name, because the generic masker wo
 or `emails`. The breakdown is read only when the tool prints `by_provider`. Folder entries on the Storage page are
 names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`.
 
+## One package, several tools
+
+Email is a row of its own over memo's package (`partOf: "memo"` in the catalog): the same `bin`, `package` and
+`storage`. Install, update, uninstall and cancel act on the owner's id in Rust (`catalog::owner`) and in the
+interface (`ownerId`), so the package is installed once and the install queue never runs it twice. Detection and
+update checks run once per package and report it for every part. Storage, bug reports and the Node.js removal check
+count packages, not rows. A part has no skill of its own (`skill: null`) and stays out of the skills matrix. With
+no interactive `setup` in the CLI, its `signIn.command` is shown to copy and never run.
+
 ## Profiles and diagnostics
 
 The CLIs differ: `tg`, `max`, `wa` list profiles with `account list --json`, `drive` with `session list --json`,
-`zm` in `doctor --json`, and `memo` has none. The catalog records each tool's command and the JSON shape to read.
+`zm` in `doctor --json`, and `memo` has none; Email lists memo's mail accounts from `item.mail.accounts` of
+`memo doctor --json`, by name only. The catalog records each tool's command and the JSON shape to read.
 Doctor output is masked in Rust and summarised in `src/domain/doctor.ts`; the raw (masked) JSON stays one click away.
 
 ## Growing the app

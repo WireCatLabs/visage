@@ -106,9 +106,12 @@ function ProfileList(props: {
           ))}
         </ul>
       ) : (
-        <p className="text-[0.9rem] text-ink-soft">No profile yet. Name one to sign in to your account.</p>
+        <p className="text-[0.9rem] text-ink-soft">
+          {tool.setup ? "No profile yet. Name one to sign in to your account." : "No account yet."}
+        </p>
       )}
       {tool.setup && <NewProfile tool={tool} onCheck={onReload} checking={reloading} />}
+      {!tool.setup && <ManualSetup tool={tool} onCheck={onReload} checking={reloading} />}
     </div>
   )
 }
@@ -161,6 +164,46 @@ export function FinishInTerminal({ onCheck, checking }: { onCheck: () => void; c
       >
         {checking ? "Checking…" : "Check sign-in"}
       </Button>
+    </div>
+  )
+}
+
+/** For a tool whose CLI has no interactive sign-in yet: the command to run, which the app never runs itself. */
+export function ManualSetup(props: { tool: CatalogTool; onCheck: () => void; checking: boolean }) {
+  const { tool, onCheck, checking } = props
+  const signIn = tool.signIn
+  if (!signIn?.command) return null
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[0.85rem] leading-snug text-ink-soft">
+        Add an account from a terminal; this has no sign-in window yet.{" "}
+        {signIn.guide && (
+          <a
+            href={signIn.guide}
+            onClick={(e) => {
+              e.preventDefault()
+              if (signIn.guide) platform.openUrl(signIn.guide)
+            }}
+            className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
+          >
+            How to set it up
+          </a>
+        )}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <CopyField value={signIn.command} label={`Copy the command that adds a ${tool.name} account`} />
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onCheck}
+          disabled={checking}
+          icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
+        >
+          {checking ? "Checking…" : "Check again"}
+        </Button>
+      </div>
     </div>
   )
 }

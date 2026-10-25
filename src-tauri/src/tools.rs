@@ -22,9 +22,29 @@ pub struct ToolState {
     pub installs: Vec<Install>,
 }
 
+/// A part reports its owner's copies: it is the same program.
 pub fn detect_all() -> Vec<ToolState> {
+    let owners = detect_owners();
+    catalog::catalog()
+        .tools
+        .iter()
+        .map(|t| {
+            let owner = catalog::owner(t);
+            let installs = owners.iter().find(|o| o.id == owner.id).map(|o| o.installs.clone()).unwrap_or_default();
+            ToolState { id: t.id.clone(), installs }
+        })
+        .collect()
+}
+
+/// Tools that own their package; a part never runs a command of its own to install or detect.
+pub fn owners() -> impl Iterator<Item = &'static Tool> {
+    catalog::catalog().tools.iter().filter(|t| t.part_of.is_none())
+}
+
+/// One state per package, for what must not count a shared package twice: storage and bug reports.
+pub fn detect_owners() -> Vec<ToolState> {
     std::thread::scope(|s| {
-        let handles: Vec<_> = catalog::catalog().tools.iter().map(|t| s.spawn(move || detect(t))).collect();
+        let handles: Vec<_> = owners().map(|t| s.spawn(move || detect(t))).collect();
         handles.into_iter().map(|h| h.join().expect("detect thread")).collect()
     })
 }
@@ -57,10 +77,8 @@ pub fn latest_versions() -> Vec<(String, Option<String>)> {
     let Some(npm) = paths::find("npm") else {
         return catalog::catalog().tools.iter().map(|t| (t.id.clone(), None)).collect();
     };
-    std::thread::scope(|s| {
-        let handles: Vec<_> = catalog::catalog()
-            .tools
-            .iter()
+    let found: Vec<(String, Option<String>)> = std::thread::scope(|s| {
+        let handles: Vec<_> = owners()
             .map(|t| {
                 let npm = npm.clone();
                 s.spawn(move || {
@@ -80,7 +98,15 @@ pub fn latest_versions() -> Vec<(String, Option<String>)> {
             })
             .collect();
         handles.into_iter().map(|h| h.join().expect("npm view thread")).collect()
-    })
+    });
+    catalog::catalog()
+        .tools
+        .iter()
+        .map(|t| {
+            let owner = catalog::owner(t);
+            (t.id.clone(), found.iter().find(|(id, _)| *id == owner.id).and_then(|(_, v)| v.clone()))
+        })
+        .collect()
 }
 
 #[derive(Serialize)]
@@ -107,6 +133,7 @@ fn parse_profiles(v: &Value, shape: &str) -> Vec<Profile> {
         "items" => &v["items"],
         "item.profiles" => &v["item"]["profiles"],
         "item.items" => &v["item"]["items"],
+        "item.mail.accounts" => &v["item"]["mail"]["accounts"],
         _ => &Value::Null,
     };
     // A missing-profile error lists the profiles too; tools that fail that way still tell us.
@@ -117,7 +144,8 @@ fn parse_profiles(v: &Value, shape: &str) -> Vec<Profile> {
         .filter_map(|p| match p {
             Value::String(name) => Some(Profile { name: name.clone(), signed_in: None }),
             Value::Object(o) => Some(Profile {
-                name: o.get("profile")?.as_str()?.to_string(),
+                // memo's mail accounts carry `name`, beside an address that must stay in Rust.
+                name: o.get("profile").or_else(|| o.get("name"))?.as_str()?.to_string(),
                 signed_in: o.get("account").map(|a| !a.is_null()),
             }),
             _ => None,
@@ -177,6 +205,10 @@ mod tests {
 
         let drive = json!({"item": {"items": [{"profile": "work"}]}});
         assert_eq!(parse_profiles(&drive, "item.items")[0].signed_in, None);
+
+        let memo = json!({"item": {"mail": {"accounts": [{"name": "work", "address": "a@b.c", "mode": "gmail"}]}}});
+        let mail = parse_profiles(&memo, "item.mail.accounts");
+        assert_eq!((mail[0].name.as_str(), mail[0].signed_in), ("work", None));
 
         let err = json!({"error": {"details": {"profiles": ["a", "b"]}}});
         assert_eq!(parse_profiles(&err, "items").len(), 2);

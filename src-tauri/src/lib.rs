@@ -124,7 +124,7 @@ async fn install_tool(
     running: State<'_, Arc<Running>>,
     on_event: Channel<InstallEvent>,
 ) -> Result<(), String> {
-    let tool = catalog::tool(&id)?;
+    let tool = catalog::owner(catalog::tool(&id)?);
     let running = Arc::clone(&running);
     blocking(move || install::install(tool, &running, &on_event)).await
 }
@@ -135,7 +135,7 @@ async fn uninstall_tool(
     running: State<'_, Arc<Running>>,
     on_event: Channel<InstallEvent>,
 ) -> Result<(), String> {
-    let tool = catalog::tool(&id)?;
+    let tool = catalog::owner(catalog::tool(&id)?);
     let running = Arc::clone(&running);
     blocking(move || install::uninstall(tool, &running, &on_event)).await
 }
@@ -227,6 +227,7 @@ async fn send_report(draft: report::Draft, context: report::Context) -> Result<r
 
 #[tauri::command]
 fn cancel_install(id: String, running: State<'_, Arc<Running>>) {
+    let id = catalog::tool(&id).map_or(id.clone(), |t| catalog::owner(t).id.clone());
     running.cancel(&id);
 }
 

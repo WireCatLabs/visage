@@ -63,10 +63,8 @@ fn folders(s: &Storage) -> Vec<(&'static str, PathBuf)> {
 
 pub fn report() -> Vec<Area> {
     let installed: Vec<String> =
-        tools::detect_all().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
-    let mut areas: Vec<Area> = catalog::catalog()
-        .tools
-        .iter()
+        tools::detect_owners().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
+    let mut areas: Vec<Area> = tools::owners()
         .map(|t| Area {
             id: t.id.clone(),
             folders: existing(&t.storage),
@@ -117,7 +115,7 @@ fn size(path: &Path) -> u64 {
 
 /// The interface names a folder by area and kind; the path itself is always computed here.
 pub fn open(id: &str, kind: &str) -> Result<(), String> {
-    let storage = if id == SHARED { &catalog::catalog().shared_storage } else { &catalog::tool(id)?.storage };
+    let storage = if id == SHARED { &catalog::catalog().shared_storage } else { &area(id)?.storage };
     let (_, path) = folders(storage).into_iter().find(|(k, _)| *k == kind).ok_or("unknown folder kind")?;
     if !path.is_dir() {
         return Err("That folder no longer exists.".into());
@@ -128,14 +126,14 @@ pub fn open(id: &str, kind: &str) -> Result<(), String> {
 /// Deletes a tool's folders, or the shared archive, once nothing installed uses them.
 pub fn clear(id: &str) -> Result<(), String> {
     let installed: Vec<String> =
-        tools::detect_all().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
+        tools::detect_owners().into_iter().filter(|t| !t.installs.is_empty()).map(|t| t.id).collect();
     let storage = if id == SHARED {
         if !installed.is_empty() {
             return Err(format!("Still installed: {}. Uninstall them first.", installed.join(", ")));
         }
         &catalog::catalog().shared_storage
     } else {
-        let tool = catalog::tool(id)?;
+        let tool = area(id)?;
         if installed.iter().any(|i| i == id) {
             return Err("Uninstall the tool before deleting its data.".into());
         }
@@ -156,6 +154,12 @@ pub fn clear(id: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// A part's folders are its owner's area, so they are never offered, opened or deleted twice.
+fn area(id: &str) -> Result<&'static catalog::Tool, String> {
+    let tool = catalog::tool(id)?;
+    if tool.part_of.is_some() { Err(format!("{id} keeps its data with {}", catalog::owner(tool).id)) } else { Ok(tool) }
 }
 
 /// A last check before `remove_dir_all`: an override pointing at `~` or `/` must never be deleted.

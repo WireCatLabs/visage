@@ -1,6 +1,6 @@
 import { Bot, HardDrive, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useState } from "react"
-import { type CatalogTool, tools } from "@/domain/catalog"
+import { type CatalogTool, findTool, ownerId, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
@@ -11,7 +11,7 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
-import { FinishInTerminal, NewProfile, useProfiles } from "../tools/Health"
+import { FinishInTerminal, ManualSetup, NewProfile, useProfiles } from "../tools/Health"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { useOnboarding } from "./store"
@@ -131,6 +131,7 @@ export function Choose() {
                 <span className="flex flex-wrap items-baseline gap-x-[0.5rem]">
                   <span className="text-[1.02rem] font-semibold">{t.name}</span>
                   <span className="font-mono text-[0.9rem] text-ink-soft">{t.bin}</span>
+                  {t.partOf && <Pill>Part of {findTool(t.partOf)?.name ?? t.partOf}</Pill>}
                   {installed && <Pill tone="brand">installed</Pill>}
                 </span>
                 <span className="mt-0.5 block text-[0.9rem] leading-snug text-ink-soft">{t.tagline}</span>
@@ -169,13 +170,13 @@ export function installChosen() {
   const { chosen } = useOnboarding.getState()
   const st = useTools.getState()
   for (const id of chosen) {
-    if (!installedVersion(id) && !st.sessions[id]) st.install(id)
+    if (!installedVersion(id) && !st.sessions[ownerId(id)]) st.install(id)
   }
 }
 
 function Progress({ tool }: { tool: CatalogTool }) {
   const installs = useTools((s) => s.installs[tool.id])
-  const session = useTools((s) => s.sessions[tool.id])
+  const session = useTools((s) => s.sessions[ownerId(tool.id)])
   const status = toolStatus(installs, undefined, session)
   const outcome = session?.outcome
 
@@ -227,7 +228,7 @@ function Progress({ tool }: { tool: CatalogTool }) {
 export function Install() {
   const chosen = useOnboarding((s) => s.chosen)
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
-  const pending = useTools((s) => chosen.some((id) => !s.installs[id]?.length && !s.sessions[id]))
+  const pending = useTools((s) => chosen.some((id) => !s.installs[id]?.length && !s.sessions[ownerId(id)]))
   const list = tools.filter((t) => chosen.includes(t.id))
 
   if (list.length === 0) {
@@ -275,7 +276,7 @@ function useSetupTools() {
  * how a skill gets added today.
  */
 export function Agents({ matrix }: { matrix?: ReactNode }) {
-  const list = useSetupTools()
+  const list = useSetupTools().filter((t) => t.skill)
   if (matrix) return <>{matrix}</>
   return (
     <div className={cx(rack, "flex items-start gap-[0.9rem] px-[1.3rem] py-[1.1rem]")}>
@@ -301,8 +302,17 @@ export function Agents({ matrix }: { matrix?: ReactNode }) {
   )
 }
 
-function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: () => void }) {
+/** Without `onSignIn` the tool has no sign-in of its own: a listed account is simply there. */
+function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: (() => void) | undefined }) {
   const name = <span className="font-mono font-medium text-ink">{profile.name}</span>
+  if (!onSignIn) {
+    return (
+      <li className="flex min-h-8 items-center gap-x-[0.6rem]">
+        <Lamp size="sm" tone="ok" />
+        <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">Account {name} is added</span>
+      </li>
+    )
+  }
   return (
     <li className="flex min-h-8 flex-wrap items-center gap-x-[0.6rem] gap-y-1">
       <Lamp size="sm" tone={profile.signedIn ? "ok" : "idle"} />
@@ -334,7 +344,8 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
   const [waiting, setWaiting] = useState(false)
   const [adding, setAdding] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
-  const signedIn = profiles?.some((p) => p.signedIn === true) ?? false
+  const manual = !tool.setup
+  const signedIn = profiles?.some((p) => manual || p.signedIn === true) ?? false
   const showForm = !signedIn || adding
 
   const signInAgain = async (profile: string) => {
@@ -364,7 +375,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
         ) : profiles && profiles.length > 0 ? (
           <ul aria-label={`${tool.name} accounts`} className="flex flex-col gap-1">
             {profiles.map((p) => (
-              <ProfileState key={p.name} profile={p} onSignIn={() => signInAgain(p.name)} />
+              <ProfileState key={p.name} profile={p} onSignIn={manual ? undefined : () => signInAgain(p.name)} />
             ))}
           </ul>
         ) : null}
@@ -374,9 +385,9 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
           <>
             {tool.signIn && (
               <p className="max-w-[65ch] text-[0.9rem] leading-relaxed text-ink-soft">
-                <span className="font-medium text-ink">It will ask for: </span>
+                <span className="font-medium text-ink">{manual ? "What it needs: " : "It will ask for: "}</span>
                 {tool.signIn.asks}
-                {tool.signIn.guide && (
+                {tool.signIn.guide && !manual && (
                   <>
                     {" "}
                     <a
@@ -393,12 +404,16 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
                 )}
               </p>
             )}
-            <NewProfile
-              tool={tool}
-              label={profiles?.length ? "Name for another account" : "Name for this account"}
-              onCheck={reload}
-              checking={loading}
-            />
+            {manual ? (
+              <ManualSetup tool={tool} onCheck={reload} checking={loading} />
+            ) : (
+              <NewProfile
+                tool={tool}
+                label={profiles?.length ? "Name for another account" : "Name for this account"}
+                onCheck={reload}
+                checking={loading}
+              />
+            )}
           </>
         ) : (
           <div>
@@ -416,9 +431,10 @@ export function SignIn() {
   const installs = useTools((s) => s.installs)
   const refreshing = useTools((s) => s.refreshing)
   const list = useSetupTools()
-  const ready = list.filter((t) => t.setup && installs[t.id]?.length)
-  const waiting = list.filter((t) => t.setup && !installs[t.id]?.length)
-  const noSignIn = list.filter((t) => !t.setup)
+  const signsIn = (t: CatalogTool) => Boolean(t.setup || t.signIn?.command)
+  const ready = list.filter((t) => signsIn(t) && installs[t.id]?.length)
+  const waiting = list.filter((t) => signsIn(t) && !installs[t.id]?.length)
+  const noSignIn = list.filter((t) => !signsIn(t))
 
   if (ready.length === 0 && refreshing) return <Skeleton className="h-24 w-full" label="Looking for installed tools" />
 

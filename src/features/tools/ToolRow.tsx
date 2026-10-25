@@ -1,9 +1,10 @@
 import { LoaderCircle } from "lucide-react"
-import type { CatalogTool } from "@/domain/catalog"
+import { type CatalogTool, findTool, ownerId } from "@/domain/catalog"
 import { type ToolStatus, toolStatus } from "@/domain/status"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp, type LampTone } from "@/ui/Lamp"
+import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useSystem } from "../system/store"
 import { InstallPanel } from "./InstallPanel"
@@ -33,7 +34,7 @@ const lampLabel = (s: ToolStatus) =>
 export function ToolRow({ tool }: { tool: CatalogTool }) {
   const installs = useTools((s) => s.installs[tool.id])
   const latest = useTools((s) => (s.latest ? (s.latest[tool.id] ?? null) : undefined))
-  const session = useTools((s) => s.sessions[tool.id])
+  const session = useTools((s) => s.sessions[ownerId(tool.id)])
   const expanded = useTools((s) => s.expanded === tool.id)
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
   const { install, toggle, cancel } = useTools.getState()
@@ -57,6 +58,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           <h3 className="flex items-baseline gap-[0.6rem] text-[1.08rem] font-semibold leading-tight group-hover:text-brand">
             {tool.name}
             <span className="font-mono text-[0.95rem] font-normal text-ink-soft">{tool.bin}</span>
+            {tool.partOf && <Pill>Part of {findTool(tool.partOf)?.name ?? tool.partOf}</Pill>}
           </h3>
           <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
         </button>

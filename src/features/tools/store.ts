@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { ownerId } from "@/domain/catalog"
 import type { InstallSession, Operation } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
@@ -10,6 +11,7 @@ type ToolsState = {
   installs: Record<string, ToolState["installs"]>
   /** null while asking npm; an empty object when npm could not answer. */
   latest: Record<string, string | null> | null
+  /** Keyed by the package owner's id (`ownerId`): a part's install is its owner's. */
   sessions: Record<string, InstallSession>
   expanded: string | null
   refreshing: boolean
@@ -110,11 +112,12 @@ export const useTools = create<ToolsState>((set, get) => {
       }
     },
 
-    install: (id) => enqueue(id, "install"),
-    uninstall: (id) => enqueue(id, "uninstall"),
+    install: (id) => enqueue(ownerId(id), "install"),
+    uninstall: (id) => enqueue(ownerId(id), "uninstall"),
     closeOffer: () => set({ offerClear: false }),
 
-    async cancel(id) {
+    async cancel(given) {
+      const id = ownerId(given)
       if (get().sessions[id]?.step === "queued") {
         patchSession(id, (s) => ({
           ...s,
@@ -127,7 +130,7 @@ export const useTools = create<ToolsState>((set, get) => {
 
     dismiss(id) {
       set((st) => {
-        const { [id]: _, ...rest } = st.sessions
+        const { [ownerId(id)]: _, ...rest } = st.sessions
         return { sessions: rest }
       })
     },

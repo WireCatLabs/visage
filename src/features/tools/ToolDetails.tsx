@@ -1,7 +1,6 @@
 import { ExternalLink, Trash2 } from "lucide-react"
 import { useState } from "react"
-import type { CatalogTool } from "@/domain/catalog"
-import { installCommand } from "@/domain/catalog"
+import { type CatalogTool, installCommand, packageNames, samePackage } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
@@ -13,10 +12,11 @@ import { useTools } from "./store"
 function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: boolean; onClose: () => void }) {
   const installs = useTools((s) => s.installs[tool.id] ?? [])
   const copies = installs.length
+  const shared = samePackage(tool.id).length > 1
   return (
     <Dialog
       open={open}
-      title={`Uninstall ${tool.name}?`}
+      title={`Uninstall ${packageNames(tool.id)}?`}
       onClose={onClose}
       actions={
         <>
@@ -35,6 +35,11 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
         </>
       }
     >
+      {shared && (
+        <p className="mb-2 font-medium text-ink">
+          Uninstall removes {packageNames(tool.id)} together: they are one program.
+        </p>
+      )}
       <p>
         This removes the <code className="font-mono text-ink">{tool.bin}</code> command
         {copies === 2

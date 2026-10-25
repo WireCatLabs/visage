@@ -22,7 +22,9 @@ pub struct Tool {
     pub setup: Option<Vec<String>>,
     pub storage: Storage,
     pub settings: Option<SettingsSource>,
-    pub skill: SkillSource,
+    pub skill: Option<SkillSource>,
+    /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
+    pub part_of: Option<String>,
     /// `store info` of the shared archive; any messenger CLI answers it for the whole store.
     pub store_info: Option<Vec<String>>,
 }
@@ -74,7 +76,7 @@ pub enum SettingsShape {
 }
 
 /// The folder name and environment prefix a tool passes to cli-base's `resolvePaths`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct Storage {
     pub app: String,
     pub env: String,
@@ -93,6 +95,11 @@ pub fn catalog() -> &'static Catalog {
 
 pub fn tool(id: &str) -> Result<&'static Tool, String> {
     catalog().tools.iter().find(|t| t.id == id).ok_or_else(|| format!("unknown tool: {id}"))
+}
+
+/// The tool that owns the package: installing, updating and uninstalling act on it once for all its parts.
+pub fn owner(tool: &'static Tool) -> &'static Tool {
+    tool.part_of.as_deref().and_then(|id| self::tool(id).ok()).unwrap_or(tool)
 }
 
 /// Profiles come from the user and end up as process arguments, so only plain names pass.
@@ -123,7 +130,21 @@ mod tests {
 
     #[test]
     fn every_catalog_entry_parses() {
-        assert_eq!(catalog().tools.len(), 6);
+        assert_eq!(catalog().tools.len(), 7);
+    }
+
+    #[test]
+    fn a_part_shares_its_owners_package() {
+        let parts: Vec<_> = catalog().tools.iter().filter(|t| t.part_of.is_some()).collect();
+        assert!(!parts.is_empty());
+        for part in parts {
+            let owner = owner(part);
+            assert_ne!(owner.id, part.id, "{} names an unknown owner", part.id);
+            assert!(owner.part_of.is_none(), "{} is part of a part", part.id);
+            assert_eq!((&owner.bin, &owner.package, &owner.storage), (&part.bin, &part.package, &part.storage));
+        }
+        assert_eq!(owner(tool("email").unwrap()).id, "memo");
+        assert_eq!(owner(tool("tg").unwrap()).id, "tg");
     }
 
     #[test]

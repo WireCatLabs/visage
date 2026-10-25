@@ -1,6 +1,6 @@
 import { AlertTriangle, Bug, CheckCircle2, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import type { CatalogTool } from "@/domain/catalog"
+import { type CatalogTool, ownerId, packageNames, samePackage } from "@/domain/catalog"
 import { type InstallSession, STEPS } from "@/domain/status"
 import { Button } from "@/ui/Button"
 import { Stepper, type StepState } from "@/ui/Stepper"
@@ -20,7 +20,8 @@ function stepStates(session: InstallSession): { label: string; state: StepState 
 }
 
 export function InstallPanel({ tool }: { tool: CatalogTool }) {
-  const session = useTools((s) => s.sessions[tool.id])
+  const session = useTools((s) => s.sessions[ownerId(tool.id)])
+  const shared = samePackage(tool.id).length > 1
   const { install, uninstall, dismiss } = useTools.getState()
   const [showLog, setShowLog] = useState(false)
   if (!session) return null
@@ -40,14 +41,17 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
           <p className="flex items-center gap-2 text-[0.95rem]">
             <CheckCircle2 className="size-5 text-ok" aria-hidden />
             <span>
-              {tool.name} {outcome.version} is installed and runs.
+              {packageNames(tool.id)} {outcome.version} {shared ? "are installed and run" : "is installed and runs"}.
             </span>
           </p>
         )}
         {outcome?.event === "removed" && (
           <p className="flex items-center gap-2 text-[0.95rem]">
             <CheckCircle2 className="size-5 text-ok" aria-hidden />
-            <span>{tool.name} is uninstalled. Its data stays on this computer until you delete it in Storage.</span>
+            <span>
+              {packageNames(tool.id)} {shared ? "are" : "is"} uninstalled. The data stays on this computer until you
+              delete it in Storage.
+            </span>
           </p>
         )}
         {outcome?.event === "failed" && (

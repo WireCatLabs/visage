@@ -233,10 +233,10 @@
     {
       "id": "memo",
       "name": "Memo",
-      "tagline": "Notes, mail and messages in one place for your agent",
+      "tagline": "Notes, people and memories in one place for your agent",
       "bin": "memo",
       "package": "@wirecat/cli-memo",
-      "summary": "Your notes, mail and messages in one place for your AI agent: search, tags, people and memories, on your computer.",
+      "summary": "Your notes and messages in one place for your AI agent: search, tags, people and memories, on your computer. Mail comes in through Email, which is part of Memo.",
       "docs": "https://wirecat.dev/en/docs/memo",
       "repo": "https://github.com/WireCatLabs/cli-memo",
       "profiles": null,
@@ -258,6 +258,37 @@
       },
       "settings": null,
       "signIn": null
+    },
+    {
+      "id": "email",
+      "name": "Email",
+      "partOf": "memo",
+      "tagline": "Your mail, searchable with your notes and messages",
+      "bin": "memo",
+      "package": "@wirecat/cli-memo",
+      "summary": "Gmail and other IMAP mail in Memo's local store, read through Himalaya: search it with your notes and messages and see how far each import is. Importing never changes your mailbox, and Memo never sends mail.",
+      "docs": "https://wirecat.dev/en/docs/email",
+      "repo": "https://github.com/WireCatLabs/cli-memo",
+      "profiles": {
+        "args": ["doctor", "--json"],
+        "shape": "item.mail.accounts"
+      },
+      "doctor": ["mail", "check", "{profile}", "--json"],
+      "runs": null,
+      "setup": null,
+      "skill": null,
+      "storeInfo": null,
+      "storage": {
+        "app": "cli-memo",
+        "env": "MEMO"
+      },
+      "settings": null,
+      "signIn": {
+        "gives": "Lets your agent search your mail together with your notes and messages. Memo reads the mailbox without changing it and never sends mail.",
+        "asks": "The account set up first in Himalaya, a mail program for the terminal; for Gmail, with an app password. Then the Himalaya account's name and its email address, given to Memo.",
+        "guide": "https://wirecat.dev/en/docs/email",
+        "command": "memo mail add <name> <address>"
+      }
     }
   ],
   "sharedStorage": {
