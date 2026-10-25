@@ -13,6 +13,7 @@ import {
   TerminalReachSchema,
 } from "./agents-schemas"
 import { StoreCheckSchema, StoreCompatSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
+import { BackupEventSchema, BackupsSchema, ResetDoneSchema, ResetPreviewSchema } from "./backup-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
@@ -89,6 +90,23 @@ function createTauri(): Platform {
     storeCompat: () => call(StoreCompatSchema, "store_compat"),
     storeTables: (sizes) => call(TableListSchema, "store_tables", { sizes }),
     storeCheck: () => call(StoreCheckSchema, "store_check"),
+    storeBackup: (onEvent) => {
+      const channel = new Channel<unknown>()
+      channel.onmessage = (raw) => {
+        const parsed = v.safeParse(BackupEventSchema, raw)
+        onEvent(
+          parsed.success
+            ? parsed.output
+            : { event: "failed", message: "The app could not read the backup's progress." },
+        )
+      }
+      return invoke("store_backup", { onEvent: channel })
+    },
+    cancelStoreBackup: () => invoke("cancel_store_backup"),
+    listBackups: () => call(BackupsSchema, "list_backups"),
+    openBackups: (name) => invoke("open_backups", { name }),
+    storeResetPreview: () => call(ResetPreviewSchema, "store_reset_preview"),
+    storeReset: () => call(ResetDoneSchema, "store_reset"),
     detectAgents: () => call(AgentsSchema, "detect_agents"),
     skillStatus: (id) => call(SkillReportSchema, "skill_status", { id }),
     skillInstall: (id, target) => call(SkillWrittenSchema, "skill_install", { id, target }),

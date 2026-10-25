@@ -39,6 +39,12 @@ pub struct Tool {
     pub store_table_sizes: Option<Vec<String>>,
     /// `store check`: integrity and the other health checks; a minute or more on a large archive.
     pub store_check: Option<Vec<String>>,
+    /// `store backup {file}`: a consistent copy of the store into a new file, while it is in use.
+    pub store_backup: Option<Vec<String>>,
+    /// `store reset --dry-run`: every table a reset would empty; a tool older than it answers without `tables`.
+    pub store_reset_preview: Option<Vec<String>>,
+    /// `store reset` with no backup beside the store: the app makes its own first, when the owner keeps it.
+    pub store_reset: Option<Vec<String>>,
 }
 
 /// `commands` lists every command with its effects and, from cli-core 0.408, whether the profile may run it.

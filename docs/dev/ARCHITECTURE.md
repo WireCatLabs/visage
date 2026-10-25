@@ -24,6 +24,7 @@ src-tauri/src/
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
   archive.rs    what the shared archive holds, from a tool's `store info`; the database is never opened.
+  backup.rs     backing the shared store up into a zip, and clearing it, through the tool's own `store backup` / `store reset`.
   compat.rs     every installed tool's own `store info`, at once: which schema each reads and what its next run does.
   skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `install` / `show`.
   mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
@@ -108,6 +109,24 @@ installed tools read (from `schema.upgrade`), or can't say. A tool too old to sa
 the tools that opened it (`clients`, matched by command and version) or from a refusal it printed ("written by a newer
 version (schema N, needs at least M"). The schema moves on a tool's first run after an update, not on install, so
 the Tools page asks again right after an install and warns, with the other tools' updates to queue, before that run.
+
+## Backups and clearing storage
+
+**Back up now** runs `store backup <file>` (`storeBackup` in the catalog) of the tool `archive.rs` asks, the installed
+one that reads the newest schema, never with a profile. The copy goes to a hidden `.<name>.db.partial` in
+`~/WireCat backups`, is deflated into one `wirecat.db` entry of `wirecat-store-YYYY-MM-DD-HHMM.zip` (local time, `-2`
+for a second in the same minute, mode 600 in a 700 folder), and is removed whatever happens. The home folder, not
+Documents: macOS and Windows often sync Documents to a cloud drive, and the zip is every message, unencrypted. Before
+it starts, the folder's disk needs one and a half times the store free. `VACUUM INTO` prints nothing, so copying
+progress is the copy's size against the store's; compressing reports each percent. Cancel kills the tool's process
+group and removes both partial files. Events travel on a `Channel` (`BackupEvent`).
+
+**Clear storage** runs `store reset --no-backup --allow-dangerous` (`storeReset`). The button stays off until the tool
+answers `store reset --dry-run` with its `tables`; an older tool asks for a profile there, or does not know the option.
+The dialog lists the store's files and every table with its rows from that preview, says what stays, warns when the
+preview says a sync holds the file, and needs the word `clear` typed. "Back up first" is on by default and runs the
+backup above; nothing is cleared unless the zip is finished. The CLI itself refuses while another process has the
+store open, so a running sync or import is never cut off. Only one backup or clear runs at a time (`Running`).
 
 ## What agents do with the tools
 

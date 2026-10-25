@@ -14,6 +14,7 @@ import { useCompat } from "../tools/compat-store"
 import { StorageSummary } from "../tools/StorageFit"
 import { ToolIcon } from "../tools/ToolIcon"
 import { ArchiveSummary } from "./ArchiveSummary"
+import { BackupPanel } from "./BackupPanel"
 import { areaBytes, useStorage } from "./store"
 
 const areaName = (id: string) => (id === "shared" ? sharedStorage.label : (findTool(id)?.name ?? id))
@@ -76,6 +77,8 @@ export function StoragePage() {
       </div>
 
       <ArchiveSummary />
+
+      <BackupPanel />
 
       <ul
         aria-label="Data on this computer"

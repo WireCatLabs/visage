@@ -48,6 +48,9 @@
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
       "storage": {
         "app": "tg-cli",
         "env": "TG"
@@ -126,6 +129,9 @@
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
       "storage": {
         "app": "max-cli",
         "env": "MAX"
@@ -203,6 +209,9 @@
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
       "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--allow-dangerous", "--json"],
       "storage": {
         "app": "whatsapp-cli",
         "env": "WA"
@@ -266,6 +275,9 @@
       "storeTables": null,
       "storeTableSizes": null,
       "storeCheck": null,
+      "storeBackup": null,
+      "storeResetPreview": null,
+      "storeReset": null,
       "storage": {
         "app": "zm",
         "env": "ZM"
@@ -322,6 +334,9 @@
       "storeTables": null,
       "storeTableSizes": null,
       "storeCheck": null,
+      "storeBackup": null,
+      "storeResetPreview": null,
+      "storeReset": null,
       "storage": {
         "app": "drive-cli",
         "env": "DRIVE"
@@ -370,6 +385,9 @@
       "storeTables": null,
       "storeTableSizes": null,
       "storeCheck": null,
+      "storeBackup": null,
+      "storeResetPreview": null,
+      "storeReset": null,
       "storage": {
         "app": "cli-memo",
         "env": "MEMO"
@@ -402,6 +420,9 @@
       "storeTables": null,
       "storeTableSizes": null,
       "storeCheck": null,
+      "storeBackup": null,
+      "storeResetPreview": null,
+      "storeReset": null,
       "storage": {
         "app": "cli-memo",
         "env": "MEMO"

@@ -1,6 +1,7 @@
 import type { StoreCompat } from "@/domain/compat"
 import type { Agent, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
+import type { BackupEvent, Backups, ResetPreview } from "./backup-schemas"
 import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
@@ -55,6 +56,17 @@ export type Platform = {
   storeTables(sizes: boolean): Promise<TableList | null>
   /** The archive's integrity and health checks; a minute or more on a large archive. */
   storeCheck(): Promise<StoreCheck | null>
+  /** The newest-schema tool's own `store backup`, zipped into the backups folder; progress and the result arrive as events. */
+  storeBackup(onEvent: (e: BackupEvent) => void): Promise<void>
+  cancelStoreBackup(): Promise<void>
+  /** Finished backups in the backups folder, newest first. */
+  listBackups(): Promise<Backups>
+  /** The backups folder, or one backup shown in it by name. */
+  openBackups(name: string | null): Promise<void>
+  /** What clearing storage deletes, from `store reset --dry-run`; null when no messenger tool is installed. */
+  storeResetPreview(): Promise<ResetPreview | null>
+  /** Empties storage with the tool's own `store reset`; resolves with the new empty store's schema. */
+  storeReset(): Promise<number | null>
   /** Every known agent; `foundBy` is null for the ones not on this computer. */
   detectAgents(): Promise<Agent[]>
   skillStatus(id: string): Promise<SkillReport>

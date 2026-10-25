@@ -1,4 +1,5 @@
 mod archive;
+mod backup;
 mod cache;
 mod catalog;
 mod compat;
@@ -187,6 +188,56 @@ async fn store_check() -> Result<Option<archive::Check>, String> {
 }
 
 #[tauri::command]
+async fn store_backup(running: State<'_, Arc<Running>>, on_event: Channel<backup::BackupEvent>) -> Result<(), String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        let send = |e: backup::BackupEvent| {
+            let _ = on_event.send(e);
+        };
+        if running.is_running(backup::RESET) || !running.start(backup::BACKUP) {
+            return send(backup::BackupEvent::Failed { message: "A backup or a clear is already running.".into() });
+        }
+        backup::backup(&|| !running.is_running(backup::BACKUP), &send);
+        running.finish(backup::BACKUP);
+    })
+    .await
+}
+
+#[tauri::command]
+fn cancel_store_backup(running: State<'_, Arc<Running>>) {
+    running.cancel(backup::BACKUP);
+}
+
+#[tauri::command]
+async fn list_backups() -> Result<backup::Backups, String> {
+    blocking(backup::list).await?
+}
+
+#[tauri::command]
+async fn open_backups(name: Option<String>) -> Result<(), String> {
+    blocking(move || backup::open(name.as_deref())).await?
+}
+
+#[tauri::command]
+async fn store_reset_preview() -> Result<Option<backup::ResetPreview>, String> {
+    blocking(backup::reset_preview).await?
+}
+
+#[tauri::command]
+async fn store_reset(running: State<'_, Arc<Running>>) -> Result<Option<u64>, String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        if running.is_running(backup::BACKUP) || !running.start(backup::RESET) {
+            return Err("A backup or a clear is already running.".to_string());
+        }
+        let done = backup::reset();
+        running.finish(backup::RESET);
+        done
+    })
+    .await?
+}
+
+#[tauri::command]
 async fn detect_agents() -> Result<Vec<skills::Agent>, String> {
     blocking(skills::agents).await
 }
@@ -358,6 +409,12 @@ pub fn run() {
             store_compat,
             store_tables,
             store_check,
+            store_backup,
+            cancel_store_backup,
+            list_backups,
+            open_backups,
+            store_reset_preview,
+            store_reset,
             detect_agents,
             skill_status,
             skill_install,

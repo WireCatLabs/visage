@@ -125,7 +125,7 @@ function facts(): FileFacts {
   }
 }
 
-const DATA: [string, number][] = [
+export const DATA: [string, number][] = [
   ["accounts", 9],
   ["chats", 1611],
   ["chat_members", 22_480],
