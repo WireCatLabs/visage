@@ -51,4 +51,26 @@ describe("WireCat Desktop", () => {
     render(<App />)
     expect(await screen.findByText("Node.js 24.19.0")).toBeInTheDocument()
   })
+
+  it("lists configuration problems apart from other findings, with the fix to copy", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const list = await screen.findByRole("list", { name: "WireCat tools" })
+    const tg = within(list)
+      .getByRole("heading", { name: /Telegram/ })
+      .closest("li")
+    if (!tg) throw new Error("no Telegram row")
+    await user.click(await within(tg).findByRole("button", { name: /Manage/ }))
+    const personal = (await within(tg).findByText("personal")).closest("li")
+    if (!personal) throw new Error("no personal profile")
+    await user.click(within(personal).getByRole("button", { name: "Check" }))
+
+    const group = await within(tg).findByRole("region", { name: "Configuration problems" }, { timeout: 3000 })
+    expect(within(group).getByText(/permissions.bot.store.fetch is not a permission/)).toBeInTheDocument()
+    expect(
+      within(group).getByText("~/.config/tg-cli/config.json:14:18 · profile personal · key sync.limit"),
+    ).toBeInTheDocument()
+    expect(within(group).getAllByRole("button", { name: "Copy the fix command" })).toHaveLength(2)
+  }, 10000)
 })
