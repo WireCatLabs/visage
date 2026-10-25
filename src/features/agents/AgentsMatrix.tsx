@@ -22,6 +22,7 @@ const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
   unversioned: { tone: "warn", word: "No version" },
   missing: { tone: "idle", word: "Not installed" },
   unknown: { tone: "idle", word: "Unknown" },
+  unsupported: { tone: "idle", word: "Needs a newer version" },
   failed: { tone: "bad", word: "Could not check" },
 }
 
@@ -33,7 +34,12 @@ const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
  * `expected` names the tools to draw as rows while the installed ones are still being found.
  */
 export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boolean; expected?: readonly string[] }) {
-  const { detected, agents, found, targets, rows, notInstalled } = useSkillMatrix()
+  const matrix = useSkillMatrix()
+  const { detected, agents, found, notInstalled } = matrix
+  // Hermes has its own target that no released tool writes yet; its pane on the Agents page says so. A column of
+  // "needs a newer version" would only push the matrix past the onboarding step's width.
+  const targets = matrix.targets.filter((t) => t !== "hermes")
+  const rows = matrix.rows.map((r) => ({ ...r, cells: r.cells.filter((c) => c.target !== "hermes") }))
   const load = useAgents((s) => s.load)
   const installedIds = rows.map((r) => r.tool.id).join(",")
   const checked = useTools((s) => s.checked)

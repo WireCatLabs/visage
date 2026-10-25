@@ -1,4 +1,4 @@
-import type { Agent, Claim, Registrations, SkillReport, Target } from "./agents-schemas"
+import type { Agent, Chats, Claim, Registrations, SkillReport, Target } from "./agents-schemas"
 import { delay } from "./mock-delay"
 import type { Platform } from "./types"
 
@@ -6,6 +6,8 @@ import type { Platform } from "./types"
 // memo's doctor fallback, a stale copy and a missing one. `?fail=<tool>` makes that tool's skill install fail.
 // MCP: Claude Code has Telegram's personal profile, Cursor a hand-added `memo`; WhatsApp is too old for `mcp check`.
 // Tasks: Telegram's personal profile has three claims; Zoom is installed where a terminal does not look.
+// Hermes and OpenClaw: only WhatsApp can write a Hermes skill yet; Hermes's gateway answers in Telegram and its shell
+// misses the folder Telegram and Max are in. OpenClaw has Discord and WhatsApp channels. `?chats=none` turns both off.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 
@@ -15,7 +17,22 @@ const AGENTS: Agent[] = [
   { id: "cursor", name: "Cursor", foundBy: "folder", reads: ["agents", "claude"] },
   { id: "gemini", name: "Gemini CLI", foundBy: null, reads: ["agents"] },
   { id: "opencode", name: "OpenCode", foundBy: null, reads: ["agents", "claude"] },
+  { id: "hermes", name: "Hermes Agent", foundBy: "program", reads: ["hermes"] },
+  { id: "openclaw", name: "OpenClaw", foundBy: "program", reads: ["agents"] },
 ]
+
+const CHATS: Record<string, Chats> = {
+  hermes: { source: "~/.hermes/gateway_state.json", running: true, channels: ["telegram"] },
+  openclaw: { source: "openclaw channels list --json", running: null, channels: ["discord", "whatsapp"] },
+}
+
+const UNREAD: Record<string, string> = {
+  hermes: "mcp_servers in ~/.hermes/config.yaml",
+  openclaw: "openclaw mcp list",
+}
+
+// Released with cli-base's `--for hermes`.
+const KNOWS_HERMES = new Set(["wa"])
 
 type Copy = { installed: string | null }
 const copies: Record<string, Partial<Record<Target, Copy>>> = {
@@ -75,6 +92,8 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
     cursor: new Set(["memo"]),
     gemini: new Set(),
     opencode: new Set(),
+    hermes: new Set(),
+    openclaw: new Set(),
   }
   const claims = structuredClone(CLAIMS)
   const bin = (id: string) => (id === "email" ? "memo" : id)
@@ -85,6 +104,7 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
     | "skillInstall"
     | "skillShow"
     | "terminalReach"
+    | "agentChats"
     | "mcpRegistrations"
     | "mcpCheck"
     | "mcpAdd"
@@ -101,7 +121,8 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
       const version = versionOf(id)
       if (!version) throw new Error("the tool is not installed")
       const own = copies[id] ?? {}
-      const targets = (["claude", "agents"] as const).map((target) => {
+      const places: Target[] = KNOWS_HERMES.has(id) ? ["claude", "agents", "hermes"] : ["claude", "agents"]
+      const targets = places.map((target) => {
         const installed = written.get(`${id}:${target}`) ?? own[target]?.installed ?? null
         return { target, path: installed ? path(target, id) : null, installed }
       })
@@ -120,6 +141,8 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
     async skillInstall(id, target) {
       await delay(900)
       if (params.get("fail") === id) throw new Error("EACCES: permission denied, open '~/.agents/skills/SKILL.md'")
+      if (target === "hermes" && !KNOWS_HERMES.has(id))
+        throw new Error("error: option '--for <target>' argument 'hermes' is invalid")
       const version = versionOf(id) ?? null
       if (version) written.set(`${id}:${target}`, version)
       return version
@@ -128,16 +151,29 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
       await delay(500)
       return { name: `${id}-cli`, content: SKILL(`${id}-cli`) }
     },
-    async terminalReach() {
+    async terminalReach(agent) {
       await delay(250)
+      const missing = agent === "hermes" ? ["tg", "max"] : ["zm"]
       return Object.fromEntries(
-        ["tg", "max", "wa", "zm", "drive", "memo"].filter((id) => versionOf(id)).map((id) => [id, id !== "zm"]),
+        ["tg", "max", "wa", "zm", "drive", "memo"]
+          .filter((id) => versionOf(id))
+          .map((id) => [id, !missing.includes(id)]),
       )
+    },
+    async agentChats(agent) {
+      await delay(450)
+      const chats = CHATS[agent]
+      if (!chats) throw new Error(`${agent} is not driven from chats`)
+      if (params.get("chats") === "none")
+        return { ...chats, running: chats.running === null ? null : false, channels: [] }
+      return chats
     },
     async mcpRegistrations(agent): Promise<Registrations> {
       await delay(350)
       const names = [...(servers[agent] ?? [])].sort()
-      return { source: SOURCE[agent] ?? agent, names, canAdd: CAN_ADD.has(agent), canRemove: CAN_ADD.has(agent) }
+      const unread = UNREAD[agent] ?? null
+      const source = unread ?? SOURCE[agent] ?? agent
+      return { source, names, canAdd: CAN_ADD.has(agent), canRemove: CAN_ADD.has(agent), unread }
     },
     async mcpCheck(id, profile) {
       await delay(1100)

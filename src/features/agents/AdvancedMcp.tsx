@@ -36,7 +36,14 @@ function Servers({ agent }: { agent: Agent }) {
         {servers.error}
       </ErrorNotice>
     )
-  const { names, canRemove, source } = servers.data
+  const { names, canRemove, source, unread } = servers.data
+  if (unread)
+    return (
+      <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
+        WireCat does not read {agent.name}'s MCP servers. See{" "}
+        <code className="selectable font-mono text-[0.8rem]">{unread}</code>.
+      </p>
+    )
   const rows = PROGRAMS.flatMap((tool) =>
     connections(names, tool.bin, []).map((row) => ({ tool, profile: row.profile })),
   )

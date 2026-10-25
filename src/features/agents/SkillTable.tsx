@@ -19,6 +19,7 @@ const SKILL_LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = 
   unversioned: { tone: "warn", word: "No version" },
   missing: { tone: "idle", word: "Not installed" },
   unknown: { tone: "idle", word: "Update the tool to see" },
+  unsupported: { tone: "idle", word: "Needs a newer version" },
   failed: { tone: "bad", word: "Could not check" },
 }
 
@@ -92,6 +93,10 @@ export function SkillTable({ view, loading }: { view: AgentView; loading: boolea
                     Update {s.tool.name}
                     {s.newer && <span className="font-mono text-[0.85rem] tabular-nums"> to {s.newer}</span>} to see its
                     skill
+                  </span>
+                ) : s.cell.kind === "unsupported" ? (
+                  <span className="text-ink-soft">
+                    Needs a newer {s.tool.name} to write a skill for {agent.name}
                   </span>
                 ) : (
                   <>

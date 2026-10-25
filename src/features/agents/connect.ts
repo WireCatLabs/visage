@@ -9,6 +9,8 @@ export type ProfileClaims = Loaded<{ items: Claim[]; more: boolean }>
 
 type ConnectState = {
   reach: Record<string, boolean> | null
+  /** By agent id, for agents that run commands with a PATH of their own (Hermes); others use `reach`. */
+  agentReach: Record<string, Record<string, boolean>>
   /** By agent id. */
   servers: Record<string, Loaded<Registrations>>
   /** By tool id, from the tool's own profile list (with its sign-in status); tools without profiles are absent. */
@@ -26,11 +28,16 @@ type ConnectState = {
   loadServers(agent: string): Promise<void>
   /** PATH, MCP registrations (for Advanced) and every profile's permissions; starts no server. */
   check(agent: string): Promise<void>
+  /** The PATH this agent's commands get, by tool id; asks again each time. */
+  loadReach(agent: string): Promise<Record<string, boolean> | null>
   remove(tool: string, profile: string | null, agent: string): Promise<boolean>
   release(tool: string, profile: string, task: string): Promise<boolean>
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+/** Agents whose commands do not run in an ordinary terminal, so Rust reads their own PATH. */
+const OWN_PATH = new Set(["hermes"])
+
 export const pairKey = (tool: string, profile: string | null) => `${tool}/${profile ?? ""}`
 
 export const useConnect = create<ConnectState>((set, get) => {
@@ -75,6 +82,7 @@ export const useConnect = create<ConnectState>((set, get) => {
 
   return {
     reach: null,
+    agentReach: {},
     servers: {},
     profiles: {},
     claims: {},
@@ -91,12 +99,13 @@ export const useConnect = create<ConnectState>((set, get) => {
         .then((reach) => set({ reach }))
         .catch(() => set({ reach: null }))
       const servers = agents.map((a) => get().loadServers(a))
+      const own = agents.filter((a) => OWN_PATH.has(a)).map((a) => get().loadReach(a))
       const profiles = withProfiles.map(async (id) => {
         const list = (await platform.listProfiles(id).catch(() => null)) ?? []
         set((s) => ({ profiles: { ...s.profiles, [id]: list } }))
         if (findTool(id)?.tasks) await Promise.all(list.map((p) => loadClaims(id, p.name)))
       })
-      await Promise.all([reach, ...servers, ...profiles])
+      await Promise.all([reach, ...own, ...servers, ...profiles])
     },
 
     async loadServers(agent) {
@@ -118,6 +127,7 @@ export const useConnect = create<ConnectState>((set, get) => {
             .then((reach) => set({ reach }))
             .catch(() => undefined),
           get().loadServers(agent),
+          OWN_PATH.has(agent) ? get().loadReach(agent) : undefined,
         ])
         const everyProfile = Object.entries(get().profiles).flatMap(([tool, profiles]) =>
           findTool(tool)?.permissions ? profiles.map((p) => [tool, p.name] as const) : [],
@@ -126,6 +136,17 @@ export const useConnect = create<ConnectState>((set, get) => {
       } finally {
         set((s) => ({ checking: without(s.checking, agent), checked: { ...s.checked, [agent]: true } }))
       }
+    },
+
+    async loadReach(agent) {
+      if (!OWN_PATH.has(agent)) {
+        const reach = await platform.terminalReach().catch(() => null)
+        if (reach) set({ reach })
+        return reach
+      }
+      const reach = await platform.terminalReach(agent).catch(() => null)
+      if (reach) set((s) => ({ agentReach: { ...s.agentReach, [agent]: reach } }))
+      return reach
     },
 
     remove: (tool, profile, agent) =>

@@ -8,12 +8,33 @@ export const AGENT_KIND: Record<string, string> = {
   cursor: "cursor",
   gemini: "gemini-cli",
   opencode: "opencode",
+  hermes: "hermes-agent",
+  openclaw: "openclaw",
 }
 
 /** Every agent detection reports on, in its order, so the page can draw their rows before it answers. */
 export const KNOWN_AGENTS = Object.entries(AGENT_KIND).map(([id, kind]) => ({ id, name: agentName(kind) }))
 
 const agentForKind = (kind: string) => Object.keys(AGENT_KIND).find((id) => AGENT_KIND[id] === kind) ?? null
+
+/** Agents a chat app can drive: Hermes through its gateway, OpenClaw through its channels. */
+export const CHAT_AGENTS = new Set(["hermes", "openclaw"])
+
+const CHAT_NAMES: Record<string, string> = {
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  discord: "Discord",
+  slack: "Slack",
+  signal: "Signal",
+  imessage: "iMessage",
+  matrix: "Matrix",
+  googlechat: "Google Chat",
+  msteams: "Microsoft Teams",
+  irc: "IRC",
+}
+
+/** Rust passes a chat app's plain id; this is how people write it. */
+export const chatName = (id: string) => CHAT_NAMES[id] ?? id.charAt(0).toUpperCase() + id.slice(1)
 
 // Activity
 
@@ -116,7 +137,8 @@ export type Fix =
   /** Something to change on the Tools page: a tool update, or a profile's permissions. */
   | { kind: "tools" }
 
-export type CheckItem = { id: string; tone: Tone; title: string; detail: string; fix?: Fix }
+/** `tools` names the tools an item covers when its id does not start with one. */
+export type CheckItem = { id: string; tone: Tone; title: string; detail: string; fix?: Fix; tools?: string[] }
 
 export type CheckTool = { id: string; name: string; bin: string; path: string | null }
 
@@ -133,7 +155,46 @@ export type CheckInput = {
   access?: Readonly<Record<string, { blocked: number; total: number } | string>>
 }
 
-const folderOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "").replace(/^~(?=\/)/, "$HOME")
+const dirOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "")
+const folderOf = (path: string) => dirOf(path).replace(/^~(?=\/)/, "$HOME")
+const unique = (xs: readonly string[]) => [...new Set(xs)]
+const nameList = (tools: readonly { name: string }[]) => tools.map((t) => t.name).join(", ")
+
+/**
+ * Agents that run commands with a PATH of their own, not a terminal's: what they miss and the one change that fixes
+ * it for every tool at once. `null` for an agent that runs commands in an ordinary terminal.
+ */
+export function agentPathFix(
+  agent: { id: string; name: string },
+  missing: readonly CheckTool[],
+  windows = false,
+): { title: string; detail: string; command: string | null } | null {
+  if (windows || missing.length === 0) return null
+  const dirs = unique(missing.flatMap((t) => (t.path ? [dirOf(t.path)] : [])))
+  const title = `${agent.name} cannot find ${nameList(missing)}`
+  if (agent.id === "hermes")
+    return {
+      title,
+      detail:
+        "Hermes runs each command in a bash login shell (bash -l) started from its gateway's PATH, so a folder " +
+        "added only in ~/.zshrc or ~/.bashrc is missing there. Add this line to ~/.profile, or to ~/.bash_profile " +
+        "if you have one, then restart Hermes (hermes gateway restart).",
+      command:
+        dirs.length > 0 ? `export PATH="${dirs.map((d) => d.replace(/^~(?=\/)/, "$HOME")).join(":")}:$PATH"` : null,
+    }
+  if (agent.id === "openclaw")
+    return {
+      title,
+      detail:
+        "OpenClaw runs commands with its gateway's PATH. Add the folders to tools.exec.pathPrepend with OpenClaw's " +
+        "own command below. It replaces the whole list and works only while the gateway is stopped: stop the " +
+        "gateway, add the folders that openclaw config get tools.exec.pathPrepend already lists, run it, then " +
+        "start the gateway again.",
+      command:
+        dirs.length > 0 ? `openclaw config set tools.exec.pathPrepend '${JSON.stringify(dirs)}' --strict-json` : null,
+    }
+  return null
+}
 
 /** What stops this agent from using the tools, worst first, each with the one thing that fixes it. Agents here run
  * the commands through their skill, so MCP is never part of it. */
@@ -141,9 +202,22 @@ export function buildCheck(input: CheckInput): CheckItem[] {
   const { agent, tools, reach, skills, access } = input
   const items: CheckItem[] = []
   const unreported: string[] = []
+  const unsupported: string[] = []
+
+  const unreachable = tools.filter((t) => reach && reach[t.id] === false)
+  const ownPath = agentPathFix(agent, unreachable, input.windows)
+  if (ownPath)
+    items.push({
+      id: "path:agent",
+      tone: "bad",
+      title: ownPath.title,
+      detail: ownPath.detail,
+      tools: unreachable.map((t) => t.id),
+      ...(ownPath.command ? { fix: { kind: "command", command: ownPath.command } } : {}),
+    })
 
   for (const tool of tools) {
-    if (reach && reach[tool.id] === false) {
+    if (!ownPath && reach && reach[tool.id] === false) {
       items.push({
         id: `${tool.id}:path`,
         tone: "bad",
@@ -165,8 +239,10 @@ export function buildCheck(input: CheckInput): CheckItem[] {
       const worst =
         known.find((c) => c.cell.kind === "stale" || c.cell.kind === "unversioned") ??
         known.find((c) => c.cell.kind === "missing" || c.cell.kind === "failed") ??
-        known.find((c) => c.cell.kind === "unknown")
+        known.find((c) => c.cell.kind === "unknown") ??
+        known.find((c) => c.cell.kind === "unsupported")
       if (worst?.cell.kind === "unknown") unreported.push(tool.name)
+      else if (worst?.cell.kind === "unsupported") unsupported.push(tool.name)
       else if (worst) items.push(skillItem(tool, agent.name, worst.target, worst.cell))
     }
   }
@@ -178,6 +254,14 @@ export function buildCheck(input: CheckInput): CheckItem[] {
       title: `${unreported.join(", ")} cannot report ${unreported.length === 1 ? "its skill" : "their skills"}`,
       detail: "These versions are too old to say which skill is installed. A newer version can.",
       fix: { kind: "tools" },
+    })
+  }
+  if (unsupported.length > 0) {
+    items.push({
+      id: "skill:unsupported",
+      tone: "idle",
+      title: `${unsupported.join(", ")} cannot write a skill for ${agent.name} yet`,
+      detail: `The version that can is not released yet. Until then ${agent.name} does not know these tools' commands.`,
     })
   }
   const permissions = Object.entries(access ?? {})
@@ -245,14 +329,14 @@ function skillItem(tool: CheckTool, agentName: string, target: SkillTarget, cell
   }
 }
 
-const toolOf = (item: CheckItem) => item.id.split(/[:/]/)[0]
+const toolsOf = (item: CheckItem) => item.tools ?? [item.id.split(/[:/]/)[0] ?? ""]
 
 /** Red only when the agent can use none of its tools; a fault in some of them is something to set up. */
 export function overall(items: readonly CheckItem[], tools?: readonly { id: string }[]): Tone {
   const bad = items.filter((i) => i.tone === "bad")
   if (bad.length > 0) {
-    const broken = new Set(bad.map(toolOf))
-    return tools && tools.some((t) => !broken.has(t.id)) ? "warn" : "bad"
+    const broken = new Set(bad.flatMap(toolsOf))
+    return tools?.some((t) => !broken.has(t.id)) ? "warn" : "bad"
   }
   if (items.some((i) => i.tone === "warn")) return "warn"
   return items.some((i) => i.tone === "ok") ? "ok" : "idle"

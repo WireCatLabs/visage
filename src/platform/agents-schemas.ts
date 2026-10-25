@@ -1,6 +1,6 @@
 import * as v from "valibot"
 
-export const TargetSchema = v.picklist(["claude", "agents"])
+export const TargetSchema = v.picklist(["claude", "agents", "hermes"])
 
 export const AgentsSchema = v.array(
   v.object({
@@ -43,6 +43,15 @@ export const RegistrationsSchema = v.object({
   names: v.array(v.string()),
   canAdd: v.boolean(),
   canRemove: v.boolean(),
+  /** Where the owner can look when the app does not read this agent's servers. */
+  unread: v.optional(v.nullable(v.string()), null),
+})
+
+/** The chat apps that can drive an agent, by name only; `running` is null when the source does not say. */
+export const ChatsSchema = v.object({
+  source: v.string(),
+  running: v.nullable(v.boolean()),
+  channels: v.array(v.string()),
 })
 
 /** A profile's MCP server, started once by the tool's own `mcp check`. */
@@ -64,6 +73,7 @@ export const ClaimsSchema = v.object({
 
 export type SkillText = v.InferOutput<typeof SkillTextSchema>
 export type Registrations = v.InferOutput<typeof RegistrationsSchema>
+export type Chats = v.InferOutput<typeof ChatsSchema>
 export type McpHealth = v.InferOutput<typeof McpHealthSchema>
 export type Claims = v.InferOutput<typeof ClaimsSchema>
 export type Claim = Claims["items"][number]

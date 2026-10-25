@@ -1,5 +1,5 @@
 import type { StoreCompat } from "@/domain/compat"
-import type { Agent, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
+import type { Agent, Chats, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { BackupEvent, Backups, ResetPreview } from "./backup-schemas"
 import type { Permissions } from "./permissions-schemas"
@@ -77,7 +77,9 @@ export type Platform = {
   skillInstall(id: string, target: Target): Promise<string | null>
   skillShow(id: string): Promise<SkillText>
   /** By tool id, for installed tools: whether a terminal finds it on its own PATH. */
-  terminalReach(): Promise<Record<string, boolean>>
+  terminalReach(agent?: string): Promise<Record<string, boolean>>
+  /** Which chat apps drive the agent (Hermes's gateway, OpenClaw's channels), read only. */
+  agentChats(agent: string): Promise<Chats>
   /** WireCat servers an agent has registered; rejects when the agent's list cannot be read. */
   mcpRegistrations(agent: string): Promise<Registrations>
   /** The tool's own `mcp check` for one profile; starts the server once, writes nothing. */

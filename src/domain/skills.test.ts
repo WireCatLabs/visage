@@ -4,6 +4,16 @@ import { cellAction, type SkillReportLike, skillCell } from "./skills"
 const status = (targets: SkillReportLike["targets"]): SkillReportLike => ({ source: "status", targets })
 
 describe("skillCell", () => {
+  it("needs a newer tool for Hermes when the report does not list it, and offers no install", () => {
+    const old = status([{ target: "claude", installed: "1.0.0", state: "current" }])
+    const cell = skillCell({ target: "hermes", cliVersion: "1.0.0", report: old })
+    expect(cell.kind).toBe("unsupported")
+    expect(cellAction(cell)).toBeNull()
+    expect(skillCell({ target: "agents", cliVersion: "1.0.0", report: old }).kind).toBe("missing")
+    const knows = status([{ target: "hermes", installed: null, state: "missing" }])
+    expect(skillCell({ target: "hermes", cliVersion: "1.0.0", report: knows }).kind).toBe("missing")
+  })
+
   it("takes the state the tool reports", () => {
     const report = status([
       { target: "claude", installed: "0.88.0", state: "current" },

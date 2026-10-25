@@ -12,6 +12,8 @@ enum Registry {
     Command { program: &'static str, args: &'static [&'static str] },
     /// No command lists without starting every server, so the settings file is read: a key under home.
     File { path: &'static str, key: &'static str },
+    /// Kept where the app does not read it: Hermes in YAML, `OpenClaw` in JSON5. The interface says where to look.
+    Unread { place: &'static str },
 }
 
 struct AgentMcp {
@@ -23,7 +25,7 @@ struct AgentMcp {
     remove: Option<(&'static str, &'static [&'static str])>,
 }
 
-const AGENTS: [AgentMcp; 5] = [
+const AGENTS: [AgentMcp; 7] = [
     // `claude mcp list` and `get` health-check every server, so they would start unrelated servers on page load.
     AgentMcp {
         id: "claude",
@@ -55,6 +57,13 @@ const AGENTS: [AgentMcp; 5] = [
         client: None,
         remove: None,
     },
+    AgentMcp {
+        id: "hermes",
+        registry: Registry::Unread { place: "mcp_servers in ~/.hermes/config.yaml" },
+        client: None,
+        remove: None,
+    },
+    AgentMcp { id: "openclaw", registry: Registry::Unread { place: "openclaw mcp list" }, client: None, remove: None },
 ];
 
 fn agent(id: &str) -> Result<&'static AgentMcp, String> {
@@ -71,6 +80,8 @@ pub struct Registrations {
     /// Whether the tools' own `mcp add` can register with this agent.
     pub can_add: bool,
     pub can_remove: bool,
+    /// Set when the app does not read this agent's servers: where the owner can look instead.
+    pub unread: Option<&'static str>,
 }
 
 /// `tg-personal` is what cli-core's `mcp add` names a profile's server; `tg` alone is what its help suggests.
@@ -103,6 +114,7 @@ pub fn registrations(id: &str) -> Result<Registrations, String> {
                 names: wirecat_names(keys_in(&file, key)?.into_iter()),
                 can_add,
                 can_remove,
+                unread: None,
             })
         }
         Registry::Command { program, args } => {
@@ -112,8 +124,15 @@ pub fn registrations(id: &str) -> Result<Registrations, String> {
                 .map_err(|e| e.to_string())?;
             let list = out.json().filter(|_| out.code == Some(0)).ok_or_else(|| failure(&out, None))?;
             let keys = list.as_array().into_iter().flatten().filter_map(|s| s["name"].as_str().map(str::to_string));
-            Ok(Registrations { source, names: wirecat_names(keys), can_add, can_remove })
+            Ok(Registrations { source, names: wirecat_names(keys), can_add, can_remove, unread: None })
         }
+        Registry::Unread { place } => Ok(Registrations {
+            source: (*place).to_string(),
+            names: Vec::new(),
+            can_add,
+            can_remove,
+            unread: Some(place),
+        }),
     }
 }
 

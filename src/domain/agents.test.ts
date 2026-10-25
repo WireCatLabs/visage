@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import {
+  agentPathFix,
   buildCheck,
   type CheckInput,
   connections,
@@ -86,6 +87,39 @@ describe("buildCheck", () => {
       max: { claude: { kind: "unknown" } },
     },
   }
+
+  it("gives Hermes one shell-profile line for every tool its gateway's shell misses", () => {
+    const items = buildCheck({
+      ...base,
+      agent: { id: "hermes", name: "Hermes Agent", reads: ["hermes"] },
+      reach: { tg: false, zm: false, max: true },
+      skills: { tg: { hermes: { kind: "unsupported" } }, zm: { hermes: { kind: "unsupported" } } },
+    })
+    const path = items.find((i) => i.id === "path:agent")
+    expect(path?.title).toBe("Hermes Agent cannot find Telegram, Zoom")
+    expect(path?.detail).toMatch(/bash -l.*~\/\.profile/)
+    expect(path?.fix).toEqual({
+      kind: "command",
+      command: 'export PATH="$HOME/.local/share/pnpm:/usr/lib/node/bin:$PATH"',
+    })
+    expect(items.some((i) => i.id.endsWith(":path"))).toBe(false)
+    expect(items.find((i) => i.id === "skill:unsupported")?.title).toBe(
+      "Telegram, Zoom cannot write a skill for Hermes Agent yet",
+    )
+    expect(overall(items, base.tools)).toBe("warn")
+    expect(overall(items, base.tools.slice(0, 2))).toBe("bad")
+  })
+
+  it("gives OpenClaw one pathPrepend list, since setting it replaces the list", () => {
+    const openclaw = { id: "openclaw", name: "OpenClaw" }
+    const fix = agentPathFix(openclaw, base.tools.slice(0, 2))
+    expect(fix?.command).toBe(
+      `openclaw config set tools.exec.pathPrepend '["~/.local/share/pnpm","/usr/lib/node/bin"]' --strict-json`,
+    )
+    expect(fix?.detail).toMatch(/replaces the whole list.*gateway is stopped/)
+    expect(agentPathFix({ id: "claude", name: "Claude Code" }, base.tools)).toBeNull()
+    expect(agentPathFix(openclaw, base.tools, true)).toBeNull()
+  })
 
   it("lists what to fix worst first, each with its fix", () => {
     const items = buildCheck(base)

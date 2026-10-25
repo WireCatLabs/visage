@@ -27,6 +27,7 @@ src-tauri/src/
   backup.rs     backing the shared store up into a zip, and clearing it, through the tool's own `store backup` / `store reset`.
   compat.rs     every installed tool's own `store info`, at once: which schema each reads and what its next run does.
   skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `install` / `show`.
+  chats.rs      which chat apps drive Hermes and OpenClaw, by name only; the PATH Hermes's gateway starts from.
   mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
@@ -157,6 +158,20 @@ agent's recent sessions and the tasks it holds.
   (the Permissions block's `permissions_show`).
 - **Skill preview** shows `skill show --json`, the SKILL.md the installed version ships, beside the installed copies'
   versions. The app does not read an installed SKILL.md, so what an update changes waits for a CLI that prints it.
+
+- **Hermes and OpenClaw** (plan `docs/dev/plans/2026-10-25-agents-openclaw-hermes.md`). Found by program, or by
+  their settings file (`~/.hermes/config.yaml` or `$HERMES_HOME`, `~/.openclaw/openclaw.json` or
+  `$OPENCLAW_STATE_DIR`); a bare `skills` folder is left by other installers and does not count. OpenClaw reads
+  `~/.agents/skills`. Hermes is its own target, `hermes`, which only a tool whose `skill status` lists it can write
+  (cli-base's `--for hermes`); until then its cells say "needs a newer" tool and offer nothing. The app never writes
+  either agent's settings. Their PATH is not a terminal's: Hermes runs commands in `bash -l` started from its gateway's
+  PATH (read from its systemd unit, else the system PATH), and OpenClaw from its gateway's, fixed with
+  `tools.exec.pathPrepend`; the check shows the shell-profile line or OpenClaw's own `config set` to copy, never runs it.
+  `chats.rs` reads which chat apps drive them, by name only: Hermes's `gateway_state.json`, OpenClaw's
+  `channels list --json`. **Connect** (any found agent) installs the chosen tools' skills, then for a chat-driven agent
+  sets the profiles the owner ticks to read only (`config set permissions.<group> readonly` for each catalog group,
+  then the tool's own count of what still writes), then checks that agent's PATH. Nothing is preselected; MCP is not
+  part of it. No tool removes its skill yet, so **Disconnect** lists the folders to delete and who else reads them.
 
 Every write on the page (skill install, MCP add or remove, task release) opens a dialog with the exact command.
 

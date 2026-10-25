@@ -4,6 +4,7 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
 import {
   AgentsSchema,
+  ChatsSchema,
   ClaimsSchema,
   McpHealthSchema,
   RegistrationsSchema,
@@ -111,7 +112,8 @@ function createTauri(): Platform {
     skillStatus: (id) => call(SkillReportSchema, "skill_status", { id }),
     skillInstall: (id, target) => call(SkillWrittenSchema, "skill_install", { id, target }),
     skillShow: (id) => call(SkillTextSchema, "skill_show", { id }),
-    terminalReach: () => call(TerminalReachSchema, "terminal_reach"),
+    terminalReach: (agent) => call(TerminalReachSchema, "terminal_reach", agent ? { agent } : {}),
+    agentChats: (agent) => call(ChatsSchema, "agent_chats", { agent }),
     mcpRegistrations: (agent) => call(RegistrationsSchema, "mcp_registrations", { agent }),
     mcpCheck: (id, profile) => call(McpHealthSchema, "mcp_check", { id, profile }),
     mcpAdd: (id, profile, agent, allowWrites) => invoke("mcp_add", { id, profile, agent, allowWrites }),

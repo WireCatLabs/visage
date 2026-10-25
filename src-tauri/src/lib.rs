@@ -2,6 +2,7 @@ mod archive;
 mod backup;
 mod cache;
 mod catalog;
+mod chats;
 mod compat;
 mod install;
 mod mcp;
@@ -266,18 +267,32 @@ async fn skill_show(id: String) -> Result<skills::SkillText, String> {
     blocking(move || skills::show(tool)).await?
 }
 
-/// Which installed tools a terminal finds on its own PATH, by tool id.
+/// Which installed tools a terminal finds on its own PATH, by tool id. For Hermes it is the `bash -l` its gateway
+/// runs commands in, started from the gateway's own PATH; without a gateway service, a terminal's.
 #[tauri::command]
-async fn terminal_reach() -> Result<HashMap<String, bool>, String> {
-    blocking(|| {
+async fn terminal_reach(agent: Option<String>) -> Result<HashMap<String, bool>, String> {
+    blocking(move || {
+        let gateway = if agent.as_deref() == Some("hermes") { chats::hermes_base_path() } else { None };
+        let gateway = gateway.and_then(|base| paths::bash_login_path(&base));
         catalog::catalog()
             .tools
             .iter()
             .filter(|t| t.part_of.is_none() && paths::find(&t.bin).is_some())
-            .map(|t| (t.id.clone(), paths::in_terminal(&t.bin)))
+            .map(|t| {
+                let found = match &gateway {
+                    Some(path) => paths::finds(&t.bin, path),
+                    None => paths::in_terminal(&t.bin),
+                };
+                (t.id.clone(), found)
+            })
             .collect()
     })
     .await
+}
+
+#[tauri::command]
+async fn agent_chats(agent: String) -> Result<chats::Chats, String> {
+    blocking(move || chats::read(&agent)).await?
 }
 
 #[tauri::command]
@@ -425,6 +440,7 @@ pub fn run() {
             skill_install,
             skill_show,
             terminal_reach,
+            agent_chats,
             mcp_registrations,
             mcp_check,
             mcp_add,

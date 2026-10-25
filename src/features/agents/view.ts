@@ -24,7 +24,16 @@ import { useSkillMatrix } from "./skill-matrix"
 import { useAgents } from "./store"
 
 // An agent is served by its best copy across the folders it reads.
-const PREFER: SkillCell["kind"][] = ["current", "stale", "unversioned", "unknown", "failed", "missing", "checking"]
+const PREFER: SkillCell["kind"][] = [
+  "current",
+  "stale",
+  "unversioned",
+  "unknown",
+  "unsupported",
+  "failed",
+  "missing",
+  "checking",
+]
 const USABLE = new Set<SkillCell["kind"]>(["current", "stale", "unversioned"])
 
 export type AgentSkill = {
@@ -157,7 +166,7 @@ export function useAgentsView() {
             bin: r.tool.bin,
             path: installs[r.tool.id]?.[0]?.path ?? null,
           })),
-          reach: connect.reach,
+          reach: connect.agentReach[agent.id] ?? connect.reach,
           skills: Object.fromEntries(
             rows.map((r) => [
               r.tool.id,

@@ -74,6 +74,8 @@ const AGENT_NAMES: Record<string, string> = {
   "gemini-cli": "Gemini CLI",
   cursor: "Cursor",
   opencode: "OpenCode",
+  "hermes-agent": "Hermes Agent",
+  openclaw: "OpenClaw",
 }
 export const agentName = (kind: string) => AGENT_NAMES[kind] ?? kind
 /** Enough of a session id to tell sessions apart in a column; the whole id is one click away. */

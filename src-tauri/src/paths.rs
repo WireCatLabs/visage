@@ -166,6 +166,26 @@ pub fn in_terminal(bin: &str) -> bool {
     path.is_some_and(|p| which::which_in(bin, Some(p), std::env::temp_dir()).is_ok())
 }
 
+/// The PATH `bash -l -c` ends with when started from `base`: Hermes runs every command from a snapshot of such a
+/// shell, so a folder added to PATH only in `~/.zshrc` or `~/.bashrc` is missing there.
+#[cfg(unix)]
+pub fn bash_login_path(base: &std::ffi::OsStr) -> Option<OsString> {
+    // A profile may print something of its own first; only what follows the marker is the PATH.
+    let script = ["-l", "-c", "printf '__WIRECAT_PATH__%s' \"$PATH\""];
+    let out = crate::run::run(Path::new("bash"), &script, Some(base), Duration::from_secs(5)).ok()?;
+    let (_, path) = out.stdout.rsplit_once("__WIRECAT_PATH__")?;
+    (!path.trim().is_empty()).then(|| OsString::from(path.trim()))
+}
+
+#[cfg(windows)]
+pub fn bash_login_path(_base: &std::ffi::OsStr) -> Option<OsString> {
+    login_shell().path.clone()
+}
+
+pub fn finds(bin: &str, path: &std::ffi::OsStr) -> bool {
+    which::which_in(bin, Some(path), std::env::temp_dir()).is_ok()
+}
+
 pub fn manager_for(path: &Path) -> &'static str {
     let s = path.to_string_lossy().replace('\\', "/").to_lowercase();
     if s.contains("/pnpm/") {
@@ -202,7 +222,13 @@ mod tests {
     #[ignore = "reads this computer's shell"]
     fn real_terminal() {
         for bin in ["tg", "max", "wa", "zm", "drive", "memo"] {
-            println!("{bin}: app finds {}, terminal finds {}", find(bin).is_some(), in_terminal(bin));
+            let bash =
+                bash_login_path(std::ffi::OsStr::new("/usr/local/bin:/usr/bin:/bin")).is_some_and(|p| finds(bin, &p));
+            println!(
+                "{bin}: app finds {}, terminal finds {}, bash -l finds {bash}",
+                find(bin).is_some(),
+                in_terminal(bin)
+            );
         }
     }
 }

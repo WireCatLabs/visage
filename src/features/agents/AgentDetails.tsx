@@ -15,6 +15,8 @@ import { useTools } from "../tools/store"
 import { AdvancedMcp } from "./AdvancedMcp"
 import { ClaimRow } from "./ClaimRow"
 import { useConnect } from "./connect"
+import { installedCopies, useDisconnect } from "./DisconnectDialog"
+import { useAgents } from "./store"
 import { type AgentView, plural } from "./view"
 
 const box = "rounded-[0.45rem] border border-line bg-app"
@@ -32,6 +34,8 @@ export function openManage(tool: string) {
 export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): void }) {
   const { agent } = view
   const checking = useConnect((s) => s.checking[agent.id] === true)
+  const skills = useAgents((s) => s.skills)
+  const connected = installedCopies(view, skills).length > 0
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -41,18 +45,29 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
             {agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
           </span>
         </p>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={checking}
-          onClick={onCheck}
-          icon={<RefreshCw className={cx("size-[0.95rem]", checking && "animate-spin")} aria-hidden />}
-        >
-          <StableText
-            value={checking ? "Checking…" : "Check this agent"}
-            variants={["Check this agent", "Checking…"]}
-          />
-        </Button>
+        <span className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!connected}
+            onClick={() => useDisconnect.getState().open(agent.id)}
+            aria-label={`Disconnect WireCat from ${agent.name}`}
+          >
+            Disconnect
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={checking}
+            onClick={onCheck}
+            icon={<RefreshCw className={cx("size-[0.95rem]", checking && "animate-spin")} aria-hidden />}
+          >
+            <StableText
+              value={checking ? "Checking…" : "Check this agent"}
+              variants={["Check this agent", "Checking…"]}
+            />
+          </Button>
+        </span>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Section title="Also to fix">
@@ -89,7 +104,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function OtherFixes({ view }: { view: AgentView }) {
   const go = useNav((s) => s.go)
   if (!view.items) return <Skeleton className="h-10 w-full" label="Checking" />
-  const shown = view.items.filter((i) => i.tone !== "ok" && !i.id.endsWith(":skill") && i.id !== "skill:unknown")
+  const shown = view.items.filter((i) => i.tone !== "ok" && !i.id.endsWith(":skill") && !i.id.startsWith("skill:"))
   if (shown.length === 0 && view.signedOut.length === 0)
     return <p className="text-[0.9rem] text-ink-soft">Nothing else stops {view.agent.name}.</p>
   return (

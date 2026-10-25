@@ -1,10 +1,17 @@
 import { isNewer } from "./status"
 
-export type SkillTarget = "claude" | "agents"
+export type SkillTarget = "claude" | "agents" | "hermes"
 
-export const SKILL_TARGETS: readonly SkillTarget[] = ["claude", "agents"]
+export const SKILL_TARGETS: readonly SkillTarget[] = ["claude", "agents", "hermes"]
 
-export const TARGET_FOLDER: Record<SkillTarget, string> = { claude: "~/.claude/skills", agents: "~/.agents/skills" }
+export const TARGET_FOLDER: Record<SkillTarget, string> = {
+  claude: "~/.claude/skills",
+  agents: "~/.agents/skills",
+  hermes: "~/.hermes/skills",
+}
+
+/** Places cli-base added after the first two: a tool whose report does not list one cannot write it yet. */
+const LATER_TARGETS = new Set<SkillTarget>(["hermes"])
 
 type CopyState = "current" | "stale" | "missing" | "unversioned"
 
@@ -21,6 +28,8 @@ export type SkillCell =
   | { kind: "unversioned" }
   /** The tool is too old to report its skill. */
   | { kind: "unknown" }
+  /** The tool reports its skill but cannot write it to this place yet. */
+  | { kind: "unsupported" }
   | { kind: "failed"; message: string }
 
 const compare = (installed: string, cli: string | null): SkillCell =>
@@ -43,6 +52,7 @@ export function skillCell(input: {
   if (!report) return { kind: "checking" }
   if (report.source === "none") return { kind: "unknown" }
   const copy = report.targets.find((t) => t.target === target)
+  if (!copy && LATER_TARGETS.has(target)) return { kind: "unsupported" }
   if (!copy || copy.state === "missing") return { kind: "missing" }
   if (!copy.installed || copy.state === "unversioned") return { kind: "unversioned" }
   if (copy.state === "stale") return { kind: "stale", installed: copy.installed }

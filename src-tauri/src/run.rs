@@ -48,7 +48,7 @@ impl std::fmt::Display for RunError {
     }
 }
 
-const AGENT_ENV: [&str; 11] = [
+const AGENT_ENV: [&str; 16] = [
     "AI_AGENT",
     "CLAUDECODE",
     "CLAUDE_CODE_SESSION_ID",
@@ -59,8 +59,22 @@ const AGENT_ENV: [&str; 11] = [
     "OPENCODE",
     "OPENCODE_SESSION_ID",
     "CURSOR_AGENT",
+    "HERMES_AGENT",
+    "OPENCLAW_SHELL",
+    "OPENCLAW_CHANNEL_CONTEXT",
+    "OPENCLAW_SUBAGENT_EXEC",
+    "OPENCLAW_CLI",
     "WIRECAT_HOLDER",
 ];
+
+/// Hermes passes each chat's session to its commands as a family (`HERMES_SESSION_ID`, `_PLATFORM`, `_CHAT_ID`,
+/// `_TOKEN__…`), and new members appear between releases.
+const AGENT_ENV_PREFIXES: [&str; 1] = ["HERMES_SESSION_"];
+
+fn agent_env(names: impl Iterator<Item = std::ffi::OsString>) -> Vec<std::ffi::OsString> {
+    let by_prefix = names.filter(|n| n.to_str().is_some_and(|n| AGENT_ENV_PREFIXES.iter().any(|p| n.starts_with(p))));
+    AGENT_ENV.iter().map(std::ffi::OsString::from).chain(by_prefix).collect()
+}
 
 pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>) -> Command {
     let mut cmd = Command::new(program);
@@ -77,7 +91,7 @@ pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>
     }
     // An app started from an agent's terminal would otherwise have its own runs recorded, and its writes authored, as
     // that agent's session (cli-core `agentOf` and `holderOf` read these).
-    for name in AGENT_ENV {
+    for name in agent_env(std::env::vars_os().map(|(k, _)| k)) {
         cmd.env_remove(name);
     }
     if let Some(p) = path_env {
@@ -314,8 +328,20 @@ mod tests {
         for prefix in ["TG", "MAX", "WA", "ZM", "DRIVE", "MEMO"] {
             assert!(removed.contains(&std::ffi::OsString::from(format!("{prefix}_PROFILE"))), "{prefix}_PROFILE");
         }
-        for name in ["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "WIRECAT_HOLDER"] {
+        for name in ["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "WIRECAT_HOLDER", "OPENCLAW_SHELL"] {
             assert!(removed.contains(&std::ffi::OsString::from(name)), "{name}");
+        }
+    }
+
+    #[test]
+    fn drops_every_hermes_session_variable_and_nothing_else() {
+        let present = ["HERMES_SESSION_ID", "HERMES_SESSION_TOKEN__X", "HERMES_HOME", "PATH", "HERMES_AGENT_TIMEOUT"];
+        let removed = agent_env(present.iter().map(std::ffi::OsString::from));
+        for name in ["HERMES_SESSION_ID", "HERMES_SESSION_TOKEN__X", "HERMES_AGENT", "OPENCLAW_CLI", "AI_AGENT"] {
+            assert!(removed.contains(&std::ffi::OsString::from(name)), "{name}");
+        }
+        for name in ["HERMES_HOME", "PATH", "HERMES_AGENT_TIMEOUT"] {
+            assert!(!removed.contains(&std::ffi::OsString::from(name)), "{name}");
         }
     }
 
