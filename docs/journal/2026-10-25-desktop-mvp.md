@@ -60,6 +60,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-14 · Done закрывает все готовые установки; пульсирующий текущий шаг; порядок полей в Logs.** Слава: «when I click Done after update I think all clis that are done are closed - needs a fix. also when one step is running mb make its circle pulsating» и «in logs move argv under command, also order the fields so that most important are at the top … run_id, command, argv look like good first fields». Статус: один агент.
 
+- **TASK-15 · Пункт «About» в меню «?».** «lets add an about item to ? menu so it would display a modal with details about the project - what it is, version links license, my name and so on». Статус: агент — диалог с описанием, версией и номером сборки (git-хеш и дата — заодно видно, свежая ли сборка в лаунчере), ссылками (сайт, документация, исходники, политика, «Report a problem»), лицензией Apache-2.0, «Made by Viacheslav Ptsarev».
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
