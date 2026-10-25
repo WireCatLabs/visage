@@ -25,3 +25,4 @@
 - 2026-10-25 · src/features/agents/AgentsMatrix.tsx non-compact mode (folder paths, "Not installed: …" line, the `compact` prop) — only onboarding uses the matrix now, always compact
 - 2026-10-25 · .claude/worktrees/agent-a359c23afa0cf771c and its branch (Agents variants A/B/C) — C is now the real page
 - 2026-10-25 · .claude/worktrees/agent-a88adf3d162585486 and its branch — merged (Agents design C)
+- 2026-10-25 · .claude/worktrees/agent-ae31f5f9d4ea1e16a and its branch — merged
