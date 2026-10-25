@@ -26,3 +26,5 @@
 - 2026-10-25 · .claude/worktrees/agent-a359c23afa0cf771c and its branch (Agents variants A/B/C) — C is now the real page
 - 2026-10-25 · .claude/worktrees/agent-a88adf3d162585486 and its branch — merged (Agents design C)
 - 2026-10-25 · .claude/worktrees/agent-ae31f5f9d4ea1e16a and its branch — merged
+- 2026-10-26 · .claude/worktrees/agent-a86e884c94ca5e4f8 (feat/agents-w2-hermes-openclaw, has its own node_modules) — merged
+- 2026-10-26 · bin/fix-hermes-path — one-off for this machine; remove after it ran
