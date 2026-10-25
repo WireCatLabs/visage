@@ -35,6 +35,10 @@ markdownlint, Vitest, clippy pedantic, CI, `CLAUDE.md`, `AGENTS.md`, `docs/dev/A
 Rust собрался с первого раза, clippy pedantic дал 12 замечаний, исправлено (`ee37aba`). `pnpm check` проходит
 целиком. `pnpm app` открыл настоящее окно. Реальные установка, удаление и очистка хранилища ещё не прогнаны.
 
+**TASK-6 · Второй круг: проводник по базе, навыки агентов, логи, баг-репорты, онбординг**
+Статус: исследование (4 агента), сделаны открытие папок (`25cd682`) и строка загрузки (`b33daef`). Остальное ждёт
+решений NEED-4…NEED-7.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -43,6 +47,19 @@ Rust собрался с первого раза, clippy pedantic дал 12 за
 
 **ASK-2 · «on hover I don't see pointer cursor change… not sure we use soft transitions»**
 Курсор и переходы были не везде (UX-1, UX-2). Исправлено одним базовым правилом, коммит `966988d`.
+
+**ASK-3 · «when the app is loading the info about cli tools it should be visible»**
+Рядом с заголовком строка с текущим шагом; проверка npm запускается одновременно с поиском. Коммит `b33daef`.
+
+**ASK-4 · «we might need to install node, npm etc for users first… might we face some issues with permissions»**
+Сейчас: плашка «нужен Node.js» со ссылкой на nodejs.org и плашка про npm, которому нужны права администратора.
+Права: без sudo ставить в системную папку нельзя; Node из apt/Homebrew-под-root даёт EACCES. Решение — свой Node в
+папке пользователя (NEED-5).
+
+**ASK-5 · «manage configs via a separate menu item visually and via json editing (similar to what vscode allows)»**
+Раздел Config: вкладки Settings и JSON поверх `<bin> <profile> config show --json`; сохранение идёт через
+`config set`/`config unset`, файл приложение само не пишет. План:
+`docs/dev/plans/2026-10-25-round-2.md`, раздел 8.
 
 ## 3. Находки
 
@@ -69,6 +86,27 @@ Tailwind v4 больше не ставит `cursor: pointer` кнопкам, а 
 **UX-2 · Плавные переходы были только у части элементов**
 Кнопки и меню уже плавно меняли цвет (150 мс), ссылки и раскрывашки — нет. Теперь у всех по умолчанию.
 
+**FIND-3 · Хранилище одно: `~/.local/share/WireCat/wirecat.db`, 3.24 ГБ, схема 29**
+Telegram, WhatsApp, MAX, почта, Drive, Zoom пишут туда. Разбивка: `accounts.provider`, `chats.kind`,
+`messages.sent_at`. `tg store info --json` даёт итоги за 99 мс, разбивок по мессенджерам нет ни в одной команде.
+`dbstat` (размер таблиц) идёт 39 с — не в живом интерфейсе. Схема: `cli-core/src/store/sqlite/schema.ts`.
+
+**FIND-4 · Навыки ставятся только в два места: `~/.claude/skills` и `~/.agents/skills`**
+`<bin> skill install --for claude|agents|all`. Версия — `metadata.version` во frontmatter. Устарели: max (0.66 при
+0.74), wa (0.1 при 0.6), drive (0.28.1 при 0.29), memo (0.93 при 0.102). Команды статуса с JSON нет.
+
+**FIND-5 · Серверной части у WireCat нет**
+wirecat.dev — статика на Cloudflare Pages; GitHub App нет; токен Cloudflare только на Pages.
+
+**BUG-2 · `memo --help` падает с `command.crashed`; `memo help` работает**
+Найдено агентом, не воспроизведено мной.
+
+**RISK-3 · `wirecat-backup.service` в состоянии failed**
+Последний запуск резервной копии архива упал. 1.65 ГБ старых копий (`backups/*.db`, `~/.cache/max-cli/*.db`).
+
+**FIND-6 · zm пишет журналы запусков, но команды `runs` у него нет; drive и memo журналов не пишут**
+Страница Logs покажет для них пустое состояние. Недостающая команда — дело CLI (правило 1).
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
@@ -88,3 +126,31 @@ Tailwind v4 больше не ставит `cursor: pointer` кнопкам, а 
 - Варианты: **A** отправить и открыть PR сейчас · **B** после настоящей установки и удаления в окне.
 - Я бы: **B**.
 - Ответ: ещё нет.
+
+**NEED-4 · Откуда брать данные о навыках и о содержимом базы: сначала дописать CLI или читать самим?**
+- Сейчас: команды статуса навыков нет; `store info` даёт только итоги, без разбивок по мессенджерам, типам чатов,
+  аккаунтам.
+- Варианты: **A** сначала CLI: `skill status --json` в cli-base и разбивки в `store info` cli-core, потом выпуск
+  всех CLI, потом экраны · **B** приложение само читает SKILL.md и базу (только чтение) — это нарушает правило 1 в
+  CLAUDE.md и привязывает приложение к схеме 29 · **C** экраны сразу на том, что есть (`store info`,
+  `skill install`, `memo doctor`.skills), недостающее — PR в cli-base/cli-core параллельно, экран сам подхватит.
+- Я бы: **C** — правило 1 соблюдено, экраны появляются сразу, разбивки придут с выпуском CLI.
+- Ответ: ещё нет.
+
+**NEED-5 · Ставить ли приложению свой Node.js в домашнюю папку пользователя?**
+- Сейчас: только ссылка на nodejs.org и объяснение словами; с Node из apt пользователь застревает (EACCES).
+- Варианты: **A** свой Node с проверкой контрольных сумм nodejs.org и предложением добавить в PATH · **B** только
+  инструкции по системам · **C** A основной кнопкой, B — «поставлю сам».
+- Я бы: **C**.
+- Ответ: ещё нет.
+
+**NEED-6 · Где и как поднять сервер для баг-репортов?**
+- Сейчас: серверной части у WireCat нет (FIND-5); нужны Worker, R2, GitHub App и новые секреты.
+- Варианты: **A** Cloudflare Worker + R2 + GitHub App, код в `server/` этого репозитория · **B** то же, отдельный
+  репозиторий `WireCatLabs/wirecat-api` · **C** без сервера: приложение открывает готовую страницу нового issue в
+  браузере, без логов.
+- Я бы: **B**, а пока сервера нет — **C** как запасной путь.
+- Ответ: ещё нет.
+
+**NEED-7 · Писать ли JSON-конфиг напрямую в файл?**
+- Снято: правило 1 отвечает само — сохранение через `config set`/`config unset`. Решение не нужно.
