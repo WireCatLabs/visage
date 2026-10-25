@@ -101,6 +101,7 @@ export function AgentsPage() {
             servers: servers.state === "ready" ? servers.data : null,
             health: connect.health,
             profiles: connect.profiles,
+            access: connect.access,
           })
         : null
     const mine: AgentClaim[] = claims

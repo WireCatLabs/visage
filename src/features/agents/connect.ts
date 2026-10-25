@@ -17,6 +17,8 @@ type ConnectState = {
   health: Record<string, McpHealth | string>
   /** `<tool>/<profile>`. */
   claims: Record<string, ProfileClaims>
+  /** `<tool>/<profile>` → commands its permissions block, or why they could not be read. Filled by Check. */
+  access: Record<string, { blocked: number; total: number } | string>
   /** Agent ids whose Check has run in this session. */
   checked: Record<string, boolean>
   checking: Record<string, boolean>
@@ -46,6 +48,14 @@ export const useConnect = create<ConnectState>((set, get) => {
     set((s) => ({ claims: { ...s.claims, [key]: next } }))
   }
 
+  const readAccess = async (tool: string, profile: string) => {
+    const next = await platform.permissionsShow(tool, profile).then(
+      (p) => (p.commands ? { blocked: p.commands.filter((c) => !c.available).length, total: p.commands.length } : null),
+      (e) => message(e),
+    )
+    if (next !== null) set((s) => ({ access: { ...s.access, [pairKey(tool, profile)]: next } }))
+  }
+
   // A write runs once at a time per key; the failure stays beside the control that started it.
   const write = async (key: string, run: () => Promise<unknown>, after: () => Promise<unknown>) => {
     if (get().busy[key]) return false
@@ -68,6 +78,7 @@ export const useConnect = create<ConnectState>((set, get) => {
     profiles: {},
     health: {},
     claims: {},
+    access: {},
     checked: {},
     checking: {},
     busy: {},
@@ -122,7 +133,13 @@ export const useConnect = create<ConnectState>((set, get) => {
             ? profiles.filter((p) => names.includes(serverName(findTool(tool)?.bin ?? tool, p))).map((p) => [tool, p])
             : [],
         )
-        await Promise.all(pairs.map(([tool, profile]) => get().probe(tool as string, profile as string)))
+        const everyProfile = Object.entries(get().profiles).flatMap(([tool, profiles]) =>
+          findTool(tool)?.permissions ? profiles.map((p) => [tool, p] as const) : [],
+        )
+        await Promise.all([
+          ...pairs.map(([tool, profile]) => get().probe(tool as string, profile as string)),
+          ...everyProfile.map(([tool, profile]) => readAccess(tool, profile)),
+        ])
       } finally {
         set((s) => ({ checking: without(s.checking, agent), checked: { ...s.checked, [agent]: true } }))
       }

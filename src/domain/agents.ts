@@ -107,7 +107,8 @@ export type Tone = "ok" | "warn" | "bad" | "idle"
 export type Fix =
   | { kind: "skill"; tool: string; target: SkillTarget; label: "Install" | "Update" }
   | { kind: "command"; command: string }
-  | { kind: "update" }
+  /** Something to change on the Tools page: a tool update, or a profile's permissions. */
+  | { kind: "tools" }
 
 export type CheckItem = { id: string; tone: Tone; title: string; detail: string; fix?: Fix }
 
@@ -125,13 +126,15 @@ export type CheckInput = {
   /** `<tool>/<profile>` → the tool's own `mcp check`, or the reason it failed. */
   health: Readonly<Record<string, { healthy: boolean; signedIn: boolean } | string>>
   profiles: Readonly<Record<string, readonly string[]>>
+  /** `<tool>/<profile>` → commands its permissions block, from the tool's own `commands --json`; absent until Check. */
+  access?: Readonly<Record<string, { blocked: number; total: number } | string>>
 }
 
 const folderOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "").replace(/^~(?=\/)/, "$HOME")
 
 /** What stops this agent from using the tools, worst first, each with the one thing that fixes it. */
 export function buildCheck(input: CheckInput): CheckItem[] {
-  const { agent, tools, reach, skills, servers, health, profiles } = input
+  const { agent, tools, reach, skills, servers, health, profiles, access } = input
   const items: CheckItem[] = []
   const unconnected: string[] = []
   const unreported: string[] = []
@@ -188,15 +191,37 @@ export function buildCheck(input: CheckInput): CheckItem[] {
       tone: "idle",
       title: `${unreported.join(", ")} cannot report ${unreported.length === 1 ? "its skill" : "their skills"}`,
       detail: "These versions are too old to say which skill is installed. A newer version can.",
-      fix: { kind: "update" },
+      fix: { kind: "tools" },
     })
   }
-  items.push({
-    id: "permissions",
-    tone: "idle",
-    title: "Permissions are not checked here yet",
-    detail: "Which commands each profile allows is shown with the tool on the Tools page.",
-  })
+  const permissions = Object.entries(access ?? {})
+  for (const [key, a] of permissions) {
+    const [toolId, profile] = key.split("/")
+    const tool = tools.find((t) => t.id === toolId)
+    if (!tool) continue
+    const id = `${key}:permissions`
+    if (typeof a === "string") {
+      items.push({ id, tone: "idle", title: `${tool.name} (${profile}) permissions could not be read`, detail: a })
+    } else if (a.blocked === 0) {
+      items.push({ id, tone: "ok", title: `${tool.name} (${profile}) allows every command`, detail: "" })
+    } else {
+      items.push({
+        id,
+        tone: a.blocked === a.total ? "warn" : "idle",
+        title: `${tool.name} (${profile}): ${a.blocked} of ${a.total} commands are blocked`,
+        detail: `Its permissions stop ${agent.name} from running them. Change them in ${tool.name}'s Manage panel.`,
+        fix: { kind: "tools" },
+      })
+    }
+  }
+  if (permissions.length === 0) {
+    items.push({
+      id: "permissions",
+      tone: "idle",
+      title: "Permissions are read when you press Check",
+      detail: "Check asks each tool which commands every profile allows.",
+    })
+  }
   if (unconnected.length > 0) {
     items.push({
       id: "mcp:none",

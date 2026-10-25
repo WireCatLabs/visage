@@ -116,7 +116,8 @@ agent's recent sessions and the tasks it holds.
   the app; the holder (`claude-code:<session>`, `codex:<thread>`, an agent's name) is matched to its agent.
   Release runs `tasks release <task> --holder owner`, because the app may itself run inside an agent's terminal.
 - **Check** joins these with `paths::in_terminal` (is the tool on the PATH a terminal has, without the folders the
-  app adds) and runs `mcp check` for every connected profile.
+  app adds), runs `mcp check` for every connected profile and counts the commands each profile's permissions block
+  (the Permissions block's `permissions_show`).
 - **Skill preview** shows `skill show --json`, the SKILL.md the installed version ships, beside the installed copies'
   versions. The app does not read an installed SKILL.md, so what an update changes waits for a CLI that prints it.
 

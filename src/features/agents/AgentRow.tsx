@@ -167,7 +167,7 @@ function CheckList({ agent, items }: { agent: Agent; items: readonly CheckItem[]
                 {item.fix.label} skill
               </Button>
             )}
-            {item.fix?.kind === "update" && (
+            {item.fix?.kind === "tools" && (
               <Button size="sm" variant="ghost" onClick={() => go("tools")}>
                 Open Tools
               </Button>
