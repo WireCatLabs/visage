@@ -73,6 +73,24 @@ describe("Logs", () => {
     await waitFor(() => expect(within(keeping).getAllByText("Successful runs are not kept")).toHaveLength(3))
   }, 15000)
 
+  it("says an older tool gets its logs with the next update instead of failing", async () => {
+    const listRuns = platform.listRuns.bind(platform)
+    vi.spyOn(platform, "listRuns").mockImplementation(async (id, ...rest) => {
+      if (id === "zm")
+        throw new Error(`unknown command 'list' — "runs" is not a command, so it was read as a profile name`)
+      if (id === "memo") throw "unknown command 'runs'"
+      if (id === "drive") throw new Error("drive runs list: the program did not finish in time")
+      return listRuns(id, ...rest)
+    })
+    render(<LogsPage />)
+    await loaded()
+
+    const sources = screen.getByRole("list", { name: "Where the runs come from" })
+    expect(within(sources).getByText("arrives with the next update of Zoom")).toBeInTheDocument()
+    expect(within(sources).getByText("arrives with the next update of Memo")).toBeInTheDocument()
+    expect(within(sources).getByText(/did not finish in time/)).toHaveClass("text-bad")
+  }, 15000)
+
   it("groups by a field from a facet header", async () => {
     const user = userEvent.setup()
     render(<LogsPage />)

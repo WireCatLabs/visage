@@ -8,7 +8,8 @@ import { useTools } from "../tools/store"
 /** Runs fetched per tool and page: about a month of a busy tool's failures. */
 export const PAGE = 500
 
-export type SourceState = "loading" | "ready" | "error" | "missing" | "none"
+/** `update`: the installed version predates its `runs` commands; the next release of the tool brings them. */
+export type SourceState = "loading" | "ready" | "error" | "missing" | "none" | "update"
 export type Source = {
   id: string
   state: SourceState
@@ -52,6 +53,8 @@ type LogsState = {
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+// Every older zm, drive and memo refuses `runs list` with a validation_error whose message starts this way.
+const tooOld = (error: string) => /^unknown command '(runs|list)'/.test(error)
 export const runKey = (run: Pick<Run, "tool" | "run_id">) => `${run.tool}:${run.run_id}`
 const toRun = (tool: string) => {
   const bin = findTool(tool)?.bin ?? tool
@@ -65,7 +68,11 @@ function initialState(id: string): SourceState {
   return installs && installs.length === 0 ? "missing" : "loading"
 }
 
-export const canKeepEveryRun = (id: string) => Boolean(findTool(id)?.settings?.defaults)
+// Turning it back off removes the setting, so a tool without `config unset` is not offered the switch.
+export const canKeepEveryRun = (id: string) => {
+  const settings = findTool(id)?.settings
+  return Boolean(settings?.defaults && settings.unset)
+}
 
 export const useLogs = create<LogsState>((set, get) => {
   const patch = (id: string, f: (s: Source) => Partial<Source>) =>
@@ -86,7 +93,8 @@ export const useLogs = create<LogsState>((set, get) => {
         error: null,
       }))
     } catch (e) {
-      patch(id, () => ({ state: "error", error: message(e) }))
+      const error = message(e)
+      patch(id, () => (tooOld(error) ? { state: "update", error: null } : { state: "error", error }))
     }
   }
 

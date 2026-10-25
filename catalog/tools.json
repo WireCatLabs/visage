@@ -150,7 +150,10 @@
         "shape": "item.profiles"
       },
       "doctor": ["{profile}", "session", "status", "--json"],
-      "runs": null,
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -197,7 +200,10 @@
         "shape": "item.items"
       },
       "doctor": ["{profile}", "status", "--json"],
-      "runs": null,
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -235,7 +241,10 @@
       "repo": "https://github.com/WireCatLabs/cli-memo",
       "profiles": null,
       "doctor": ["doctor", "--json"],
-      "runs": null,
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
       "setup": null,
       "skill": {
         "status": ["skill", "status", "--json"],

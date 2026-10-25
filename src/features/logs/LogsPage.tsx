@@ -239,6 +239,7 @@ const sourceTone = (s: Source) =>
 function sourceWords(s: Source): string {
   if (s.state === "none") return "keeps no run logs yet"
   if (s.state === "missing") return "not installed"
+  if (s.state === "update") return `arrives with the next update of ${toolName(s.id)}`
   if (s.state === "error") return s.error ?? "could not be read"
   const n = s.runs.length
   const runs = `${n}${s.hasMore ? "+" : ""} ${n === 1 ? "run" : "runs"}`

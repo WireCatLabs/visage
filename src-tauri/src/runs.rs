@@ -132,7 +132,15 @@ mod tests {
         let src = source(tg()).unwrap();
         assert_eq!(show_args(src, "run-1").unwrap(), ["runs", "show", "run-1", "--json"]);
         assert!(show_args(src, "-x").is_err());
-        assert!(source(catalog::tool("memo").unwrap()).is_err());
+    }
+
+    /// Run logs belong to the tool, not to a profile, so reading them never makes the desktop pick one.
+    #[test]
+    fn every_runs_template_runs_without_a_profile() {
+        for id in ["tg", "max", "wa", "zm", "drive", "memo"] {
+            let src = source(catalog::tool(id).unwrap()).unwrap();
+            assert!(!src.list.iter().chain(&src.show).any(|a| a == "{profile}"), "{id}");
+        }
     }
 
     #[test]

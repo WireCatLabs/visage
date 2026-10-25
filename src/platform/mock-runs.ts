@@ -2,12 +2,23 @@ import { recordOn } from "./mock-settings"
 import type { RunDetail, RunEvent, RunItem } from "./runs-schemas"
 import type { Platform } from "./types"
 
-// Fictional runs for the browser build. `?runs=none` shows tools with nothing kept, `?runs=fail` makes MAX fail.
+// Fictional runs for the browser build. `?runs=none` shows tools with nothing kept, `?runs=fail` makes MAX fail,
+// `?runs=old` gives Zoom, Drive and Memo a version from before their `runs` commands.
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("runs")
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-const PLAN: Record<string, { count: number; wait: number; version: string; commands: string[]; profiles: string[] }> = {
+type Plan = {
+  count: number
+  wait: number
+  version: string
+  commands: string[]
+  profiles: string[]
+  /** The tool's own request name; the messengers' come from ERRORS. */
+  op?: string
+}
+
+const PLAN: Record<string, Plan> = {
   tg: {
     count: 214,
     wait: 500,
@@ -29,6 +40,36 @@ const PLAN: Record<string, { count: number; wait: number; version: string; comma
     commands: ["messages send", "chats list", "sync"],
     profiles: ["phone"],
   },
+  zm: {
+    count: 17,
+    wait: 700,
+    version: "0.45.0",
+    commands: ["meetings sync", "meetings transcript", "recordings download", "zm"],
+    profiles: ["work"],
+    op: "GET /v2/users/:id/recordings",
+  },
+  drive: {
+    count: 24,
+    wait: 1100,
+    version: "0.33.0",
+    commands: ["sync", "files list", "search", "drive"],
+    profiles: ["personal", "studio"],
+    op: "GET /drive/v3/files",
+  },
+  memo: {
+    count: 31,
+    wait: 600,
+    version: "0.104.0",
+    commands: ["sync", "mail import", "search all", "memo"],
+    profiles: [""],
+    op: "himalaya.envelope.list",
+  },
+}
+
+const OLD: Record<string, string> = {
+  zm: `unknown command 'list' — "runs" is not a command, so it was read as a profile name — which left "list" to be one.`,
+  drive: "unknown command 'list'",
+  memo: "unknown command 'runs'",
 }
 
 const ERRORS: Record<string, { op: string; weight: number }> = {
@@ -96,7 +137,7 @@ function build(tool: string, now: number): MockRun[] {
             ? "success"
             : "running"
     const code = bare ? "validation_error" : status === "failed" || status === "partial" ? weighted(r) : undefined
-    const op = code ? (ERRORS[code]?.op ?? "request") : "messages.getHistory"
+    const op = plan.op ?? (code ? (ERRORS[code]?.op ?? "request") : "messages.getHistory")
     const duration = Math.round(code === "timeout" ? 30_000 + r() * 2000 : 40 + r() * (r() < 0.2 ? 9000 : 1400))
     const started = new Date(t)
     const requests = code === "validation_error" ? 0 : 1 + Math.floor(r() * 6)
@@ -109,7 +150,7 @@ function build(tool: string, now: number): MockRun[] {
               time: new Date(t + k * 180).toISOString(),
               severity: last ? "error" : "info",
               event: last ? "provider.response" : "provider.request",
-              operation: last ? op : "messages.getHistory",
+              operation: last ? op : (plan.op ?? "messages.getHistory"),
               duration_ms: Math.round(20 + r() * 400),
               outcome: last ? "error" : "ok",
               ...(last
@@ -125,10 +166,11 @@ function build(tool: string, now: number): MockRun[] {
                 : { page: { limit: 100, offset: k * 100 } }),
             }
           })
+    const profile = pick(r, plan.profiles)
     runs.push({
       run_id: `${stamp(started)}-${command.replace(/\s+/g, "-")}-${hex(r)}`,
       command,
-      profile: pick(r, plan.profiles),
+      ...(profile ? { profile } : {}),
       started_at: started.toISOString(),
       ...(status === "running" ? {} : { completed_at: new Date(t + duration).toISOString(), duration_ms: duration }),
       status,
@@ -173,6 +215,7 @@ export const runsMock: Pick<Platform, "listRuns" | "showRun"> = {
     await delay(PLAN[id]?.wait ?? 300)
     if (!PLAN[id]) throw new Error("This tool does not keep run logs yet.")
     if (scenario === "fail" && id === "max") throw new Error("max runs list: the program did not finish in time")
+    if (scenario === "old" && OLD[id]) throw new Error(OLD[id])
     // A tool keeps a successful run only when its profile records every run.
     const all = scenario === "none" ? [] : runsOf(id).filter((r) => r.status !== "success" || recordOn(id, r.profile))
     const items = all.slice((page - 1) * limit, page * limit).map(({ events: _, ...run }) => run)
