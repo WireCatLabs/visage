@@ -54,8 +54,9 @@ export function StoragePage() {
             </p>
           </div>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
-            What WireCat tools keep on this computer: settings, sessions, shared storage and caches. A tool's data can
-            be deleted once the tool is uninstalled. Sign-in tokens in your system keyring are not touched.
+            What WireCat tools keep on this computer: settings, sessions, shared storage and caches. Uninstalling a tool
+            keeps its data; once no installed tool uses it, you can delete it here. Sign-in tokens in your system
+            keyring are not touched.
           </p>
         </div>
         {leftovers.length > 1 && (
@@ -114,7 +115,7 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
     : inUse
       ? area.id === "shared"
         ? `Used by ${toolNames(area.usedBy)}`
-        : "In use: uninstall the tool to delete its data"
+        : `Used by ${toolNames(area.usedBy)}. Uninstalling keeps this data`
       : "Left behind after uninstalling"
 
   return (

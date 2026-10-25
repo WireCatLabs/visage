@@ -38,7 +38,7 @@ export function Health({ tool }: { tool: CatalogTool }) {
 
   return (
     <section aria-label={`${tool.name} accounts and health`} className="flex min-w-0 flex-col gap-3">
-      <h4 className="text-[0.85rem] font-medium text-ink-dim">{usesProfiles(tool) ? "Profiles" : "Health"}</h4>
+      <h4 className="text-[1.02rem] font-semibold text-ink">{usesProfiles(tool) ? "Accounts" : "Health"}</h4>
 
       {!usesProfiles(tool) || !doctorNeedsProfile(tool) ? (
         <div>
@@ -125,8 +125,10 @@ function ProfileList(props: {
           ))}
         </ul>
       ) : (
-        <p className="text-[0.9rem] text-ink-soft">
-          {tool.setup ? "No profile yet. Name one to sign in to your account." : "No account yet."}
+        <p className="text-[0.95rem] font-medium text-ink">
+          {tool.setup
+            ? `No account yet. Name it, then sign in to ${tool.name} in a terminal window.`
+            : "No account yet."}
         </p>
       )}
       {tool.setup && <NewProfile tool={tool} onCheck={onReload} checking={reloading} />}
@@ -273,7 +275,13 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
           aria-describedby={`${id}-hint`}
           className="h-8 min-w-[9rem] flex-1 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.875rem] text-ink aria-[invalid=true]:border-bad"
         />
-        <Button size="sm" type="submit" disabled={!valid} icon={<Terminal className="size-4" aria-hidden />}>
+        <Button
+          size="sm"
+          variant="primary"
+          type="submit"
+          disabled={!valid}
+          icon={<Terminal className="size-4" aria-hidden />}
+        >
           Open terminal to sign in
         </Button>
       </div>

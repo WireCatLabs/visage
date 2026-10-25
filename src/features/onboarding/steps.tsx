@@ -338,7 +338,7 @@ function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: (() =
       {profile.signedIn !== true && (
         <Button
           size="sm"
-          variant={profile.signedIn === false ? "secondary" : "ghost"}
+          variant={profile.signedIn === false ? "primary" : "ghost"}
           onClick={onSignIn}
           icon={<Terminal className="size-4" aria-hidden />}
         >
@@ -432,7 +432,9 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             ) : (
               <li className="flex min-h-8 items-center gap-x-[0.6rem]">
                 <Lamp size="sm" tone="idle" />
-                <span className="text-[0.95rem] text-ink-soft">No account yet</span>
+                <span className="text-[0.95rem] font-medium text-ink">
+                  No account yet. Add one so your agent can use {tool.name}.
+                </span>
               </li>
             )}
           </ul>
@@ -482,7 +484,12 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
           </>
         ) : profiles === undefined && !error ? null : (
           <div>
-            <Button size="sm" variant="ghost" className="-ml-3" onClick={() => setAdding(true)}>
+            <Button
+              size="sm"
+              variant={count ? "ghost" : "primary"}
+              className={count ? "-ml-3" : undefined}
+              onClick={() => setAdding(true)}
+            >
               {count ? "Add another account" : "Add an account"}
             </Button>
           </div>

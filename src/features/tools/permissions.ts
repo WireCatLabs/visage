@@ -148,3 +148,16 @@ export function commandLine(
   if (change.level !== null) args.push(change.level)
   return [tool.bin, ...args].join(" ")
 }
+
+/** One line for the closed Permissions panel: "Allowed for 4 groups · Read only for 2 groups". */
+export function overview(summaries: readonly GroupSummary[]): string {
+  const counts = new Map<string, number>()
+  for (const s of summaries) counts.set(stateLabel(s), (counts.get(stateLabel(s)) ?? 0) + 1)
+  const groups = (n: number) => `${n} ${n === 1 ? "group" : "groups"}`
+  if (counts.size === 1) {
+    const [label] = counts.keys()
+    if (label === STATE_LABEL.default) return "Nothing set; the tool's own defaults apply"
+    return summaries.length === 1 ? `${label}` : `${label} for all ${groups(summaries.length)}`
+  }
+  return [...counts].map(([label, n]) => `${label} for ${groups(n)}`).join(" · ")
+}

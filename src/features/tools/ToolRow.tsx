@@ -72,6 +72,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
             {tool.name}
             <span className="font-mono text-[0.95rem] font-normal text-ink-soft">{tool.bin}</span>
             {tool.partOf && <Pill>Part of {findTool(tool.partOf)?.name ?? tool.partOf}</Pill>}
+            {(installs?.length ?? 0) > 1 && <Pill tone="warn">{installs?.length} copies installed</Pill>}
           </h3>
           {storageLine ? (
             <p

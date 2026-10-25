@@ -10,6 +10,7 @@ import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { Button } from "@/ui/Button"
 import { ErrorBoundary } from "./ErrorBoundary"
+import { useSectionHistory } from "./history"
 import { Sidebar } from "./Sidebar"
 import { CrashScenario } from "./scenarios"
 import { sections } from "./sections"
@@ -21,6 +22,7 @@ export function App() {
   const active = useNav((s) => s.active)
   const setActive = useNav((s) => s.go)
   const onboarding = useOnboarding((s) => s.open)
+  useSectionHistory(!onboarding)
   const Page = sections.find((s) => s.id === active)?.page
 
   // The tour points at the Tools page, so it opens there.

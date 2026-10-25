@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
@@ -16,15 +16,30 @@ async function choose(user: ReturnType<typeof userEvent.setup>, select: HTMLElem
   await user.click(await screen.findByRole("option", { name: option }))
 }
 
+function show() {
+  if (!tg) throw new Error("tg is in the catalog")
+  render(<Permissions tool={tg} />)
+  fireEvent.click(screen.getByRole("button", { name: /^Permissions — what agents may do/ }))
+}
+
 const row = (name: string) => {
   const select = screen.getByRole("combobox", { name: `${name} permission` })
   return select.closest("li") as HTMLElement
 }
 
 describe("Permissions", () => {
+  it("stays closed behind its heading, with a one-line summary of the groups", async () => {
+    localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
+    render(<Permissions tool={tg} />)
+    const toggle = screen.getByRole("button", { name: /^Permissions — what agents may do/ })
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    await waitFor(() => expect(toggle).toHaveTextContent(/groups? · as personal$/))
+    expect(screen.queryByRole("combobox", { name: "Profile" })).not.toBeInTheDocument()
+  })
+
   it("opens on the defaults, then shows a profile's partial group with its blocked commands", async () => {
     const user = userEvent.setup()
-    render(<Permissions tool={tg} />)
+    show()
     expect(await screen.findByText(/Choose a profile to see which commands it may run/)).toBeInTheDocument()
 
     const picker = await screen.findByRole("combobox", { name: "Profile" })
@@ -43,7 +58,7 @@ describe("Permissions", () => {
     const user = userEvent.setup()
     const set = vi.spyOn(platform, "settingsSet")
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
-    render(<Permissions tool={tg} />)
+    show()
     await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
 
     await choose(user, screen.getByRole("combobox", { name: "Messages permission" }), "Allow")
@@ -61,7 +76,7 @@ describe("Permissions", () => {
     const user = userEvent.setup()
     const set = vi.spyOn(platform, "settingsSet")
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "work" } }))
-    render(<Permissions tool={tg} />)
+    show()
     await waitFor(() => expect(within(row("Contacts")).getByText("Blocked")).toBeInTheDocument())
 
     await choose(user, screen.getByRole("combobox", { name: "Polls permission" }), "Read only")
@@ -78,7 +93,7 @@ describe("Permissions", () => {
       commands: null,
       commandsError: null,
     })
-    render(<Permissions tool={tg} />)
+    show()
     const select = await screen.findByRole("combobox", { name: "Messages permission" })
     expect(select).toBeDisabled()
     expect(within(row("Messages")).getByText(/Choose that profile to change it/)).toBeInTheDocument()
@@ -93,7 +108,7 @@ describe("Permissions", () => {
       commandsError: null,
     })
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
-    render(<Permissions tool={tg} />)
+    show()
     expect(await screen.findByText(/does not say which commands a profile may run/)).toBeInTheDocument()
     expect(within(row("Messages")).getByText("Not set")).toBeInTheDocument()
   })

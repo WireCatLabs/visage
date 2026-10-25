@@ -65,10 +65,11 @@ describe("database facts", () => {
     expect(backupState(null, now).tone).toBe("idle")
   })
 
-  it("says whether the answering tool speaks the storage schema", () => {
-    expect(schemaState(33, 33, "Telegram")?.tone).toBe("ok")
-    expect(schemaState(34, 33, "Telegram")?.text).toContain("update Telegram")
-    expect(schemaState(null, 33, "Telegram")).toBeNull()
+  it("says nothing about the schema unless a tool is behind or ahead of it", () => {
+    expect(schemaState(33, 33)).toBeNull()
+    expect(schemaState(32, 33)?.text).toContain("moves to it")
+    expect(schemaState(34, 33)).toMatchObject({ tone: "warn", text: expect.stringContaining("update them") })
+    expect(schemaState(null, 33)).toBeNull()
   })
 })
 

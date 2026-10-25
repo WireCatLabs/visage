@@ -58,16 +58,13 @@ export function backupState(
   return { tone: "ok", text: `${date}, ${when}${checked}` }
 }
 
-export function schemaState(
-  schema: number | null,
-  speaks: number | null,
-  tool: string,
-): { tone: Tone; text: string } | null {
-  if (schema === null || speaks === null) return null
-  if (schema === speaks) return { tone: "ok", text: `${tool} speaks it` }
+// `speaks` comes from the one tool that answered, so the words stay about the tools in general; the Tools page names
+// each tool that cannot read the store.
+export function schemaState(schema: number | null, speaks: number | null): { tone: Tone; text: string } | null {
+  if (schema === null || speaks === null || schema === speaks) return null
   if (schema < speaks)
-    return { tone: "warn", text: `${tool} speaks ${speaks}; storage moves to it the next time a tool writes` }
-  return { tone: "warn", text: `newer than ${tool} knows (${speaks}); update ${tool}` }
+    return { tone: "warn", text: `newer tools use ${speaks}; storage moves to it the next time one writes` }
+  return { tone: "warn", text: "newer than some installed tools know; update them on the Tools page" }
 }
 
 export type CheckLike = {

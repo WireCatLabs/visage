@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { doctorCommand, findTool, isValidProfile, ownerId, runTool, samePackage, setupCommand, tools } from "./catalog"
+import {
+  doctorCommand,
+  findTool,
+  isValidProfile,
+  ownerId,
+  removeCommand,
+  runTool,
+  samePackage,
+  setupCommand,
+  tools,
+} from "./catalog"
 
 describe("catalog", () => {
   it("lists the tools with unique ids, and a binary of their own unless part of another", () => {
@@ -42,5 +52,14 @@ describe("catalog", () => {
     expect(isValidProfile("--json")).toBe(false)
     expect(isValidProfile("a b")).toBe(false)
     expect(isValidProfile("x;rm")).toBe(false)
+  })
+
+  it("removes one copy with the program that installed it", () => {
+    const pkg = "@wirecat/zoom-cli"
+    expect(removeCommand("pnpm", pkg, "~/.local/share/pnpm/bin/zm")).toBe(`pnpm remove --global ${pkg}`)
+    expect(removeCommand("npm", pkg, "~/.nvm/versions/node/v24.19.0/bin/zm")).toBe(
+      `nvm exec v24.19.0 npm uninstall --global ${pkg}`,
+    )
+    expect(removeCommand("npm", pkg, "/usr/local/bin/zm")).toBe(`npm uninstall --global ${pkg}`)
   })
 })

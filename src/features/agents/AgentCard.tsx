@@ -1,8 +1,8 @@
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, X } from "lucide-react"
 import type { CheckItem, Connection, Session, Tone } from "@/domain/agents"
 import { connections, sessionQuery } from "@/domain/agents"
 import type { CatalogTool } from "@/domain/catalog"
-import { formatWhen, shortSession } from "@/domain/runs"
+import { formatWhen, shortSession, termText } from "@/domain/runs"
 import { type SkillCell, TARGET_FOLDER } from "@/domain/skills"
 import type { Agent, Claim } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
@@ -30,9 +30,6 @@ type Props = {
   claims: readonly AgentClaim[]
   items: readonly CheckItem[] | null
   tone: Tone | null
-  expanded: boolean
-  onToggle(): void
-  onCheck(): void
 }
 
 const SKILL_WORD: Record<SkillCell["kind"], [LampTone, string]> = {
@@ -47,92 +44,147 @@ const SKILL_WORD: Record<SkillCell["kind"], [LampTone, string]> = {
 
 const TONE_WORD: Record<Tone, string> = {
   ok: "Works with your tools",
-  warn: "Works, with something to fix",
+  warn: "Something to set up",
   bad: "Something stops it",
   idle: "Nothing to check yet",
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
-const rowGrid =
-  "grid min-h-[4.5rem] grid-cols-[1.2rem_minmax(0,1fr)_auto] items-center gap-x-[0.9rem] px-[1.3rem] xl:grid-cols-[1.6rem_minmax(0,1fr)_auto] xl:gap-x-[1.2rem]"
+export const DETAILS_ID = "agent-details"
 
-/** A known agent before detection answers, or one not found: the same row box, so the list never changes height. */
-export function QuietAgentRow({ name, note, first = false }: { name: string; note: string | null; first?: boolean }) {
+const card = "flex min-h-[6.6rem] min-w-0 flex-col gap-1 rounded-[0.45rem] border bg-app px-4 py-3 transition-colors"
+
+function CardHead(props: { name: string; tone: LampTone; label: string; action?: React.ReactNode }) {
+  const { name, tone, label, action } = props
   return (
-    <li className="border-line border-b last:border-b-0">
-      <div className={rowGrid}>
-        <Lamp tone="idle" label={`${name}: ${note ?? "Looking for it"}`} />
-        <div className={cx("min-w-0 py-3", note && "text-ink-soft")}>
-          <h3 className="text-[1.08rem] font-semibold leading-tight">{name}</h3>
-          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">
-            {note ?? <Skeleton chars={22} {...(first ? { label: "Looking for agents" } : {})} />}
-          </p>
-        </div>
-      </div>
+    <div className="flex min-h-8 min-w-0 items-center gap-2.5">
+      <Lamp size="sm" tone={tone} label={`${name}: ${label}`} />
+      <h3 className="min-w-0 flex-1 truncate text-[1.05rem] font-semibold leading-tight">{name}</h3>
+      {action}
+    </div>
+  )
+}
+
+/** A known agent before detection answers, or one not found: the same card box, so the grid never changes size. */
+export function QuietAgentCard({ name, note, first = false }: { name: string; note: string | null; first?: boolean }) {
+  return (
+    <li className={cx(card, "border-line")}>
+      <CardHead name={name} tone="idle" label={note ?? "Looking for it"} />
+      <p className="truncate pl-[1.45rem] text-[0.9rem] text-ink-soft">
+        {note ?? <Skeleton chars={20} {...(first ? { label: "Looking for agents" } : {})} />}
+      </p>
     </li>
   )
 }
 
-export function AgentRow(props: Props) {
-  const { agent, sessions, claims, tone, expanded, onToggle, onCheck } = props
+/** An agent the run logs name but this app does not detect: it can still be followed in Logs. */
+export function SeenAgentCard({ kind, name, sessions }: { kind: string; name: string; sessions: number }) {
+  const go = useNav((s) => s.go)
+  const open = () => {
+    const logs = useLogs.getState()
+    logs.setQuery(termText("agent", kind))
+    logs.setRange("all")
+    go("logs")
+  }
+  return (
+    <li className={cx(card, "border-line")}>
+      <CardHead
+        name={name}
+        tone="idle"
+        label="Seen in runs"
+        action={
+          <Button size="sm" variant="ghost" onClick={open} aria-label={`Show ${name} in Logs`}>
+            Show in Logs
+          </Button>
+        }
+      />
+      <p className="truncate pl-[1.45rem] text-[0.9rem] text-ink-soft">Seen in runs, not detected here</p>
+      <p className="truncate pl-[1.45rem] text-[0.85rem] text-ink-dim">{plural(sessions, "session")}</p>
+    </li>
+  )
+}
+
+export function AgentCard(props: Props & { selected: boolean; onManage(): void }) {
+  const { agent, sessions, claims, tone, selected, onManage } = props
   const checking = useConnect((s) => s.checking[agent.id] === true)
   const servers = useConnect((s) => s.servers[agent.id])
-  const panelId = `agent-panel-${agent.id}`
-  const connected = servers?.state === "ready" ? servers.data.names.length : null
+  const connected = servers?.state === "ready" ? servers.data.names.length : 0
   const summary = [
     sessions === null ? null : plural(sessions.length, "session"),
-    claims.length > 0 ? `${plural(claims.length, "task")} claimed` : null,
-    connected === null ? null : `${plural(connected, "MCP server")}`,
+    claims.length > 0 ? `${plural(claims.length, "task")} held` : null,
+    connected > 0 ? plural(connected, "MCP server") : null,
   ].filter(Boolean)
+  const word = checking ? "Checking…" : tone ? TONE_WORD[tone] : null
 
   return (
-    <li className="border-line border-b last:border-b-0">
-      <div className={rowGrid}>
-        <Lamp
-          tone={checking ? "busy" : (tone ?? "idle")}
-          label={`${agent.name}: ${checking ? "Checking" : tone ? TONE_WORD[tone] : "Checking"}`}
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          aria-controls={panelId}
-          className="group min-w-0 py-3 text-left"
-        >
-          <h3 className="text-[1.08rem] font-semibold leading-tight group-hover:text-brand">{agent.name}</h3>
-          <p className="mt-1 truncate text-[0.95rem] text-ink-soft">
-            {tone ? TONE_WORD[tone] : "Checking…"}
-            {summary.length > 0 && <span className="text-ink-dim"> · {summary.join(" · ")}</span>}
-          </p>
-        </button>
-        <Button
-          size="sm"
-          disabled={checking}
-          onClick={onCheck}
-          aria-label={`Check ${agent.name}`}
-          icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
-        >
-          <StableText value={checking ? "Checking…" : "Check"} variants={["Check", "Checking…"]} />
-        </Button>
-      </div>
-      <div
-        id={panelId}
-        className={cx(
-          "grid transition-[grid-template-rows] duration-300 ease-out-quart",
-          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">{expanded && <Panel {...props} />}</div>
-      </div>
+    <li className={cx(card, selected ? "border-brand" : "border-line")}>
+      <CardHead
+        name={agent.name}
+        tone={checking ? "busy" : (tone ?? "idle")}
+        label={word ?? "Checking"}
+        action={
+          <Button
+            size="sm"
+            onClick={onManage}
+            aria-expanded={selected}
+            aria-controls={DETAILS_ID}
+            aria-label={`Manage ${agent.name}`}
+            className="min-w-[5.6rem]"
+          >
+            Manage
+          </Button>
+        }
+      />
+      <p className="truncate pl-[1.45rem] text-[0.9rem] text-ink-soft">{word ?? <Skeleton chars={20} />}</p>
+      <p className="min-h-[1.3rem] truncate pl-[1.45rem] text-[0.85rem] text-ink-dim">{summary.join(" · ")}</p>
     </li>
   )
 }
 
-function Panel({ agent, tools, sessions, claims, items }: Props) {
+const foundWords = (a: Agent) =>
+  a.foundBy === "program" ? "The program is on PATH" : "Found by its settings folder; the program is not on PATH"
+
+export function AgentDetails(props: Props & { onClose(): void; onCheck(): void }) {
+  const { agent, tools, sessions, claims, items, onClose, onCheck } = props
   const servers = useConnect((s) => s.servers[agent.id])
+  const checking = useConnect((s) => s.checking[agent.id] === true)
   return (
-    <div className="flex flex-col gap-5 border-line border-t bg-app-2/60 px-[1.3rem] pt-4 pb-5">
+    <section
+      id={DETAILS_ID}
+      aria-label={`${agent.name} details`}
+      className="reveal flex flex-col gap-5 rounded-[0.45rem] border border-line-strong bg-app-2/60 px-[1.3rem] pt-4 pb-5"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[1.2rem] font-semibold">{agent.name}</h2>
+          <p className="mt-1 text-[0.9rem] text-ink-soft">
+            {foundWords(agent)} · reads skills from{" "}
+            <span className="font-mono text-[0.8rem]">{agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}</span>
+            {agent.reads.length > 1 && "; an old copy in either folder still reaches it"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            disabled={checking}
+            onClick={onCheck}
+            icon={<RefreshCw className={cx("size-4", checking && "animate-spin")} aria-hidden />}
+          >
+            <StableText
+              value={checking ? "Checking…" : "Check this agent again"}
+              variants={["Check this agent again", "Checking…"]}
+            />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onClose}
+            aria-label={`Close ${agent.name} details`}
+            icon={<X className="size-4" aria-hidden />}
+          />
+        </div>
+      </div>
       <Section title="What to fix">
         <CheckList agent={agent} items={items} />
       </Section>
@@ -145,7 +197,7 @@ function Panel({ agent, tools, sessions, claims, items }: Props) {
       <Section title="Tasks it holds">
         <Claims agent={agent} claims={claims} />
       </Section>
-    </div>
+    </section>
   )
 }
 
@@ -204,7 +256,7 @@ function CheckList({ agent, items }: { agent: Agent; items: readonly CheckItem[]
       ))}
       <li className="px-4 py-2.5 text-[0.85rem] text-ink-soft">
         {fine > 0 ? `${plural(fine, "check")} passed.` : "No check passed yet."}
-        {!checked && " Check also starts each connected MCP server to see that it answers."}
+        {!checked && " Checking this agent also starts each connected MCP server to see that it answers."}
       </li>
     </ul>
   )
@@ -233,7 +285,7 @@ function ToolsTable({
               Skill
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              MCP
+              MCP <span className="font-normal">(optional)</span>
             </th>
           </tr>
         </thead>
@@ -277,11 +329,16 @@ function ToolsTable({
           })}
         </tbody>
       </table>
-      {servers?.state === "ready" && (
-        <p className="border-line border-t px-4 py-2 text-[0.8rem] text-ink-dim">
-          MCP servers read from <span className="selectable font-mono">{servers.data.source}</span>
-        </p>
-      )}
+      <p className="border-line border-t px-4 py-2 text-[0.8rem] text-ink-dim">
+        The skill is all {agent.name} needs: it runs the commands itself. Connect over MCP only for an app that cannot
+        run commands, such as a chat app.
+        {servers?.state === "ready" && (
+          <>
+            {" "}
+            MCP servers read from <span className="selectable font-mono">{servers.data.source}</span>
+          </>
+        )}
+      </p>
     </div>
   )
 }

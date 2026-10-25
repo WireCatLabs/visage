@@ -11,6 +11,7 @@ import { useCompat } from "./compat-store"
 import { StorageSummary } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolRow } from "./ToolRow"
+import { ToolsIntro } from "./ToolsIntro"
 import { UpgradeWarning } from "./UpgradeWarning"
 
 const CHECK_LABELS = ["Check again", "Checking…"] as const
@@ -62,6 +63,7 @@ export function ToolsPage() {
         </button>
       </div>
 
+      <ToolsIntro />
       <NodeNotice />
       {error && (
         <ErrorNotice action={<ReportThis what="Looking for WireCat tools" error={error.message} />}>

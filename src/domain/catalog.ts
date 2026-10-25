@@ -110,6 +110,16 @@ export const packageNames = (id: string) =>
 
 export const installCommand = (t: CatalogTool) => `npm install -g ${t.package}`
 
+/** Removes one copy with the program that installed it; `install.rs` uninstall_steps maps the same managers. */
+export function removeCommand(manager: string, pkg: string, path: string) {
+  if (manager === "pnpm") return `pnpm remove --global ${pkg}`
+  if (manager === "bun") return `bun remove --global ${pkg}`
+  if (manager === "volta") return `volta uninstall ${pkg}`
+  // An nvm copy belongs to the npm of its own Node version, which may not be the one a terminal has active.
+  const nvm = path.match(/[\\/]\.nvm[\\/]versions[\\/]node[\\/](v[^\\/]+)[\\/]/)?.[1]
+  return nvm ? `nvm exec ${nvm} npm uninstall --global ${pkg}` : `npm uninstall --global ${pkg}`
+}
+
 export const usesProfiles = (t: CatalogTool) => t.profiles !== null
 
 export function setupCommand(t: CatalogTool, profile: string | null): string | null {

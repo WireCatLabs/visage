@@ -99,7 +99,7 @@ describe("buildCheck", () => {
     expect(by("tg/work:mcp")).toMatchObject({ tone: "warn", fix: { kind: "command", command: "tg work setup" } })
     expect(by("tg/personal:mcp")?.tone).toBe("ok")
     expect(by("skill:unknown")?.title).toBe("MAX cannot report its skill")
-    expect(by("mcp:none")?.title).toBe("No MCP connection: MAX")
+    expect(items.some((i) => i.id.startsWith("mcp:"))).toBe(false)
     expect(overall(items)).toBe("bad")
   })
 
@@ -115,7 +115,7 @@ describe("buildCheck", () => {
   })
 
   it("says how many commands each profile's permissions block, once Check has read them", () => {
-    expect(buildCheck(base).find((i) => i.id === "permissions")?.title).toMatch(/when you press Check/)
+    expect(buildCheck(base).find((i) => i.id === "permissions")?.title).toMatch(/when you check this agent/)
     const items = buildCheck({ ...base, access: { "tg/work": { blocked: 3, total: 50 }, "tg/personal": "no answer" } })
     expect(items.find((i) => i.id === "tg/work:permissions")).toMatchObject({
       title: "Telegram (work): 3 of 50 commands are blocked",

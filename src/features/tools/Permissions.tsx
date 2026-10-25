@@ -1,4 +1,4 @@
-import { RefreshCw, Terminal } from "lucide-react"
+import { ChevronRight, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { setupCommand } from "@/domain/catalog"
@@ -28,6 +28,7 @@ import {
   layerOf,
   lockReason,
   locks,
+  overview,
   partialDetail,
   removalWidens,
   stateLabel,
@@ -74,6 +75,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<Record<string, Row>>({})
   const [confirming, setConfirming] = useState<Change | null>(null)
+  const [open, setOpen] = useState(false)
   const latest = useRef(0)
   const defaultsView = profile === null
 
@@ -125,59 +127,42 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
   const summaries = data ? groups.map((g) => summarize(g, data)) : []
 
   return (
-    <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-3 lg:col-span-2">
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0">
-          <h4 id={headingId} className="text-[0.85rem] font-medium text-ink-dim">
-            Permissions
-          </h4>
-          <p className="text-[0.9rem] text-ink-soft">
-            What your agent and scripts may do through {tool.bin}
-            {profile ? (
-              <>
-                {" "}
-                as <span className="font-medium text-ink">{profile}</span>
-              </>
-            ) : (
-              " in every profile that sets nothing of its own"
-            )}
-            .
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor={`${headingId}-profile`}>
-            Profile
-          </label>
-          <Select
-            id={`${headingId}-profile`}
-            size="sm"
-            value={profile ?? ""}
-            onChange={(p) => choose(p === "" ? null : p)}
-            options={[
-              { value: "", label: "Defaults (all profiles)" },
-              ...(profiles ?? []).map((p) => ({ value: p.name, label: p.name })),
-            ]}
-            className="min-w-[11rem]"
-          />
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={load}
-            disabled={loading}
-            aria-label="Read permissions again"
-            icon={<RefreshCw className={cx("size-4", loading && "animate-spin")} aria-hidden />}
-          />
-        </div>
-      </div>
-
-      {error && (
-        <ErrorNotice
-          inline
-          action={<ReportThis what={`Reading ${tool.name} permissions`} tool={tool.id} error={error} />}
+    <section
+      aria-labelledby={headingId}
+      className="flex min-w-0 flex-col gap-3 border-line border-t pt-4 lg:col-span-2"
+    >
+      <h4 id={headingId}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`${headingId}-body`}
+          onClick={() => setOpen((o) => !o)}
+          className="group flex w-full min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 rounded text-left"
         >
-          Could not read permissions: {error}
-        </ErrorNotice>
-      )}
+          <span className="flex items-center gap-1.5 text-[1.02rem] font-semibold text-ink group-hover:text-brand">
+            <ChevronRight
+              className={cx(
+                "size-4 shrink-0 self-center text-ink-dim transition-transform duration-150 motion-reduce:transition-none",
+                open && "rotate-90",
+              )}
+              aria-hidden
+            />
+            Permissions — what agents may do
+          </span>
+          {!open && (
+            <span className="min-w-0 text-[0.9rem] font-normal text-ink-soft tabular-nums">
+              {data ? (
+                `${overview(summaries)} · ${profile ? `as ${profile}` : "defaults"}`
+              ) : error ? (
+                "Could not read them"
+              ) : (
+                <Skeleton chars={34} />
+              )}
+            </span>
+          )}
+        </button>
+      </h4>
+      {/* Outside the closed body: these limit every level, so they stay in sight. */}
       {data?.ceiling && <Ceiling tool={tool} profile={profile} ceiling={data.ceiling} />}
       {data &&
         locks(data.commands).map((reason) => (
@@ -188,41 +173,94 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
             {tool.name} blocks some commands whatever the levels below say: {reason}.
           </p>
         ))}
-      <Notes tool={tool} data={data} defaultsView={defaultsView} />
-      {data ? <Totals summaries={summaries} /> : !error && !defaultsView && <Skeleton chars={44} />}
+      {open && (
+        <div id={`${headingId}-body`} className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <p className="text-[0.9rem] text-ink-soft">
+                What your agent and scripts may do through {tool.bin}
+                {profile ? (
+                  <>
+                    {" "}
+                    as <span className="font-medium text-ink">{profile}</span>
+                  </>
+                ) : (
+                  " in every profile that sets nothing of its own"
+                )}
+                .
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="sr-only" htmlFor={`${headingId}-profile`}>
+                Profile
+              </label>
+              <Select
+                id={`${headingId}-profile`}
+                size="sm"
+                value={profile ?? ""}
+                onChange={(p) => choose(p === "" ? null : p)}
+                options={[
+                  { value: "", label: "Defaults (all profiles)" },
+                  ...(profiles ?? []).map((p) => ({ value: p.name, label: p.name })),
+                ]}
+                className="min-w-[11rem]"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={load}
+                disabled={loading}
+                aria-label="Read permissions again"
+                icon={<RefreshCw className={cx("size-4", loading && "animate-spin")} aria-hidden />}
+              />
+            </div>
+          </div>
 
-      {!data && !error ? (
-        <ul className="divide-y divide-line rounded-[0.45rem] border border-line bg-app">
-          {groups.map((g, n) => (
-            <li key={g.key} className={ROW}>
-              <div className={ROW_GRID}>
-                <GroupName label={g.label} groupKey={g.key} detail={null} />
-                <Skeleton chars={9} label={n === 0 ? "Loading permissions" : ""} />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : data ? (
-        <ul
-          aria-label={`${tool.name} permissions`}
-          className={cx(
-            "divide-y divide-line rounded-[0.45rem] border border-line bg-app transition-opacity duration-150",
-            loading && "opacity-60",
+          {error && (
+            <ErrorNotice
+              inline
+              action={<ReportThis what={`Reading ${tool.name} permissions`} tool={tool.id} error={error} />}
+            >
+              Could not read permissions: {error}
+            </ErrorNotice>
           )}
-        >
-          {summaries.map((s) => (
-            <GroupRow
-              key={s.group.key}
-              tool={tool}
-              summary={s}
-              defaultsView={defaultsView}
-              rows={rows}
-              onChange={request}
-            />
-          ))}
-        </ul>
-      ) : null}
+          <Notes tool={tool} data={data} defaultsView={defaultsView} />
+          {data ? <Totals summaries={summaries} /> : !error && !defaultsView && <Skeleton chars={44} />}
+
+          {!data && !error ? (
+            <ul className="divide-y divide-line rounded-[0.45rem] border border-line bg-app">
+              {groups.map((g, n) => (
+                <li key={g.key} className={ROW}>
+                  <div className={ROW_GRID}>
+                    <GroupName label={g.label} groupKey={g.key} detail={null} />
+                    <Skeleton chars={9} label={n === 0 ? "Loading permissions" : ""} />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : data ? (
+            <ul
+              aria-label={`${tool.name} permissions`}
+              className={cx(
+                "divide-y divide-line rounded-[0.45rem] border border-line bg-app transition-opacity duration-150",
+                loading && "opacity-60",
+              )}
+            >
+              {summaries.map((s) => (
+                <GroupRow
+                  key={s.group.key}
+                  tool={tool}
+                  summary={s}
+                  defaultsView={defaultsView}
+                  rows={rows}
+                  onChange={request}
+                />
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
 
       {confirming && (
         <ConfirmWiden

@@ -5,6 +5,7 @@ import {
   commandLine,
   lockReason,
   locks,
+  overview,
   partialDetail,
   removalWidens,
   stateLabel,
@@ -88,6 +89,16 @@ describe("summarize", () => {
     expect(summarize(messages, old)).toMatchObject({ state: "allowed", reads: null, writes: null })
     expect(summarize(messages, view({ commands: null })).state).toBe("default")
     expect(summarize(messages, { ...old, ceiling: "readonly" }).state).toBe("readonly")
+  })
+
+  it("sums the groups up in one line for the closed panel", () => {
+    const reads = [cmd("messages list", false)]
+    const allowed = summarize(messages, view({ commands: reads }))
+    const readonly = summarize(messages, view({ commands: [...reads, cmd("messages send", true, false)] }))
+    expect(overview([allowed, allowed, readonly])).toBe("Allowed for 2 groups · Read only for 1 group")
+    expect(overview([readonly, readonly])).toBe("Read only for all 2 groups")
+    const unset = summarize(messages, view({ commands: null }))
+    expect(overview([unset, unset])).toBe("Nothing set; the tool's own defaults apply")
   })
 })
 

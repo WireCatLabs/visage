@@ -24,7 +24,7 @@ const dateTime = (iso: string) =>
 export function DatabaseFacts({ info }: { info: StoreInfo }) {
   const tool = findTool(info.answeredBy)?.name ?? info.answeredBy
   const facts = info.facts
-  const schema = schemaState(info.schema, info.speaks, tool)
+  const schema = schemaState(info.schema, info.speaks)
   const backup = facts ? backupState(facts.backup, Date.now()) : null
 
   return (

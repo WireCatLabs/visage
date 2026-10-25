@@ -1,6 +1,6 @@
-import { ExternalLink, Trash2 } from "lucide-react"
+import { AlertTriangle, ExternalLink, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { type CatalogTool, installCommand, packageNames, samePackage } from "@/domain/catalog"
+import { type CatalogTool, installCommand, packageNames, removeCommand, samePackage } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
@@ -63,7 +63,13 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
   const [confirming, setConfirming] = useState(false)
 
   return (
-    <div className="grid gap-x-[2.4rem] gap-y-6 border-line border-t bg-app-2/60 px-[1.3rem] py-[1.4rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+    <div className="grid gap-x-[2.4rem] gap-y-6 border-line border-t bg-app-2/60 px-[1.3rem] py-[1.4rem] lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      {installs.length > 1 && <ExtraCopies tool={tool} />}
+      {installs.length > 0 ? (
+        <Health tool={tool} />
+      ) : (
+        <p className="text-[0.95rem] text-ink-soft">Install {tool.name} to connect an account and run health checks.</p>
+      )}
       <section aria-label={`About ${tool.name}`} className="flex flex-col gap-4">
         <p className="max-w-[70ch] text-[0.95rem] leading-relaxed text-ink-soft">{tool.summary}</p>
         <div className="flex gap-5">
@@ -105,13 +111,45 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
         )}
       </section>
       <ConfirmUninstall tool={tool} open={confirming} onClose={() => setConfirming(false)} />
-      {installs.length > 0 ? (
-        <Health tool={tool} />
-      ) : (
-        <p className="text-[0.95rem] text-ink-soft">Install {tool.name} to connect an account and run health checks.</p>
-      )}
       {installs.length > 0 && tool.permissions && <Permissions tool={tool} />}
     </div>
+  )
+}
+
+// Uninstall would take every copy, so the advice removes only the ones the terminal never reaches.
+function ExtraCopies({ tool }: { tool: CatalogTool }) {
+  const installs = useTools((s) => s.installs[tool.id] ?? [])
+  const [first, ...unused] = installs
+  if (!first) return null
+  return (
+    <section
+      aria-label={`More than one copy of ${tool.name}`}
+      className="flex flex-col gap-2 rounded-[0.35rem] border border-warn/40 bg-warn/10 px-4 py-3 lg:col-span-2"
+    >
+      <p className="flex items-start gap-2 text-[0.95rem] text-ink">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+        <span>
+          {installs.length} copies of <code className="font-mono">{tool.bin}</code> are installed. A terminal runs{" "}
+          <code className="selectable font-mono">{first.path}</code> ({first.version ?? "does not start"},{" "}
+          {first.manager}); the {unused.length === 1 ? "other is" : "others are"} never used and can confuse updates.
+          Remove {unused.length === 1 ? "it" : "them"} with the program that installed{" "}
+          {unused.length === 1 ? "it" : "them"}:
+        </span>
+      </p>
+      <ul className="flex flex-col gap-2 pl-6">
+        {unused.map((i) => (
+          <li key={i.path} className="flex flex-col gap-1">
+            <span className="text-[0.85rem] text-ink-soft">
+              <code className="selectable font-mono">{i.path}</code> · {i.version ?? "does not start"} · {i.manager}
+            </span>
+            <CopyField
+              value={removeCommand(i.manager, tool.package, i.path)}
+              label={`Copy the command that removes ${i.path}`}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

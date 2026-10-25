@@ -217,6 +217,12 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
           Not installed: {notInstalled.map((t) => t.name).join(", ")}. A skill comes with its tool.
         </p>
       )}
+      {silent.length === 0 && firstChecking && (
+        // Old tools are the usual case, so their note's line is kept until every skill has answered.
+        <p className={cx("leading-snug", compact ? "text-[0.85rem]" : "text-[0.9rem]")}>
+          <Skeleton chars={60} />
+        </p>
+      )}
       {silent.length > 0 && (
         // Last under the table, as it arrives last: inside a row it would push every row under it down.
         <p className={cx("leading-snug text-ink-soft", compact ? "text-[0.85rem]" : "text-[0.9rem]")}>

@@ -140,11 +140,11 @@ export type CheckInput = {
 
 const folderOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "").replace(/^~(?=\/)/, "$HOME")
 
-/** What stops this agent from using the tools, worst first, each with the one thing that fixes it. */
+/** What stops this agent from using the tools, worst first, each with the one thing that fixes it. MCP is optional,
+ * so a tool without a connection is not listed; a connected server that fails is. */
 export function buildCheck(input: CheckInput): CheckItem[] {
   const { agent, tools, reach, skills, servers, health, profiles, access } = input
   const items: CheckItem[] = []
-  const unconnected: string[] = []
   const unreported: string[] = []
 
   for (const tool of tools) {
@@ -178,7 +178,6 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     if (!tool.hasMcp) continue
     const names = servers?.names ?? []
     const connected = (profiles[tool.id] ?? []).filter((p) => names.includes(serverName(tool.bin, p)))
-    if (servers && connected.length === 0 && !names.includes(tool.bin)) unconnected.push(tool.name)
     for (const profile of connected) {
       const h = health[`${tool.id}/${profile}`]
       if (h === undefined) continue
@@ -230,24 +229,8 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     items.push({
       id: "permissions",
       tone: "idle",
-      title: "Permissions are read when you press Check",
-      detail: "Check asks each tool which commands every profile allows.",
-    })
-  }
-  if (unconnected.length > 0) {
-    items.push({
-      id: "mcp:none",
-      tone: "idle",
-      title: `No MCP connection: ${unconnected.join(", ")}`,
-      detail: `Optional: with the skill, ${agent.name} runs the commands itself. Connect a profile under Tools below.`,
-    })
-  }
-  if (!servers) {
-    items.push({
-      id: "mcp:list",
-      tone: "idle",
-      title: `Could not read ${agent.name}'s MCP servers`,
-      detail: "The skill alone is enough for an agent that runs commands.",
+      title: "Permissions are read when you check this agent",
+      detail: "The check asks each tool which commands every profile allows.",
     })
   }
   const rank: Record<Tone, number> = { bad: 0, warn: 1, idle: 2, ok: 3 }
