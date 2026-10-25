@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
+  cliCommand,
+  commandLabel,
+  countValues,
+  FACETS,
   facetCounts,
   formatDuration,
   groupRuns,
+  inlineJson,
   inRange,
   matcher,
   parseQuery,
@@ -111,5 +116,46 @@ describe("helpers", () => {
       "31 s",
       "2 min 5 s",
     ])
+  })
+})
+
+describe("commands, facets and grouping by path", () => {
+  it("prefixes the tool's name and labels a run started with no command", () => {
+    expect(cliCommand("tg", "chats list")).toBe("tg chats list")
+    expect(cliCommand("max", "max")).toBe("max")
+    expect(cliCommand("max", "")).toBe("max")
+    expect(commandLabel("max")).toBe("max (no command)")
+    expect(commandLabel("tg chats list")).toBe("tg chats list")
+  })
+
+  it("orders facets with profile before error code, and values by count with ties alphabetical", () => {
+    expect(FACETS).toEqual(["tool", "status", "cli_command", "profile", "error_code"])
+    expect(countValues(runs, "tool")).toEqual([
+      { value: "tg", count: 2 },
+      { value: "max", count: 1 },
+      { value: "wa", count: 1 },
+    ])
+  })
+
+  it("groups by a nested path, counting a run once per distinct value", () => {
+    const groups = groupRuns(runs, "partial.failures.stage")
+    expect(groups.map((g) => [g.value, g.count])).toEqual([
+      ["", 3],
+      ["download", 1],
+      ["upload", 1],
+    ])
+  })
+})
+
+describe("inline JSON", () => {
+  it("puts empty and short scalar lists on one line and keeps the rest collapsible", () => {
+    expect(inlineJson([])).toBe("[]")
+    expect(inlineJson({})).toBe("{}")
+    expect(inlineJson(["messages.getHistory"])).toBe('["messages.getHistory"]')
+    expect(inlineJson({ method: "POST", status: 429 })).toBe('{ method: "POST", status: 429 }')
+    expect(inlineJson([1, 2, 3, 4])).toBeNull()
+    expect(inlineJson([{ stage: "download" }])).toBeNull()
+    expect(inlineJson(["x".repeat(70)])).toBeNull()
+    expect(inlineJson("text")).toBeNull()
   })
 })

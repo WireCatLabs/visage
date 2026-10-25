@@ -1,6 +1,6 @@
 import { create } from "zustand"
-import { tools } from "@/domain/catalog"
-import type { RangeId, Run } from "@/domain/runs"
+import { findTool, tools } from "@/domain/catalog"
+import { cliCommand, type RangeId, type Run } from "@/domain/runs"
 import { platform } from "@/platform/bridge"
 import type { RunDetail, RunItem } from "@/platform/runs-schemas"
 import { useTools } from "../tools/store"
@@ -19,8 +19,23 @@ export type Source = {
 }
 export type Detail = { state: "loading" | "ready" | "error"; item: RunDetail["item"] | null; error: string | null }
 
+/** Whether a tool keeps successful runs too: its `record` setting in the defaults every profile gets. */
+export type Keeping =
+  | { state: "loading" }
+  | { state: "error"; error: string }
+  | {
+      state: "ready"
+      record: boolean
+      /** Why the defaults cannot change it here (an environment variable, a profile named "default"). */
+      locked: string | null
+      days: number | null
+      saving: boolean
+      error: string | null
+    }
+
 type LogsState = {
   sources: Record<string, Source>
+  keeping: Record<string, Keeping>
   loadedAt: number
   query: string
   range: RangeId
@@ -29,6 +44,7 @@ type LogsState = {
   details: Record<string, Detail>
   load(): Promise<void>
   loadMore(id: string): Promise<void>
+  setRecord(id: string, on: boolean): Promise<void>
   setQuery(query: string): void
   setRange(range: RangeId): void
   setGroupBy(field: string | null): void
@@ -37,9 +53,10 @@ type LogsState = {
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 export const runKey = (run: Pick<Run, "tool" | "run_id">) => `${run.tool}:${run.run_id}`
-const toRun =
-  (tool: string) =>
-  (item: RunItem): Run => ({ ...item, tool })
+const toRun = (tool: string) => {
+  const bin = findTool(tool)?.bin ?? tool
+  return (item: RunItem): Run => ({ ...item, tool, cli_command: cliCommand(bin, item.command) })
+}
 
 function initialState(id: string): SourceState {
   const tool = tools.find((t) => t.id === id)
@@ -48,12 +65,15 @@ function initialState(id: string): SourceState {
   return installs && installs.length === 0 ? "missing" : "loading"
 }
 
+export const canKeepEveryRun = (id: string) => Boolean(findTool(id)?.settings?.defaults)
+
 export const useLogs = create<LogsState>((set, get) => {
   const patch = (id: string, f: (s: Source) => Partial<Source>) =>
     set((st) => {
       const s = st.sources[id]
       return s ? { sources: { ...st.sources, [id]: { ...s, ...f(s) } } } : {}
     })
+  const keep = (id: string, k: Keeping) => set((st) => ({ keeping: { ...st.keeping, [id]: k } }))
 
   const fetchPage = async (id: string, page: number) => {
     try {
@@ -70,8 +90,31 @@ export const useLogs = create<LogsState>((set, get) => {
     }
   }
 
+  const readKeeping = async (id: string, error: string | null = null) => {
+    try {
+      const { rows } = await platform.settingsShow(id, null)
+      const record = rows.find((r) => r.key === "record")
+      const days = rows.find((r) => r.key === "keep_runs_for_days")?.value
+      if (!record) {
+        keep(id, { state: "error", error: "The tool does not report a record setting." })
+        return
+      }
+      keep(id, {
+        state: "ready",
+        record: record.value === true,
+        locked: record.locked,
+        days: typeof days === "number" ? days : null,
+        saving: false,
+        error,
+      })
+    } catch (e) {
+      keep(id, { state: "error", error: message(e) })
+    }
+  }
+
   return {
     sources: {},
+    keeping: {},
     loadedAt: Date.now(),
     query: "",
     range: "30d",
@@ -86,12 +129,15 @@ export const useLogs = create<LogsState>((set, get) => {
           { id: t.id, state: initialState(t.id), runs: [], hasMore: false, pages: 0, error: null } satisfies Source,
         ]),
       )
-      set({ sources, loadedAt: Date.now(), details: {} })
-      await Promise.all(
-        Object.values(sources)
-          .filter((s) => s.state === "loading")
-          .map((s) => fetchPage(s.id, 1)),
+      const reading = Object.values(sources).filter((s) => s.state === "loading")
+      const keeping = Object.fromEntries(
+        reading.filter((s) => canKeepEveryRun(s.id)).map((s) => [s.id, { state: "loading" } satisfies Keeping]),
       )
+      set({ sources, keeping, loadedAt: Date.now(), details: {} })
+      await Promise.all([
+        ...reading.map((s) => fetchPage(s.id, 1)),
+        ...Object.keys(keeping).map((id) => readKeeping(id)),
+      ])
     },
 
     async loadMore(id) {
@@ -99,6 +145,20 @@ export const useLogs = create<LogsState>((set, get) => {
       if (!s?.hasMore || s.state === "loading") return
       patch(id, () => ({ state: "loading" }))
       await fetchPage(id, s.pages + 1)
+    },
+
+    async setRecord(id, on) {
+      const k = get().keeping[id]
+      if (k?.state !== "ready" || k.locked) return
+      keep(id, { ...k, saving: true, error: null })
+      let error: string | null = null
+      try {
+        await platform.settingsSet(id, null, true, "record", on ? "true" : "false")
+      } catch (e) {
+        error = message(e)
+      }
+      // Show what the tool now reports, not what was asked for.
+      await readKeeping(id, error)
     },
 
     setQuery: (query) => set({ query }),

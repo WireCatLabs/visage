@@ -1,7 +1,9 @@
-import { Search, X } from "lucide-react"
+import { ExternalLink, Search, X } from "lucide-react"
 import { type KeyboardEvent, useId, useMemo, useRef, useState } from "react"
 import { FACET_LABELS, type Parsed, type QueryProblem, type Run, type Suggestion, suggest } from "@/domain/runs"
+import { platform } from "@/platform/bridge"
 import { cx } from "@/ui/cx"
+import { LOGS_DOCS } from "./names"
 
 const FIELDS = [
   ...Object.keys(FACET_LABELS),
@@ -87,7 +89,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
         <div
           ref={mirror}
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-[2.4rem] left-[2.2rem] flex items-center overflow-hidden whitespace-pre font-mono text-[0.875rem]"
+          className="pointer-events-none absolute inset-y-0 right-[2.4rem] left-[2.2rem] flex items-center overflow-hidden whitespace-pre font-mono text-[0.95rem]"
         >
           <Highlight query={query} parsed={parsed} problems={problems} />
         </div>
@@ -117,7 +119,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
           onScroll={sync}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
-          className="selectable h-full min-w-0 flex-1 bg-transparent pr-[2.4rem] pl-[2.2rem] font-mono text-[0.875rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
+          className="selectable h-full min-w-0 flex-1 bg-transparent pr-[2.4rem] pl-[2.2rem] font-mono text-[0.95rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
         />
         {query && (
           <button
@@ -158,21 +160,27 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
                 i === active && "bg-app-3",
               )}
             >
-              <span className="truncate font-mono text-[0.85rem] text-ink">{s.label}</span>
-              <span className="shrink-0 text-[0.8rem] text-ink-dim tabular-nums">{s.hint}</span>
+              <span className="truncate font-mono text-[0.95rem] text-ink">{s.label}</span>
+              <span className="shrink-0 text-[0.85rem] text-ink-dim tabular-nums">{s.hint}</span>
             </div>
           ))}
         </div>
       )}
-      <p
-        id={`${id}-hint`}
-        role={problem ? "alert" : undefined}
-        className={cx("mt-[0.35rem] text-[0.8rem]", problem ? "text-bad" : "text-ink-dim")}
-      >
-        {problem
-          ? problem.message
-          : "field:value to filter, * matches anything, a leading - excludes. Two values of one field match either."}
-      </p>
+      <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.85rem]">
+        <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={problem ? "text-bad" : "text-ink-dim"}>
+          {problem
+            ? problem.message
+            : "field:value to filter, * matches anything, a leading - excludes. Two values of one field match either."}
+        </p>
+        <button
+          type="button"
+          onClick={() => platform.openUrl(LOGS_DOCS)}
+          className="inline-flex shrink-0 items-center gap-[0.2rem] font-medium text-brand hover:text-brand-hover"
+        >
+          Search syntax
+          <ExternalLink className="size-[0.8rem]" aria-hidden />
+        </button>
+      </div>
     </div>
   )
 }

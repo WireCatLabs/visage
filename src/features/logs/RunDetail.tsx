@@ -7,6 +7,7 @@ import { cx } from "@/ui/cx"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
+import { toolName } from "./names"
 import type { Detail } from "./store"
 
 type Filter = (field: string, value: string, negate: boolean) => void
@@ -23,11 +24,37 @@ const runField: FieldOf = (path) => {
 const eventField: FieldOf = (path) =>
   path.length === 1 ? ({ operation: "operations", error_code: "codes" }[path[0] as string] ?? null) : null
 
-export function RunDetail({ run, detail, onFilter }: { run: Run; detail: Detail | undefined; onFilter: Filter }) {
-  const { tool: _, ...summary } = run
+// What cli-core's log events mean (cli-core src/runs/log-events.ts), worded for the owner.
+const EVENT_MEANINGS: Record<string, string> = {
+  "provider.request": "A request went to the service",
+  "provider.response": "The service answered the request, or it failed",
+  "client.warning": "The tool noticed something unexpected and went on",
+  "cache.answered": "Answered from what the tool already kept, without asking the service",
+  "command.crashed": "The command failed on a bug in the tool",
+  "send.recorded": "A message the tool sent, and how it ended",
+  "job.start": "A background job started",
+  "job.exit": "A background job ended",
+  "schedule.start": "A scheduled run started",
+  "schedule.exit": "A scheduled run ended",
+  "agent.action": "One action an AI agent asked the tool for",
+}
+
+function noSteps(run: Run, service: string): string {
+  const n = typeof run.requests === "number" ? run.requests : null
+  if (n === 0) return `The tool stopped before contacting ${service}, so there are no steps to show.`
+  if (n !== null)
+    return `The tool made ${n} ${n === 1 ? "request" : "requests"} to ${service} but did not log them as steps.`
+  return "The tool logged no steps for this run."
+}
+
+type Props = { run: Run; detail: Detail | undefined; onFilter: Filter; onGroup: (field: string) => void }
+
+export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
+  const { tool: _, cli_command: __, ...summary } = run
   const item = detail?.item ?? null
   const { events = [], ...record } = item ?? { ...summary, events: undefined }
   const json = JSON.stringify(item ?? summary, null, 2)
+  const service = toolName(run.tool)
 
   return (
     <div className="flex flex-col gap-[1.1rem] border-line border-t bg-app-2/60 px-[1.3rem] pt-[1rem] pb-[1.3rem]">
@@ -38,36 +65,42 @@ export function RunDetail({ run, detail, onFilter }: { run: Run; detail: Detail 
         <Facts run={run} />
       </div>
 
-      <section aria-label="Events" className="flex flex-col gap-[0.5rem]">
-        <h4 className="text-[0.85rem] font-medium text-ink-dim">
-          Events{item ? ` · ${item.event_count ?? events.length}` : ""}
-        </h4>
+      <section aria-label="Steps" className="flex flex-col gap-[0.5rem]">
+        <div>
+          <h4 className="text-[0.85rem] font-medium text-ink-dim">
+            Steps{item ? ` · ${item.event_count ?? events.length}` : ""}
+          </h4>
+          <p className="text-[0.85rem] text-ink-dim">
+            Each request the tool sent to {service} and its answer, plus notable moments: a warning, an answer from what
+            it already kept, a crash.
+          </p>
+        </div>
         {detail?.state === "loading" && <Skeleton className="h-[4.5rem] w-full" label="Reading this run" />}
         {detail?.state === "error" && (
-          <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-2.5 text-[0.9rem]">
+          <p role="alert" className="rounded-[0.2rem] border border-bad/40 bg-bad/10 px-4 py-2.5 text-[0.95rem]">
             Could not read this run: <span className="selectable">{detail.error}</span>
           </p>
         )}
         {detail?.state === "ready" &&
           (events.length === 0 ? (
-            <p className="text-[0.9rem] text-ink-soft">
-              This run logged no events. The record below is everything the tool kept about it.
+            <p className="text-[0.95rem] text-ink-soft">
+              {noSteps(run, service)} The record below is everything the tool kept about this run.
             </p>
           ) : (
-            <Events events={events} onFilter={onFilter} />
+            <Events events={events} onFilter={onFilter} onGroup={onGroup} />
           ))}
       </section>
 
       <section aria-label="Run record" className="flex flex-col gap-[0.5rem]">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-[0.85rem] font-medium text-ink-dim">Run record</h4>
-          <span className="flex items-center gap-1 text-[0.8rem] text-ink-dim">
+          <span className="flex items-center gap-1 text-[0.85rem] text-ink-dim">
             Copy JSON
             <CopyValue value={json} label="Copy the run as JSON" />
           </span>
         </div>
         <div className="overflow-x-auto rounded-[0.45rem] border border-line bg-app py-[0.6rem] pr-[0.6rem] pl-[1.5rem]">
-          <JsonTree value={record} fieldOf={runField} onFilter={onFilter} label="Run record" />
+          <JsonTree value={record} fieldOf={runField} onFilter={onFilter} onGroup={onGroup} label="Run record" />
         </div>
       </section>
     </div>
@@ -82,7 +115,7 @@ function Facts({ run }: { run: Run }) {
     [run.runtime, run.platform, run.arch].filter(Boolean).join(" · ") || null,
   ].filter(Boolean)
   return (
-    <p className="font-mono text-[0.8rem] text-ink-soft tabular-nums">
+    <p className="font-mono text-[0.85rem] text-ink-soft tabular-nums">
       {facts.map((f, i) => (
         <Fragment key={String(f)}>
           {i > 0 && <span className="px-[0.45rem] text-ink-dim">/</span>}
@@ -104,24 +137,25 @@ const clock = (iso: unknown) => {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`
 }
 
-function Events({ events, onFilter }: { events: RunEvent[]; onFilter: Filter }) {
+function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: string) => void }) {
+  const { events, onFilter, onGroup } = props
   const [open, setOpen] = useState<number | null>(null)
   return (
     <div className="overflow-x-auto rounded-[0.45rem] border border-line bg-app">
-      <table className="w-full min-w-[34rem] table-fixed border-collapse text-[0.85rem]">
+      <table className="w-full min-w-[34rem] table-fixed border-collapse text-[0.95rem]">
         <colgroup>
           <col className="w-[1.8rem]" />
           <col className="w-[7.4rem]" />
-          <col className="w-[9.5rem]" />
+          <col className="w-[12.5rem]" />
           <col />
           <col className="w-[8rem]" />
           <col className="w-[5rem]" />
         </colgroup>
         <thead>
-          <tr className="text-left text-[0.8rem] text-ink-dim">
+          <tr className="text-left text-[0.85rem] text-ink-dim">
             <th className="sr-only">Details</th>
             <th className="py-[0.4rem] font-medium">Time</th>
-            <th className="font-medium">Event</th>
+            <th className="font-medium">Step</th>
             <th className="font-medium">Operation</th>
             <th className="font-medium">Outcome</th>
             <th className="pr-[0.8rem] text-right font-medium">Took</th>
@@ -135,13 +169,13 @@ function Events({ events, onFilter }: { events: RunEvent[]; onFilter: Filter }) 
               <Fragment key={i}>
                 <tr
                   onClick={() => setOpen(isOpen ? null : i)}
-                  className="cursor-pointer border-line border-t font-mono text-[0.8rem] hover:bg-app-2"
+                  className="cursor-pointer border-line border-t font-mono text-[0.85rem] hover:bg-app-2"
                 >
                   <td className="pl-[0.4rem]">
                     <button
                       type="button"
                       aria-expanded={isOpen}
-                      aria-label={`Event ${i + 1} attributes`}
+                      aria-label={`Step ${i + 1} details`}
                       onClick={(ev) => {
                         ev.stopPropagation()
                         setOpen(isOpen ? null : i)
@@ -155,7 +189,7 @@ function Events({ events, onFilter }: { events: RunEvent[]; onFilter: Filter }) 
                     </button>
                   </td>
                   <td className="py-[0.35rem] text-ink-soft tabular-nums">{clock(e.time)}</td>
-                  <td className="truncate">
+                  <td className="truncate pr-[0.8rem]" title={EVENT_MEANINGS[String(e.event)]}>
                     <span className="inline-flex items-center gap-[0.4rem]">
                       <Lamp tone={severityTone(e.severity)} size="sm" label={String(e.severity ?? "info")} />
                       {String(e.event ?? "")}
@@ -172,7 +206,13 @@ function Events({ events, onFilter }: { events: RunEvent[]; onFilter: Filter }) 
                 {isOpen && (
                   <tr className="border-line border-t">
                     <td colSpan={6} className="bg-app-2/50 py-[0.5rem] pr-[0.6rem] pl-[2.6rem]">
-                      <JsonTree value={e} fieldOf={eventField} onFilter={onFilter} label={`Event ${i + 1}`} />
+                      <JsonTree
+                        value={e}
+                        fieldOf={eventField}
+                        onFilter={onFilter}
+                        onGroup={onGroup}
+                        label={`Step ${i + 1}`}
+                      />
                     </td>
                   </tr>
                 )}

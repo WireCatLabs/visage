@@ -1,5 +1,5 @@
 // The Logs explorer's query language, facets and grouping, over runs already fetched from the tools.
-// Syntax, close to the WireCat search language: `status:failed command:sync* -profile:work duration_ms:>1000 timeout`.
+// Syntax, close to the WireCat search language: `status:failed cli_command:"tg chats*" -profile:work duration_ms:>1000`.
 // Terms are ANDed, except that several plain values of one field mean "any of them", so facet clicks add up.
 
 export type Run = {
@@ -23,15 +23,29 @@ export type QueryProblem = { start: number; end: number; message: string }
 export type Parsed = { terms: Term[]; problems: QueryProblem[] }
 
 /** The fields a facet column shows, in order. */
-export const FACETS = ["tool", "status", "command", "error_code", "profile"] as const
+export const FACETS = ["tool", "status", "cli_command", "profile", "error_code"] as const
 export const FACET_LABELS: Record<string, string> = {
   tool: "Tool",
   status: "Status",
-  command: "Command",
+  cli_command: "Command",
+  command: "Subcommand",
   error_code: "Error code",
   profile: "Profile",
   cli_version: "Version",
 }
+
+// A tool records `command` without its own name ("chats list"), except when it recognised no command at all: then
+// it records the bare name ("tg"). Prefixing the name keeps tg and max commands apart in facets and groups.
+export function cliCommand(bin: string, command: string): string {
+  const c = command.trim()
+  if (!c) return bin
+  return c === bin || c.startsWith(`${bin} `) ? c : `${bin} ${c}`
+}
+
+/** A `cli_command` that is the tool's name alone: it was started without a command it knows. */
+export const isBareCommand = (value: string) => value !== "" && !value.includes(" ")
+export const BARE_COMMAND_HINT = "The tool was started without a known command — often a typo or a missing profile."
+export const commandLabel = (value: string) => (isBareCommand(value) ? `${value} (no command)` : value)
 
 const ALIASES: Record<string, string> = { operation: "operations", code: "codes", duration: "duration_ms" }
 const FIELD = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/i
@@ -39,6 +53,7 @@ const TEXT_FIELDS = [
   "tool",
   "run_id",
   "command",
+  "cli_command",
   "profile",
   "status",
   "error_code",
@@ -237,6 +252,21 @@ export function unknownFields(parsed: Parsed, runs: Run[]): QueryProblem[] {
       ? [{ start: t.start, end: t.end, message: `No run has a field named ${t.field}.` }]
       : [],
   )
+}
+
+/**
+ * A list or object short enough to read on one line: empty, or up to three scalars whose compact JSON fits.
+ * Returns that line, or null when the value should stay a collapsible node.
+ */
+export function inlineJson(value: unknown, width = 60): string | null {
+  if (value === null || typeof value !== "object") return null
+  const entries = Object.entries(value)
+  if (entries.length === 0) return Array.isArray(value) ? "[]" : "{}"
+  if (entries.length > 3 || entries.some(([, v]) => v !== null && typeof v === "object")) return null
+  const text = Array.isArray(value)
+    ? `[${value.map((v) => JSON.stringify(v)).join(", ")}]`
+    : `{ ${entries.map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ")} }`
+  return text.length <= width ? text : null
 }
 
 export type Suggestion = { label: string; insert: string; hint: string }

@@ -41,6 +41,15 @@ const messengers: Record<string, MessengerState> = {
   wa: { defaults: {}, profiles: {}, store: {} },
 }
 
+/** Whether a messenger records every run for this profile, so the runs mock keeps its successes too. */
+export function recordOn(id: string, profile: string | undefined): boolean {
+  const state = messengers[id]
+  if (!state) return false
+  const own = profile ? state.profiles[profile] : undefined
+  const value = own && "record" in own ? own.record : "record" in state.defaults ? state.defaults.record : false
+  return value === true
+}
+
 const ENV_PREFIX: Record<string, string> = { tg: "TG", max: "MAX", wa: "WA" }
 const ENVIRONMENT: Record<string, Layer> = { tg: { requests_per_minute: 12 } }
 

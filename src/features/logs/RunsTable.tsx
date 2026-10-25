@@ -1,6 +1,14 @@
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react"
 import { Fragment } from "react"
-import { formatDuration, formatWhen, type Run, statusTone } from "@/domain/runs"
+import {
+  BARE_COMMAND_HINT,
+  commandLabel,
+  formatDuration,
+  formatWhen,
+  isBareCommand,
+  type Run,
+  statusTone,
+} from "@/domain/runs"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { ToolIcon } from "../tools/ToolIcon"
@@ -17,6 +25,22 @@ type Props = {
   onSort: () => void
   onToggle: (key: string, run: Run) => void
   onFilter: (field: string, value: string, negate: boolean) => void
+  onGroup: (field: string) => void
+}
+
+const commandOf = (run: Run) => (typeof run.cli_command === "string" ? run.cli_command : run.command)
+
+function CommandCell({ value }: { value: string }) {
+  const bare = isBareCommand(value)
+  return (
+    <td
+      className="truncate font-mono text-[0.95rem] font-medium group-hover:text-brand"
+      title={bare ? BARE_COMMAND_HINT : value}
+    >
+      {value}
+      {bare && <span className="font-normal font-sans text-ink-dim"> (no command)</span>}
+    </td>
+  )
 }
 
 const STATUS_WORD: Record<string, string> = {
@@ -26,9 +50,9 @@ const STATUS_WORD: Record<string, string> = {
   running: "Running",
 }
 
-export function RunsTable({ runs, now, expanded, details, newest, onSort, onToggle, onFilter }: Props) {
+export function RunsTable({ runs, now, expanded, details, newest, onSort, onToggle, onFilter, onGroup }: Props) {
   return (
-    <table className="w-full table-fixed border-collapse text-[0.9rem]">
+    <table className="w-full table-fixed border-collapse text-[0.95rem]">
       <colgroup>
         <col className="w-[2.2rem]" />
         <col className="w-[8.6rem]" />
@@ -40,7 +64,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
         <col className="w-[9.6rem]" />
       </colgroup>
       <thead>
-        <tr className="border-line-strong border-b text-left text-[0.8rem] text-ink-dim">
+        <tr className="border-line-strong border-b text-left text-[0.85rem] text-ink-dim">
           <th className="sr-only">Details</th>
           <th aria-sort={newest ? "descending" : "ascending"} className="py-[0.55rem] font-medium">
             <button
@@ -82,7 +106,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
                   <button
                     type="button"
                     aria-expanded={open}
-                    aria-label={`${open ? "Hide" : "Show"} run ${run.command} at ${formatWhen(run.started_at, now)}`}
+                    aria-label={`${open ? "Hide" : "Show"} run ${commandLabel(commandOf(run))} at ${formatWhen(run.started_at, now)}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       onToggle(key, run)
@@ -96,7 +120,7 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
                   </button>
                 </td>
                 <td
-                  className="font-mono text-[0.8rem] text-ink-soft tabular-nums"
+                  className="font-mono text-[0.85rem] text-ink-soft tabular-nums"
                   title={new Date(run.started_at).toString()}
                 >
                   {formatWhen(run.started_at, now)}
@@ -107,8 +131,8 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
                     <span className="truncate">{toolName(run.tool)}</span>
                   </span>
                 </td>
-                <td className="truncate font-mono text-[0.8rem] text-ink-soft">{run.profile ?? "—"}</td>
-                <td className="truncate font-mono text-[0.85rem] font-medium group-hover:text-brand">{run.command}</td>
+                <td className="truncate font-mono text-[0.85rem] text-ink-soft">{run.profile ?? "—"}</td>
+                <CommandCell value={commandOf(run)} />
                 <td>
                   <span className="flex items-center gap-[0.45rem]">
                     <Lamp tone={statusTone(run.status)} size="sm" />
@@ -117,17 +141,17 @@ export function RunsTable({ runs, now, expanded, details, newest, onSort, onTogg
                     </span>
                   </span>
                 </td>
-                <td className="pr-[1rem] text-right font-mono text-[0.8rem] text-ink-soft tabular-nums">
+                <td className="pr-[1rem] text-right font-mono text-[0.85rem] text-ink-soft tabular-nums">
                   {formatDuration(run.duration_ms)}
                 </td>
-                <td className="truncate pr-[1.3rem] font-mono text-[0.8rem]">
+                <td className="truncate pr-[1.3rem] font-mono text-[0.85rem]">
                   {run.error_code ?? <span className="text-ink-dim">—</span>}
                 </td>
               </tr>
               {open && (
                 <tr className="border-line border-b">
                   <td colSpan={8} className="p-0">
-                    <RunDetail run={run} detail={details[key]} onFilter={onFilter} />
+                    <RunDetail run={run} detail={details[key]} onFilter={onFilter} onGroup={onGroup} />
                   </td>
                 </tr>
               )}

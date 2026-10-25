@@ -1,4 +1,4 @@
-import { RefreshCw, SlidersHorizontal } from "lucide-react"
+import { ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
 import { useDeferredValue, useEffect, useId, useMemo, useState } from "react"
 import {
   FACET_LABELS,
@@ -15,13 +15,15 @@ import {
   toggleTerm,
   unknownFields,
 } from "@/domain/runs"
+import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
-import { toolName } from "./names"
+import { KeepRuns } from "./KeepRuns"
+import { LOGS_DOCS, toolName } from "./names"
 import { QueryBar } from "./QueryBar"
 import { RunsTable } from "./RunsTable"
 import { type Source, useLogs } from "./store"
@@ -74,9 +76,16 @@ export function LogsPage() {
         <div>
           <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Logs</h1>
           <p className="mt-3 max-w-[72ch] text-[0.95rem] text-ink-soft">
-            What each tool recorded about its own runs. A tool keeps a run only when it fails, or when you run it with{" "}
-            <code className="selectable font-mono text-[0.88rem] text-ink">--record</code>, so this list is mostly
-            failures by design. It does not mean everything is broken.
+            What each tool recorded about its own runs. Out of the box a tool keeps a run only when it fails, so this
+            list is mostly failures by design. It does not mean everything is broken.{" "}
+            <button
+              type="button"
+              onClick={() => platform.openUrl(LOGS_DOCS)}
+              className="inline-flex items-baseline gap-[0.2rem] font-medium text-brand hover:text-brand-hover"
+            >
+              How to search logs
+              <ExternalLink className="size-[0.8rem] self-center" aria-hidden />
+            </button>
           </p>
         </div>
         <Button
@@ -87,6 +96,8 @@ export function LogsPage() {
           {reading.length > 0 ? "Reading…" : "Read again"}
         </Button>
       </div>
+
+      <KeepRuns />
 
       <Sources list={list} onMore={loadMore} />
 
@@ -118,7 +129,14 @@ export function LogsPage() {
           ) : (
             <div className="grid gap-[1.5rem] lg:grid-cols-[13.5rem_minmax(0,1fr)]">
               <div className={cx(facetsOpen ? "block" : "hidden", "lg:block")}>
-                <Facets counts={counts} terms={parsed.terms} total={ranged.length} onToggle={onFilter} />
+                <Facets
+                  counts={counts}
+                  terms={parsed.terms}
+                  total={ranged.length}
+                  groupBy={groupBy}
+                  onToggle={onFilter}
+                  onGroup={setGroupBy}
+                />
               </div>
               <div className="flex min-w-0 flex-col gap-[0.7rem]">
                 <Summary
@@ -166,6 +184,7 @@ export function LogsPage() {
                       onSort={() => setNewest(!newest)}
                       onToggle={toggle}
                       onFilter={onFilter}
+                      onGroup={setGroupBy}
                     />
                   )}
                 </div>
@@ -316,7 +335,7 @@ function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => 
   )
 }
 
-const GROUPABLE = [...FACETS, "cli_version"]
+const GROUPABLE: string[] = [...FACETS, "cli_version"]
 
 function GroupBy({ value, onChange }: { value: string | null; onChange: (f: string | null) => void }) {
   const id = useId()
@@ -329,10 +348,10 @@ function GroupBy({ value, onChange }: { value: string | null; onChange: (f: stri
         id={id}
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
-        className="h-[2.4rem] rounded-[0.35rem] border border-line-strong bg-app px-[0.6rem] text-[0.9rem] text-ink hover:border-ink-dim/60"
+        className="h-[2.4rem] rounded-[0.35rem] border border-line-strong bg-app px-[0.6rem] text-[0.95rem] text-ink hover:border-ink-dim/60"
       >
         <option value="">Nothing</option>
-        {GROUPABLE.map((f) => (
+        {[...GROUPABLE, ...(value && !GROUPABLE.includes(value) ? [value] : [])].map((f) => (
           <option key={f} value={f}>
             {FACET_LABELS[f] ?? f}
           </option>

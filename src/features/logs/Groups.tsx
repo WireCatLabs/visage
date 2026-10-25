@@ -1,12 +1,12 @@
 import { FACET_LABELS, formatWhen, type Group } from "@/domain/runs"
-import { ValueLabel } from "./Facets"
+import { ValueLabel, valueTitle } from "./Facets"
 
 type Props = { field: string; groups: Group[]; now: Date; onPick: (value: string) => void }
 
 export function Groups({ field, groups, now, onPick }: Props) {
   const max = groups[0]?.count ?? 1
   return (
-    <table className="w-full table-fixed border-collapse text-[0.9rem]">
+    <table className="w-full table-fixed border-collapse text-[0.95rem]">
       <colgroup>
         <col />
         <col className="w-[30%]" />
@@ -15,7 +15,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
         <col className="w-[9rem]" />
       </colgroup>
       <thead>
-        <tr className="border-line-strong border-b text-left text-[0.8rem] text-ink-dim">
+        <tr className="border-line-strong border-b text-left text-[0.85rem] text-ink-dim">
           <th className="py-[0.55rem] pl-[1.3rem] font-medium">{FACET_LABELS[field] ?? field}</th>
           <th className="font-medium">
             <span className="sr-only">Share</span>
@@ -33,7 +33,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
                 type="button"
                 disabled={g.value === ""}
                 onClick={() => onPick(g.value)}
-                title={g.value === "" ? "Runs without this field" : `Show only these runs`}
+                title={g.value === "" ? "Runs without this field" : `Show only ${valueTitle(field, g.value)}`}
                 className="flex w-full min-w-0 items-center rounded-[0.3rem] px-[0.5rem] py-[0.3rem] text-left hover:bg-app-3 disabled:pointer-events-none"
               >
                 <ValueLabel field={field} value={g.value} />
@@ -47,9 +47,9 @@ export function Groups({ field, groups, now, onPick }: Props) {
                 />
               </span>
             </td>
-            <td className="pr-[0.9rem] text-right font-mono text-[0.85rem] tabular-nums">{g.count}</td>
-            <td className="pr-[0.9rem] text-right font-mono text-[0.85rem] text-ink-soft tabular-nums">{g.failed}</td>
-            <td className="truncate pr-[1.3rem] font-mono text-[0.8rem] text-ink-soft tabular-nums">
+            <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] tabular-nums">{g.count}</td>
+            <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] text-ink-soft tabular-nums">{g.failed}</td>
+            <td className="truncate pr-[1.3rem] font-mono text-[0.85rem] text-ink-soft tabular-nums">
               {formatWhen(g.last, now)}
             </td>
           </tr>

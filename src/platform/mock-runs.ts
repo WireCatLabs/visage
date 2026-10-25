@@ -1,3 +1,4 @@
+import { recordOn } from "./mock-settings"
 import type { RunDetail, RunEvent, RunItem } from "./runs-schemas"
 import type { Platform } from "./types"
 
@@ -11,14 +12,14 @@ const PLAN: Record<string, { count: number; wait: number; version: string; comma
     count: 214,
     wait: 500,
     version: "0.88.0",
-    commands: ["messages send", "chats list", "sync", "messages search", "media download", "contacts list"],
+    commands: ["messages send", "chats list", "sync", "messages search", "media download", "contacts list", "tg"],
     profiles: ["personal", "work", "newsbot"],
   },
   max: {
     count: 63,
     wait: 900,
     version: "0.74.0",
-    commands: ["messages send", "chats list", "sync", "account login"],
+    commands: ["messages send", "chats list", "max", "max", "max", "account login"],
     profiles: ["personal", "studio"],
   },
   wa: {
@@ -83,8 +84,18 @@ function build(tool: string, now: number): MockRun[] {
     t -= (30 / plan.count) * 86_400_000 * (0.3 + r() * 1.4)
     const command = pick(r, plan.commands)
     const roll = r()
-    const status = roll < 0.86 ? "failed" : roll < 0.93 ? "partial" : roll < 0.995 ? "success" : "running"
-    const code = status === "failed" || status === "partial" ? weighted(r) : undefined
+    // Started with no command it knows, the tool records its own name and stops before any request.
+    const bare = command === tool
+    const status = bare
+      ? "failed"
+      : roll < 0.8
+        ? "failed"
+        : roll < 0.87
+          ? "partial"
+          : roll < 0.995
+            ? "success"
+            : "running"
+    const code = bare ? "validation_error" : status === "failed" || status === "partial" ? weighted(r) : undefined
     const op = code ? (ERRORS[code]?.op ?? "request") : "messages.getHistory"
     const duration = Math.round(code === "timeout" ? 30_000 + r() * 2000 : 40 + r() * (r() < 0.2 ? 9000 : 1400))
     const started = new Date(t)
@@ -97,7 +108,7 @@ function build(tool: string, now: number): MockRun[] {
             return {
               time: new Date(t + k * 180).toISOString(),
               severity: last ? "error" : "info",
-              event: last ? "client.response" : "client.request",
+              event: last ? "provider.response" : "provider.request",
               operation: last ? op : "messages.getHistory",
               duration_ms: Math.round(20 + r() * 400),
               outcome: last ? "error" : "ok",
@@ -162,7 +173,8 @@ export const runsMock: Pick<Platform, "listRuns" | "showRun"> = {
     await delay(PLAN[id]?.wait ?? 300)
     if (!PLAN[id]) throw new Error("This tool does not keep run logs yet.")
     if (scenario === "fail" && id === "max") throw new Error("max runs list: the program did not finish in time")
-    const all = scenario === "none" ? [] : runsOf(id)
+    // A tool keeps a successful run only when its profile records every run.
+    const all = scenario === "none" ? [] : runsOf(id).filter((r) => r.status !== "success" || recordOn(id, r.profile))
     const items = all.slice((page - 1) * limit, page * limit).map(({ events: _, ...run }) => run)
     return { items, page: { has_more: all.length > page * limit } }
   },
