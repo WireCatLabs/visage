@@ -22,7 +22,9 @@ describe("Permissions", () => {
     render(<Permissions tool={tg} />)
     expect(await screen.findByText(/Choose a profile to see which commands it may run/)).toBeInTheDocument()
 
-    await user.selectOptions(await screen.findByRole("combobox", { name: "Profile" }), "personal")
+    const picker = await screen.findByRole("combobox", { name: "Profile" })
+    await within(picker).findByRole("option", { name: "personal" })
+    await user.selectOptions(picker, "personal")
     await waitFor(() => expect(within(row("Messages")).getByText("Partial")).toBeInTheDocument())
     expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument()
     expect(within(row("Contacts")).getByText("Allowed")).toBeInTheDocument()
