@@ -1,11 +1,12 @@
 import { createElement as h } from "react"
 import { serverName } from "@/domain/agents"
 import { catalogCommand, findTool } from "@/domain/catalog"
-import type { SkillTarget } from "@/domain/skills"
+import { type SkillTarget, TARGET_FOLDER } from "@/domain/skills"
 import type { Claim } from "@/platform/agents-schemas"
 import { useConfirm } from "./Confirm"
 import { pairKey, useConnect } from "./connect"
 import { cellKey, useAgents } from "./store"
+import { type AgentView, plural, todoAction } from "./view"
 
 /** What the agent's own CLI runs to remove a server; Rust holds the same fixed words (`mcp.rs`). */
 const REMOVE: Record<string, (name: string) => string> = {
@@ -21,7 +22,11 @@ const tool = (id: string) => {
   return t
 }
 
-export function askSkillInstall(id: string, target: SkillTarget, action: string, reader: string) {
+/** The agent's tab in the list: an Install button that was pressed is gone once its skill is written. */
+export const agentTabId = (agent: string) => `agent-tab-${agent}`
+const agentTab = (agent: string) => () => document.getElementById(agentTabId(agent))
+
+export function askSkillInstall(id: string, target: SkillTarget, action: string, reader: string, agent?: string) {
   const t = tool(id)
   if (!t.skill) return
   const key = cellKey(id, target)
@@ -31,6 +36,7 @@ export function askSkillInstall(id: string, target: SkillTarget, action: string,
     command: catalogCommand(t, t.skill.install, { target }),
     tool: id,
     action,
+    ...(agent ? { focusAfter: agentTab(agent) } : {}),
     run: async () => {
       await useAgents.getState().install(id, target)
       return !useAgents.getState().failures[key]
@@ -39,14 +45,26 @@ export function askSkillInstall(id: string, target: SkillTarget, action: string,
   })
 }
 
-export function askSkillInstallAll(cells: readonly [string, SkillTarget][]) {
+/** Every missing or old skill of one agent, one after another; `also` names the other agents reading each folder. */
+export function askAgentSkills(view: AgentView, also: (target: SkillTarget) => string[]) {
+  const cells = view.todo.map((s): [string, SkillTarget] => [s.tool.id, s.target])
+  const folders = [...new Set(view.todo.map((s) => s.target))]
+  const others = [...new Set(folders.flatMap(also))]
   useConfirm.getState().ask({
-    title: `Update ${cells.length} old ${cells.length === 1 ? "skill" : "skills"}?`,
-    body: h("p", null, "Each tool writes its own skill file, one after another."),
-    command: cells
-      .map(([id, target]) => catalogCommand(tool(id), tool(id).skill?.install ?? [], { target }))
-      .join("\n"),
-    action: "Update all",
+    title: `${todoAction(view) === "Install all" ? "Install" : "Update"} ${plural(cells.length, "skill")} for ${view.agent.name}?`,
+    body: h(
+      "div",
+      { className: "flex flex-col gap-2" },
+      h(
+        "p",
+        null,
+        `Each tool writes its own skill file into ${folders.map((t) => TARGET_FOLDER[t]).join(" and ")}, one after another.`,
+      ),
+      others.length > 0 ? h("p", null, `${others.join(", ")} read the same folder and get these skills too.`) : null,
+    ),
+    command: view.todo.map((s) => catalogCommand(s.tool, s.tool.skill?.install ?? [], { target: s.target })).join("\n"),
+    action: todoAction(view),
+    focusAfter: agentTab(view.agent.id),
     run: async () => {
       await useAgents.getState().installAll(cells)
       return cells.every(([id, target]) => !useAgents.getState().failures[cellKey(id, target)])

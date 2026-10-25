@@ -14,6 +14,8 @@ export type Pending = {
   tool?: string
   action: string
   danger?: boolean
+  /** Where focus goes after closing when the button that opened the dialog is gone. */
+  focusAfter?: () => HTMLElement | null
   /** Resolves false when it failed; the reason is in `failure`. */
   run: () => Promise<boolean>
   failure: () => string | undefined
@@ -32,8 +34,14 @@ export function ConfirmCommand() {
   const [error, setError] = useState<string | null>(null)
 
   const done = () => {
+    const after = pending?.focusAfter
     setError(null)
     close()
+    if (after)
+      requestAnimationFrame(() => {
+        const active = document.activeElement
+        if (!active || active === document.body) after()?.focus()
+      })
   }
   const run = async () => {
     if (!pending) return

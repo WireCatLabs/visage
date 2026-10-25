@@ -1,15 +1,6 @@
 import { type ReactNode, useEffect } from "react"
-import { type CatalogTool, tools } from "@/domain/catalog"
-import {
-  cellAction,
-  needsUpdate,
-  SKILL_TARGETS,
-  type SkillCell,
-  type SkillTarget,
-  skillCell,
-  TARGET_FOLDER,
-} from "@/domain/skills"
-import { isNewer } from "@/domain/status"
+import type { CatalogTool } from "@/domain/catalog"
+import { cellAction, type SkillCell, type SkillTarget, TARGET_FOLDER } from "@/domain/skills"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -21,7 +12,8 @@ import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { askSkillInstall } from "./actions"
 import { ConfirmCommand } from "./Confirm"
-import { cellKey, useAgents } from "./store"
+import { catalogTools, useSkillMatrix } from "./skill-matrix"
+import { useAgents } from "./store"
 
 const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
   checking: { tone: "idle", word: "Checking…" },
@@ -34,62 +26,6 @@ const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
 }
 
 const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
-
-// A part of another tool's package (Email in memo) has no skill of its own; its owner's skill covers it.
-const catalogTools = tools.filter((t) => t.skill !== null)
-
-/** Everything the matrix shows, so the page can offer "Update all" over the same cells. */
-export function useSkillMatrix() {
-  const installs = useTools((s) => s.installs)
-  const latest = useTools((s) => s.latest)
-  const latestOf = (id: string, current: string | null) => {
-    const l = latest?.[id]
-    return l && current && isNewer(l, current) ? l : null
-  }
-  const { agents, skills, written, busy, failures } = useAgents()
-  const detected = Object.keys(installs).length > 0
-  const installed = catalogTools.filter((t) => (installs[t.id]?.length ?? 0) > 0)
-  const found = agents?.filter((a) => a.foundBy !== null) ?? null
-  const targets =
-    found && found.length > 0 ? SKILL_TARGETS.filter((t) => found.some((a) => a.reads.includes(t))) : SKILL_TARGETS
-  const rows = installed.map((tool) => {
-    const cliVersion = installs[tool.id]?.[0]?.version ?? null
-    const skill = skills[tool.id]
-    return {
-      tool,
-      cliVersion,
-      source: skill?.report?.source ?? null,
-      newer: latestOf(tool.id, cliVersion),
-      cells: targets.map((target) => {
-        const key = cellKey(tool.id, target)
-        return {
-          target,
-          busy: busy[key] === true,
-          failure: failures[key] ?? null,
-          cell: skillCell({
-            target,
-            cliVersion,
-            report: skill?.report,
-            error: skill?.error,
-            written: written[key],
-          }),
-        }
-      }),
-    }
-  })
-  const stale: [string, SkillTarget][] = rows.flatMap((r) =>
-    r.cells.filter((c) => needsUpdate(c.cell) && !c.busy).map((c): [string, SkillTarget] => [r.tool.id, c.target]),
-  )
-  return {
-    detected,
-    agents,
-    found,
-    targets,
-    rows,
-    stale,
-    notInstalled: catalogTools.filter((t) => !installed.includes(t)),
-  }
-}
 
 /**
  * Tools down, the two places a skill is written across, headed by the agents found that read each.

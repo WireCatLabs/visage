@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { findTool } from "@/domain/catalog"
 import type { Claim, Registrations } from "@/platform/agents-schemas"
 import { platform } from "@/platform/bridge"
+import type { Profile } from "@/platform/schemas"
 
 export type Loaded<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; error: string }
 export type ProfileClaims = Loaded<{ items: Claim[]; more: boolean }>
@@ -10,8 +11,8 @@ type ConnectState = {
   reach: Record<string, boolean> | null
   /** By agent id. */
   servers: Record<string, Loaded<Registrations>>
-  /** By tool id; tools without profiles are absent. */
-  profiles: Record<string, string[]>
+  /** By tool id, from the tool's own profile list (with its sign-in status); tools without profiles are absent. */
+  profiles: Record<string, Profile[]>
   /** `<tool>/<profile>`. */
   claims: Record<string, ProfileClaims>
   /** `<tool>/<profile>` → commands its permissions block, or why they could not be read. Filled by Check. */
@@ -91,10 +92,9 @@ export const useConnect = create<ConnectState>((set, get) => {
         .catch(() => set({ reach: null }))
       const servers = agents.map((a) => get().loadServers(a))
       const profiles = withProfiles.map(async (id) => {
-        const list = await platform.listProfiles(id).catch(() => null)
-        const names = (list ?? []).map((p) => p.name)
-        set((s) => ({ profiles: { ...s.profiles, [id]: names } }))
-        if (findTool(id)?.tasks) await Promise.all(names.map((p) => loadClaims(id, p)))
+        const list = (await platform.listProfiles(id).catch(() => null)) ?? []
+        set((s) => ({ profiles: { ...s.profiles, [id]: list } }))
+        if (findTool(id)?.tasks) await Promise.all(list.map((p) => loadClaims(id, p.name)))
       })
       await Promise.all([reach, ...servers, ...profiles])
     },
@@ -120,7 +120,7 @@ export const useConnect = create<ConnectState>((set, get) => {
           get().loadServers(agent),
         ])
         const everyProfile = Object.entries(get().profiles).flatMap(([tool, profiles]) =>
-          findTool(tool)?.permissions ? profiles.map((p) => [tool, p] as const) : [],
+          findTool(tool)?.permissions ? profiles.map((p) => [tool, p.name] as const) : [],
         )
         await Promise.all(everyProfile.map(([tool, profile]) => readAccess(tool, profile)))
       } finally {

@@ -390,7 +390,10 @@ One easing, `cubic-bezier(0.25, 1, 0.5, 1)` (quart out). 150ms for hover and pre
 
 ### Don't:
 
-- **Don't** turn the rack into a card grid or a sidebar-plus-detail split; details open under their row.
+- **Don't** turn the rack into a card grid or a sidebar-plus-detail split; details open under their row. One
+  exception, the owner's choice (2026-10-25): the Agents page is a list of agents beside one agent's pane, because it
+  is about one agent at a time and everything about that agent (its skills, what else stops it, its sessions, its
+  tasks) belongs in one place. Below about 52rem of page width the two stack.
 - **Don't** add a shadow to the rack, a row, a banner or a button. The panel shadow belongs to dialogs and the selected segmented option.
 - **Don't** use Unbounded below the page title.
 - **Don't** fill a button red. Danger actions are outlined; the only red fill is the window close control on hover.
