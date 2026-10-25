@@ -40,8 +40,8 @@ describe("groupSessions", () => {
     const claude = sessions[1]
     expect(claude?.tools).toEqual(["tg", "max"])
     expect(claude?.first).toBe("2026-10-25T09:00:00.000Z")
-    expect(claude && sessionQuery(claude)).toBe("agent:claude-code session_id:s1")
-    expect(sessions[0] && sessionQuery(sessions[0])).toBe("agent:codex")
+    expect(claude && sessionQuery(claude)).toBe("agent:claude-code session_id:s1 -no_command:true")
+    expect(sessions[0] && sessionQuery(sessions[0])).toBe("agent:codex -no_command:true")
   })
 })
 

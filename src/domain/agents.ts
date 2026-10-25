@@ -1,4 +1,4 @@
-import { agentName, agentOf, type Run, termText } from "./runs"
+import { agentName, agentOf, NO_COMMAND_HIDDEN, type Run, termText } from "./runs"
 import { cellAction, type SkillCell, type SkillTarget, TARGET_FOLDER } from "./skills"
 
 /** The app's agent ids, as `skills.rs` detects them, and the `kind` the tools record for each in runs and claims. */
@@ -66,7 +66,10 @@ export const sessionsOf = (sessions: readonly Session[], agent: string) =>
 /** The Logs query that shows one session's runs; an agent that names no session gets all its runs without one. */
 export function sessionQuery(s: Session): string {
   if (!s.kind) return ""
-  return s.session ? `${termText("agent", s.kind)} ${termText("session_id", s.session)}` : termText("agent", s.kind)
+  const who = s.session
+    ? `${termText("agent", s.kind)} ${termText("session_id", s.session)}`
+    : termText("agent", s.kind)
+  return `${who} ${NO_COMMAND_HIDDEN}`
 }
 
 // Task claims
