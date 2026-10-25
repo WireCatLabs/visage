@@ -1,12 +1,23 @@
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
-import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, ToolState } from "./schemas"
+import type {
+  Diagnosis,
+  InstallEvent,
+  NodeEvent,
+  NodePath,
+  Profile,
+  Readiness,
+  StorageArea,
+  ToolState,
+} from "./schemas"
 import type { Platform } from "./types"
 
 // A stand-in for Rust so the interface can be designed and reviewed in a browser.
 // `?state=fresh` shows a machine with nothing installed, `?state=nonode` one without Node.js,
 // `?state=one` only Telegram, `?fail=<tool>` makes that tool's install fail, `?hold=<tool>` keeps it installing, `?install=<tool>` starts one.
+// `?state=noadmin` has an apt Node whose npm needs administrator rights. With `nonode` or `noadmin`, "Set up Node.js
+// for me" runs a fake download; `?node=fail` makes its checksum mismatch, `?node=ready` starts with it already set up.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("state") ?? "mixed"
@@ -44,6 +55,20 @@ export function createMock(os: Platform["os"]): Platform {
   )
   let cancelled = false
   const MB = 1024 * 1024
+  const NODE = { version: "24.22.1", bytes: 58_290_700, dir: "~/.local/share/dev.wirecat.desktop/node/v24.22.1" }
+  let managed = params.get("node") === "ready"
+  let nodeCancelled = false
+  let pathAdded = false
+  const nodePath = (): NodePath => ({
+    shell: os === "windows" ? "windows" : "zsh",
+    file: os === "windows" ? "HKEY_CURRENT_USER\\Environment\\Path" : "~/.zshrc",
+    line:
+      os === "windows"
+        ? "C:\\Users\\you\\AppData\\Local\\dev.wirecat.desktop\\node\\v24.22.1"
+        : `export PATH="$HOME/.local/share/dev.wirecat.desktop/node/v${NODE.version}/bin:$PATH"`,
+    added: pathAdded,
+    automatic: true,
+  })
   const dataSize: Record<string, number> = {
     tg: 46 * MB,
     max: 12 * MB,
@@ -71,6 +96,31 @@ export function createMock(os: Platform["os"]): Platform {
     os,
     async readiness(): Promise<Readiness> {
       await delay(450)
+      const managedInfo = managed ? { version: NODE.version, dir: NODE.dir, active: true } : null
+      if (managed && (scenario === "nonode" || scenario === "noadmin")) {
+        return {
+          os: os === "macos" ? "macOS" : os === "windows" ? "Windows" : "Linux",
+          arch: "x86_64",
+          node: program(`${NODE.dir}/bin/node`, NODE.version),
+          npm: program(`${NODE.dir}/bin/npm`, "11.19.1"),
+          pnpm: absent,
+          npmPrefix: NODE.dir,
+          npmPrefixWritable: true,
+          managed: managedInfo,
+        }
+      }
+      if (scenario === "noadmin") {
+        return {
+          os: os === "macos" ? "macOS" : os === "windows" ? "Windows" : "Linux",
+          arch: "x86_64",
+          node: program("/usr/bin/node", "22.18.0"),
+          npm: program("/usr/bin/npm", "10.9.3"),
+          pnpm: absent,
+          npmPrefix: "/usr/local",
+          npmPrefixWritable: false,
+          managed: managedInfo,
+        }
+      }
       const noNode = scenario === "nonode"
       return {
         os: os === "macos" ? "macOS" : os === "windows" ? "Windows" : "Linux",
@@ -80,7 +130,59 @@ export function createMock(os: Platform["os"]): Platform {
         pnpm: absent,
         npmPrefix: noNode ? null : "~/.nvm/versions/node/v24.19.0",
         npmPrefixWritable: noNode ? null : true,
+        managed: managedInfo ? { ...managedInfo, active: false } : null,
       }
+    },
+    async nodeOffer() {
+      await delay(600)
+      return { version: NODE.version, bytes: NODE.bytes, dir: NODE.dir }
+    },
+    async setupNode(onEvent: (e: NodeEvent) => void) {
+      nodeCancelled = false
+      onEvent({ event: "step", step: "check" })
+      await delay(700)
+      onEvent({ event: "step", step: "download" })
+      const chunks = 24
+      for (let i = 0; i <= chunks; i++) {
+        if (nodeCancelled)
+          return onEvent({ event: "failed", reason: "cancelled", message: "Node.js setup cancelled.", hint: null })
+        onEvent({ event: "progress", received: Math.round((NODE.bytes * i) / chunks), total: NODE.bytes })
+        await delay(160)
+      }
+      onEvent({ event: "step", step: "verify" })
+      await delay(600)
+      if (params.get("node") === "fail") {
+        return onEvent({
+          event: "failed",
+          reason: "verify",
+          message: "The download does not match the checksum nodejs.org publishes, so it was thrown away.",
+          hint: "Try again. If it keeps failing, something between you and nodejs.org changes downloads.",
+        })
+      }
+      onEvent({ event: "step", step: "unpack" })
+      await delay(900)
+      managed = true
+      onEvent({ event: "done", version: NODE.version, path: NODE.dir })
+    },
+    async cancelNodeSetup() {
+      nodeCancelled = true
+    },
+    async removeNode() {
+      await delay(500)
+      if (installed.size > 0) {
+        throw new Error(`These tools run on it: ${[...installed.keys()].join(", ")}. Uninstall them first.`)
+      }
+      managed = false
+      pathAdded = false
+    },
+    async nodePath() {
+      await delay(200)
+      return nodePath()
+    },
+    async setNodePath(add) {
+      await delay(400)
+      pathAdded = add
+      return nodePath()
     },
     async detectTools(): Promise<ToolState[]> {
       await delay(800)

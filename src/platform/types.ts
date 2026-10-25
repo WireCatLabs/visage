@@ -1,6 +1,17 @@
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
-import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, StorageFolder, ToolState } from "./schemas"
+import type {
+  Diagnosis,
+  InstallEvent,
+  NodeEvent,
+  NodeOffer,
+  NodePath,
+  Profile,
+  Readiness,
+  StorageArea,
+  StorageFolder,
+  ToolState,
+} from "./schemas"
 import type { Settings } from "./settings-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
@@ -10,6 +21,15 @@ export type Platform = {
   kind: "tauri" | "mock"
   os: "linux" | "macos" | "windows"
   readiness(): Promise<Readiness>
+  /** The Node.js build "Set up Node.js for me" would download from nodejs.org. */
+  nodeOffer(): Promise<NodeOffer>
+  setupNode(onEvent: (e: NodeEvent) => void): Promise<void>
+  cancelNodeSetup(): Promise<void>
+  /** Rejects while tools still run on it. */
+  removeNode(): Promise<void>
+  /** The exact line "Add to PATH" writes and the file it goes into, for the app's own Node.js. */
+  nodePath(): Promise<NodePath>
+  setNodePath(add: boolean): Promise<NodePath>
   detectTools(): Promise<ToolState[]>
   latestVersions(): Promise<Record<string, string | null>>
   listProfiles(id: string): Promise<Profile[] | null>

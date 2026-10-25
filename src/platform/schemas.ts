@@ -18,6 +18,17 @@ export const ReadinessSchema = v.object({
   pnpm: Program,
   npmPrefix: v.nullable(v.string()),
   npmPrefixWritable: v.nullable(v.boolean()),
+  managed: v.nullable(v.object({ version: v.string(), dir: v.string(), active: v.boolean() })),
+})
+
+export const NodeOfferSchema = v.object({ version: v.string(), bytes: v.nullable(v.number()), dir: v.string() })
+
+export const NodePathSchema = v.object({
+  shell: v.string(),
+  file: v.nullable(v.string()),
+  line: v.string(),
+  added: v.boolean(),
+  automatic: v.boolean(),
 })
 
 const InstallRecord = v.object({
@@ -51,6 +62,13 @@ export const InstallEventSchema = v.variant("event", [
   v.object({ event: v.literal("failed"), reason: FailReason, message: v.string(), hint: v.nullable(v.string()) }),
 ])
 
+export const NodeEventSchema = v.variant("event", [
+  v.object({ event: v.literal("step"), step: v.picklist(["check", "download", "verify", "unpack"]) }),
+  v.object({ event: v.literal("progress"), received: v.number(), total: v.nullable(v.number()) }),
+  v.object({ event: v.literal("done"), version: v.string(), path: v.string() }),
+  v.object({ event: v.literal("failed"), reason: FailReason, message: v.string(), hint: v.nullable(v.string()) }),
+])
+
 export const StorageSchema = v.array(
   v.object({
     id: v.string(),
@@ -65,5 +83,8 @@ export type ToolState = v.InferOutput<typeof ToolStatesSchema>[number]
 export type Profile = NonNullable<v.InferOutput<typeof ProfilesSchema>>[number]
 export type Diagnosis = v.InferOutput<typeof DiagnosisSchema>
 export type InstallEvent = v.InferOutput<typeof InstallEventSchema>
+export type NodeOffer = v.InferOutput<typeof NodeOfferSchema>
+export type NodePath = v.InferOutput<typeof NodePathSchema>
+export type NodeEvent = v.InferOutput<typeof NodeEventSchema>
 export type StorageArea = v.InferOutput<typeof StorageSchema>[number]
 export type StorageFolder = StorageArea["folders"][number]

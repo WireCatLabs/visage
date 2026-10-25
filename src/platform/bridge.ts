@@ -9,6 +9,9 @@ import {
   DiagnosisSchema,
   InstallEventSchema,
   LatestVersionsSchema,
+  NodeEventSchema,
+  NodeOfferSchema,
+  NodePathSchema,
   ProfilesSchema,
   ReadinessSchema,
   StorageSchema,
@@ -38,6 +41,16 @@ function createTauri(): Platform {
     kind: "tauri",
     os: detectOs(),
     readiness: () => call(ReadinessSchema, "readiness"),
+    nodeOffer: () => call(NodeOfferSchema, "node_offer"),
+    setupNode: (onEvent) => {
+      const channel = new Channel<unknown>()
+      channel.onmessage = (raw) => onEvent(v.parse(NodeEventSchema, raw))
+      return invoke("setup_node", { onEvent: channel })
+    },
+    cancelNodeSetup: () => invoke("cancel_node_setup"),
+    removeNode: () => invoke("remove_node"),
+    nodePath: () => call(NodePathSchema, "node_path"),
+    setNodePath: (add) => call(NodePathSchema, "set_node_path", { add }),
     detectTools: () => call(ToolStatesSchema, "detect_tools"),
     latestVersions: () => call(LatestVersionsSchema, "latest_versions"),
     listProfiles: (id) => call(ProfilesSchema, "list_profiles", { id }),
