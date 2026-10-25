@@ -24,8 +24,10 @@ export function useUpdatable(ids: readonly string[]): string[] {
   })
 }
 
-/** What the row says in place of its tagline when storage needs attention; null when it does not. */
-/** `canUpdate` is null while npm has not said whether a newer version exists. */
+/**
+ * What the row says in place of its tagline when storage needs attention; null when it does not.
+ * `canUpdate` is null while npm has not said whether a newer version exists.
+ */
 export function fitLine(fit: Fit | undefined, id: string, canUpdate: boolean | null): string | null {
   if (fit?.kind === "cannot_read") {
     const schema = fit.schema === null ? "" : ` (schema ${fit.schema})`

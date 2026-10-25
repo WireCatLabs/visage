@@ -354,8 +354,8 @@ pub(crate) fn ask(tool: &Tool, template: Template, timeout: Duration) -> Result<
     }
 }
 
-/// `None` when no messenger tool is installed to ask.
-/// Asks every installed tool and keeps the answer of the one that reads the newest schema.
+/// Asks every installed tool and keeps the answer of the one that reads the newest schema; `None` when none has
+/// `store info`.
 pub fn info() -> Result<Option<StoreInfo>, String> {
     let answers = compat::probe();
     if answers.is_empty() {
@@ -371,6 +371,7 @@ pub fn info() -> Result<Option<StoreInfo>, String> {
         .unwrap_or_else(|| "no installed tool knows `store info` yet".into()))
 }
 
+/// Without sizes this counts rows only, a few seconds at most; sizes read every page of the file.
 pub fn tables(sizes: bool) -> Result<Option<TableList>, String> {
     let template: Template = if sizes { |t| t.store_table_sizes.as_ref() } else { |t| t.store_tables.as_ref() };
     let Some(tool) = asked(template) else { return Ok(None) };

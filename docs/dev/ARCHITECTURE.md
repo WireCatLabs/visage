@@ -87,16 +87,17 @@ folder (`skills.rs`); which folder each agent reads comes from the agents' own d
 Shared storage is described by `store info --json` (`storeInfo` in the catalog). `compat.rs` asks every installed
 package at once, read-only, and the answer of the tool that reads the newest schema fills the Storage page; tables and
 checks go to the first messenger in that ranking. A tool from before cli-core's shared `store info` (zm, drive, memo
-before their release with WireCatLabs/cli-core#1973) answers "unknown command". `archive.rs` picks known fields by name, because the generic masker would hide counts called `accounts`
-or `emails`. The breakdown is read only when the tool prints `by_provider`, and the file facts (journal mode, pages,
-migrations, last backup) only when it prints `migrations`. The same tool answers `storeTables` (every table with its
-kind and rows), `storeTableSizes` (the same with sizes; it reads the whole file, so the page runs it on request) and
-`storeCheck` (the health check, also on request: about 90 s on a 3 GB file). A tool that answers "unknown command"
-gets "arrives with the next update". Of a check only counts leave Rust, never the chats it finds behind. The
-interface calls the shared database "storage" everywhere, never "archive". Folder entries on the Storage page are
-names and sizes from `storage.rs`; what each one is lives in `src/domain/files.ts`. `open_folder` opens a folder or
-one entry in it by name: Rust joins the name to the catalog's folder after refusing anything but a plain child, opens
-a directory, and shows a file or a link in its folder instead of opening it.
+before their release with WireCatLabs/cli-core#1973) answers "unknown command". `archive.rs` picks known fields by name,
+because the generic masker would hide counts called `accounts` or `emails`. The breakdown is read only when the tool
+prints `by_provider`, and the file facts (journal mode, pages, migrations, last backup) only when it prints
+`migrations`. The same tool answers `storeTables` (every table with its kind and rows), `storeTableSizes` (the same with
+sizes; it reads the whole file, so the page runs it on request) and `storeCheck` (the health check, also on request:
+about 90 s on a 3 GB file). A tool that answers "unknown command" gets "arrives with the next update". Of a check only
+counts leave Rust, never the chats it finds behind. The interface calls the shared database "storage" everywhere, never
+"archive". Folder entries on the Storage page are names and sizes from `storage.rs`; what each one is lives in
+`src/domain/files.ts`. `open_folder` opens a folder or one entry in it by name: Rust joins the name to the catalog's
+folder after refusing anything but a plain child, opens a directory, and shows a file or a link in its folder instead of
+opening it.
 
 ## Can each tool read storage
 
