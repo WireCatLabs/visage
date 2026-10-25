@@ -3,6 +3,8 @@ import { HelpMenu } from "@/features/onboarding/HelpMenu"
 import { Onboarding, SetupSteps } from "@/features/onboarding/Onboarding"
 import { useOnboarding } from "@/features/onboarding/store"
 import { Tour, useTour } from "@/features/onboarding/Tour"
+import { ReportDialog } from "@/features/report/ReportDialog"
+import { useReport } from "@/features/report/store"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { ErrorBoundary } from "./ErrorBoundary"
@@ -29,7 +31,13 @@ export function App() {
       {onboarding ? <SetupSteps onExit={toTools} /> : <Sidebar active={active} onSelect={setActive} />}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar>
-          {!onboarding && <HelpMenu onTour={startTour} onWelcome={() => useOnboarding.getState().reopen("welcome")} />}
+          {!onboarding && (
+            <HelpMenu
+              onTour={startTour}
+              onWelcome={() => useOnboarding.getState().reopen("welcome")}
+              onReport={() => useReport.getState().start()}
+            />
+          )}
         </TopBar>
         {onboarding ? (
           <ErrorBoundary>
@@ -46,6 +54,7 @@ export function App() {
           </>
         )}
         <ClearDataOffer />
+        <ReportDialog />
       </div>
       <Tour />
     </div>

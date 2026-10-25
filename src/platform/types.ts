@@ -1,3 +1,4 @@
+import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
 import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, StorageFolder, ToolState } from "./schemas"
 import type { Settings } from "./settings-schemas"
@@ -20,6 +21,9 @@ export type Platform = {
   clearStorage(id: string): Promise<void>
   openFolder(id: string, kind: StorageFolder["kind"]): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
+  /** What a bug report would carry about this computer, masked; `attachLogs` adds recent failed runs (private). */
+  reportContext(attachLogs: boolean): Promise<ReportContext>
+  sendReport(draft: ReportDraft, context: ReportContext): Promise<ReportSent>
   /** `query` is the CLI's own filter (exact `field:value` terms); `page` starts at 1. */
   listRuns(id: string, query: string | null, limit: number, page: number): Promise<RunsPage>
   showRun(id: string, run: string): Promise<RunDetail>

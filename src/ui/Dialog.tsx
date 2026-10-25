@@ -6,17 +6,22 @@ type Props = {
   children: ReactNode
   actions: ReactNode
   onClose: () => void
+  wide?: boolean
 }
 
 /** The platform's modal <dialog>: focus is trapped, Escape closes, and the page behind is inert. */
-export function Dialog({ open, title, children, actions, onClose }: Props) {
+export function Dialog({ open, title, children, actions, onClose, wide = false }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal?.()
+    if (open && !d.open) {
+      d.showModal?.()
+      // showModal focuses the first focusable thing, which can be a scrolling area rather than the first field.
+      d.querySelector<HTMLElement>("[data-autofocus]")?.focus()
+    }
     if (!open && d.open) d.close()
   }, [open])
 
@@ -29,7 +34,7 @@ export function Dialog({ open, title, children, actions, onClose }: Props) {
         e.preventDefault()
         onClose()
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-[0.6rem] border border-line bg-app p-0 text-ink shadow-panel backdrop:bg-black/40 backdrop:backdrop-blur-[1px]"
+      className={`m-auto ${wide ? "w-[min(46rem,calc(100vw-2rem))]" : "w-[min(32rem,calc(100vw-2rem))]"} rounded-[0.6rem] border border-line bg-app p-0 text-ink shadow-panel backdrop:bg-black/40 backdrop:backdrop-blur-[1px]`}
     >
       {open && (
         <div className="flex flex-col gap-4 p-6">

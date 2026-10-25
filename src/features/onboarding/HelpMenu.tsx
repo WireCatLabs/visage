@@ -1,10 +1,10 @@
-import { CircleHelp, Compass, Sparkles } from "lucide-react"
+import { Bug, CircleHelp, Compass, Sparkles } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 import { cx } from "@/ui/cx"
 
-type Props = { onTour: () => void; onWelcome: () => void }
+type Props = { onTour: () => void; onWelcome: () => void; onReport: () => void }
 
-export function HelpMenu({ onTour, onWelcome }: Props) {
+export function HelpMenu({ onTour, onWelcome, onReport }: Props) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -68,6 +68,10 @@ export function HelpMenu({ onTour, onWelcome }: Props) {
           <button type="button" data-item className={item} onClick={pick(onWelcome)}>
             <Sparkles className="size-[1.1rem] text-ink-soft" strokeWidth={1.8} aria-hidden />
             Show the welcome again
+          </button>
+          <button type="button" data-item className={item} onClick={pick(onReport)}>
+            <Bug className="size-[1.1rem] text-ink-soft" strokeWidth={1.8} aria-hidden />
+            Report a problem
           </button>
         </div>
       )}

@@ -38,7 +38,7 @@ Body, at most 1 MB:
     "app": { "name": "wirecat-desktop", "version": "0.1.0" },
     "system": { "os": "Linux", "arch": "x86_64", "node": "24.19.0", "npm": "11.6.2" },
     "tools": [{ "id": "tg", "version": "0.88.0", "manager": "pnpm" }],
-    "attachments": { "runs": [{ "tool": "tg", "run": {} }], "diagnosis": null }
+    "attachments": { "runs": [{ "tool": "tg", "runs": [{}] }], "installLog": ["npm ERR! …"] }
   }
 }
 ```
@@ -50,7 +50,7 @@ Body, at most 1 MB:
 | `expected` | optional, up to 5 000 characters |
 | `tool` | optional, one of `tg max wa zm drive memo`, or null for the app itself |
 | `app`, `system`, `tools` | required objects; versions may be null when unknown |
-| `attachments` | optional; **private**, stored on the server only, never copied into the issue |
+| `attachments` | optional object; **private**, stored on the server only, never copied into the issue. Today: `runs` (each installed tool's last 20 failed runs, from its `runs list`) and `installLog` (the masked output of a failed install, up to 200 lines). Store it as given; new keys may appear |
 
 Responses:
 

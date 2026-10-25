@@ -2,6 +2,7 @@ mod catalog;
 mod install;
 mod paths;
 mod redact;
+mod report;
 mod run;
 mod runs;
 mod settings;
@@ -122,6 +123,16 @@ async fn settings_unset(id: String, profile: Option<String>, defaults: bool, set
 }
 
 #[tauri::command]
+async fn report_context(attach_logs: bool) -> Result<report::Context, String> {
+    blocking(move || report::context(attach_logs)).await
+}
+
+#[tauri::command]
+async fn send_report(draft: report::Draft, context: report::Context) -> Result<report::Sent, String> {
+    blocking(move || report::send(draft, context)).await?
+}
+
+#[tauri::command]
 fn cancel_install(id: String, running: State<'_, Arc<Running>>) {
     running.cancel(&id);
 }
@@ -152,6 +163,8 @@ pub fn run() {
             storage_report,
             clear_storage,
             open_folder,
+            report_context,
+            send_report,
             list_runs,
             show_run,
             settings_show,

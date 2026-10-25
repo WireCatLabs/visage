@@ -39,6 +39,13 @@ Rust собрался с первого раза, clippy pedantic дал 12 за
 Статус: исследование (4 агента), сделаны открытие папок (`25cd682`) и строка загрузки (`b33daef`). Остальное ждёт
 решений NEED-4…NEED-7.
 
+**TASK-7 · Онбординг, Logs, Config, отправка баг-репортов; хендофф для wirecat-api**
+Статус: сделано, в браузере и тестах; нативно не прогнано.
+Онбординг и тур (`777e55c`…`d98d874`), Logs (`333fa07`…`19342b3`), Config (`2d139d9`) — агентами в отдельных
+worktree. Отправка репортов — `report.rs` и `src/features/report/`. Контракт `docs/dev/report-api.md`, хендофф
+`docs/dev/plans/2026-10-25-wirecat-api-handoff.md`. Агент по `skill status` и разбивкам `store info` (NEED-4 C)
+работает в cli-base/cli-core.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**

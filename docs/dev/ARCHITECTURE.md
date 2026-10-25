@@ -8,7 +8,7 @@ the machine and runs the tools. Nothing here duplicates what a CLI already does.
 ```text
 src/
   app/          shell: window frame, sidebar, sections, theme. May import everything below.
-  features/     one folder per area (tools/, system/). Data, state and screens for that area.
+  features/     one folder per area (tools/, system/, logs/, config/, onboarding/, report/). Data, state and screens for that area.
   ui/           presentational parts: Button, Lamp, Stepper… Props in, events out.
   platform/     the only door to Rust. Validates every answer with valibot. Has a browser mock.
   domain/       plain TypeScript: catalog, tool status, doctor summaries. No React, no Tauri.
@@ -20,11 +20,14 @@ src-tauri/src/
   system.rs     OS, Node.js, npm, npm's global folder and whether it is writable.
   tools.rs      finding executables, versions, profiles, doctor runs.
   install.rs    install, update and uninstall with progress events, verification, failure reasons.
+  runs.rs       run logs, read through each tool's own `runs list` / `runs show`.
+  settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes, and deleting them once nothing uses them.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
   terminal.rs   opening a tool's interactive setup in the user's terminal.
+  report.rs     bug reports: what this computer adds, masked, and sending to the WireCat API (docs/dev/report-api.md).
 ```
 
 Biome enforces the arrows (`biome.json`, `noRestrictedImports`): `domain` imports nothing above it, `platform`

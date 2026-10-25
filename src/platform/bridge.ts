@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import * as v from "valibot"
 import { createMock } from "./mock"
+import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
 import { RunDetailSchema, RunsPageSchema } from "./runs-schemas"
 import {
   DiagnosisSchema,
@@ -50,6 +51,8 @@ function createTauri(): Platform {
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
+    reportContext: (attachLogs) => call(ReportContextSchema, "report_context", { attachLogs }),
+    sendReport: (draft, context) => call(ReportSentSchema, "send_report", { draft, context }),
     settingsShow: (id, profile) => call(SettingsSchema, "settings_show", { id, profile }),
     settingsSet: (id, profile, defaults, setting, value) =>
       invoke("settings_set", { id, profile, defaults, setting, value }),

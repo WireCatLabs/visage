@@ -1,9 +1,10 @@
-import { AlertTriangle, CheckCircle2, RotateCcw } from "lucide-react"
+import { AlertTriangle, Bug, CheckCircle2, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { type InstallSession, STEPS } from "@/domain/status"
 import { Button } from "@/ui/Button"
 import { Stepper, type StepState } from "@/ui/Stepper"
+import { useReport } from "../report/store"
 import { useTools } from "./store"
 
 function stepStates(session: InstallSession): { label: string; state: StepState }[] {
@@ -74,6 +75,23 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
         </button>
 
         <div className="ml-auto flex gap-2">
+          {outcome?.event === "failed" && outcome.reason !== "cancelled" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Bug className="size-4" aria-hidden />}
+              onClick={() =>
+                useReport.getState().start({
+                  tool: tool.id,
+                  summary: `${session.operation === "install" ? "Installing" : "Uninstalling"} ${tool.name} fails`,
+                  details: [outcome.message, outcome.hint].filter(Boolean).join(" "),
+                  log: session.log.slice(-200),
+                })
+              }
+            >
+              Report this problem
+            </Button>
+          )}
           {outcome?.event === "failed" && outcome.reason !== "cancelled" && (
             <Button
               size="sm"

@@ -1,3 +1,4 @@
+import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
 import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, ToolState } from "./schemas"
@@ -228,6 +229,7 @@ export function createMock(os: Platform["os"]): Platform {
       cancelled = true
     },
     async openSetup() {},
+    ...reportMock,
     ...runsMock,
     ...settingsMock,
     async openUrl(url) {

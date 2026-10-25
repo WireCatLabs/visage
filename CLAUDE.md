@@ -17,7 +17,8 @@ The repository is `visage`; the product is **WireCat**. The name `visage` never 
 
 Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install=<tool>`, `?hold=<tool>`,
 `?fail=<tool>`, `?state=one` (only Telegram installed; see `src/platform/mock.ts`). A fresh browser shows the first-run
-setup; `?onboarding=off` hides it for one load, `?onboarding=<step>` (`choose`, `install`, `signin`…) opens that step.
+setup; `?onboarding=off` hides it for one load, `?onboarding=<step>` (`choose`, `install`, `signin`…) opens that step. Bug reports: `?report=fail` (server
+unreachable), `?report=queued` (stored, no issue yet); the real app sends to `WIRECAT_API_URL` or `https://api.wirecat.dev`.
 
 ## Rules
 
