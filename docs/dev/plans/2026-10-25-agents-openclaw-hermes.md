@@ -110,6 +110,6 @@ Wave 1 runs three agents in parallel, each in its own worktree. Wave 2 waits for
 
 - NEED-29: namespace `dev.wirecat/*` or `io.github.wirecatlabs/*`
 - NEED-30: launch command in listings, the bare program or a pinned `npx`
-- NEED-31: how Hermes gets the skills
-- NEED-32: what connecting a chat-driven agent does to permissions
+- NEED-31: how Hermes gets the skills — **answered A, with B as fallback**: add `~/.agents/skills` to `skills.external_dirs`; if that edit fails, copy the skill into `~/.hermes/skills/<app>`
+- NEED-32: what connecting a chat-driven agent does to permissions — **answered A**: warn and offer read-only, the owner chooses
 - NEED-33: whether to submit to Anthropic's directory now
