@@ -185,6 +185,8 @@ memo с пометкой «About: Email»; чтение логов для отч
 
 - **ASK-31 · «I still don't see the tables count/sizes etc displayed in storage, and I dont see data like segments in messages by cli or similar. is smone working on it?»** Ответ: экран готов, данных нет, потому что установленные инструменты этих команд ещё не знают. Разбивка (cli-core #1959) слита в 16:33, после выпуска 0.424.0 (16:10) — ждёт следующего выпуска cli-core. Таблицы (cli-core #1967) открыты, CI падает — их ведёт агент выпуска. После выпуска cli-core нужно обновить tg/max/wa и поставить новые версии.
 
+- **ASK-32 · «exclude no command from the logs filter / also did we improve the log fields? what will be added?»** Ответ: запуски без команды скрываются по умолчанию (снимаемый фильтр, счётчик скрытых) — передано агенту Logs. Поля журнала: cli-core #1963 слит и выпущен в 0.425.0 (17:08): `cli_command`, `argv` с маскировкой, `unknown_command`, `agent {kind, session_id}`, `error {class, code, reason, message, operation, http {method, endpoint_template, status}, provider, causes, stack}`. Приложение их уже показывает (ветка feat/logs-run-context слита). Чтобы появились — tg/max/wa/zm/drive/memo должны перейти на cli-core 0.425.0 и выйти; `http.method`/`endpoint_template` ещё требуют правок в max-cli, tg-cli, whatsapp-cli (транспорт), после выпуска.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
