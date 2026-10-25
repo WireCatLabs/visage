@@ -50,6 +50,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-9 · Загрузка без сдвигов макета (UX-3).** «when elements start loading they arent the size of final versions eg tools load with small skeleton then appear cli name and then blocks expand … avoid layout shift. same in other pages. first find the solution in subagent, then use subagent for each page to fix that». Статус: агент фазы 1 измеряет сдвиги на каждой странице и строит общие заготовки в `src/ui`; затем по агенту на страницу (Tools — после слияния работы о совместимости хранилища).
 
+- **TASK-10 · Кнопка «Report this» у каждой ошибки.** «when smth broke in wirecat appears - allow a butto to report it as well automatically». Статус: агент делает общий блок ошибки с кнопкой, заполняющей отчёт сам (инструмент, что сломалось, команда, версии), защиту страниц от падения отрисовки и сбор последних необработанных ошибок. Отправка — только по нажатию Send в заполненном окне.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
