@@ -92,9 +92,36 @@ body,
   height: 100%;
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+/* WebKit (the Linux and macOS webviews) styles scrollbars only through these; without explicit hover and active
+   colours its dragged thumb falls back to black, which vanishes in dark mode. */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink-dim) 55%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ink-dim) 80%, transparent);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--ink-soft);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ink-dim) 60%, transparent) transparent;
+  }
 }
 
 body {

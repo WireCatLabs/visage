@@ -1,11 +1,14 @@
 use crate::{catalog, redact, runs, system, tools};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::time::Duration;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 // The contract lives in docs/dev/report-api.md; keep both in step.
 const DEFAULT_API: &str = "https://api.wirecat.dev";
 const RUNS_PER_TOOL: u32 = 20;
+// The dialog waits for this; a tool that answers later is left out rather than holding the report up.
+const RUNS_WAIT: Duration = Duration::from_secs(10);
 const MAX_BODY: usize = 1024 * 1024;
 
 /// Everything about this computer a report carries, masked, so the dialog can show it before anything is sent.
@@ -61,15 +64,31 @@ pub fn context() -> Context {
 }
 
 fn recent_failures(installed: &[Value]) -> Vec<Value> {
-    installed
+    let (tx, rx) = mpsc::channel();
+    let mut asked = 0;
+    for tool in installed
         .iter()
         .filter_map(|t| catalog::tool(t["id"].as_str()?).ok())
-        .filter(|tool| tool.runs.is_some())
-        .filter_map(|tool| {
-            let page = runs::list(tool, Some("status:failed"), RUNS_PER_TOOL, 1).ok()?;
-            Some(json!({ "tool": tool.id, "runs": page["items"] }))
-        })
-        .collect()
+        .filter(|tool| tool.runs.is_some() && tool.part_of.is_none())
+    {
+        asked += 1;
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            let page = runs::list(tool, Some("status:failed"), RUNS_PER_TOOL, 1).ok();
+            let _ = tx.send(page.map(|p| json!({ "tool": tool.id, "runs": p["items"] })));
+        });
+    }
+    let deadline = Instant::now() + RUNS_WAIT;
+    let mut found = Vec::new();
+    for _ in 0..asked {
+        let Some(left) = deadline.checked_duration_since(Instant::now()) else { break };
+        match rx.recv_timeout(left) {
+            Ok(Some(v)) => found.push(v),
+            Ok(None) => {}
+            Err(_) => break,
+        }
+    }
+    found
 }
 
 pub fn send(draft: Draft, mut context: Context) -> Result<Sent, String> {
@@ -120,9 +139,17 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
     if details.is_empty() || details.chars().count() > 10_000 {
         return Err("The description needs 1 to 10 000 characters.".into());
     }
-    if let Some(tool) = &draft.tool {
-        catalog::tool(tool)?;
-    }
+    // Email is part of memo's package: the server and the issue tracker know the package, so the report goes there
+    // and the details say which part it is about.
+    let (tool, details) = match &draft.tool {
+        Some(id) => {
+            let chosen = catalog::tool(id)?;
+            let owner = catalog::owner(chosen);
+            let details = if owner.id == chosen.id { details } else { format!("About: {}\n\n{details}", chosen.name) };
+            (Some(owner.id.clone()), details)
+        }
+        None => (None, details),
+    };
     if !is_uuid(&draft.idempotency_key) {
         return Err("The report has no valid id.".into());
     }
@@ -137,7 +164,7 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
             "summary": summary,
             "details": details,
             "expected": expected,
-            "tool": draft.tool,
+            "tool": tool,
             "app": context.app,
             "system": context.system,
             "tools": context.tools,
@@ -215,6 +242,15 @@ mod tests {
         assert_eq!(body["report"]["details"], "mail me at [email]");
         assert_eq!(body["report"]["expected"], Value::Null);
         assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["phone"], "•••");
+    }
+
+    #[test]
+    fn files_a_report_about_email_under_memo_and_says_so() {
+        let mut d = draft("Mail import stops", "It stops after the first folder.");
+        d.tool = Some("email".into());
+        let body = body(d, &mut context()).unwrap();
+        assert_eq!(body["report"]["tool"], "memo");
+        assert!(body["report"]["details"].as_str().unwrap().starts_with("About: Email"));
     }
 
     #[test]

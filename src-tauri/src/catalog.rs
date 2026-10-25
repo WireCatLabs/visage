@@ -25,6 +25,7 @@ pub struct Tool {
     pub skill: Option<SkillSource>,
     /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
     pub part_of: Option<String>,
+    pub name: String,
     /// `store info` of the shared archive; any messenger CLI answers it for the whole store.
     pub store_info: Option<Vec<String>>,
 }
