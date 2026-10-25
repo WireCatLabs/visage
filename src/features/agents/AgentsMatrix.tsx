@@ -1,5 +1,5 @@
-import { useEffect } from "react"
-import { tools } from "@/domain/catalog"
+import { type ReactNode, useEffect } from "react"
+import { type CatalogTool, tools } from "@/domain/catalog"
 import {
   cellAction,
   needsUpdate,
@@ -94,8 +94,9 @@ export function useSkillMatrix() {
 /**
  * Tools down, the two places a skill is written across, headed by the agents found that read each.
  * `compact` drops the folder paths and the list of agents, for embedding in onboarding.
+ * `expected` names the tools to draw as rows while the installed ones are still being found.
  */
-export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
+export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boolean; expected?: readonly string[] }) {
   const { detected, agents, found, targets, rows, notInstalled } = useSkillMatrix()
   const load = useAgents((s) => s.load)
   const installedIds = rows.map((r) => r.tool.id).join(",")
@@ -113,6 +114,8 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
   const readers = (target: SkillTarget) => found?.filter((a) => a.reads.includes(target)) ?? []
   const columnName = (target: SkillTarget) => names(readers(target)) || TARGET_FOLDER[target]
   const pad = compact ? "px-[1rem] py-[0.7rem]" : "px-[1.3rem] py-[0.9rem]"
+  const pending = catalogTools.filter((t) => expected.includes(t.id))
+  const silent = rows.filter((r) => r.source === "none")
 
   if (detected && rows.length === 0) {
     return (
@@ -153,53 +156,63 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {!detected
-              ? [0, 1, 2].map((i) => (
-                  <tr key={i} className="border-line border-b last:border-b-0">
-                    <td colSpan={targets.length + 1} className={pad}>
-                      {i === 0 ? (
-                        <Skeleton className="h-8 w-full" label="Finding installed tools" />
-                      ) : (
-                        <Skeleton className="h-8 w-full" />
-                      )}
-                    </td>
-                  </tr>
-                ))
-              : rows.map((r) => (
-                  <tr key={r.tool.id} className="border-line border-b align-top last:border-b-0">
+            {!detected && pending.length > 0
+              ? pending.map((t, i) => (
+                  <tr key={t.id} className="border-line border-b align-top last:border-b-0">
                     <th scope="row" className={cx(pad, "font-normal")}>
-                      <div className="flex items-center gap-[0.8rem]">
-                        <ToolIcon id={r.tool.id} className="size-[1.5rem] shrink-0 text-ink" />
-                        <div className="min-w-0">
-                          <span className="block text-[1.02rem] font-semibold leading-tight">{r.tool.name}</span>
-                          <span className="selectable font-mono text-[0.8rem] text-ink-dim tabular-nums">
-                            {r.tool.bin} {r.cliVersion ?? ""}
-                          </span>
-                        </div>
-                      </div>
-                      {r.source === "none" && (
-                        <p className="mt-1.5 max-w-[34ch] text-[0.8rem] leading-snug text-ink-soft">
-                          This version cannot report its skill.{" "}
-                          {r.newer
-                            ? `Update ${r.tool.name} to ${r.newer} on the Tools page to see it.`
-                            : "A coming release will."}
-                        </p>
-                      )}
+                      <ToolName tool={t} version={<Skeleton chars={6} />} />
                     </th>
-                    {r.cells.map((c) => (
-                      <td key={c.target} className={pad}>
-                        <Cell
-                          cell={c.cell}
-                          busy={c.busy}
-                          failure={c.failure}
-                          tool={r.tool.id}
-                          label={`${r.tool.name} skill for ${columnName(c.target)}`}
-                          onInstall={(action) => askSkillInstall(r.tool.id, c.target, action, columnName(c.target))}
-                        />
+                    {targets.map((target) => (
+                      <td key={target} className={pad}>
+                        <div className="flex min-h-8 items-center">
+                          <Skeleton
+                            chars={12}
+                            {...(i === 0 && target === targets[0] ? { label: "Checking skills" } : {})}
+                          />
+                        </div>
                       </td>
                     ))}
                   </tr>
-                ))}
+                ))
+              : !detected
+                ? [0, 1, 2].map((i) => (
+                    <tr key={i} className="border-line border-b last:border-b-0">
+                      <td colSpan={targets.length + 1} className={pad}>
+                        {i === 0 ? (
+                          <Skeleton className="h-8 w-full" label="Finding installed tools" />
+                        ) : (
+                          <Skeleton className="h-8 w-full" />
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                : rows.map((r) => (
+                    <tr key={r.tool.id} className="border-line border-b align-top last:border-b-0">
+                      <th scope="row" className={cx(pad, "font-normal")}>
+                        <ToolName tool={r.tool} version={r.cliVersion ?? ""} />
+                        {r.source === "none" && !compact && (
+                          <p className="mt-1.5 max-w-[34ch] text-[0.8rem] leading-snug text-ink-soft">
+                            This version cannot report its skill.{" "}
+                            {r.newer
+                              ? `Update ${r.tool.name} to ${r.newer} on the Tools page to see it.`
+                              : "A coming release will."}
+                          </p>
+                        )}
+                      </th>
+                      {r.cells.map((c) => (
+                        <td key={c.target} className={pad}>
+                          <Cell
+                            cell={c.cell}
+                            busy={c.busy}
+                            failure={c.failure}
+                            tool={r.tool.id}
+                            label={`${r.tool.name} skill for ${columnName(c.target)}`}
+                            onInstall={(action) => askSkillInstall(r.tool.id, c.target, action, columnName(c.target))}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
           </tbody>
         </table>
       </div>
@@ -208,7 +221,29 @@ export function AgentsMatrix({ compact = false }: { compact?: boolean }) {
           Not installed: {notInstalled.map((t) => t.name).join(", ")}. A skill comes with its tool.
         </p>
       )}
+      {compact && silent.length > 0 && (
+        // Below the table, where it moves nothing: inside a row it would push every row under it down.
+        <p className="text-[0.85rem] leading-snug text-ink-soft">
+          The installed {silent.map((r) => r.tool.name).join(" and ")} cannot report{" "}
+          {silent.length === 1 ? "its skill" : "their skills"}, so {silent.length === 1 ? "it shows" : "they show"} as
+          Unknown. {silent.some((r) => r.newer) ? "Updating on the Tools page fixes that." : "A coming release will."}
+        </p>
+      )}
       {compact && <ConfirmCommand />}
+    </div>
+  )
+}
+
+function ToolName({ tool, version }: { tool: CatalogTool; version: ReactNode }) {
+  return (
+    <div className="flex items-center gap-[0.8rem]">
+      <ToolIcon id={tool.id} className="size-[1.5rem] shrink-0 text-ink" />
+      <div className="min-w-0">
+        <span className="block text-[1.02rem] font-semibold leading-tight">{tool.name}</span>
+        <span className="selectable font-mono text-[0.8rem] text-ink-dim tabular-nums">
+          {tool.bin} {version}
+        </span>
+      </div>
     </div>
   )
 }

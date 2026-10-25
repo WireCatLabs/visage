@@ -1,5 +1,5 @@
 import { Bot, HardDrive, RefreshCw, Terminal } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { type CatalogTool, findTool, ownerId, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
 import { platform } from "@/platform/bridge"
@@ -9,7 +9,7 @@ import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
-import { Skeleton } from "@/ui/Skeleton"
+import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
@@ -103,7 +103,7 @@ export function Computer() {
           onClick={() => useTools.getState().refresh(true)}
           icon={<RefreshCw className={cx("size-4", refreshing && "animate-spin")} aria-hidden />}
         >
-          {refreshing ? "Checking…" : "Check again"}
+          <StableText value={refreshing ? "Checking…" : "Check again"} variants={["Checking…", "Check again"]} />
         </Button>
       </div>
     </>
@@ -349,14 +349,56 @@ function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: (() =
   )
 }
 
+const signInBlock = "flex flex-col gap-[0.9rem] border-line border-b px-[1.3rem] py-[1.1rem] last:border-b-0"
+const accountsArea = "flex flex-col gap-[0.9rem] sm:pl-[2.4rem]"
+
+function SignInHeader({ tool }: { tool: CatalogTool }) {
+  return (
+    <div className="flex items-start gap-[0.9rem]">
+      <ToolIcon id={tool.id} className="mt-[0.05rem] size-[1.5rem] shrink-0 text-ink" />
+      <div className="min-w-0">
+        <h3 className="text-[1.08rem] font-semibold leading-tight">{tool.name}</h3>
+        {tool.signIn && <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-soft">{tool.signIn.gives}</p>}
+      </div>
+    </div>
+  )
+}
+
+/** One account line and the "Add another account" line: the usual shape once the accounts are read. */
+function AccountsSkeleton({ tool }: { tool: CatalogTool }) {
+  return (
+    <>
+      <Skeleton className="h-8 w-full" label={`Reading ${tool.name} accounts`} />
+      <Skeleton className="h-8 w-[10.5rem]" />
+    </>
+  )
+}
+
+function PendingSignInRow({ tool }: { tool: CatalogTool }) {
+  return (
+    <li className={signInBlock}>
+      <SignInHeader tool={tool} />
+      <div className={accountsArea}>
+        <AccountsSkeleton tool={tool} />
+      </div>
+    </li>
+  )
+}
+
 function SignInRow({ tool }: { tool: CatalogTool }) {
   const { profiles, error, loading, reload } = useProfiles(tool.id)
   const [waiting, setWaiting] = useState(false)
   const [adding, setAdding] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
   const manual = !tool.setup
-  const signedIn = profiles?.some((p) => manual || p.signedIn === true) ?? false
-  const showForm = !signedIn || adding
+  const count = profiles?.length ?? 0
+  const seen = useRef(count)
+
+  // The form opens only on a click, so it closes by itself once the account it was for shows up.
+  useEffect(() => {
+    if (count > seen.current) setAdding(false)
+    seen.current = count
+  }, [count])
 
   const signInAgain = async (profile: string) => {
     try {
@@ -369,15 +411,9 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
   }
 
   return (
-    <li className="flex flex-col gap-[0.9rem] border-line border-b px-[1.3rem] py-[1.1rem] last:border-b-0">
-      <div className="flex items-start gap-[0.9rem]">
-        <ToolIcon id={tool.id} className="mt-[0.05rem] size-[1.5rem] shrink-0 text-ink" />
-        <div className="min-w-0">
-          <h3 className="text-[1.08rem] font-semibold leading-tight">{tool.name}</h3>
-          {tool.signIn && <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-soft">{tool.signIn.gives}</p>}
-        </div>
-      </div>
-      <div className="flex flex-col gap-[0.9rem] sm:pl-[2.4rem]">
+    <li className={signInBlock}>
+      <SignInHeader tool={tool} />
+      <div className={accountsArea}>
         {error ? (
           <ErrorNotice
             inline
@@ -386,14 +422,21 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             Could not list the accounts: {error}
           </ErrorNotice>
         ) : profiles === undefined ? (
-          <Skeleton className="h-8 w-full" label={`Reading ${tool.name} accounts`} />
-        ) : profiles && profiles.length > 0 ? (
+          <AccountsSkeleton tool={tool} />
+        ) : (
           <ul aria-label={`${tool.name} accounts`} className="flex flex-col gap-1">
-            {profiles.map((p) => (
-              <ProfileState key={p.name} profile={p} onSignIn={manual ? undefined : () => signInAgain(p.name)} />
-            ))}
+            {count > 0 ? (
+              profiles?.map((p) => (
+                <ProfileState key={p.name} profile={p} onSignIn={manual ? undefined : () => signInAgain(p.name)} />
+              ))
+            ) : (
+              <li className="flex min-h-8 items-center gap-x-[0.6rem]">
+                <Lamp size="sm" tone="idle" />
+                <span className="text-[0.95rem] text-ink-soft">No account yet</span>
+              </li>
+            )}
           </ul>
-        ) : null}
+        )}
         {openError && (
           <ErrorNotice
             inline
@@ -403,7 +446,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
           </ErrorNotice>
         )}
         {waiting && <FinishInTerminal onCheck={reload} checking={loading} />}
-        {showForm ? (
+        {adding ? (
           <>
             {tool.signIn && (
               <p className="max-w-[65ch] text-[0.9rem] leading-relaxed text-ink-soft">
@@ -431,16 +474,16 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             ) : (
               <NewProfile
                 tool={tool}
-                label={profiles?.length ? "Name for another account" : "Name for this account"}
+                label={count ? "Name for another account" : "Name for this account"}
                 onCheck={reload}
                 checking={loading}
               />
             )}
           </>
-        ) : (
+        ) : profiles === undefined && !error ? null : (
           <div>
             <Button size="sm" variant="ghost" className="-ml-3" onClick={() => setAdding(true)}>
-              Add another account
+              {count ? "Add another account" : "Add an account"}
             </Button>
           </div>
         )}
@@ -451,14 +494,26 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
 
 export function SignIn() {
   const installs = useTools((s) => s.installs)
-  const refreshing = useTools((s) => s.refreshing)
+  const failed = useTools((s) => s.error !== null)
   const list = useSetupTools()
+  const detected = Object.keys(installs).length > 0
   const signsIn = (t: CatalogTool) => Boolean(t.setup || t.signIn?.command)
   const ready = list.filter((t) => signsIn(t) && installs[t.id]?.length)
   const waiting = list.filter((t) => signsIn(t) && !installs[t.id]?.length)
   const noSignIn = list.filter((t) => !signsIn(t))
 
-  if (ready.length === 0 && refreshing) return <Skeleton className="h-24 w-full" label="Looking for installed tools" />
+  // Until the tools are found, the chosen ones stand in: they are the ones just installed.
+  if (!detected && !failed) {
+    const chosen = list.filter(signsIn)
+    if (chosen.length === 0) return <Skeleton className="h-24 w-full" label="Looking for installed tools" />
+    return (
+      <ul aria-label="Tools to sign in to" className={rack}>
+        {chosen.map((t) => (
+          <PendingSignInRow key={t.id} tool={t} />
+        ))}
+      </ul>
+    )
+  }
 
   return (
     <>

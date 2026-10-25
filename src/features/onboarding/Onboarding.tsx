@@ -35,7 +35,7 @@ const pages: Record<StepId, Page> = {
   agents: {
     title: "Connect agents",
     lead: "Your agent learns to use each tool from a skill: a short guide to the tool's commands and when to use them.",
-    body: () => <Agents matrix={<AgentsMatrix compact />} />,
+    body: AgentsStep,
   },
   signin: {
     title: "Sign in",
@@ -47,6 +47,11 @@ const pages: Record<StepId, Page> = {
     lead: "Your tools are on the Tools page. Help, the question mark at the top, has a short tour of the window.",
     body: Done,
   },
+}
+
+function AgentsStep() {
+  const chosen = useOnboarding((s) => s.chosen)
+  return <Agents matrix={<AgentsMatrix compact expected={chosen} />} />
 }
 
 const indexOf = (id: StepId) => STEPS.findIndex((s) => s.id === id)
@@ -185,8 +190,8 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
     <main ref={scroller} aria-labelledby={headingId} className="min-h-0 flex-1 overflow-y-auto">
       <div
         className={cx(
-          "mx-auto flex min-h-full max-w-[48rem] flex-col gap-[1.5rem] px-[2.1rem] pt-[2.4rem] pb-[2.2rem]",
-          step === "welcome" && "justify-center pb-[4rem]",
+          "mx-auto flex min-h-full max-w-[48rem] flex-col gap-[1.5rem] px-[2.1rem] pt-[2.4rem]",
+          step === "welcome" ? "justify-center pb-[4rem]" : "pb-0",
         )}
       >
         <div className="flex flex-col gap-[0.8rem]">
@@ -211,7 +216,8 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
             </Button>
           </div>
         ) : (
-          <div className="mt-[0.5rem] flex items-center gap-2 border-line border-t pt-[1.2rem]">
+          // Pinned to the bottom of the window, so a step's content loading or growing never moves it.
+          <div className="sticky bottom-0 mt-auto flex items-center gap-2 border-line border-t bg-wall pt-[1.2rem] pb-[2.2rem]">
             {i > 0 && (
               <Button variant="ghost" onClick={() => go(STEPS[i - 1]?.id ?? "welcome")}>
                 Back

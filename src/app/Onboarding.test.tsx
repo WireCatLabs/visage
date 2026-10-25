@@ -38,7 +38,9 @@ describe("First start", () => {
     expect(within(telegram).getByText(/Signed in as profile/)).toHaveTextContent("Signed in as profile personal")
     await user.click(within(telegram).getByRole("button", { name: "Open terminal to sign in" }))
     expect(await within(signIn).findByRole("button", { name: "Check sign-in" })).toBeInTheDocument()
-    expect(within(signIn).getByRole("textbox", { name: "Name for this account, Google Drive" })).toHaveValue("")
+    const driveSignIn = within(signIn).getByRole("heading", { name: "Google Drive" }).closest("li") as HTMLElement
+    await user.click(await within(driveSignIn).findByRole("button", { name: "Add another account" }))
+    expect(within(driveSignIn).getByRole("textbox", { name: "Name for another account, Google Drive" })).toHaveValue("")
     await user.click(screen.getByRole("button", { name: "Continue" }))
     await user.click(screen.getByRole("button", { name: "Open Tools" }))
 
@@ -46,6 +48,14 @@ describe("First start", () => {
     expect(stored()).toBe("done")
     expect(screen.queryByRole("button", { name: "Finish setup" })).not.toBeInTheDocument()
   }, 15000)
+
+  it("names the chosen tools on the Agents step before the installed ones are found", () => {
+    useOnboarding.setState({ step: "agents", chosen: ["tg"] })
+    render(<App />)
+
+    const table = screen.getByRole("table", { name: "Skills for agents" })
+    expect(within(table).getByRole("rowheader", { name: /Telegram/ })).toBeInTheDocument()
+  })
 
   it("can be put off and picked up again from the sidebar", async () => {
     const user = userEvent.setup()
