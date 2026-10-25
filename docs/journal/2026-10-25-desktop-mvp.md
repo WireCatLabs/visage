@@ -206,7 +206,8 @@ wirecat.dev — статика на Cloudflare Pages; GitHub App нет; ток�
 - Я бы: **A** — WireCat отдельно от NBZB и Neirox, Hetzner — обычный хостинг владельца.
 - Ответ: ещё нет. (Записано с опозданием: в ответах появлялся раньше, в журнал не попал — **поправка**.)
 
-**NEED-9 · Отправить ветки cli-base и cli-core и открыть PR?** Ответ: «2 A».
+**NEED-9 · Отправить ветки cli-base и cli-core и открыть PR?** Ответ: «2 A». PR: WireCatLabs/cli-base#332,
+WireCatLabs/cli-core#1959. visage: WireCatLabs/visage#1.
 
 **NEED-10 · Страница о поиске в логах — сразу в деплой или ждать ревью?** Ответ: «3 asap» — пишется агентом в
 `cli-docs-wt-desktop-logs`, сразу PR.
