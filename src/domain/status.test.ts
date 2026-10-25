@@ -28,8 +28,8 @@ describe("toolStatus", () => {
   })
 
   it("follows a running install over what is on disk", () => {
-    const session = { step: "install" as const, log: [], outcome: null }
-    expect(toolStatus([], "1.0.0", session)).toEqual({ kind: "installing", step: "install" })
+    const session = { operation: "install" as const, step: "install" as const, log: [], outcome: null }
+    expect(toolStatus([], "1.0.0", session)).toEqual({ kind: "working", operation: "install", step: "install" })
   })
 })
 

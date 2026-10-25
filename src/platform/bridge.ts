@@ -9,12 +9,19 @@ import {
   LatestVersionsSchema,
   ProfilesSchema,
   ReadinessSchema,
+  StorageSchema,
   ToolStatesSchema,
 } from "./schemas"
 import type { Platform } from "./types"
 
 const call = async <S extends v.GenericSchema>(schema: S, cmd: string, args?: Record<string, unknown>) =>
   v.parse(schema, await invoke(cmd, args))
+
+function events(onEvent: (e: v.InferOutput<typeof InstallEventSchema>) => void) {
+  const channel = new Channel<unknown>()
+  channel.onmessage = (raw) => onEvent(v.parse(InstallEventSchema, raw))
+  return channel
+}
 
 function detectOs(): Platform["os"] {
   const ua = navigator.userAgent.toLowerCase()
@@ -32,11 +39,10 @@ function createTauri(): Platform {
     latestVersions: () => call(LatestVersionsSchema, "latest_versions"),
     listProfiles: (id) => call(ProfilesSchema, "list_profiles", { id }),
     diagnose: (id, profile) => call(DiagnosisSchema, "diagnose", { id, profile }),
-    install: (id, onEvent) => {
-      const channel = new Channel<unknown>()
-      channel.onmessage = (raw) => onEvent(v.parse(InstallEventSchema, raw))
-      return invoke("install_tool", { id, onEvent: channel })
-    },
+    install: (id, onEvent) => invoke("install_tool", { id, onEvent: events(onEvent) }),
+    uninstall: (id, onEvent) => invoke("uninstall_tool", { id, onEvent: events(onEvent) }),
+    storage: () => call(StorageSchema, "storage_report"),
+    clearStorage: (id) => invoke("clear_storage", { id }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
     openUrl: (url) => openUrl(url),

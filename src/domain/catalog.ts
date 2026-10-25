@@ -12,11 +12,13 @@ const ToolSchema = v.object({
   profiles: v.nullable(v.object({ args: v.array(v.string()), shape: v.string() })),
   doctor: v.array(v.string()),
   setup: v.nullable(v.array(v.string())),
+  storage: v.object({ app: v.string(), env: v.string() }),
 })
 
 const CatalogSchema = v.object({
   requirements: v.object({ nodeLabel: v.string(), nodeDownload: v.pipe(v.string(), v.url()) }),
   tools: v.array(ToolSchema),
+  sharedStorage: v.object({ app: v.string(), env: v.string(), label: v.string() }),
 })
 
 export type CatalogTool = v.InferOutput<typeof ToolSchema>
@@ -25,6 +27,7 @@ const catalog = v.parse(CatalogSchema, raw)
 
 export const tools: readonly CatalogTool[] = catalog.tools
 export const requirements = catalog.requirements
+export const sharedStorage = catalog.sharedStorage
 
 export function findTool(id: string): CatalogTool | undefined {
   return tools.find((t) => t.id === id)

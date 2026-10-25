@@ -1,20 +1,18 @@
 import { AlertTriangle, CheckCircle2, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
-import { INSTALL_STEPS, type InstallSession } from "@/domain/status"
+import { type InstallSession, STEPS } from "@/domain/status"
 import { Button } from "@/ui/Button"
 import { Stepper, type StepState } from "@/ui/Stepper"
 import { useTools } from "./store"
 
-const order = ["check", "install", "verify", "done"] as const
-
 function stepStates(session: InstallSession): { label: string; state: StepState }[] {
+  const steps = STEPS[session.operation]
   const failed = session.outcome?.event === "failed"
-  if (session.step === "queued" && !session.outcome)
-    return INSTALL_STEPS.map((s) => ({ label: s.label, state: "todo" }))
-  const current =
-    session.outcome?.event === "done" ? order.length : order.indexOf(session.step as (typeof order)[number])
-  return INSTALL_STEPS.map((s, i) => ({
+  if (session.step === "queued" && !session.outcome) return steps.map((s) => ({ label: s.label, state: "todo" }))
+  const finished = session.outcome?.event === "done" || session.outcome?.event === "removed"
+  const current = finished ? steps.length : steps.findIndex((s) => s.step === session.step)
+  return steps.map((s, i) => ({
     label: s.label,
     state: i < current ? "done" : i === current ? (failed ? "failed" : session.outcome ? "done" : "active") : "todo",
   }))
@@ -22,7 +20,7 @@ function stepStates(session: InstallSession): { label: string; state: StepState 
 
 export function InstallPanel({ tool }: { tool: CatalogTool }) {
   const session = useTools((s) => s.sessions[tool.id])
-  const { install, dismiss } = useTools.getState()
+  const { install, uninstall, dismiss } = useTools.getState()
   const [showLog, setShowLog] = useState(false)
   if (!session) return null
   const outcome = session.outcome
@@ -35,7 +33,7 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
 
       <div className="mt-[1.4rem] flex flex-wrap items-center gap-x-4 gap-y-3" aria-live="polite">
         {session.step === "queued" && !outcome && (
-          <p className="text-[0.95rem] text-ink-soft">Waiting for the installation in progress to finish.</p>
+          <p className="text-[0.95rem] text-ink-soft">Waiting for the operation in progress to finish.</p>
         )}
         {outcome?.event === "done" && (
           <p className="flex items-center gap-2 text-[0.95rem]">
@@ -43,6 +41,12 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
             <span>
               {tool.name} {outcome.version} is installed and runs.
             </span>
+          </p>
+        )}
+        {outcome?.event === "removed" && (
+          <p className="flex items-center gap-2 text-[0.95rem]">
+            <CheckCircle2 className="size-5 text-ok" aria-hidden />
+            <span>{tool.name} is uninstalled. Its data stays on this computer until you delete it in Storage.</span>
           </p>
         )}
         {outcome?.event === "failed" && (
@@ -75,14 +79,18 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
               size="sm"
               variant="secondary"
               icon={<RotateCcw className="size-4" aria-hidden />}
-              onClick={() => install(tool.id)}
+              onClick={() => (session.operation === "install" ? install(tool.id) : uninstall(tool.id))}
             >
               Try again
             </Button>
           )}
           {outcome && (
-            <Button size="sm" variant={outcome.event === "done" ? "primary" : "ghost"} onClick={() => dismiss(tool.id)}>
-              {outcome.event === "done" ? "Done" : "Close"}
+            <Button
+              size="sm"
+              variant={outcome.event === "failed" ? "ghost" : "primary"}
+              onClick={() => dismiss(tool.id)}
+            >
+              {outcome.event === "failed" ? "Close" : "Done"}
             </Button>
           )}
         </div>
@@ -105,7 +113,7 @@ function Log({ lines }: { lines: string[] }) {
       role="log"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1)
       tabIndex={0}
-      aria-label="Installation log"
+      aria-label="Output log"
       className="selectable mt-3 max-h-48 overflow-auto rounded-[0.4rem] border border-line bg-app p-3 font-mono text-[0.8rem] leading-relaxed text-ink-soft"
     >
       {lines.length ? lines.join("\n") : "Waiting for output…"}

@@ -31,7 +31,7 @@ FORM: patch rack, rank 4 of 7, seed 0a4cd1d6, approved comp .impeccable/mocks/de
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
-## Stated deviations from the comp (awaiting owner approval)
+## Stated deviations from the comp (approved by the owner 2026-10-25: "1 A")
 
 1. While a tool installs, its action is Cancel, not Install; the version column keeps the installed state.
 2. Rows carry the real catalog descriptions, not the comp's placeholder lines, and real states (Memo shows its

@@ -14,7 +14,7 @@ import { ToolIcon } from "./ToolIcon"
 const lampTone: Record<ToolStatus["kind"], LampTone> = {
   checking: "idle",
   missing: "idle",
-  installing: "busy",
+  working: "busy",
   broken: "bad",
   outdated: "warn",
   ready: "ok",
@@ -24,7 +24,7 @@ const lampLabel = (s: ToolStatus) =>
   ({
     checking: "Checking",
     missing: "Not installed",
-    installing: "Installing",
+    working: s.kind === "working" && s.operation === "uninstall" ? "Uninstalling" : "Installing",
     broken: "Installed, but it does not start",
     outdated: "Update available",
     ready: "Installed and up to date",
@@ -120,7 +120,7 @@ type ActionProps = {
 
 function Action({ status, expanded, disabled, disabledReason, controls, onInstall, onToggle, onCancel }: ActionProps) {
   if (status.kind === "checking") return <Skeleton className="h-[2.75rem] w-[7.6rem]" />
-  if (status.kind === "installing") {
+  if (status.kind === "working") {
     return (
       <Button variant="secondary" onClick={onCancel} className="min-w-[7.6rem]">
         Cancel

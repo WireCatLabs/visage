@@ -16,7 +16,7 @@ The repository is `visage`; the product is **WireCat**. The name `visage` never 
 | Screenshot the browser build | `node scripts/capture.mjs out.png "?state=fresh" [--dark] [--width 1280]` |
 
 Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install=<tool>`, `?hold=<tool>`,
-`?fail=<tool>` (see `src/platform/mock.ts`).
+`?fail=<tool>`, `?state=one` (only Telegram installed; see `src/platform/mock.ts`).
 
 ## Rules
 
@@ -30,10 +30,13 @@ Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install
    take the one the user chose.
 4. **Nothing personal leaves Rust unmasked.** Doctor output goes through `redact.rs` before it reaches the
    interface, the clipboard or a log.
-5. **No administrator rights.** Never call `sudo`, never install into a system folder; explain the fix instead.
-6. **Adding a tool** is an entry in [`catalog/tools.json`](catalog/tools.json) plus an icon in
+5. **Deleting data stays narrow.** Only folders computed in `storage.rs` from the catalog, only when nothing
+   installed uses them, only after the user confirms in a dialog that lists every path. Never widen it to a
+   pattern: `~/.cache` is full of unrelated files with tool-like names.
+6. **No administrator rights.** Never call `sudo`, never install into a system folder; explain the fix instead.
+7. **Adding a tool** is an entry in [`catalog/tools.json`](catalog/tools.json) plus an icon in
    `src/features/tools/ToolIcon.tsx`. If it needs more, the catalog shape is what changes.
-7. **Both themes, keyboard and reduced motion** are part of done for every UI change. Check light and dark with
+8. **Both themes, keyboard and reduced motion** are part of done for every UI change. Check light and dark with
    the capture script.
 
 Code style: Biome (`biome.json`, shared base in `config/wirecat/` — do not edit that folder, it is synced from

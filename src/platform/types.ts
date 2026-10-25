@@ -1,4 +1,4 @@
-import type { Diagnosis, InstallEvent, Profile, Readiness, ToolState } from "./schemas"
+import type { Diagnosis, InstallEvent, Profile, Readiness, StorageArea, ToolState } from "./schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
@@ -12,7 +12,10 @@ export type Platform = {
   listProfiles(id: string): Promise<Profile[] | null>
   diagnose(id: string, profile: string | null): Promise<Diagnosis>
   install(id: string, onEvent: (e: InstallEvent) => void): Promise<void>
+  uninstall(id: string, onEvent: (e: InstallEvent) => void): Promise<void>
   cancelInstall(id: string): Promise<void>
+  storage(): Promise<StorageArea[]>
+  clearStorage(id: string): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
   openUrl(url: string): Promise<void>
   window(action: WindowAction): Promise<void>

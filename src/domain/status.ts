@@ -1,4 +1,6 @@
-export type InstallStep = "queued" | "check" | "install" | "verify"
+export type InstallStep = "queued" | "check" | "install" | "remove" | "verify"
+
+export type Operation = "install" | "uninstall"
 
 export type FailReason = "requirements" | "permission" | "network" | "timeout" | "cancelled" | "verify" | "failed"
 
@@ -6,9 +8,11 @@ export type InstallRecord = { path: string; version: string | null; manager: str
 
 export type InstallOutcome =
   | { event: "done"; version: string; path: string; shadowedBy: string | null }
+  | { event: "removed" }
   | { event: "failed"; reason: FailReason; message: string; hint: string | null }
 
 export type InstallSession = {
+  operation: Operation
   step: InstallStep
   log: string[]
   outcome: InstallOutcome | null
@@ -17,7 +21,7 @@ export type InstallSession = {
 export type ToolStatus =
   | { kind: "checking" }
   | { kind: "missing" }
-  | { kind: "installing"; step: InstallStep }
+  | { kind: "working"; operation: Operation; step: InstallStep }
   | { kind: "broken"; problem: string }
   | { kind: "outdated"; version: string; latest: string }
   | { kind: "ready"; version: string }
@@ -27,7 +31,7 @@ export function toolStatus(
   latest: string | null | undefined,
   session?: InstallSession,
 ): ToolStatus {
-  if (session && !session.outcome) return { kind: "installing", step: session.step }
+  if (session && !session.outcome) return { kind: "working", operation: session.operation, step: session.step }
   if (!installs) return { kind: "checking" }
   const active = installs[0]
   if (!active) return { kind: "missing" }
@@ -53,9 +57,17 @@ export function isNewer(candidate: string, current: string): boolean {
   return false
 }
 
-export const INSTALL_STEPS: readonly { step: InstallStep | "done"; label: string }[] = [
-  { step: "check", label: "Checking requirements" },
-  { step: "install", label: "Installing" },
-  { step: "verify", label: "Verifying" },
-  { step: "done", label: "Done" },
-]
+export const STEPS: Record<Operation, readonly { step: InstallStep | "done"; label: string }[]> = {
+  install: [
+    { step: "check", label: "Checking requirements" },
+    { step: "install", label: "Installing" },
+    { step: "verify", label: "Verifying" },
+    { step: "done", label: "Done" },
+  ],
+  uninstall: [
+    { step: "check", label: "Finding copies" },
+    { step: "remove", label: "Removing" },
+    { step: "verify", label: "Verifying" },
+    { step: "done", label: "Done" },
+  ],
+}

@@ -19,7 +19,8 @@ src-tauri/src/
   catalog.rs    the same tools.json, compiled in; profile validation.
   system.rs     OS, Node.js, npm, npm's global folder and whether it is writable.
   tools.rs      finding executables, versions, profiles, doctor runs.
-  install.rs    install and update with progress events, verification, failure reasons.
+  install.rs    install, update and uninstall with progress events, verification, failure reasons.
+  storage.rs    each tool's data folders, their sizes, and deleting them once nothing uses them.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
@@ -49,6 +50,23 @@ shell profiles. `paths.rs` merges the process PATH, the login shell's PATH (`$SH
 (nvm versions newest first, pnpm, Volta, Homebrew, `%APPDATA%\npm`). Every copy of a binary is reported in PATH order;
 the first is the one a terminal runs. Versions come from running the binary, never from `npm ls`, because a tool may
 be installed by npm, pnpm or both.
+
+## Uninstalling and storage
+
+Uninstall removes **every** copy of a tool, each with the manager that installed it (`npm uninstall -g` with the npm
+beside an nvm copy, `pnpm remove -g`, `bun remove -g`, `volta uninstall`), then checks that the binary is gone. It
+never touches data.
+
+Data folders are not guessed from names: `storage.rs` mirrors cli-base's `resolvePaths` (`src/paths.ts` in
+cli-base): `<PREFIX>_{CONFIG,STATE,CACHE}_DIR` first, then the XDG layout on Linux and macOS, `%APPDATA%` and
+`%LOCALAPPDATA%` on Windows. The catalog records each tool's folder name and prefix (`storage`), plus the archive
+every tool shares (`sharedStorage`: `WireCat`, `WIRECAT`). Keep `storage.rs` in step if cli-base changes.
+
+Deleting is refused while a tool that uses the data is installed: a tool's own folders until it is uninstalled,
+the shared archive until no tool is installed. Before `remove_dir_all`, each path must be absolute, at least four
+components deep, not the home folder, and named for the tool. A store moved with `MESSAGING_STORE` and sign-in
+tokens in the system keyring are never touched. After the last tool is uninstalled the app offers, once, to delete
+everything that is left.
 
 ## Profiles and diagnostics
 

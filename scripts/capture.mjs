@@ -35,7 +35,7 @@ await page.goto(`http://localhost:1420/${query}`)
 await page.waitForFunction(() => !document.querySelector('[role="status"].skeleton, .skeleton'), null, {
   timeout: 15000,
 })
-if (script) await page.evaluate(script)
+if (script) await page.evaluate(`(async () => { ${script} })()`)
 await page.waitForTimeout(wait)
 await page.screenshot({ path: out })
 await browser.close()

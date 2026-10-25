@@ -20,6 +20,22 @@ describe("WireCat Desktop", () => {
     expect(await within(drive).findByText("0.30.0")).toBeInTheDocument()
   }, 15000)
 
+  it("uninstalls a tool after confirmation and keeps its data", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const list = await screen.findByRole("list", { name: "WireCat tools" })
+    const zoom = within(list).getByRole("heading", { name: /Zoom/ }).closest("li")
+    if (!zoom) throw new Error("no Zoom row")
+    await user.click(await within(zoom).findByRole("button", { name: /Manage/ }))
+    await user.click(await within(zoom).findByRole("button", { name: "Uninstall" }))
+    const dialog = await screen.findByRole("dialog", { name: "Uninstall Zoom?" })
+    await user.click(within(dialog).getByRole("button", { name: "Uninstall" }))
+
+    expect(await within(zoom).findByText(/is uninstalled/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await within(zoom).findByText("Not installed")).toBeInTheDocument()
+  }, 15000)
+
   it("shows the computer's readiness", async () => {
     render(<App />)
     expect(await screen.findByText("Node.js 24.19.0")).toBeInTheDocument()

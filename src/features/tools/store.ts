@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { InstallSession } from "@/domain/status"
+import type { InstallSession, Operation } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
 import { useSystem } from "../system/store"
@@ -15,8 +15,12 @@ type ToolsState = {
   refreshing: boolean
   error: LoadError
   refresh(): Promise<void>
+  /** Set when the last installed tool was just removed, so the app can offer to delete the data left behind. */
+  offerClear: boolean
   install(id: string): Promise<void>
+  uninstall(id: string): Promise<void>
   cancel(id: string): Promise<void>
+  closeOffer(): void
   dismiss(id: string): void
   toggle(id: string): void
 }
@@ -38,17 +42,18 @@ export const useTools = create<ToolsState>((set, get) => {
       for (;;) {
         const next = Object.entries(get().sessions).find(([, s]) => s.step === "queued" && !s.outcome)?.[0]
         if (!next) break
-        await runInstall(next)
+        await run(next)
       }
     } finally {
       draining = false
     }
   }
 
-  const runInstall = async (id: string) => {
+  const run = async (id: string) => {
+    const operation = get().sessions[id]?.operation ?? "install"
     patchSession(id, (s) => ({ ...s, step: "check" }))
     try {
-      await platform.install(id, (e) => {
+      await platform[operation](id, (e) => {
         if (e.event === "step") patchSession(id, (s) => ({ ...s, step: e.step }))
         else if (e.event === "log") patchSession(id, (s) => ({ ...s, log: [...s.log.slice(-499), e.line] }))
         else patchSession(id, (s) => ({ ...s, outcome: e }))
@@ -60,6 +65,19 @@ export const useTools = create<ToolsState>((set, get) => {
       }))
     }
     await redetect().catch(() => undefined)
+    const st = get()
+    const nothingLeft = Object.values(st.installs).every((copies) => copies.length === 0)
+    if (operation === "uninstall" && st.sessions[id]?.outcome?.event === "removed" && nothingLeft) {
+      set({ offerClear: true })
+    }
+  }
+
+  // npm and pnpm do not like two global operations at once, so they queue and run one by one.
+  const enqueue = (id: string, operation: Operation) => {
+    const current = get().sessions[id]
+    if (current && !current.outcome) return Promise.resolve()
+    set((st) => ({ sessions: { ...st.sessions, [id]: { operation, step: "queued", log: [], outcome: null } } }))
+    return drain()
   }
 
   const redetect = async () => {
@@ -71,6 +89,7 @@ export const useTools = create<ToolsState>((set, get) => {
     installs: {},
     latest: null,
     sessions: {},
+    offerClear: false,
     expanded: null,
     refreshing: false,
     error: null,
@@ -90,19 +109,15 @@ export const useTools = create<ToolsState>((set, get) => {
       )
     },
 
-    // npm and pnpm do not like two global installs at once, so installs queue and run one by one.
-    install(id) {
-      const current = get().sessions[id]
-      if (current && !current.outcome) return Promise.resolve()
-      set((st) => ({ sessions: { ...st.sessions, [id]: { step: "queued", log: [], outcome: null } } }))
-      return drain()
-    },
+    install: (id) => enqueue(id, "install"),
+    uninstall: (id) => enqueue(id, "uninstall"),
+    closeOffer: () => set({ offerClear: false }),
 
     async cancel(id) {
       if (get().sessions[id]?.step === "queued") {
         patchSession(id, (s) => ({
           ...s,
-          outcome: { event: "failed", reason: "cancelled", message: "Installation cancelled.", hint: null },
+          outcome: { event: "failed", reason: "cancelled", message: "Cancelled before it started.", hint: null },
         }))
         return
       }

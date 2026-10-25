@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
+import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { Sidebar } from "./Sidebar"
 import { sections } from "./sections"
@@ -22,6 +23,7 @@ export function App() {
         <main className="min-h-0 flex-1 overflow-y-auto">
           <ErrorBoundary>{Page && <Page />}</ErrorBoundary>
         </main>
+        <ClearDataOffer />
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ const CATALOG_JSON: &str = include_str!("../../catalog/tools.json");
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     pub tools: Vec<Tool>,
+    pub shared_storage: Storage,
 }
 
 #[derive(Debug, Deserialize)]
@@ -17,6 +18,14 @@ pub struct Tool {
     pub profiles: Option<ProfileSource>,
     pub doctor: Vec<String>,
     pub setup: Option<Vec<String>>,
+    pub storage: Storage,
+}
+
+/// The folder name and environment prefix a tool passes to cli-base's `resolvePaths`.
+#[derive(Debug, Deserialize)]
+pub struct Storage {
+    pub app: String,
+    pub env: String,
 }
 
 #[derive(Debug, Deserialize)]

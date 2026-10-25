@@ -17,7 +17,11 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "setup": ["{profile}", "setup"],
+      "storage": {
+        "app": "tg-cli",
+        "env": "TG"
+      }
     },
     {
       "id": "max",
@@ -32,7 +36,11 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "setup": ["{profile}", "setup"],
+      "storage": {
+        "app": "max-cli",
+        "env": "MAX"
+      }
     },
     {
       "id": "wa",
@@ -47,7 +55,11 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "setup": ["{profile}", "setup"],
+      "storage": {
+        "app": "whatsapp-cli",
+        "env": "WA"
+      }
     },
     {
       "id": "zm",
@@ -62,7 +74,11 @@
         "shape": "item.profiles"
       },
       "doctor": ["{profile}", "session", "status", "--json"],
-      "setup": ["{profile}", "session", "start"]
+      "setup": ["{profile}", "session", "start"],
+      "storage": {
+        "app": "zm",
+        "env": "ZM"
+      }
     },
     {
       "id": "drive",
@@ -77,7 +93,11 @@
         "shape": "item.items"
       },
       "doctor": ["{profile}", "status", "--json"],
-      "setup": ["{profile}", "session", "start"]
+      "setup": ["{profile}", "session", "start"],
+      "storage": {
+        "app": "drive-cli",
+        "env": "DRIVE"
+      }
     },
     {
       "id": "memo",
@@ -89,7 +109,16 @@
       "repo": "https://github.com/WireCatLabs/cli-memo",
       "profiles": null,
       "doctor": ["doctor", "--json"],
-      "setup": null
+      "setup": null,
+      "storage": {
+        "app": "cli-memo",
+        "env": "MEMO"
+      }
     }
-  ]
+  ],
+  "sharedStorage": {
+    "app": "WireCat",
+    "env": "WIRECAT",
+    "label": "Shared WireCat archive"
+  }
 }

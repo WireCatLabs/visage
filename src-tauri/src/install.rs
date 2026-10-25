@@ -14,6 +14,7 @@ pub enum InstallEvent {
     Step { step: Step },
     Log { line: String, stderr: bool },
     Done { version: String, path: String, shadowed_by: Option<String> },
+    Removed,
     Failed { reason: Reason, message: String, hint: Option<String> },
 }
 
@@ -22,6 +23,7 @@ pub enum InstallEvent {
 pub enum Step {
     Check,
     Install,
+    Remove,
     Verify,
 }
 
@@ -60,10 +62,21 @@ struct Failure(Reason, String, Option<String>);
 /// Installs a new tool with npm, or updates an existing one with the manager that owns it,
 /// so an update never leaves a second copy that shadows the first.
 pub fn install(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
+    guarded(tool, running, events, install_steps);
+}
+
+/// Removes every copy of the tool, each with the manager that installed it. Data stays; see `storage.rs`.
+pub fn uninstall(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
+    guarded(tool, running, events, uninstall_steps);
+}
+
+type Steps = fn(&Tool, &Running, &Channel<InstallEvent>) -> Result<InstallEvent, Failure>;
+
+fn guarded(tool: &Tool, running: &Running, events: &Channel<InstallEvent>, steps: Steps) {
     if !running.start(&tool.id) {
         let _ = events.send(InstallEvent::Failed {
             reason: Reason::Failed,
-            message: "This tool is already being installed.".into(),
+            message: "Another operation on this tool is running.".into(),
             hint: None,
         });
         return;
@@ -76,7 +89,7 @@ pub fn install(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
     });
 }
 
-fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
+fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
     let send = |e| {
         let _ = events.send(e);
     };
@@ -113,41 +126,7 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
     }
 
     send(InstallEvent::Step { step: Step::Install });
-    send(InstallEvent::Log { line: format!("$ {program} {}", args.join(" ")), stderr: false });
-    let mut tail: Vec<String> = Vec::new();
-    let mut cmd = run::command(&program_path, &args, Some(&paths::search_path()));
-    if let Some(home) = paths::pnpm_home() {
-        cmd.env("PNPM_HOME", home);
-    }
-    let code = run::stream(
-        cmd,
-        INSTALL_TIMEOUT,
-        || !running.is_running(&tool.id),
-        |line| {
-            let (line, stderr) = match line {
-                run::Line::Out(l) => (l, false),
-                run::Line::Err(l) => (l, true),
-            };
-            let line = redact::text(&line);
-            tail.push(line.clone());
-            if tail.len() > 40 {
-                tail.remove(0);
-            }
-            send(InstallEvent::Log { line, stderr });
-        },
-    )
-    .map_err(|e| match e {
-        run::RunError::Cancelled => Failure(Reason::Cancelled, "Installation cancelled.".into(), None),
-        run::RunError::TimedOut => Failure(
-            Reason::Timeout,
-            "Installation took longer than 15 minutes and was stopped.".into(),
-            Some("Check your connection and try again.".into()),
-        ),
-        other => Failure(Reason::Failed, other.to_string(), None),
-    })?;
-    if code != Some(0) {
-        return Err(classify(&tail.join("\n"), program));
-    }
+    run_manager(&program_path, &args, tool, running, events, "Installation")?;
 
     send(InstallEvent::Step { step: Step::Verify });
     let extra: Vec<_> = system::npm_prefix().map(|p| system::npm_bin_dir(&p)).into_iter().collect();
@@ -170,6 +149,94 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
     let ours = state.installs.iter().find(|i| i.manager == manager).unwrap_or(first);
     let shadowed_by = (ours.path != first.path).then(|| first.path.clone());
     Ok(InstallEvent::Done { version, path: ours.path.clone(), shadowed_by })
+}
+
+fn uninstall_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
+    let _ = events.send(InstallEvent::Step { step: Step::Check });
+    let mut plan = Vec::new();
+    for copy in paths::find_all(&tool.bin) {
+        let manager = paths::manager_for(&copy);
+        let (program, args): (&str, Vec<&str>) = match manager {
+            "pnpm" => ("pnpm", vec!["remove", "--global", &tool.package]),
+            "bun" => ("bun", vec!["remove", "--global", &tool.package]),
+            "volta" => ("volta", vec!["uninstall", &tool.package]),
+            _ => ("npm", vec!["uninstall", "--global", &tool.package]),
+        };
+        // An nvm copy belongs to the npm of that Node version, which sits beside it.
+        let beside = copy.parent().and_then(|dir| which::which_in(program, Some(dir), std::env::temp_dir()).ok());
+        let path = beside.or_else(|| paths::find(program)).ok_or_else(|| {
+            Failure(
+                Reason::Requirements,
+                format!("{program} was not found, so {} cannot be removed.", paths::tilde(&copy.to_string_lossy())),
+                None,
+            )
+        })?;
+        plan.push((path, args));
+    }
+
+    let _ = events.send(InstallEvent::Step { step: Step::Remove });
+    for (program, args) in &plan {
+        run_manager(program, args, tool, running, events, "Uninstalling")?;
+    }
+
+    let _ = events.send(InstallEvent::Step { step: Step::Verify });
+    paths::refresh(&[]);
+    if let Some(left) = paths::find(&tool.bin) {
+        return Err(Failure(
+            Reason::Verify,
+            format!("`{}` is still at {}.", tool.bin, paths::tilde(&left.to_string_lossy())),
+            Some("It was not installed by npm or pnpm. Remove it the way you installed it.".into()),
+        ));
+    }
+    Ok(InstallEvent::Removed)
+}
+
+/// Runs npm, pnpm, bun or volta with streamed, masked output; `what` names the operation in errors.
+fn run_manager(
+    program: &std::path::Path,
+    args: &[&str],
+    tool: &Tool,
+    running: &Running,
+    events: &Channel<InstallEvent>,
+    what: &str,
+) -> Result<(), Failure> {
+    let send = |e| {
+        let _ = events.send(e);
+    };
+    let name = program.file_stem().unwrap_or_default().to_string_lossy().to_string();
+    send(InstallEvent::Log { line: format!("$ {name} {}", args.join(" ")), stderr: false });
+    let mut tail: Vec<String> = Vec::new();
+    let mut cmd = run::command(program, args, Some(&paths::search_path()));
+    if let Some(home) = paths::pnpm_home() {
+        cmd.env("PNPM_HOME", home);
+    }
+    let code = run::stream(
+        cmd,
+        INSTALL_TIMEOUT,
+        || !running.is_running(&tool.id),
+        |line| {
+            let (line, stderr) = match line {
+                run::Line::Out(l) => (l, false),
+                run::Line::Err(l) => (l, true),
+            };
+            let line = redact::text(&line);
+            tail.push(line.clone());
+            if tail.len() > 40 {
+                tail.remove(0);
+            }
+            send(InstallEvent::Log { line, stderr });
+        },
+    )
+    .map_err(|e| match e {
+        run::RunError::Cancelled => Failure(Reason::Cancelled, format!("{what} cancelled."), None),
+        run::RunError::TimedOut => Failure(
+            Reason::Timeout,
+            format!("{what} took longer than 15 minutes and was stopped."),
+            Some("Check your connection and try again.".into()),
+        ),
+        other => Failure(Reason::Failed, other.to_string(), None),
+    })?;
+    if code == Some(0) { Ok(()) } else { Err(classify(&tail.join("\n"), &name)) }
 }
 
 fn classify(log: &str, program: &str) -> Failure {

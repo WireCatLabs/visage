@@ -3,6 +3,7 @@ mod install;
 mod paths;
 mod redact;
 mod run;
+mod storage;
 mod system;
 mod terminal;
 mod tools;
@@ -56,6 +57,27 @@ async fn install_tool(
 }
 
 #[tauri::command]
+async fn uninstall_tool(
+    id: String,
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<InstallEvent>,
+) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    let running = Arc::clone(&running);
+    blocking(move || install::uninstall(tool, &running, &on_event)).await
+}
+
+#[tauri::command]
+async fn storage_report() -> Result<Vec<storage::Area>, String> {
+    blocking(storage::report).await
+}
+
+#[tauri::command]
+async fn clear_storage(id: String) -> Result<(), String> {
+    blocking(move || storage::clear(&id)).await?
+}
+
+#[tauri::command]
 fn cancel_install(id: String, running: State<'_, Arc<Running>>) {
     running.cancel(&id);
 }
@@ -81,7 +103,10 @@ pub fn run() {
             list_profiles,
             diagnose,
             install_tool,
+            uninstall_tool,
             cancel_install,
+            storage_report,
+            clear_storage,
             open_setup
         ])
         .run(tauri::generate_context!())
