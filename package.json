@@ -42,7 +42,7 @@
     "@biomejs/biome": "2.5.15",
     "@cspell/dict-en-gb": "5.0.34",
     "@cspell/dict-es-es": "3.0.9",
-    "@cspell/dict-ru_ru": "2.3.3",
+    "@cspell/dict-ru_ru": "2.3.4",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^7.0.1",
