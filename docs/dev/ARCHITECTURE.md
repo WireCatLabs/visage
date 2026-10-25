@@ -93,7 +93,8 @@ Email is a row of its own over memo's package (`partOf: "memo"` in the catalog):
 interface (`ownerId`), so the package is installed once and the install queue never runs it twice. Detection and
 update checks run once per package and report it for every part. Storage, bug reports and the Node.js removal check
 count packages, not rows. A part has no skill of its own (`skill: null`) and stays out of the skills matrix. With
-no interactive `setup` in the CLI, its `signIn.command` is shown to copy and never run.
+no interactive `setup` in the CLI, its `signIn.command` is shown to copy and never run. The owner's run logs are read once;
+runs whose command starts with the part's `commandPrefix` (memo's `mail …`) are filed under Email on the Logs page.
 
 ## Profiles and diagnostics
 

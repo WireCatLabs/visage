@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { findTool, tools } from "@/domain/catalog"
+import { findTool, ownerId, runTool, tools } from "@/domain/catalog"
 import { cliCommand, type RangeId, type Run } from "@/domain/runs"
 import { platform } from "@/platform/bridge"
 import type { RunDetail, RunItem } from "@/platform/runs-schemas"
@@ -60,7 +60,7 @@ const toRun = (tool: string) => {
   const bin = findTool(tool)?.bin ?? tool
   return (item: RunItem): Run => ({
     ...item,
-    tool,
+    tool: runTool(tool, item.command),
     // Newer CLIs record the command with their own name; older ones only the words after it.
     cli_command:
       typeof item.cli_command === "string" && item.cli_command ? item.cli_command : cliCommand(bin, item.command),
@@ -138,10 +138,13 @@ export const useLogs = create<LogsState>((set, get) => {
 
     async load() {
       const sources = Object.fromEntries(
-        tools.map((t) => [
-          t.id,
-          { id: t.id, state: initialState(t.id), runs: [], hasMore: false, pages: 0, error: null } satisfies Source,
-        ]),
+        // A part's runs come from its owner's source and are filed under the part by `runTool`.
+        tools
+          .filter((t) => !t.partOf)
+          .map((t) => [
+            t.id,
+            { id: t.id, state: initialState(t.id), runs: [], hasMore: false, pages: 0, error: null } satisfies Source,
+          ]),
       )
       const reading = Object.values(sources).filter((s) => s.state === "loading")
       const keeping = Object.fromEntries(
@@ -191,7 +194,7 @@ export const useLogs = create<LogsState>((set, get) => {
       const known = get().details[key]
       if (known && known.state !== "error") return
       set((st) => ({ details: { ...st.details, [key]: { state: "loading", item: null, error: null } } }))
-      platform.showRun(run.tool, run.run_id).then(
+      platform.showRun(ownerId(run.tool), run.run_id).then(
         (d) => set((st) => ({ details: { ...st.details, [key]: { state: "ready", item: d.item, error: null } } })),
         (e) => set((st) => ({ details: { ...st.details, [key]: { state: "error", item: null, error: message(e) } } })),
       )

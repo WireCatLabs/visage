@@ -6,6 +6,8 @@ const ToolSchema = v.object({
   name: v.string(),
   /** Another tool's id: this one ships in that tool's package and has no install of its own. */
   partOf: v.optional(v.pipe(v.string(), v.regex(/^[a-z]+$/))),
+  /** The owner's command group that is this part, such as memo's `mail …`: its run logs are filed under the part. */
+  commandPrefix: v.optional(v.string()),
   tagline: v.pipe(v.string(), v.maxLength(55)),
   bin: v.string(),
   package: v.pipe(v.string(), v.startsWith("@wirecat/")),
@@ -72,6 +74,12 @@ export const ownerId = (id: string) => findTool(id)?.partOf ?? id
 
 /** Every tool that one install brings, the owner first. */
 export const samePackage = (id: string) => tools.filter((t) => ownerId(t.id) === ownerId(id))
+
+/** The tool a run belongs to: the owner's, or a part's when the run's command is in the part's command group. */
+export function runTool(owner: string, command: string): string {
+  const word = command.split(" ")[0]
+  return tools.find((t) => t.partOf === owner && t.commandPrefix === word)?.id ?? owner
+}
 
 /** "Memo and Email" for a shared package, the tool's own name otherwise. */
 export const packageNames = (id: string) =>

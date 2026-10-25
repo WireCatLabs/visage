@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { doctorCommand, findTool, isValidProfile, ownerId, samePackage, setupCommand, tools } from "./catalog"
+import { doctorCommand, findTool, isValidProfile, ownerId, runTool, samePackage, setupCommand, tools } from "./catalog"
 
 describe("catalog", () => {
   it("lists the tools with unique ids, and a binary of their own unless part of another", () => {
@@ -19,6 +19,13 @@ describe("catalog", () => {
       expect(owner && !owner.partOf).toBe(true)
       expect([part.bin, part.package]).toEqual([owner?.bin, owner?.package])
     }
+  })
+
+  it("files memo's mail runs under Email and the rest under Memo", () => {
+    expect(runTool("memo", "mail inspect")).toBe("email")
+    expect(runTool("memo", "sync")).toBe("memo")
+    expect(runTool("memo", "mailbox")).toBe("memo")
+    expect(runTool("tg", "mail x")).toBe("tg")
   })
 
   it("fills the profile into setup and doctor commands", () => {

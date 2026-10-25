@@ -263,6 +263,7 @@
       "id": "email",
       "name": "Email",
       "partOf": "memo",
+      "commandPrefix": "mail",
       "tagline": "Your mail, searchable with your notes and messages",
       "bin": "memo",
       "package": "@wirecat/cli-memo",
