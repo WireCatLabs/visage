@@ -19,6 +19,7 @@ colors:
   light-warn-ink: "#8a5a00"
   light-bad: "#cf4a2f"
   light-idle: "#a9b5ae"
+  light-on-status: "#ffffff"
   brand-ink: "#ffffff"
   dark-wall: "#131718"
   dark-app: "#181c1e"
@@ -37,6 +38,7 @@ colors:
   dark-warn-ink: "#e6b04a"
   dark-bad: "#f07a5f"
   dark-idle: "#4c5659"
+  dark-on-status: "#0d1512"
 typography:
   display:
     fontFamily: '"Unbounded Variable", "Unbounded", system-ui, sans-serif'
@@ -233,6 +235,7 @@ Green-tinted neutrals with one purple, plus a small status set; each token has a
 - **Amber Ink** (`warn-ink`): any amber text (a leftover-data status, a shadowed-copy note, the warn pill's label). In light mode it is a dark amber; in dark mode it equals `warn`.
 - **Fault Red** (`bad`): broken lamp, failed step, error text, the danger button's label, error banners (40% border, 10% fill).
 - **Idle Grey** (`idle`): the hollow ring of a missing or checking lamp, and pending stepper dots.
+- **On Status** (`on-status`): the check or cross inside a done or failed stepper dot; white in light mode, near-black in dark mode, where the status colours are light.
 
 ### Neutral
 

@@ -98,7 +98,7 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
         <ToolIcon id={area.id} className="size-[2rem] text-ink" />
       )}
       <div className="min-w-0">
-        <h3 className="text-[1.1rem] font-semibold leading-tight">{areaName(area.id)}</h3>
+        <h3 className="text-[1.18rem] font-semibold leading-tight">{areaName(area.id)}</h3>
         <p className={`mt-1 text-[0.9rem] ${!empty && !inUse ? "text-warn-ink" : "text-ink-soft"}`}>{status}</p>
         {!empty && (
           <ul className="mt-1.5 flex flex-col gap-0.5">

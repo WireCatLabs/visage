@@ -63,6 +63,10 @@
         {
           "at": "2026-10-25T06:55:12.121Z",
           "text": "Finish review fixes applied 2026-10-25: taglines, flat hairline rack, Manage arrow removed, warn-ink contrast, Show log size, 70ch measure, themed scrollbars. Storage and theme switch are owner-requested additions (quotes in the surface brief)."
+        },
+        {
+          "at": "2026-10-25T06:58:19.950Z",
+          "text": "Finish review (degraded in-thread reviewer, fresh agent): disposition ship after two verdict rounds, 2026-10-25. Hero stays open only for owner-approved deviations (\"1 A\"); the comp-led tool offers no force at hero."
         }
       ],
       "gate": {
