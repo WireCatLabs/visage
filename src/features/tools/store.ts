@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { ownerId } from "@/domain/catalog"
+import { ownerId, samePackage } from "@/domain/catalog"
 import type { DataDeletion, InstallSession, Operation } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { ToolState } from "@/platform/schemas"
@@ -182,8 +182,15 @@ export const useTools = create<ToolsState>((set, get) => {
 
     dismiss(id) {
       set((st) => {
-        const { [ownerId(id)]: _, ...rest } = st.sessions
-        return { sessions: rest }
+        const owner = ownerId(id)
+        const session = st.sessions[owner]
+        if (!session) return {}
+        const closed = [...(session.closed ?? []), id]
+        if (samePackage(id).every((t) => closed.includes(t.id))) {
+          const { [owner]: _, ...rest } = st.sessions
+          return { sessions: rest }
+        }
+        return { sessions: { ...st.sessions, [owner]: { ...session, closed } } }
       })
     },
 

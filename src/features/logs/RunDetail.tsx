@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react"
 import { Fragment, useState } from "react"
 import { findTool } from "@/domain/catalog"
-import { agentName, agentOf, commandLine, errorOf, formatDuration, type Run } from "@/domain/runs"
+import { agentName, agentOf, commandLine, errorOf, formatDuration, orderRecord, type Run } from "@/domain/runs"
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
@@ -56,8 +56,9 @@ type Props = { run: Run; detail: Detail | undefined; onFilter: Filter; onGroup: 
 export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
   const { tool: _, cli_command: __, ...summary } = run
   const item = detail?.item ?? null
-  const { events = [], ...record } = item ?? { ...summary, events: undefined }
-  const json = JSON.stringify(item ?? summary, null, 2)
+  const { events = [], ...rest } = item ?? { ...summary, events: undefined }
+  const record = orderRecord(rest)
+  const json = JSON.stringify(item ? { ...record, events: item.events } : record, null, 2)
   const service = toolName(run.tool)
   const failure = run.status === "failed" || run.status === "partial" ? errorOf(run) : null
   const line = commandLine(run)

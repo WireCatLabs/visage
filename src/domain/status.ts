@@ -23,6 +23,8 @@ export type InstallSession = {
   outcome: InstallOutcome | null
   /** Only on an uninstall whose dialog had "Also delete … data" checked. */
   data?: DataDeletion
+  /** Rows of the package whose panel the owner already closed; the package's other rows keep theirs. */
+  closed?: string[]
 }
 
 export type ToolStatus =

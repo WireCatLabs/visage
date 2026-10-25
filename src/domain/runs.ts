@@ -128,6 +128,35 @@ export function errorOf(run: Run): RunError | null {
   }
 }
 
+const ordered = (o: Record<string, unknown>, first: readonly string[], last: readonly string[]) => {
+  const rank = (k: string) =>
+    first.includes(k) ? first.indexOf(k) - first.length : last.includes(k) ? 1 + last.indexOf(k) : 0
+  return Object.fromEntries(Object.entries(o).sort(([a], [b]) => rank(a) - rank(b)))
+}
+
+const RECORD_NEXT = [
+  "profile",
+  "agent",
+  "started_at",
+  "completed_at",
+  "duration_ms",
+  "error",
+  "error_code",
+  "unknown_command",
+  "partial",
+]
+const RECORD_LAST = ["status", "cli_version", "runtime", "platform", "arch", "kept_because_failed", "event_count"]
+
+/** A run record with what tells runs apart first and what the row already shows, or rarely matters, last. */
+export function orderRecord(record: Record<string, unknown>): Record<string, unknown> {
+  // Without cli_command, `command` is the command, and argv belongs right under it.
+  const head = "cli_command" in record ? ["run_id", "cli_command", "argv", "command"] : ["run_id", "command", "argv"]
+  const out = ordered(record, [...head, ...RECORD_NEXT], RECORD_LAST)
+  const error = obj(out.error)
+  if (error) out.error = ordered(error, ["class", "code", "message", "http", "provider", "causes"], ["stack"])
+  return out
+}
+
 /** A `cli_command` that is the tool's name alone: it was started without a command it knows. */
 export const isBareCommand = (value: string) => value !== "" && !value.includes(" ")
 export const BARE_COMMAND_HINT = "The tool was started without a known command — often a typo or a missing profile."

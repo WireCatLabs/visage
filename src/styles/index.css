@@ -192,6 +192,28 @@ body {
   }
 }
 
+/* A stepper's running step: a wider ring than the lamp's, so a slow step still reads as working. */
+@keyframes step-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+}
+
+.step-pulse {
+  animation: step-pulse 1.6s var(--ease-out-quart) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-pulse {
+    animation: none;
+    box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--brand) 30%, transparent);
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: -200% 0;

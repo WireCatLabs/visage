@@ -51,7 +51,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const storageLine = installed ? fitLine(fit, ownerId(tool.id), canUpdate) : null
   const storageLabel = installed ? fitLabel(fit) : null
   const panelId = `tool-panel-${tool.id}`
-  const showInstallPanel = Boolean(session)
+  const showInstallPanel = Boolean(session) && !session?.closed?.includes(tool.id)
 
   return (
     <li data-tour="tool" className="border-line border-b last:border-b-0">

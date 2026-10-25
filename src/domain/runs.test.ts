@@ -13,6 +13,7 @@ import {
   inlineJson,
   inRange,
   matcher,
+  orderRecord,
   parseQuery,
   type Run,
   suggest,
@@ -218,6 +219,45 @@ describe("what newer CLIs record about a run", () => {
     expect(facetCounts(all, [], "agent")).toEqual([
       { value: "", count: 1 },
       { value: "claude-code", count: 1 },
+    ])
+  })
+})
+
+describe("orderRecord", () => {
+  it("puts the run id, command and argv first, the failure next, and status and version last", () => {
+    const { tool: _, ...record } = run({
+      cli_version: "0.9.1",
+      runtime: "node 24",
+      requests: 3,
+      error: { stack: ["a.js:1"], message: "slow down", http: { status: 429 }, class: "CliError", code: "x" },
+      duration_ms: 40,
+      cli_command: "tg sync",
+      argv: ["personal", "sync"],
+    })
+    const ordered = orderRecord(record)
+    expect(Object.keys(ordered)).toEqual([
+      "run_id",
+      "cli_command",
+      "argv",
+      "command",
+      "profile",
+      "started_at",
+      "duration_ms",
+      "error",
+      "requests",
+      "status",
+      "cli_version",
+      "runtime",
+    ])
+    expect(Object.keys(ordered.error as object)).toEqual(["class", "code", "message", "http", "stack"])
+  })
+
+  it("keeps argv right under the command when the tool recorded no cli_command", () => {
+    expect(Object.keys(orderRecord({ status: "ok", argv: [], command: "sync", run_id: "r" }))).toEqual([
+      "run_id",
+      "command",
+      "argv",
+      "status",
     ])
   })
 })

@@ -38,7 +38,14 @@ describe("Logs", () => {
     expect(screen.queryByRole("cell", { name: /Telegram/ })).not.toBeInTheDocument()
 
     await user.click(rows[0] as HTMLElement)
-    expect(await screen.findByRole("group", { name: "Run record" })).toHaveTextContent("run_id")
+    const record = await screen.findByRole("group", { name: "Run record" })
+    await waitFor(() => expect(record).toHaveTextContent("event_count"))
+    const text = record.textContent ?? ""
+    const at = (key: string) => text.indexOf(key)
+    expect(at("run_id")).toBe(0)
+    expect(at("run_id")).toBeLessThan(at("command"))
+    expect(at("started_at")).toBeLessThan(at("status"))
+    expect(at("status")).toBeLessThan(at("cli_version"))
     expect(screen.getByRole("region", { name: "Steps" })).toHaveTextContent(/request the tool sent to WhatsApp/)
   }, 15000)
 

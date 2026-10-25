@@ -21,7 +21,7 @@ export function Stepper({ steps }: { steps: readonly { label: string; state: Ste
             className={cx(
               "relative z-10 grid size-[1.6rem] place-items-center rounded-full transition-colors duration-300",
               s.state === "done" && "bg-ok text-on-status",
-              s.state === "active" && "bg-brand animate-[lamp-pulse_1.4s_ease-in-out_infinite]",
+              s.state === "active" && "step-pulse bg-brand",
               s.state === "failed" && "bg-bad text-on-status",
               s.state === "todo" && "scale-[0.62] bg-idle",
             )}
