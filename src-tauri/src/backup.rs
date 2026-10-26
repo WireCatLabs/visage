@@ -619,7 +619,7 @@ mod tests {
                 ("wirecat-store-2026-10-24-0900.zip".into(), false)
             ]
         );
-        assert!(files_in(&dir.join("absent")).is_empty());
+        assert_eq!(files_in(&dir.join("absent")), Vec::<BackupFile>::new());
     }
 
     #[test]
@@ -692,7 +692,7 @@ mod tests {
         for stop in [Stop::Failed("disk full".into()), Stop::Cancelled] {
             fs::write(&partial, "half").unwrap();
             assert!(finish(Err(stop), &partial, &dir.join("wirecat-store-2026-10-25-1750.zip")).is_err());
-            assert!(left().is_empty());
+            assert_eq!(left(), Vec::<String>::new());
         }
 
         fs::write(&partial, "zipped").unwrap();

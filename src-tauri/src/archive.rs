@@ -506,7 +506,7 @@ mod tests {
         let check = check_of(tool, &envelope);
         assert!(!check.ok);
         assert_eq!(check.broken_indexes, ["message_words"]);
-        assert!(check.integrity.is_empty());
+        assert_eq!(check.integrity, Vec::<String>::new());
         assert_eq!((check.chats_behind, check.orphan_pointers), (1, 5));
         assert_eq!(check.fixes, ["tg store migrate"]);
         assert!(!serde_json::to_string(&check).unwrap().contains("Family"));
