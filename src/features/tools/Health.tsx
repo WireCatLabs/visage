@@ -152,7 +152,7 @@ function ProfileList(props: {
       ) : (
         <p className="text-[0.95rem] font-medium text-ink">
           {tool.setup
-            ? `No account yet. Name it, then sign in to ${tool.name} in a terminal window.`
+            ? `No account yet. Name it, then sign in to ${tool.name} ${signsInHere(tool) ? "here or " : ""}in a terminal window.`
             : "No account yet."}
         </p>
       )}
