@@ -205,7 +205,7 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
 function UpdateSource({ linux }: { linux: TailscaleLinux }) {
   return (
     <div className="flex flex-col gap-2 pl-9 text-[0.9rem]">
-      <Note>Tailscale is installed without its update source, so your system's updates will not update it.</Note>
+      <Note>Installed without Tailscale's update source: system updates will not update it.</Note>
       <Disclosure summary="Add the update source">
         <div className="flex flex-col gap-2.5">
           <Commands linux={linux} label="Copy the commands" />

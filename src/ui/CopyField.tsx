@@ -28,7 +28,7 @@ export function CopyField({ value, label }: { value: string; label: string }) {
       <code
         className={cx(
           "selectable min-w-0 flex-1 font-mono text-[0.875rem] text-ink",
-          lines ? "py-1 break-all whitespace-pre-wrap" : "truncate",
+          lines ? "py-1 whitespace-pre-wrap wrap-anywhere" : "truncate",
         )}
       >
         {value}

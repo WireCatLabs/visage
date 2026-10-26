@@ -117,7 +117,7 @@ describe("Tailscale guide on Linux", () => {
     show({ ...MISSING, installed: true, operator: true, daemon: true, backend: "needsLogin" })
     const install = screen.getAllByRole("listitem")[0]
     if (!install) throw new Error("the install step is listed")
-    expect(within(install).getByText(/installed without its update source/)).toBeVisible()
+    expect(within(install).getByText(/Installed without Tailscale.s update source/)).toBeVisible()
     await userEvent.setup().click(within(install).getByText("Add the update source"))
     expect(within(install).getByRole("button", { name: "Open a terminal with them" })).toBeVisible()
   })
