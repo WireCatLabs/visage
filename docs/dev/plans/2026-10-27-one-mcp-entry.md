@@ -217,3 +217,22 @@ tsnet helper (NEED-73) gives the gateway its own node on port 443; B2 or no `out
 - Options: **A** under "Advanced" for one release, then removed · **B** removed now (CLIs keep them) · **C** kept as is.
 - I'd pick: **A**.
 - If no answer: A.
+
+## 9. Revision after the owner's answers (2026-10-27)
+
+The owner on NEED-83: "but that's what core does, I'd use core for this, just isolate it there as a module". On
+NEED-84: "if we have 1 server we would have to rework all toools. ok let's keep tools separate for each cli but 1 url
+per cli so profile access is managed via desktop/config". The gateway package is dropped. The new shape:
+
+- **A module in cli-core, not a new package.** `<bin> mcp` with no profile (stdio) and `<bin> mcp --http` serve every
+  profile the owner enabled. The module starts `<bin> <profile> mcp` children of the same tool and forwards calls,
+  as section 3 describes for the gateway, but per tool. `createServer` stays single-profile, so no tool is reworked.
+- **Profile access in the tool's own config,** e.g. `mcp.local` and `mcp.remote` lists of profile names, written by
+  Desktop through the tool's `config set`. No central `wirecat` file.
+- **Tools look as today plus a required `profile` enum** (B1): `tg_read` etc., no default, "ask if not named".
+- **One URL per CLI, one public address for all:** `https://<host>/tg/mcp`, `/max/mcp`… behind one Funnel port with
+  `tailscale funnel --set-path`. Needs a small cli-core change: issuer and `.well-known` metadata under a path prefix
+  (section 2, option C's cost), and Desktop's address check accepting a path. Not tested yet.
+- drive, memo and zm have their own `mcp` commands: drive and zm adopt the module; memo has no profiles and only
+  needs the path prefix.
+- RISK-25…27 still apply. NEED-83 and NEED-84 are answered by this section; NEED-85 and NEED-86 stay open; NEED-91 confirms it.
