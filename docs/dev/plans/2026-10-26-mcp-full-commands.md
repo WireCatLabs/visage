@@ -144,6 +144,11 @@ Fields per tool: `phone` (not secret), `code` (login code), `password` (2FA or M
 - **поправка (TASK-19, phase 1 built):** phase 1 shipped `signIn.qr` (one list of words) and `sign_in(id, profile)`
   with no method, plus `sign_in_stop(id)` by tool id. Phase 2 turns `qr` into `methods` and adds the method argument.
   wa's `qr` line has no `link` and `expires_at` is null (FIND-35), so Desktop decodes the drawing (`src/domain/qr.ts`).
+- **поправка (TASK-21, phase 2 built for tg, max, zm, drive):** the `needs` line is `{field, secret, prompt, hint}`
+  and the flag is `--answer-stdin` (cli-core 0.443.0, `signInSteps`). There is no `done` event: the stdout answer
+  stays the end. `signIn.methods` and `sign_in(id, method, profile)` shipped; `sign_in_answer(id, value)` is keyed by
+  tool id, like `sign_in_stop`. wa's phone login and pairing code are not built (Desktop draws `pairing_code`, no tool
+  prints it yet); the MCP-side sentence and skill texts (section 4, FIND-34) are not done.
 
 ## 4. Sign-in over MCP
 
