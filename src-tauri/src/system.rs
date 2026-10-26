@@ -50,7 +50,9 @@ fn os_name() -> String {
     }
 }
 
-fn program(bin: &str, check: Option<fn(&semver::Version) -> Result<(), String>>) -> Program {
+type VersionCheck = fn(&semver::Version) -> Result<(), String>;
+
+fn program(bin: &str, check: Option<VersionCheck>) -> Program {
     let Some(path) = paths::find(bin) else {
         return Program { problem: Some("not found".into()), ..Default::default() };
     };
@@ -68,7 +70,7 @@ fn program(bin: &str, check: Option<fn(&semver::Version) -> Result<(), String>>)
     Program { path: shown, ok: problem.is_none(), version: Some(version), problem }
 }
 
-/// WireCat tools declare `^22.16.0 || >=24`.
+/// `WireCat` tools declare `^22.16.0 || >=24`.
 pub fn node_supported(v: &semver::Version) -> Result<(), String> {
     if (v.major == 22 && v.minor >= 16) || v.major >= 24 {
         Ok(())

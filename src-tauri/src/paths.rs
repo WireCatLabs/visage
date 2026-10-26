@@ -102,7 +102,7 @@ fn nvm_bins(root: &Path) -> Vec<PathBuf> {
 pub fn find_all(bin: &str) -> Vec<PathBuf> {
     let cwd = std::env::temp_dir();
     let mut found: Vec<PathBuf> =
-        which::which_in_all(bin, Some(search_path()), cwd).map(|it| it.collect()).unwrap_or_default();
+        which::which_in_all(bin, Some(search_path()), cwd).map(Iterator::collect).unwrap_or_default();
     let mut seen = std::collections::HashSet::new();
     found.retain(|p| seen.insert(std::fs::canonicalize(p).unwrap_or_else(|_| p.clone())));
     found

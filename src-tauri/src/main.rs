@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    wirecat_desktop_lib::run()
+    wirecat_desktop_lib::run();
 }
