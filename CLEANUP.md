@@ -29,3 +29,4 @@
 - 2026-10-26 · .claude/worktrees/agent-a86e884c94ca5e4f8 (feat/agents-w2-hermes-openclaw, has its own node_modules) — merged
 - 2026-10-26 · bin/fix-hermes-path — one-off for this machine; remove after it ran
 - 2026-10-26 · .claude/worktrees/agent-a9cbc5398d4cbbb17 and its branch — merged (About)
+- `/home/leemour/Projects/AI/zoom-cli/.worktrees/skill-mcp-note` — worktree for zoom-cli #276 (MCP note), remove after merge. 2026-10-26
