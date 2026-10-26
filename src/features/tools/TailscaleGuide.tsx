@@ -39,7 +39,12 @@ const INSTALL_SECTION: Record<TailscaleLinux["family"], string> = {
 
 export function guideUrl(step: StepId, s: TailscaleStatus): string {
   const section = {
-    install: s.os === "linux" ? INSTALL_SECTION[s.linux?.family ?? "other"] : s.os,
+    install:
+      s.os !== "linux"
+        ? s.os
+        : s.installed && s.operator === false
+          ? "let-your-user-control-tailscale-on-linux"
+          : INSTALL_SECTION[s.linux?.family ?? "other"],
     login: "log-in-to-tailscale",
     funnel: "allow-funnel",
     connect: "connect-the-server",
@@ -201,7 +206,8 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
   )
 }
 
-/** Installed from a package without Tailscale's update source: it works, but will not update with the system. */
+/** Installed from a .deb without Tailscale's update source: it works, but will not update with the system. Debian and
+ * Ubuntu carry no tailscale package of their own; Fedora and openSUSE do, so the missing file says nothing there. */
 function UpdateSource({ linux }: { linux: TailscaleLinux }) {
   return (
     <div className="flex flex-col gap-2 pl-9 text-[0.9rem]">
@@ -563,7 +569,7 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
                 </Note>
               </div>
             )}
-            {step.id === "install" && step.done && status.linux?.updates === false && (
+            {step.id === "install" && step.done && status.package === "deb" && status.linux?.updates === false && (
               <UpdateSource linux={status.linux} />
             )}
           </li>

@@ -8,7 +8,8 @@ use std::path::Path;
 //   (kb/1031) links for each distribution;
 // - which ID maps to which repository, and the dnf 5 form, from Tailscale's installer
 //   (<https://github.com/tailscale/tailscale/blob/main/scripts/installer.sh>), the script tailscale.com/download/linux runs;
-// - Arch from <https://tailscale.com/download/linux/arch>.
+// - Arch from the data of <https://tailscale.com/download/linux/arch>; the page itself now shows only the script, so
+//   the guide links the Arch Wiki page that kb/1031 names.
 // `sudo tailscale up` is left out: the guide's next step logs in, after the operator is set.
 
 const PKGS: &str = "https://pkgs.tailscale.com/stable";
@@ -183,7 +184,7 @@ fn recipe(os_release: &str) -> Option<(Family, Method, Vec<String>, String)> {
             Family::Arch,
             Method::Package,
             vec!["sudo pacman -S tailscale".into(), "sudo systemctl enable --now tailscaled".into()],
-            "https://tailscale.com/download/linux/arch".into(),
+            "https://wiki.archlinux.org/title/Tailscale".into(),
         )),
         "nixos" => {
             Some((Family::Nixos, Method::Config, vec!["services.tailscale.enable = true;".into()], INSTALLER.into()))

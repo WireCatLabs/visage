@@ -96,7 +96,7 @@ const DISTROS = {
       family: "arch",
       method: "package",
       commands: ["sudo pacman -S tailscale", ENABLE],
-      source: "https://tailscale.com/download/linux/arch",
+      source: "https://wiki.archlinux.org/title/Tailscale",
       updates: null,
     },
   ],

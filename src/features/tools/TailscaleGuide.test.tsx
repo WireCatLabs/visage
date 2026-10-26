@@ -111,6 +111,7 @@ describe("Tailscale guide on Linux", () => {
     expect(open).toHaveBeenCalledWith("https://wirecat.dev/en/docs/desktop/tailscale-funnel#debian-and-ubuntu")
     expect(guideUrl("install", { ...MISSING, os: "macos", linux: null })).toMatch(/#macos$/)
     expect(guideUrl("funnel", MISSING)).toMatch(/#allow-funnel$/)
+    expect(guideUrl("install", { ...MISSING, installed: true, operator: false })).toMatch(/#let-your-user-control/)
   })
 
   it("says when an installed Tailscale has no update source, with the commands behind a disclosure", async () => {
@@ -120,5 +121,10 @@ describe("Tailscale guide on Linux", () => {
     expect(within(install).getByText(/Installed without Tailscale.s update source/)).toBeVisible()
     await userEvent.setup().click(within(install).getByText("Add the update source"))
     expect(within(install).getByRole("button", { name: "Open a terminal with them" })).toBeVisible()
+  })
+
+  it("does not claim a missing update source where the distribution ships Tailscale itself", () => {
+    show({ ...MISSING, package: "rpm", installed: true, operator: true, daemon: true, backend: "needsLogin" })
+    expect(screen.queryByText(/Installed without Tailscale.s update source/)).toBeNull()
   })
 })
