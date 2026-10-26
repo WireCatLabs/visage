@@ -42,3 +42,4 @@
 - `/home/leemour/Projects/AI/drive-cli-wt-mcp-server` — drive-cli worktree for PRs #253 (merged) and #254 (release, waiting). 2026-10-26
 - Scratchpad sandboxes `tg-e2e`, `memo-e2e`, `drive-e2e` and packed `wirecat-cli-core-*.tgz` in this session's scratchpad — live checks of `mcp server`. 2026-10-26
 - 2026-10-26 · .claude/worktrees/tailscale-funnel and its branch feat/tailscale-funnel — Tailscale Funnel step 4 (TASK-22), remove once merged into feat/desktop-mvp
+- /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/funnel-test — sandbox HOME for the NEED-68 Funnel test (npx cache, memo store), 2026-10-26
