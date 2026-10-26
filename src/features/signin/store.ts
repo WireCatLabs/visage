@@ -11,6 +11,9 @@ export type Need = Of<"needs">
 type Done = Of<"done">
 type Failed = Of<"failed">
 
+/** `signin_steps.rs`: the tool does not know the flag the app passes. */
+export const NEEDS_UPDATE = "needs_update"
+
 /** What the dialog shows: the step the tool reached last. */
 export type Phase = "starting" | "scan" | "pair" | "browser" | "answer" | "progress" | "done" | "failed"
 

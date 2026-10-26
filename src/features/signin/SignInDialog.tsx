@@ -1,9 +1,11 @@
+import { Terminal } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { findTool, signInMethods } from "@/domain/catalog"
+import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { Stage } from "./Stages"
-import { type Phase, receivingHistory, running, useSignIn } from "./store"
+import { NEEDS_UPDATE, type Phase, receivingHistory, running, useSignIn } from "./store"
 
 /**
  * Signs a profile in with the tool's own sign-in, drawn in the window: a QR code, a code for the phone, a page to
@@ -74,11 +76,25 @@ function Actions() {
     )
   }
   if (phase === "failed") {
+    // A tool too old to sign in here still signs in at a terminal.
+    const terminal = s.failure?.code === NEEDS_UPDATE && tool && profile && entry?.setup
     return (
       <>
         <Button variant="ghost" onClick={close}>
           Close
         </Button>
+        {terminal && (
+          <Button
+            variant="secondary"
+            icon={<Terminal className="size-4" aria-hidden />}
+            onClick={() => {
+              platform.openSetup(tool, profile).catch(() => {})
+              close()
+            }}
+          >
+            Open terminal
+          </Button>
+        )}
         <Button
           variant="secondary"
           onClick={() => tool && profile && start(tool, profile, onFinish ?? undefined, method ?? undefined)}
