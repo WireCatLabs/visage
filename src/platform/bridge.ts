@@ -15,6 +15,7 @@ import {
 } from "./agents-schemas"
 import { StoreCheckSchema, StoreCompatSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { BackupEventSchema, BackupsSchema, ResetDoneSchema, ResetPreviewSchema } from "./backup-schemas"
+import { McpServerStatusSchema } from "./mcp-server-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
@@ -119,6 +120,12 @@ function createTauri(): Platform {
     mcpCheck: (id, profile) => call(McpHealthSchema, "mcp_check", { id, profile }),
     mcpAdd: (id, profile, agent, allowWrites) => invoke("mcp_add", { id, profile, agent, allowWrites }),
     mcpRemove: (id, profile, agent) => invoke("mcp_remove", { id, profile, agent }),
+    mcpServerStatus: (id, profile) => call(McpServerStatusSchema, "mcp_server_status", { id, profile }),
+    mcpServerStart: (id, profile, port, url) =>
+      call(McpServerStatusSchema, "mcp_server_start", { id, profile, port, url }),
+    mcpServerStop: (id, profile) => invoke("mcp_server_stop", { id, profile }),
+    mcpServerRevoke: (id, profile) => invoke("mcp_server_revoke", { id, profile }),
+    mcpServerConfig: (id, profile) => call(v.string(), "mcp_server_config", { id, profile }),
     taskClaims: (id, profile) => call(ClaimsSchema, "task_claims", { id, profile }),
     taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),

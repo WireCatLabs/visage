@@ -6,6 +6,7 @@ mod chats;
 mod compat;
 mod install;
 mod mcp;
+mod mcp_server;
 mod node;
 #[cfg(test)]
 mod page_loads;
@@ -320,6 +321,42 @@ async fn mcp_remove(id: String, profile: Option<String>, agent: String) -> Resul
     blocking(move || mcp::remove(tool, profile.as_deref(), &agent)).await?
 }
 
+/// `profile` is `None` only for a tool without profiles (memo); the catalog's words say whether one is needed.
+#[tauri::command]
+async fn mcp_server_status(id: String, profile: Option<String>) -> Result<mcp_server::ServerStatus, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::status(tool, profile.as_deref())).await?
+}
+
+#[tauri::command]
+async fn mcp_server_start(
+    id: String,
+    profile: Option<String>,
+    port: u16,
+    url: String,
+) -> Result<mcp_server::ServerStatus, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::start(tool, profile.as_deref(), port, &url)).await?
+}
+
+#[tauri::command]
+async fn mcp_server_stop(id: String, profile: Option<String>) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::stop(tool, profile.as_deref())).await?
+}
+
+#[tauri::command]
+async fn mcp_server_revoke(id: String, profile: Option<String>) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::revoke(tool, profile.as_deref())).await?
+}
+
+#[tauri::command]
+async fn mcp_server_config(id: String, profile: Option<String>) -> Result<String, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::config(tool, profile.as_deref())).await?
+}
+
 #[tauri::command]
 async fn task_claims(id: String, profile: String) -> Result<tasks::Claims, String> {
     let tool = catalog::tool(&id)?;
@@ -481,6 +518,11 @@ pub fn run() {
             mcp_check,
             mcp_add,
             mcp_remove,
+            mcp_server_status,
+            mcp_server_start,
+            mcp_server_stop,
+            mcp_server_revoke,
+            mcp_server_config,
             task_claims,
             task_release,
             report_context,

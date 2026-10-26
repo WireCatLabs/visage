@@ -12,6 +12,7 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useStorage } from "../storage/store"
 import { Health } from "./Health"
+import { McpServer } from "./McpServer"
 import { Permissions } from "./Permissions"
 import { FitDetails } from "./StorageFit"
 import { useTools } from "./store"
@@ -206,6 +207,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
       </section>
       <ConfirmUninstall tool={tool} open={confirming} onClose={() => setConfirming(false)} />
       {installs.length > 0 && tool.permissions && <Permissions tool={tool} />}
+      {installs.length > 0 && tool.mcpServer && <McpServer tool={tool} />}
     </div>
   )
 }

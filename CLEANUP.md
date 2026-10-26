@@ -34,3 +34,6 @@
 - `/home/leemour/Projects/AI/drive-cli-wt-skill-mcp` (branch docs/skill-mcp-note) — worktree for drive-cli #247 (MCP note), remove after merge. 2026-10-26
 - `/home/leemour/Projects/AI/max-cli-wt-skill-no-npx` (branch docs/skill-doctor-no-npx) — worktree for max-cli #832 (merged), remove. 2026-10-26
 - 2026-10-26 · .claude/worktrees/agent-a3e0be70b1c9194fa and its branch worktree-agent-a3e0be70b1c9194fa — WhatsApp QR sign-in (TASK-19), remove once merged into feat/desktop-mvp
+- `.claude/worktrees/mcp-server` — Desktop worktree for TASK-20 (MCP server panel), merged into feat/desktop-mvp. 2026-10-26
+- `/home/leemour/Projects/AI/cli-core-wt-mcp-http-server` — cli-core worktree for PR #2044, remove after merge and release. 2026-10-26
+- `/home/leemour/Projects/AI/tg-cli-wt-mcp-e2e` — tg-cli worktree with a packed branch cli-core, used for the live check of `mcp server`. 2026-10-26

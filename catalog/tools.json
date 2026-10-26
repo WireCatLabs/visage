@@ -32,6 +32,13 @@
         "check": ["{profile}", "mcp", "check", "--json"],
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
+      "mcpServer": {
+        "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["{profile}", "mcp", "server", "stop", "--json"],
+        "status": ["{profile}", "mcp", "server", "status", "--json"],
+        "revoke": ["{profile}", "mcp", "--revoke", "--json"],
+        "config": ["{profile}", "mcp", "config", "--json"]
+      },
       "tasks": {
         "list": [
           "{profile}",
@@ -114,6 +121,13 @@
         "check": ["{profile}", "mcp", "check", "--json"],
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
+      "mcpServer": {
+        "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["{profile}", "mcp", "server", "stop", "--json"],
+        "status": ["{profile}", "mcp", "server", "status", "--json"],
+        "revoke": ["{profile}", "mcp", "--revoke", "--json"],
+        "config": ["{profile}", "mcp", "config", "--json"]
+      },
       "tasks": {
         "list": [
           "{profile}",
@@ -195,6 +209,13 @@
         "check": ["{profile}", "mcp", "check", "--json"],
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
+      "mcpServer": {
+        "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["{profile}", "mcp", "server", "stop", "--json"],
+        "status": ["{profile}", "mcp", "server", "status", "--json"],
+        "revoke": ["{profile}", "mcp", "--revoke", "--json"],
+        "config": ["{profile}", "mcp", "config", "--json"]
+      },
       "tasks": {
         "list": [
           "{profile}",
@@ -274,6 +295,7 @@
         "show": ["skill", "show", "--json"]
       },
       "mcp": null,
+      "mcpServer": null,
       "tasks": null,
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
@@ -334,6 +356,13 @@
         "show": ["skill", "show", "--json"]
       },
       "mcp": null,
+      "mcpServer": {
+        "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["{profile}", "mcp", "server", "stop", "--json"],
+        "status": ["{profile}", "mcp", "server", "status", "--json"],
+        "revoke": ["{profile}", "mcp", "--revoke", "--json"],
+        "config": null
+      },
       "tasks": null,
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
@@ -386,6 +415,13 @@
         "doctorSkills": ["doctor", "--json"]
       },
       "mcp": null,
+      "mcpServer": {
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "--revoke", "--json"],
+        "config": null
+      },
       "tasks": null,
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
@@ -422,6 +458,7 @@
       "setup": null,
       "skill": null,
       "mcp": null,
+      "mcpServer": null,
       "tasks": null,
       "storeInfo": null,
       "storeTables": null,

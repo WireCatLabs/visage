@@ -28,6 +28,8 @@ pub struct Tool {
     pub skill: Option<SkillSource>,
     /// Only the messenger CLIs register their own MCP server with an agent; every tool can serve one.
     pub mcp: Option<McpSource>,
+    /// The HTTP MCP server for browser apps, run in the background by the tool itself; zoom serves none.
+    pub mcp_server: Option<McpServerSource>,
     pub tasks: Option<TasksSource>,
     /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
     pub part_of: Option<String>,
@@ -80,6 +82,17 @@ pub struct SkillSource {
 pub struct McpSource {
     pub check: Vec<String>,
     pub add: Vec<String>,
+}
+
+/// `{port}` and `{url}` are filled only after `mcp_server.rs` validated them.
+#[derive(Debug, Deserialize)]
+pub struct McpServerSource {
+    pub start: Vec<String>,
+    pub stop: Vec<String>,
+    pub status: Vec<String>,
+    pub revoke: Vec<String>,
+    /// `mcp config`, the entry a desktop app pastes; only the messenger CLIs print one.
+    pub config: Option<Vec<String>>,
 }
 
 /// `{task}` is a validated task id or key; `release` names the owner as holder, who may release any claim.

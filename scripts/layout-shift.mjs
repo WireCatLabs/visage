@@ -39,6 +39,10 @@ const nav = (label) => `nav button:has-text("${label}")`
 const PAGES = {
   tools: { query: "?onboarding=off&section=tools" },
   "tools-manage": { query: "?onboarding=off&section=tools", clicks: ['button:has-text("Manage") >> nth=0'] },
+  "tools-mcp": {
+    query: "?onboarding=off&section=tools",
+    clicks: ['button:has-text("Manage") >> nth=0', 'button:has-text("MCP server")'],
+  },
   agents: { query: "?onboarding=off&section=agents" },
   "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("Tools"), nav("Agents")] },
   storage: { query: "?onboarding=off&section=storage" },

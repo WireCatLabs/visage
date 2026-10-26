@@ -29,6 +29,7 @@ src-tauri/src/
   skills.rs     agents found on this computer; each tool's skill through its own `skill status` / `install` / `show`.
   chats.rs      which chat apps drive Hermes and OpenClaw, by name only; the PATH Hermes's gateway starts from.
   mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
+  mcp_server.rs each tool's HTTP MCP server for browser apps: its own `mcp server start|stop|status` and `mcp --revoke`.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
@@ -205,6 +206,26 @@ agents' note that the tool prints beside it are dropped, the account's id and na
 or put in a report. Cancel, Escape and Stop call `sign_in_stop`: SIGTERM to the tool alone, five seconds for it to
 answer with the history it kept, then the whole group is killed (`run::stream_stoppable`). "Open terminal" stays as
 the second choice, and is the only one for the other tools.
+
+## The MCP server for browser apps
+
+ChatGPT and Claude in the browser reach a tool through its HTTP MCP server behind the owner's tunnel (step 3 of
+`docs/dev/plans/2026-10-26-mcp-full-commands.md`). The Manage panel has an "MCP server" section, closed by default
+because agents on this computer use the tools directly: one row per profile, so none is chosen for the owner, and one
+row for memo, which has no profiles. Zoom serves no HTTP MCP and Email is part of memo, so neither has the section.
+
+Every action is the tool's own command from `mcpServer` in the catalog. `mcp server start` takes the tunnel's address
+and a port, which `mcp_server.rs` checks first (https, or http on this computer; no path; a port of 1024 or above) and
+only then puts in place of `{url}` and `{port}`. The tool runs `mcp --http` in the background with a marker in its
+environment, and `stop` refuses a server it did not start (one started in a terminal: the row says to stop it there).
+`status` gives the port, the address for the browser app, the login code with when it runs out (the row reads it again
+then; the tool renews it), and the apps holding a login, each by the name it gave itself: the row says "calls itself",
+since anyone may register any name, and Rust drops control and bidirectional characters from it. "Forget all logins"
+runs `mcp --revoke` after a dialog. "Copy config for desktop apps" copies `mcp config` (tg, max, wa).
+
+The login code, the address and the apps' names leave Rust unmasked, an exception to rule 4 like the sign-in QR: the
+owner needs them as they are. They are never logged and never put in a report. A tool from before `mcp server`
+(cli-core 0.443) answers "unknown command" and the row says to update it.
 
 ## Growing the app
 

@@ -2,6 +2,7 @@ import type { StoreCompat } from "@/domain/compat"
 import type { Agent, Chats, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { BackupEvent, Backups, ResetPreview } from "./backup-schemas"
+import type { McpServerStatus } from "./mcp-server-schemas"
 import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
@@ -89,6 +90,16 @@ export type Platform = {
   mcpAdd(id: string, profile: string, agent: string, allowWrites: boolean): Promise<void>
   /** The agent's own `mcp remove` of `<bin>-<profile>`, or of `<bin>` when `profile` is null. */
   mcpRemove(id: string, profile: string | null, agent: string): Promise<void>
+  /** The tool's HTTP MCP server for browser apps; `profile` is null only for a tool without profiles. */
+  mcpServerStatus(id: string, profile: string | null): Promise<McpServerStatus>
+  /** Rust checks the port and the tunnel's address, then runs the tool's `mcp server start` and answers its status. */
+  mcpServerStart(id: string, profile: string | null, port: number, url: string): Promise<McpServerStatus>
+  /** The tool refuses a server it did not start. */
+  mcpServerStop(id: string, profile: string | null): Promise<void>
+  /** `mcp --revoke`: every browser app must log in again. */
+  mcpServerRevoke(id: string, profile: string | null): Promise<void>
+  /** The `mcpServers` entry a desktop app pastes, as JSON text. */
+  mcpServerConfig(id: string, profile: string | null): Promise<string>
   taskClaims(id: string, profile: string): Promise<Claims>
   /** Releases a claim as the owner, who may release any. */
   taskRelease(id: string, profile: string, task: string): Promise<void>
