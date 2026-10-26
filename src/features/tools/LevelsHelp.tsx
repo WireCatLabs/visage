@@ -30,7 +30,7 @@ const GROUP_HELP: Record<string, { reads: string; changes: string }> = {
   chats: {
     reads: "Listing chats and groups, their details and their members.",
     changes:
-      "Chat settings, members and admins, invite links, folders, muting, archiving, pinning, marking as read, leaving, deleting a chat and clearing its history. Deleting and clearing ask first, even at Allow.",
+      "Changes to chats and groups, such as their settings, members and admins, invite links, muting, archiving, pinning, marking as read, leaving, deleting a chat and clearing its history. Deleting and clearing ask first, even at Allow.",
   },
   contacts: {
     reads: "Listing and showing contacts.",
@@ -39,10 +39,11 @@ const GROUP_HELP: Record<string, { reads: string; changes: string }> = {
   account: {
     reads: "Seeing your own profile.",
     changes:
-      "Your profile and privacy settings, and ending your other sessions. Ending sessions asks first, and an agent over MCP can never do it.",
+      "Your profile and privacy settings, and ending your other sessions where the app has it. Ending sessions asks first, and an agent over MCP can never do it.",
   },
   attachments: {
-    reads: "Listing and downloading files is checked as Messages, so Block on Messages stops it.",
+    reads:
+      "Listing and downloading files is checked as Messages, and downloading as Chats too, so Block on Messages stops it. Showing a file's text needs both Files and Messages.",
     changes: "Extracting text from saved files, moving them and updating them. This stays on this computer.",
   },
   tasks: {
@@ -96,7 +97,8 @@ export function LevelsHelp({ tool }: { tool: CatalogTool }) {
         </p>
         {groups.length > 0 && (
           <>
-            <h3 className="mt-5 mb-2 text-[1rem] font-semibold text-ink">What each group covers</h3>
+            <h3 className="mt-5 mb-1 text-[1rem] font-semibold text-ink">What each group covers</h3>
+            <p className="mb-2">Not every app has every action listed here.</p>
             <dl className="mb-2 flex flex-col gap-3">
               {groups.map((g) => {
                 const help = GROUP_HELP[g.key]

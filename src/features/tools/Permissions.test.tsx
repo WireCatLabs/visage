@@ -122,7 +122,7 @@ describe("Permissions", () => {
     await user.click(await screen.findByRole("button", { name: "What do these levels mean?" }))
     const dialog = await screen.findByRole("dialog", { name: "What the levels mean" })
     expect(within(dialog).getByText("readonly")).toBeInTheDocument()
-    expect(within(dialog).getByText(/checked as Messages, so Block on Messages stops it/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/checked as Messages, and downloading as Chats too/)).toBeInTheDocument()
     expect(within(dialog).getByText("topics")).toBeInTheDocument()
 
     fireEvent(dialog, new Event("cancel", { cancelable: true }))
