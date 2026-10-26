@@ -62,6 +62,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-15 · Пункт «About» в меню «?».** «lets add an about item to ? menu so it would display a modal with details about the project - what it is, version links license, my name and so on». Статус: агент — диалог с описанием, версией и номером сборки (git-хеш и дата — заодно видно, свежая ли сборка в лаунчере), ссылками (сайт, документация, исходники, политика, «Report a problem»), лицензией Apache-2.0, «Made by Viacheslav Ptsarev».
 
+- **TASK-16 · Упомянуть MCP в навыках tg, wa, zoom, drive (сейчас только max и memo), CLI первым.** Слава: «skills should mention them but prefer cli». Делать после выпусков wave 1, в репозиториях инструментов. Плагины Claude остаются без объявленных MCP-серверов (только навык). Заодно: README плагинов уточнены — WireCat получает только отчёты об ошибках из Desktop по «Report this» (claude-plugins #3); контакт для каталога — hello@wirecat.dev (MX Cloudflare есть).
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
