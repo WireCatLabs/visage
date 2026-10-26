@@ -41,3 +41,4 @@
 - `/home/leemour/Projects/AI/cli-memo-wt-mcp-server` — cli-memo worktree for PR #462 (merged, released 0.111.0). 2026-10-26
 - `/home/leemour/Projects/AI/drive-cli-wt-mcp-server` — drive-cli worktree for PRs #253 (merged) and #254 (release, waiting). 2026-10-26
 - Scratchpad sandboxes `tg-e2e`, `memo-e2e`, `drive-e2e` and packed `wirecat-cli-core-*.tgz` in this session's scratchpad — live checks of `mcp server`. 2026-10-26
+- 2026-10-26 · .claude/worktrees/tailscale-funnel and its branch feat/tailscale-funnel — Tailscale Funnel step 4 (TASK-22), remove once merged into feat/desktop-mvp
