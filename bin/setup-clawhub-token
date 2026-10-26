@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# One-off (NEED-48 A): the ClawHub API token that lets the tools' release pipelines publish their skills.
+# Reads it without echo; saves it to the OS keyring and the WireCatLabs org secret CLAWHUB_TOKEN. Never prints it.
+set -euo pipefail
+
+service="wirecat"
+account="clawhub"
+secret="CLAWHUB_TOKEN"
+
+read -rsp "Paste the ClawHub API token (input is hidden), then Enter: " token
+echo
+if [ -z "$token" ]; then
+  echo "No token given." >&2
+  exit 1
+fi
+
+printf '%s' "$token" | secret-tool store --label "ClawHub API token (WireCat)" service "$service" account "$account"
+printf '%s' "$token" | gh secret set "$secret" --org WireCatLabs --visibility all >/dev/null
+unset token
+
+echo "Saved to the keyring (service $service, account $account) and to the WireCatLabs org secret $secret."
