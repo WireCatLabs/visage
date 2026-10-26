@@ -20,6 +20,7 @@ import type {
 } from "./schemas"
 import type { Settings } from "./settings-schemas"
 import type { SignInEvent } from "./signin-schemas"
+import type { FunnelState, TailscaleDownload, TailscaleStatus } from "./tailscale-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
@@ -100,6 +101,21 @@ export type Platform = {
   mcpServerRevoke(id: string, profile: string | null): Promise<void>
   /** The `mcpServers` entry a desktop app pastes, as JSON text. */
   mcpServerConfig(id: string, profile: string | null): Promise<string>
+  /** Every step of the Tailscale guide at once: installed, allowed to change settings, logged in, Funnel allowed. */
+  tailscaleStatus(): Promise<TailscaleStatus>
+  /** Downloads Tailscale's official installer into Downloads, then opens it or shows it in the file manager. */
+  tailscaleDownload(kind: NonNullable<TailscaleStatus["package"]>): Promise<TailscaleDownload>
+  /** Opens a terminal with Tailscale's install command or the one-time operator command; the person runs it. */
+  tailscaleTerminal(what: "install" | "operator"): Promise<void>
+  /** `tailscale login` on a logged-out computer; the login page opens in the browser and `onPage` gets its link. */
+  tailscaleLogin(onPage: (url: string) => void): Promise<void>
+  /** Stops a waiting login or Funnel approval. */
+  tailscaleStop(): Promise<void>
+  /** Funnel from a public port to the server's local port; answers the public address for `mcpServerStart`. */
+  tailscaleFunnelOpen(id: string, profile: string | null, port: number, onPage: (url: string) => void): Promise<string>
+  /** Turns off only a funnel the app set up for this server, and only while it still points here. */
+  tailscaleFunnelClose(id: string, profile: string | null): Promise<void>
+  tailscaleFunnels(): Promise<FunnelState[]>
   taskClaims(id: string, profile: string): Promise<Claims>
   /** Releases a claim as the owner, who may release any. */
   taskRelease(id: string, profile: string, task: string): Promise<void>

@@ -23,6 +23,8 @@ mod signin_steps;
 mod skills;
 mod storage;
 mod system;
+mod tailscale;
+mod tailscale_install;
 mod tasks;
 mod terminal;
 mod tools;
@@ -324,6 +326,93 @@ async fn mcp_remove(id: String, profile: Option<String>, agent: String) -> Resul
 
 /// `profile` is `None` only for a tool without profiles (memo); the catalog's words say whether one is needed.
 #[tauri::command]
+async fn tailscale_status() -> Result<tailscale::Status, String> {
+    blocking(tailscale::status).await
+}
+
+#[tauri::command]
+async fn tailscale_download(
+    kind: String,
+    running: State<'_, Arc<Running>>,
+) -> Result<tailscale_install::Downloaded, String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        let key = "tailscale-download";
+        if !running.start(key) {
+            return Err("The download is already running.".to_string());
+        }
+        let result = tailscale_install::download(&kind, &|| !running.is_running(key));
+        running.finish(key);
+        result
+    })
+    .await?
+}
+
+#[tauri::command]
+fn tailscale_terminal(what: String) -> Result<(), String> {
+    terminal::open_line(&tailscale::terminal_line(&what)?)
+}
+
+#[tauri::command]
+async fn tailscale_login(
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<tailscale::PageEvent>,
+) -> Result<(), String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        if !running.start(tailscale::LOGIN) {
+            return Err("The Tailscale login is already running.".to_string());
+        }
+        let result = tailscale::login(&|| !running.is_running(tailscale::LOGIN), &|e| {
+            let _ = on_event.send(e);
+        });
+        running.finish(tailscale::LOGIN);
+        result
+    })
+    .await?
+}
+
+/// Stops a waiting login or Funnel approval; whatever the person already did in the browser stays done.
+#[tauri::command]
+fn tailscale_stop(running: State<'_, Arc<Running>>) {
+    running.cancel(tailscale::LOGIN);
+    running.cancel(tailscale::FUNNEL);
+}
+
+#[tauri::command]
+async fn tailscale_funnel_open(
+    id: String,
+    profile: Option<String>,
+    port: u16,
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<tailscale::PageEvent>,
+) -> Result<String, String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        if !running.start(tailscale::FUNNEL) {
+            return Err("Tailscale Funnel is being set up for another server; wait for it to finish.".to_string());
+        }
+        let result =
+            tailscale::funnel_open(&id, profile.as_deref(), port, &|| !running.is_running(tailscale::FUNNEL), &|e| {
+                let _ = on_event.send(e);
+            });
+        running.finish(tailscale::FUNNEL);
+        result
+    })
+    .await?
+}
+
+#[tauri::command]
+async fn tailscale_funnel_close(id: String, profile: Option<String>) -> Result<(), String> {
+    blocking(move || tailscale::funnel_close(&id, profile.as_deref())).await?
+}
+
+#[tauri::command]
+async fn tailscale_funnels() -> Result<Vec<tailscale::FunnelState>, String> {
+    blocking(tailscale::funnels).await
+}
+
+#[tauri::command]
 async fn mcp_server_status(id: String, profile: Option<String>) -> Result<mcp_server::ServerStatus, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || mcp_server::status(tool, profile.as_deref())).await?
@@ -532,6 +621,14 @@ pub fn run() {
             mcp_server_stop,
             mcp_server_revoke,
             mcp_server_config,
+            tailscale_status,
+            tailscale_download,
+            tailscale_terminal,
+            tailscale_login,
+            tailscale_stop,
+            tailscale_funnel_open,
+            tailscale_funnel_close,
+            tailscale_funnels,
             task_claims,
             task_release,
             report_context,

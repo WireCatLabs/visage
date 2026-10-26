@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
+import type { TailscaleStatus } from "@/platform/tailscale-schemas"
 import { McpServer } from "./McpServer"
 import { formProblem } from "./McpServerDialogs"
 
@@ -41,6 +42,20 @@ const RUNNING: McpServerStatus = {
   clients: [{ claimedName: "Claude", lastLoginAt: new Date().toISOString() }],
 }
 
+const READY: TailscaleStatus = {
+  os: "linux",
+  installed: true,
+  package: "deb",
+  operator: true,
+  user: "alex",
+  daemon: true,
+  backend: "running",
+  https: true,
+  funnel: true,
+  host: "h.ts.net",
+  freePorts: [443, 8443, 10000],
+}
+
 const heading = () => screen.getByRole("button", { name: /^MCP server — for chat apps in the browser/ })
 const rowOf = (name: string) => screen.getByText(name, { selector: "span" }).closest("li") as HTMLElement
 
@@ -76,6 +91,7 @@ describe("MCP server", () => {
     await user.click(await screen.findByRole("button", { name: "Start the MCP server for work" }))
 
     const dialog = screen.getByRole("dialog", { name: "Start the MCP server for tg work" })
+    await user.click(within(dialog).getByRole("radio", { name: /A tunnel I run myself/ }))
     await user.type(within(dialog).getByLabelText("The tunnel's address"), "https://x.ts.net/")
     await user.clear(within(dialog).getByLabelText("Port on this computer"))
     await user.type(within(dialog).getByLabelText("Port on this computer"), "9001")
@@ -108,6 +124,7 @@ describe("MCP server", () => {
     await user.click(heading())
     await user.click(await screen.findByRole("button", { name: "Start the MCP server for personal" }))
     const dialog = screen.getByRole("dialog")
+    await user.click(within(dialog).getByRole("radio", { name: /A tunnel I run myself/ }))
     await user.type(within(dialog).getByLabelText("The tunnel's address"), "https://x.ts.net")
     await user.click(within(dialog).getByRole("button", { name: "Start" }))
 
@@ -145,5 +162,77 @@ describe("the start form", () => {
     expect(formProblem("http://laptop.ts.net", "8765")).toMatch(/https/)
     expect(formProblem("https://x.ts.net/mcp", "8765")).toMatch(/alone/)
     expect(formProblem("https://x.ts.net", "80")).toMatch(/1024/)
+  })
+
+  it("turns Funnel on first and starts the server with the address Funnel got", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    const open = vi.spyOn(platform, "tailscaleFunnelOpen").mockResolvedValue("https://h.ts.net:8443")
+    const start = vi.spyOn(platform, "mcpServerStart").mockResolvedValue(RUNNING)
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: "Start the MCP server for work" }))
+    const dialog = screen.getByRole("dialog")
+
+    expect(await within(dialog).findByText(/turns Funnel on from/)).toHaveTextContent("https://h.ts.net")
+    await user.click(within(dialog).getByRole("button", { name: "Start" }))
+
+    expect(open).toHaveBeenCalledWith("tg", "work", 8765, expect.any(Function))
+    await waitFor(() => expect(start).toHaveBeenCalledExactlyOnceWith("tg", "work", 8765, "https://h.ts.net:8443"))
+  })
+
+  it("takes the Funnel down again when the server then fails to start", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    vi.spyOn(platform, "tailscaleFunnelOpen").mockResolvedValue("https://h.ts.net")
+    vi.spyOn(platform, "mcpServerStart").mockRejectedValue(new Error("port 8765 is in use"))
+    const close = vi.spyOn(platform, "tailscaleFunnelClose").mockResolvedValue()
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: "Start the MCP server for personal" }))
+    const dialog = screen.getByRole("dialog")
+    await within(dialog).findByText(/turns Funnel on from/)
+    await user.click(within(dialog).getByRole("button", { name: "Start" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("port 8765 is in use")
+    expect(close).toHaveBeenCalledExactlyOnceWith("tg", "personal")
+  })
+
+  it("keeps Start off until every Tailscale step is done, and Check says what is missing", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    const status = vi.spyOn(platform, "tailscaleStatus").mockResolvedValue({ ...READY, backend: "needsLogin" })
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: "Start the MCP server for personal" }))
+    const dialog = screen.getByRole("dialog")
+
+    expect(await within(dialog).findByRole("button", { name: "Log in" })).toBeVisible()
+    expect(within(dialog).getByRole("button", { name: "Start" })).toBeDisabled()
+    await user.click(within(dialog).getByRole("button", { name: "Check: Log in to Tailscale" }))
+    expect(await within(dialog).findByText("This computer is not logged in to Tailscale.")).toBeVisible()
+    expect(status.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("turns off on Stop only a Funnel the app set up that still points here", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({ ...RUNNING, connectorUrl: "https://h.ts.net/mcp" })
+    vi.spyOn(platform, "tailscaleFunnels").mockResolvedValue([
+      { tool: "tg", profile: "personal", url: "https://h.ts.net", port: 9001, live: true },
+      { tool: "tg", profile: "work", url: "https://h.ts.net:8443", port: 9002, live: false },
+    ])
+    vi.spyOn(platform, "mcpServerStop").mockResolvedValue()
+    const close = vi.spyOn(platform, "tailscaleFunnelClose").mockResolvedValue()
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await screen.findByText("personal", { selector: "span" })
+
+    expect(await within(rowOf("personal")).findByText(/through Tailscale Funnel/)).toBeVisible()
+    await user.click(within(rowOf("work")).getByRole("button", { name: "Stop the MCP server for work" }))
+    expect(close).not.toHaveBeenCalled()
+    await user.click(within(rowOf("personal")).getByRole("button", { name: "Stop the MCP server for personal" }))
+    await waitFor(() => expect(close).toHaveBeenCalledExactlyOnceWith("tg", "personal"))
   })
 })

@@ -10,6 +10,7 @@ import { platform } from "@/platform/bridge"
 // measurement is not hidden by the browser's 500 ms grace period after input. `?crash=<section>` opens that section
 // and breaks its render. `?signin=<tool>` opens that tool's in-window sign-in for a profile named personal.
 // `?mcp=<tool>` and `?mcp-fail=<tool>` open that tool's details, where its MCP server section starts open.
+// `?tailscale=<state>` opens tg's, with the Start dialog's Tailscale guide at that state (`src/platform/mock-tailscale.ts`).
 export async function runMockScenario() {
   if (platform.kind !== "mock") return
   const params = new URLSearchParams(window.location.search)
@@ -23,7 +24,8 @@ export async function runMockScenario() {
   if (step) useOnboarding.getState().reopen(step.id)
   const signIn = params.get("signin")
   if (signIn) useSignIn.getState().start(signIn, "personal")
-  const mcp = params.get("mcp") ?? params.get("mcp-fail") ?? params.get("mcp-old")
+  const mcp =
+    params.get("mcp") ?? params.get("mcp-fail") ?? params.get("mcp-old") ?? (params.has("tailscale") ? "tg" : null)
   if (mcp) {
     useNav.getState().go("tools")
     await useTools.getState().refresh()

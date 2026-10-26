@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
+import type { FunnelState } from "@/platform/tailscale-schemas"
 import { cx } from "@/ui/cx"
 import { Skeleton } from "@/ui/Skeleton"
 import { useProfiles } from "./Health"
@@ -15,6 +16,7 @@ const keyOf = (profile: string | null) => profile ?? ""
 function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const params = new URLSearchParams(window.location.search)
+  if (params.has("tailscale") && id === "tg") return true
   return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old")].includes(id)
 }
 
@@ -41,6 +43,20 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
   const { profiles, error: profilesError } = useProfiles(tool.id)
   const [states, setStates] = useState<Record<string, RowState>>({})
   const calls = useRef<Record<string, number>>({})
+  const [funnels, setFunnels] = useState<FunnelState[]>([])
+
+  // Only funnels the app set up; a missing Tailscale simply has none.
+  const loadFunnels = useCallback(async () => {
+    try {
+      setFunnels((await platform.tailscaleFunnels()).filter((f) => f.tool === tool.id))
+    } catch {
+      setFunnels([])
+    }
+  }, [tool.id])
+
+  useEffect(() => {
+    if (open) loadFunnels()
+  }, [open, loadFunnels])
 
   const targets = useMemo<(string | null)[] | undefined>(
     () => (profiles === undefined ? undefined : profiles === null ? [null] : profiles.map((p) => p.name)),
@@ -107,9 +123,9 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
       {open && (
         <div id={`${headingId}-body`} className="flex min-w-0 flex-col gap-3">
           <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
-            Lets ChatGPT or Claude in the browser reach {tool.name} through a tunnel you run, such as Tailscale Funnel.
-            Agents on this computer do not need it. A browser app logs in once with the code shown here, and then acts
-            with the profile's permissions.
+            Lets ChatGPT or Claude in the browser reach {tool.name} through a tunnel: Tailscale Funnel, which WireCat
+            sets up for you, or one you run. Agents on this computer do not need it. A browser app logs in once with the
+            code shown here, and then acts with the profile's permissions.
           </p>
           {targets === undefined ? (
             profilesError ? (
@@ -130,8 +146,15 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
                   tool={tool}
                   profile={profile}
                   row={states[keyOf(profile)] ?? { state: "loading" }}
-                  reload={() => load(profile)}
-                  settle={(data) => settle(profile, data)}
+                  funnel={funnels.find((f) => f.profile === profile) ?? null}
+                  reload={() => {
+                    load(profile)
+                    loadFunnels()
+                  }}
+                  settle={(data) => {
+                    settle(profile, data)
+                    loadFunnels()
+                  }}
                 />
               ))}
             </ul>

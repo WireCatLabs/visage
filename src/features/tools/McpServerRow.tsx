@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
+import type { FunnelState } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { ErrorNotice } from "@/ui/ErrorNotice"
@@ -14,7 +15,7 @@ export type RowState =
   | { state: "ready"; data: McpServerStatus }
   | { state: "error"; message: string }
 
-type Busy = "stopping" | "copying" | null
+type Busy = "stopping" | "copying" | "closing" | null
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -45,13 +46,15 @@ export function McpServerRow(props: {
   tool: CatalogTool
   profile: string | null
   row: RowState
+  /** The Tailscale Funnel the app set up for this server, if any. */
+  funnel: FunnelState | null
   reload(): void
   settle(data: McpServerStatus): void
 }) {
-  const { tool, profile, row, reload, settle } = props
+  const { tool, profile, row, funnel, reload, settle } = props
   const [busy, setBusy] = useState<Busy>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  const [starting, setStarting] = useState(false)
+  const [starting, setStarting] = useState(() => openedByScenario(tool.id, profile))
   const [forgetting, setForgetting] = useState(false)
   const name = profile ?? tool.name
   const data = row.state === "ready" ? row.data : null
@@ -71,6 +74,19 @@ export function McpServerRow(props: {
     setFailure(null)
     try {
       await platform.mcpServerStop(tool.id, profile)
+      if (funnel?.live) await platform.tailscaleFunnelClose(tool.id, profile)
+    } catch (e) {
+      setFailure(message(e))
+    }
+    setBusy(null)
+    reload()
+  }
+
+  const closeFunnel = async () => {
+    setBusy("closing")
+    setFailure(null)
+    try {
+      await platform.tailscaleFunnelClose(tool.id, profile)
     } catch (e) {
       setFailure(message(e))
     }
@@ -125,6 +141,7 @@ export function McpServerRow(props: {
           It runs an older version of {tool.bin}. Stop and start it to update.
         </p>
       )}
+      {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} onClose={closeFunnel} />}
       {data?.running && <Running data={data} />}
       {data?.available && (data.clients.length > 0 || data.running) && (
         <Clients data={data} onForget={() => setForgetting(true)} />
@@ -158,6 +175,44 @@ export function McpServerRow(props: {
       />
     </li>
   )
+}
+
+/** Browser build only: `?tailscale=<state>` opens tg's Start dialog for the profile personal, at that guide state. */
+function openedByScenario(id: string, profile: string | null) {
+  if (platform.kind !== "mock") return false
+  const state = new URLSearchParams(window.location.search).get("tailscale")
+  return state !== null && state !== "leftover" && id === "tg" && profile === "personal"
+}
+
+function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: Busy; onClose(): void }) {
+  const { data, funnel, busy, onClose } = props
+  const ours = data.connectorUrl?.startsWith(funnel.url) ?? false
+  if (data.running && funnel.live && ours)
+    return (
+      <p className="pl-[1.6rem] text-[0.85rem] text-ink-soft">
+        Reachable from the internet through Tailscale Funnel, which WireCat set up. Stop turns it off.
+      </p>
+    )
+  if (data.running && !funnel.live && ours)
+    return (
+      <p className="pl-[1.6rem] text-[0.85rem] text-warn-ink">
+        Tailscale Funnel for this address is off, so browser apps cannot reach the server. Stop and start it to turn
+        Funnel on again.
+      </p>
+    )
+  if (!data.running && funnel.live)
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
+        <p className="text-[0.85rem] text-warn-ink">
+          Tailscale Funnel still sends <span className="selectable font-mono">{funnel.url}</span> to this computer,
+          though the server is off.
+        </p>
+        <Button size="sm" onClick={onClose} disabled={busy !== null}>
+          {busy === "closing" ? "Turning off…" : "Turn Funnel off"}
+        </Button>
+      </div>
+    )
+  return null
 }
 
 function Running({ data }: { data: McpServerStatus }) {

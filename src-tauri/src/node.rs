@@ -18,6 +18,11 @@ pub fn root() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("WIRECAT_NODE_DIR") {
         return Some(PathBuf::from(dir));
     }
+    app_data().map(|d| d.join("node"))
+}
+
+/// The app's own data folder, `<app local data>/dev.wirecat.desktop`.
+pub fn app_data() -> Option<PathBuf> {
     let home = paths::home();
     let base = if cfg!(windows) {
         std::env::var_os("LOCALAPPDATA").map(PathBuf::from).or_else(|| home.map(|h| h.join("AppData/Local")))
@@ -29,7 +34,7 @@ pub fn root() -> Option<PathBuf> {
             .filter(|p| p.is_absolute())
             .or_else(|| home.map(|h| h.join(".local/share")))
     }?;
-    Some(base.join(APP_ID).join("node"))
+    Some(base.join(APP_ID))
 }
 
 pub struct Installed {

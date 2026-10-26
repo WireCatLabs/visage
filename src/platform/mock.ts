@@ -10,6 +10,7 @@ import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
 import { linkedProfiles, signInMock } from "./mock-signin"
+import { tailscaleMock } from "./mock-tailscale"
 import type {
   Diagnosis,
   InstallEvent,
@@ -492,6 +493,7 @@ export function createMock(os: Platform["os"]): Platform {
     async openSetup() {},
     ...signInMock(),
     ...mcpServerMock(),
+    ...tailscaleMock(),
     ...reportMock,
     ...runsMock,
     ...settingsMock,

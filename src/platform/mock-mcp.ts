@@ -42,7 +42,7 @@ export function mcpServerMock(): Pick<
   const servers = new Map<string, McpServerStatus>()
   const key = (id: string, profile: string | null) => `${id}:${profile ?? ""}`
   const shown = params.get("mcp")
-  if (shown) {
+  if (shown && params.get("tailscale") !== "leftover") {
     const ago = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000).toISOString()
     servers.set(
       key(shown, shown === "memo" ? null : "personal"),

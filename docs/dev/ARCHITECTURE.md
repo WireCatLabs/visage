@@ -30,6 +30,8 @@ src-tauri/src/
   chats.rs      which chat apps drive Hermes and OpenClaw, by name only; the PATH Hermes's gateway starts from.
   mcp.rs        which WireCat MCP servers each agent has registered; adding through the tool's own `mcp add`.
   mcp_server.rs each tool's HTTP MCP server for browser apps: its own `mcp server start|stop|status` and `mcp --revoke`.
+  tailscale.rs  Tailscale Funnel for an MCP server: its state, `tailscale login`, and Funnel on and off for ports the app set up.
+  tailscale_install.rs Tailscale's official installer or package, downloaded into Downloads and handed to the system.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
@@ -239,6 +241,33 @@ The login code, the address and the apps' names leave Rust unmasked, an exceptio
 owner needs them as they are. They are never logged and never put in a report. A tool from before `mcp server`
 (cli-core 0.445; memo and drive need their own release with it) answers "unknown command" or "too many arguments";
 `status` then reports it unavailable, and the row says it arrives with the next update, with nothing to press.
+
+## Tailscale Funnel for the MCP server
+
+The Start dialog of an MCP server row offers Tailscale Funnel, set up by the app, or a tunnel the owner runs (step 4 of
+`docs/dev/plans/2026-10-26-mcp-full-commands.md`). The guide has four steps, each with Check; the window re-checks when
+it regains focus. All of it is `tailscale.rs` running the `tailscale` CLI found on PATH (or inside the Mac app with
+`TAILSCALE_BE_CLI=1`, or in Program Files):
+
+1. **Install.** macOS and Windows: `tailscale_install.rs` follows `Tailscale-latest-macos.pkg` or
+   `tailscale-setup-latest.exe` on pkgs.tailscale.com to the versioned file, checks its `.sha256`, saves it in
+   Downloads and opens it; the system's installer asks for the password. Linux (Debian and Fedora families): the newest
+   package from Tailscale's apt `Packages` or yum `primary.xml`, checked against the checksum there, shown selected in
+   the file manager (the opener plugin's `reveal_item_in_dir`, D-Bus `FileManager1.ShowItems`). Tailscale's
+   `install.sh` line is the second option, to copy or open in a terminal. On Linux the step also needs this user as
+   Tailscale's operator (`tailscale debug prefs`, a hint only; a refused write says the same).
+2. **Log in.** `tailscale login`, only while `BackendState` is `NeedsLogin`; the page it prints is opened when its host
+   is login.tailscale.com or console.tailscale.com. The step polls until the state is `Running`.
+3. **Allow Funnel.** The node's `CapMap` has `https` and `funnel`; otherwise the guide opens the admin console's DNS or
+   Access controls page.
+4. **Connect.** `tailscale funnel --bg --https=<public> http://127.0.0.1:<port>`, then `mcp server start` with the
+   public address. The public port is one of the tailnet's Funnel ports (`funnel-ports` in `CapMap`; 443, 8443, 10000)
+   that nothing in `funnel status --json` uses, the same as last time when free, so the address and the browser apps'
+   logins survive. No `--yes`: a question about the owner's own settings fails instead of overwriting them.
+
+What the app turned on is recorded in `<app local data>/dev.wirecat.desktop/tailscale-funnels.json`. Stop, and a server
+that fails to start, turn off only that port (`tailscale funnel --https=<public> off`), and only while it still points
+at the recorded local port; never `funnel reset`. The row says when a Funnel is still on with the server off.
 
 ## Growing the app
 

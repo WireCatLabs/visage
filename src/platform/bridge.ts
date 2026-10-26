@@ -34,7 +34,18 @@ import {
 } from "./schemas"
 import { SettingsSchema } from "./settings-schemas"
 import { SignInEventSchema } from "./signin-schemas"
+import { FunnelStateSchema, PageEventSchema, TailscaleDownloadSchema, TailscaleStatusSchema } from "./tailscale-schemas"
 import type { Platform } from "./types"
+
+/** A page event that does not parse is dropped: the browser has the page open anyway. */
+function pages(onPage: (url: string) => void) {
+  const channel = new Channel<unknown>()
+  channel.onmessage = (raw) => {
+    const parsed = v.safeParse(PageEventSchema, raw)
+    if (parsed.success) onPage(parsed.output.url)
+  }
+  return channel
+}
 
 const call = async <S extends v.GenericSchema>(schema: S, cmd: string, args?: Record<string, unknown>) =>
   v.parse(schema, await invoke(cmd, args))
@@ -126,6 +137,15 @@ function createTauri(): Platform {
     mcpServerStop: (id, profile) => invoke("mcp_server_stop", { id, profile }),
     mcpServerRevoke: (id, profile) => invoke("mcp_server_revoke", { id, profile }),
     mcpServerConfig: (id, profile) => call(v.string(), "mcp_server_config", { id, profile }),
+    tailscaleStatus: () => call(TailscaleStatusSchema, "tailscale_status"),
+    tailscaleDownload: (kind) => call(TailscaleDownloadSchema, "tailscale_download", { kind }),
+    tailscaleTerminal: (what) => invoke("tailscale_terminal", { what }),
+    tailscaleLogin: (onPage) => invoke("tailscale_login", { onEvent: pages(onPage) }),
+    tailscaleStop: () => invoke("tailscale_stop"),
+    tailscaleFunnelOpen: (id, profile, port, onPage) =>
+      call(v.string(), "tailscale_funnel_open", { id, profile, port, onEvent: pages(onPage) }),
+    tailscaleFunnelClose: (id, profile) => invoke("tailscale_funnel_close", { id, profile }),
+    tailscaleFunnels: () => call(v.array(FunnelStateSchema), "tailscale_funnels"),
     taskClaims: (id, profile) => call(ClaimsSchema, "task_claims", { id, profile }),
     taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
