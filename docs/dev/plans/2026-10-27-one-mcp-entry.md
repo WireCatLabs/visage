@@ -236,3 +236,17 @@ per cli so profile access is managed via desktop/config". The gateway package is
 - drive, memo and zm have their own `mcp` commands: drive and zm adopt the module; memo has no profiles and only
   needs the path prefix.
 - RISK-25…27 still apply. NEED-83 and NEED-84 are answered by this section; NEED-85 and NEED-86 stay open; NEED-91 confirms it.
+
+## 10. Simplified (2026-10-27, second answer)
+
+The owner: "I just realized that I overcompllicated. all profiles are available in cli and mcp. no switches so we
+don't bloat ui and settings". And: "I don't want to overengineer at this stage".
+
+- No exposure lists, no `mcp.local`/`mcp.remote`, no Desktop panel of ticks. NEED-85 and NEED-86 are void.
+- `<bin> mcp` (stdio) and `<bin> mcp --http` serve every profile of that tool; each tool call takes a required
+  `profile` enum of the tool's profiles, no default, "ask if not named".
+- One public address: Tailscale's path routing is the single entry (`/tg` → tg's port, `/max` → max's port), so no
+  WireCat process routes between tools. Each CLI still runs its own server.
+- Size: the cli-core module (start `<bin> <profile> mcp` children on demand, add `profile`, forward) is small-medium,
+  ~400–600 lines with tests; tg, max, wa get it by updating cli-core; drive and zm wire their own `mcp`; memo has no
+  profiles. The path-prefix login change in cli-core is small but untested.
