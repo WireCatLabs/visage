@@ -48,10 +48,11 @@ Three traps found on the way:
    id) and log buffers to `~/.local/share/tailscale/` ([`logpolicy/logpolicy.go#L210-L259`](https://github.com/tailscale/tailscale/blob/v1.104.2/logpolicy/logpolicy.go#L210-L259):
    `TS_LOGS_DIR` first, then the default state dir's parent, created with `MkdirAll`). That folder is unknown to
    `storage.rs`. (Created by this test and removed again.)
-3. **Logs are uploaded by default.** Both runs got a `LogID`, so logs (including the list of network interfaces) are
-   sent to Tailscale's log server unless `--no-logs-no-support` / `TS_NO_LOGS_NO_SUPPORT=true` is set
+3. **Logs are uploaded by default, by code.** Upload is on unless `--no-logs-no-support` / `TS_NO_LOGS_NO_SUPPORT=true` is set
    ([`cmd/tailscaled/tailscaled.go#L234`](https://github.com/tailscale/tailscale/blob/v1.104.2/cmd/tailscaled/tailscaled.go#L234),
    [`logpolicy/logpolicy.go#L895-L896`](https://github.com/tailscale/tailscale/blob/v1.104.2/logpolicy/logpolicy.go#L895-L896)). Turning it off also turns off support.
+   Both runs were assigned a `LogID` and the local log holds the list of network interfaces; network traffic to the log
+   server was not captured, so what was actually uploaded is inferred, not seen.
 
 ## 1. `tailscaled` as a normal user
 
@@ -125,7 +126,10 @@ Not run end to end here: that needs a login (NEED-74).
 - **Ephemeral:** `Ephemeral: true` registers with the ephemeral login flag
   ([`tsnet.go#L967-L968`](https://github.com/tailscale/tailscale/blob/v1.104.2/tsnet/tsnet.go#L967-L968)). The docs say ephemeral nodes come from ephemeral auth keys or
   `--state=mem:` and are removed 30–60 min after last activity ([kb/1111](https://tailscale.com/kb/1111/ephemeral-nodes)).
-  I think an interactive login with the ephemeral flag works the same way; not verified.
+  The docs say ephemeral nodes are made "not through the regular authentication flow". `tailscaled --state=mem:` sets the
+  same login flag ([`tailscaled.go#L456-L459`](https://github.com/tailscale/tailscale/blob/v1.104.2/cmd/tailscaled/tailscaled.go#L456-L459))
+  and is the documented way, so the test login (NEED-74) uses that; whether a `tsnet` `Ephemeral` node can log in
+  interactively is not verified.
 - **License:** BSD 3-Clause ([`LICENSE`](https://github.com/tailscale/tailscale/blob/v1.104.2/LICENSE)) — ship the notice with Desktop.
 - **Size:** not measured. The build needs Go 1.27.3 (`go.mod`) and this machine has 1.26.5; a cold build with a new
   toolchain does not fit the one-minute cap. Ceiling for comparison: official static `tailscaled` 43 MB, `tailscale`
@@ -142,7 +146,7 @@ Not run end to end here: that needs a login (NEED-74).
   `https://wirecat-tbooku.<tailnet>.ts.net` ([kb/1223](https://tailscale.com/kb/1223/funnel)).
 - Funnel limits are per node: the allowed ports come from the node's own `funnel-ports` attribute
   ([`ipn/serve.go#L669`](https://github.com/tailscale/tailscale/blob/v1.104.2/ipn/serve.go#L669)), the serve config belongs to that node's backend, and the certificate
-  name is that node's `CertDomains[0]`. So the helper node can use **443** (URL without a port) even if the
+  name is that node's `CertDomains[0]`. So, by code reading, the helper node can use **443** (URL without a port) even if the
   system node already uses 443.
 - Policy: the default `nodeAttrs` gives `funnel` to `autogroup:member`
   ([kb/1223](https://tailscale.com/kb/1223/funnel)). A node logged in interactively by a member gets it
@@ -161,14 +165,17 @@ Not run end to end here: that needs a login (NEED-74).
 - **Coexistence.** Separate state, socket (or none for `tsnet`) and random UDP port: no conflict with a system
   `tailscaled` (seen on Linux). Two devices appear in the admin console for one computer.
 - **Battery/CPU.** Idle before login was zero; a logged-in node keeps a connection to Tailscale's servers and the
-  netstack path costs more CPU per byte than the kernel path. Not measured here.
+  netstack path probably costs more CPU per byte than the kernel path. Not measured here.
 - **Logs.** Uploaded by default (see above); a privacy choice — NEED-76.
 
 ## What a test login needs from the owner
 
-One browser login to the owner's tailnet from the helper (or the user-run `tailscaled`), on this Linux machine.
-Ephemeral if possible so the node removes itself; otherwise remove it in the admin console afterwards. If device
-approval is on, approve it once. HTTPS, MagicDNS and the `funnel` attribute are already in place (NEED-68).
+One browser login to the owner's tailnet on this Linux machine, using the documented ephemeral path: the user-run
+`tailscaled` 1.104.2 with `--state=mem:` plus `--statedir` (certificates still get a folder: `VarRoot = --statedir`,
+[`tailscaled.go#L447`](https://github.com/tailscale/tailscale/blob/v1.104.2/cmd/tailscaled/tailscaled.go#L447)), the
+short socket, `--port=0` and `TS_NO_LOGS_NO_SUPPORT=true`. Then `tailscale funnel --bg 127.0.0.1:<port>` against a
+sandboxed MCP server, a request from outside, `funnel off`, stop by PID. The node disappears 30–60 min later
+([kb/1111](https://tailscale.com/kb/1111/ephemeral-nodes)). If device approval is on, approve it once. HTTPS, MagicDNS and the `funnel` attribute are already in place (NEED-68).
 
 ## Open decisions (journal)
 
