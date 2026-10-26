@@ -66,6 +66,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-17 · Все команды через MCP, включая вход (session start), по умолчанию разрешены; одна настройка, чтобы выключить.** Слава: «I think we need to allow session start and so on via mcp for full support … I'd allow all commands by default and we may just have a setting to turn that off … MCP is not smth I wanna promote to cli users but it should work and allow us to be found via mcp … a great marketing thing». План пишет агент: `docs/dev/plans/2026-10-26-mcp-full-commands.md`. **Итог:** план написан (`88bf1e7` + поправка: где живёт ожидающий вход, проверка личности на странице по спецификации, read-only, `mcp config --allow-writes`, две фазы); открыты NEED-52…55, находки FIND-34, RISK-14. Заодно: смёржены MCP-заметки навыков tg #738, wa #267, zoom #276, drive #247; max — PR без `npx` (RISK-13) в работе.
 
+- **TASK-18 · Вход в инструменты из WireCat Desktop, управление MCP-сервером и туннелем из приложения.** Слава: «if we use mcp we would have to pass user credentials to ai agent and they will leak … we can actually drive the setup from the desktop app so users enter credentials there or in browser … I'd allow enabling mcp, starting/stopping/status check of cli server right from the desktop and also setting up a tunnel with cloudflared/tailscale». Агент переписывает план `docs/dev/plans/2026-10-26-mcp-full-commands.md`; NEED-52..55 пересматриваются.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -420,6 +422,8 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **RISK-13 · `npx @wirecat/max-cli` без версии в SKILL.md max-cli (~строка 179)** — правило портала Anthropic «unpinned launcher» может заблокировать заявку. Чинить в max-cli.
 - **FIND-34 · Устаревшая строка в навыке WhatsApp (TASK-17).** `whatsapp-cli/skills/whatsapp-cli/SKILL.md:34` говорит, что `chats delete|clear` «not over MCP», но код их не исключает; с коммита cli-core `1c94a5d1` уровень `ask` по MCP выполняется. Исправить вместе с планом `docs/dev/plans/2026-10-26-mcp-full-commands.md`.
 - **RISK-14 · Агент может снова включить выключенный вход по MCP (TASK-17).** Сейчас `config set` от агента держит только `mcp.authority: deny`. Если его открыть по умолчанию, агент запишет `permissions` и снимет любой запрет. zoom это уже отказывает (`zoom-cli/src/mcp.ts:90-93`), memo исключает `config unset`, остальные — нет. В плане: общее правило cli-core — по MCP `permissions` не пишется никогда.
+
+- **SEC-5 · Отчёт об ошибке из Desktop отправил бы набранный текст сообщений.** cli-core 0.439.0 хранит `argv` как набрано; отчёт прикладывает 20 последних упавших запусков, а маска (`redact.rs`) смотрит только имена полей и форму email/телефона/токена. Нашла соседняя сессия (cli-template). Исправлено: `src-tauri/src/report.rs` `mask_typed_words` — остаются только слова команды и имена флагов (4612fd4), тест `keeps_only_command_words_and_flag_names_of_typed_runs`.
 
 ## 4. Вопросы к Славе
 
