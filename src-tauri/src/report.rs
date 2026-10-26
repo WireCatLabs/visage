@@ -181,6 +181,29 @@ fn hide_agent_sessions(attachments: &mut Value) {
         if let Some(session) = run.pointer_mut("/agent/session_id").filter(|s| s.is_string()) {
             *session = Value::String("•••".into());
         }
+        mask_typed_words(run);
+    }
+}
+
+/// Runs keep `argv` as typed (cli-core 0.439.0), so chat titles and message text are in it. Without the tool's
+/// command tree the app cannot tell an option's value from a flag, so it keeps only the command words and flag names,
+/// stricter than cli-core's own `doctor reports create`.
+fn mask_typed_words(run: &mut Value) {
+    let command: Vec<String> =
+        run["command"].as_str().unwrap_or_default().split_whitespace().map(String::from).collect();
+    let Some(argv) = run["argv"].as_array_mut() else { return };
+    let mut words = command.iter().peekable();
+    for arg in argv.iter_mut() {
+        let Some(s) = arg.as_str() else { continue };
+        let kept = if words.peek().is_some_and(|w| *w == s) {
+            words.next();
+            s.to_string()
+        } else if s.starts_with('-') && s.len() > 1 {
+            s.split('=').next().unwrap_or(s).to_string()
+        } else {
+            "[redacted]".to_string()
+        };
+        *arg = Value::String(kept);
     }
 }
 
@@ -248,6 +271,20 @@ mod tests {
                 { "agent": { "kind": "codex", "session_id": null } }
             ] }] })),
         }
+    }
+
+    #[test]
+    fn keeps_only_command_words_and_flag_names_of_typed_runs() {
+        let mut ctx = context();
+        ctx.attachments = Some(json!({ "runs": [{ "tool": "tg", "runs": [{
+            "command": "messages send",
+            "argv": ["personal", "messages", "send", "Mom", "SYNTHETIC-CONTENT", "--limit", "5", "--chat=Family"]
+        }] }] }));
+        let body = body(draft("Send fails", "it fails"), &mut ctx).unwrap();
+        assert_eq!(
+            body["report"]["attachments"]["runs"][0]["runs"][0]["argv"],
+            json!(["[redacted]", "messages", "send", "[redacted]", "[redacted]", "--limit", "[redacted]", "--chat"])
+        );
     }
 
     #[test]
