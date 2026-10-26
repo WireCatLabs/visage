@@ -1,15 +1,24 @@
-# Every command over MCP, sign-in included
+# Every command over MCP; sign-in from WireCat Desktop
 
-Asked on 2026-10-26 (journal TASK-17). Plan only: nothing in the CLI repositories is changed yet.
-Open decisions: NEED-52 to NEED-55. Findings: FIND-34, RISK-14.
+Asked on 2026-10-26 (journal TASK-17). **Revised the same day for TASK-18:** sign-in moves out of MCP and into
+WireCat Desktop. Plan only: nothing in the CLI repositories or in Desktop code is changed yet.
 
-Goal, in the owner's words: "allow session start and so on via mcp for full support … allow all commands by default
-and we may just have a setting to turn that off". MCP is not promoted to CLI users. It must work so that WireCat can
-be found and listed through MCP.
+Open decisions: NEED-53, NEED-57, NEED-58, NEED-59. Superseded or answered: NEED-52, NEED-54, NEED-55 (section 9).
+Findings: FIND-34, RISK-14, RISK-15.
 
-Code references are to the `main` branch on 2026-10-26: cli-core `3540f7cc`, cli-base `a89dffe`, tg-cli `6f25538`,
-max-cli `85ba8edc`, whatsapp-cli `0eaae4b`, zoom-cli `307323b`, drive-cli `2e71d32`, cli-memo `f198a69`. All paths
-are under `~/Projects/AI/`.
+The owner, first (TASK-17): "allow session start and so on via mcp for full support … allow all commands by default
+and we may just have a setting to turn that off". MCP is not promoted to CLI users, but it must work so that WireCat
+can be found and listed through MCP.
+
+The owner, then (TASK-18): "if we use mcp we would have to pass user credentials to ai agent and they will leak, so
+probably need to set up the auth locally anyway. but whats great is we can actually drive the setup from the desktop
+app so users enter credentials there or in browser so they dont feed stuff to ai agent but still can login without
+using the terminal. And I'd allow enabling mcp, starting/stopping/status check of cli server right from the desktop
+and also setting up a tunnel with cloudflared/tailscale so they dont have to set it up via terminal".
+
+Code references are to `main` on 2026-10-26: cli-core `6d8f415a`, cli-base `a89dffe`, tg-cli `6f25538`, max-cli
+`85ba8edc`, whatsapp-cli `0eaae4b`, zoom-cli `307323b`, drive-cli `2e71d32`, cli-memo `f198a69`. CLI paths are under
+`~/Projects/AI/`; Desktop paths are in this repository.
 
 ## 1. What MCP leaves out today, and why
 
@@ -28,34 +37,28 @@ The three MCP tools (`<tool>_tools_search`, `<tool>_read`, `<tool>_write`) are b
 
 Commands that are offered but blocked by permissions (shown as unavailable, with the reason):
 
-- `mcp.authority` is `deny` by default (`cli-core/src/sends/permissions.ts:31`, owner ruling NEED-1662 in the cli-core
-  journal). It blocks commands marked `grantsAuthority`: `config set` (`cli-core/src/cli/config-command.ts:76`),
-  `upgrade` (`cli-core/src/cli/upgrade-command.ts:51`), `bot` settings (`cli-core/src/cli/bot/command.ts:37,109,215`),
-  memo `mail add` and mail rules (`cli-memo/src/mail/setup-command.ts:17`, `cli-memo/src/mail/command.ts:460,502,567`),
+- `mcp.authority` is `deny` by default (`cli-core/src/sends/permissions.ts:31`, cli-core ruling 1662). It blocks
+  commands marked `grantsAuthority`: `config set` (`cli-core/src/cli/config-command.ts:76`), `upgrade`
+  (`cli-core/src/cli/upgrade-command.ts:51`), `bot` settings (`cli-core/src/cli/bot/command.ts:37,109,215`), memo
+  `mail add` and mail rules (`cli-memo/src/mail/setup-command.ts:17`, `cli-memo/src/mail/command.ts:460,502,567`),
   memo `folders add|update`, drive `config set|unset`, `models set` and `skill install`.
 - `bot.api` is deny over MCP only (`cli-core/src/sends/permissions.ts:65-78`). `replies.send` is deny everywhere
   (`permissions.ts:29`).
-- Level `ask` already means "go ahead" over MCP (`cli-core/src/mcp/server.ts:190-191`, owner ruling NEED-773, commit
+- Level `ask` already means "go ahead" over MCP (`cli-core/src/mcp/server.ts:190-191`, cli-core ruling 773, commit
   `1c94a5d1`). So "allow by default" needs no change for ordinary writes.
 
 ### Sign-in, per tool
 
-| Tool | Command | Why it is out | What it needs from a person |
-| --- | --- | --- | --- |
-| tg | `session start [qr\|phone]` | interactive (`tg-cli/src/commands/session.ts:205`); refuses without a terminal unless `--qr-file` (`session.ts:133-138`) | scan a QR; or phone number, login code, 2FA password (`session.ts:183-185`); first time also app keys from my.telegram.org |
-| tg | `setup` | interactive (`tg-cli/src/commands/setup.ts:83`) | all of the above, plus skill install |
-| max | `session` group | `mcp: false` on the group (`max-cli/src/commands/session.ts:29`), so `session end` is out too | QR scan, then the cloud password through `ask` (`session.ts:207-209`); `token` reads a pasted token; `qr-chrome` and `sms` open a local Chromium (`session.ts:181-187`) |
-| max | `setup` | interactive and `mcp: false` (`max-cli/src/commands/setup.ts:92`) | as above |
-| max | `bot uploads` | `mcp: false` (`max-cli/src/commands/bot-setup.ts:11`) | owner-only bot set-up |
-| wa | `session` group | `mcp: false` on the group (`whatsapp-cli/src/commands/session.ts:44`), start is interactive (`session.ts:49-52`), so `session end` (`session.ts:90`) is out too | scan a QR that renews often; or type an 8-character pairing code into the phone |
-| wa | `setup` | interactive and `mcp: false` (`whatsapp-cli/src/commands/setup.ts:45-49`) | as above |
-| zoom | `session start` | interactive (`zoom-cli/src/setup-commands.ts:194`); also counted as an authority change (`zoom-cli/src/mcp.ts:29`); refuses `--no-input` and `CI` (`setup-commands.ts:177-181`) | approve in a browser (OAuth with PKCE); needs `config set zoom.client_id` first |
-| drive | `session start`, `session end` | `mcp: false` (`drive-cli/src/commands/session.ts:28,85`) | Google sign-in in a browser; `--no-browser` prints the URL (`session.ts:39`) |
-| memo | (no sign-in) | memo has no session; adding a mail account is `mail add`, an authority change | none |
+| Tool | Command | Over MCP today | What it asks a person | Works without a terminal today? |
+| --- | --- | --- | --- | --- |
+| wa | `session start [qr\|phone]` | out: `mcp: false` on the group (`whatsapp-cli/src/commands/session.ts:44`), interactive (`session.ts:49-52`) | scan a QR that renews; or type the phone number, then type an 8-character pairing code into the phone | **QR: yes.** With `--json` each QR is a stderr line `{"event":"qr","qr":{"text","expires_at","scan"}}` (`cli-core/src/terminal/login-qr.ts:53-65`). Phone: no, it refuses (`whatsapp-cli/src/session.ts:107-140`) |
+| max | `session start [token\|qr\|qr-chrome\|sms]` | out: `mcp: false` on the group (`max-cli/src/commands/session.ts:29`) | QR scan, then the cloud password if set (`session.ts:199-210`, `askPassword` at 203); `token` reads a pasted token (`session.ts:152-154`); `qr-chrome` and `sms` open a local Chromium (`session.ts:181-187`) | QR: yes, same QR line (`session.ts:189-195`), until a cloud password is needed; it then refuses (`session.ts:200-205`) |
+| tg | `session start [qr\|phone]` | out: interactive (`tg-cli/src/commands/session.ts:205`) | first time: app keys from my.telegram.org (`--app browser`: `api_id` and hidden `api_hash`; `--app auto`: phone and a code). Then a QR scan, or phone, login code and 2FA password (`session.ts:146-185`) | no: refuses without a TTY unless `--qr-file` (`session.ts:133-140`); every question goes through one `ask` function (`session.ts:135-141`) |
+| zoom | `session start` | out: interactive (`zoom-cli/src/setup-commands.ts:194`); also an authority change (`zoom-cli/src/mcp.ts:29`) | approve in a browser (OAuth with PKCE); needs `config set zoom.client_id` first (`setup-commands.ts:172-173`) | partly: refuses `--no-input` and `CI` (`setup-commands.ts:176-181`); prints the URL to stderr (`setup-commands.ts:189`); falls back to a pasted redirect (`readPaste`) |
+| drive | `session start` | out: `mcp: false` (`drive-cli/src/commands/session.ts:28`) | Google sign-in in the browser | yes: opens the browser itself and prints the URL to stderr (`session.ts:60-61`) |
+| memo | (no sign-in) | — | adding a mail account is `mail add`, an authority change | — |
 
-The shared contract template marks the whole `session` group `mcp: false` and `setup` interactive
-(`cli-core/src/cli/contract-templates.ts:52,57-60`). cli-base checks tools against it
-(`cli-base/src/dev/shared-contracts.ts:97`), so the template must change first, or every tool's contract test fails.
+`setup` (tg, max, wa) is interactive everywhere and also installs skills and writes agent settings.
 
 ### Other `mcp: false` commands (owner-only on purpose)
 
@@ -65,242 +68,269 @@ takes the bot token (`cli-core/src/cli/bot/command.ts:35`), drive `api call`, th
 (`drive-cli/src/commands/remote.ts:116`), and memo's list: `upgrade`, `skill install`, `jobs start|stop`, `config unset`
 (`cli-memo/src/mcp/catalogue.ts:14-21`). Zoom also leaves out `complete` (`zoom-cli/src/mcp.ts:25`).
 
-### Where the "no sign-in over MCP" text comes from
-
-`max-cli/skills/max-cli/SKILL.md:54`: "Через MCP вход недоступен". It describes reasons 1 and 2 above.
-
 **FIND-34 · Stale skill text in WhatsApp.** `whatsapp-cli/skills/whatsapp-cli/SKILL.md:34` says `chats delete|clear`
 are "not over MCP". No code leaves them out (`cli-core/src/cli/messenger/records-command.ts:131-154`); since commit
 `1c94a5d1` the level `ask` goes ahead over MCP. The line predates that commit. Fix it with this work.
 
-## 2. The design
+## 2. The direction (TASK-18)
 
-### 2.1 Sign-in is two kinds of step
+1. **A secret never passes through an agent.** Phone numbers, login codes, 2FA and cloud passwords, tokens and app
+   keys are typed into WireCat Desktop, or into the provider's own page in a browser. Never into a chat.
+2. **Desktop drives sign-in; the tool still does it.** Rule 1 (`CLAUDE.md`): Desktop never reimplements a tool's
+   sign-in. So the tool speaks a small machine-readable protocol (section 3), and Desktop only draws it: a QR image,
+   a code to type into the phone, an input field, a masked password, progress.
+3. **Over MCP, `session start` signs nothing in.** It tells the agent where the person finishes (section 4).
+4. **Desktop manages the MCP server** per tool and profile: enable, start, stop, status, copy client config
+   (section 5), and **a tunnel** for browser apps (section 6).
 
-A sign-in is a short series of steps. Each step is one of two kinds:
+**What this drops from the first version of the plan.** The pending-login holder in the MCP server
+(`PendingSignIn`), the one-time sign-in page, URL-mode elicitation, the match code and the `mcp.sign-in` permission
+key are no longer needed. The MCP specification's problem (a secret must not pass through form-mode elicitation, and
+the page must know who opens it) goes away, because no secret enters MCP at all.
 
-- **Show step.** The server has something for the person to see: a QR, the WhatsApp pairing code, an OAuth URL.
-  Nothing secret goes back to the server. It is safe for this to pass through the model.
-- **Submit step.** The person must give the server something secret: a login code, a 2FA or cloud password, a MAX
-  token, Telegram app keys, a pasted OAuth redirect.
+## 3. Sign-in from Desktop
 
-### 2.2 The start call returns at once; the login lives in the server
+### 3.1 How Desktop runs tools today
 
-`session start` over MCP does not wait for the scan. It starts the login inside the MCP server process and answers
-at once with the first step. A second call, `session status`, reads where the login is now (and the next QR when
-WhatsApp renews it). Three facts force this shape:
+- `run::command` starts every tool with an empty stdin (`src-tauri/src/run.rs:79-82`).
+- `run::stream` streams stdout and stderr lines (`run.rs:212-219`). `stream_with_input` writes one input, then
+  closes stdin (`run.rs:221-236`). It is how the Storage page hands a value to `store backup` (`backup.rs:303`).
+- Cancel sends `SIGTERM` to the process group and then kills the child at once (`run.rs:304-316`).
+- Sign-in today is `open_setup` (`src-tauri/src/lib.rs:394-400`): it opens the catalog's `setup` words in the
+  user's terminal (`src-tauri/src/terminal.rs:7-21`). Buttons: `src/features/tools/Health.tsx:120,243`,
+  `src/features/tools/Permissions.tsx:342`, `src/features/onboarding/steps.tsx:405`.
 
-- Each MCP call runs a fresh program (`cli-core/src/mcp/agent.ts:24-26`). A login cannot live inside one call.
-- The server runs one call at a time (`cli-core/src/mcp/server.ts:272-277`). A two-minute wait for a scan would block
-  every other tool.
-- The model cannot show a QR until its call returns.
+So Desktop can already show what a tool prints. It cannot yet answer a question: that needs a run that keeps stdin
+open (phase 2).
 
-**One shared piece in cli-core:** a `PendingSignIn` holder, one per server, handed to commands through the run's
-environment, the same way `spawnJob` and `embedders` are today (`cli-core/src/mcp/server.ts:226-230`). It is made in
-`createServer`, next to `session` (`server.ts:195-199`), not in `build()`: `build()` runs again for each throwaway
-stdio probe (`server.ts:92-96`) and for each HTTP session (`cli-core/src/mcp/http/serve.ts:55`). It holds at most one
-login, with a deadline. The holder owns the login's connection and its abort signal, not the call: today everything a
-call opens is closed when the call ends (`trackCloseable`, `signal`, `commandSignal`, `server.ts:57-77`). Before
-sign-in there is no account, so the server's shared connection cannot be lent (`server.ts:236-251`); the login opens
-its own. Each tool's `session start` keeps its own login code and only reports its steps to
-the holder: `show(kind, payload)`, `needs(kind, prompt)`, `done(account)`, `failed(error)`. At a terminal the same
-calls draw the QR and ask the question as they do now. After `done`, the server drops its cached connection, so the
-next call connects as the new account (`MessengerSession`, `cli-core/src/mcp/session.ts`).
+### 3.2 The protocol the tool speaks
 
-Changes in cli-core and cli-base:
+It grows from the QR line cli-core already prints. With `--json`, the tool writes one JSON object per line on
+**stderr**; stdout keeps only the final answer, as today.
 
-1. Let `toolsFromCommands` and `runCommandForAgent` offer a command with `lifetime: "interactive"` when it declares
-   that it supports agent sign-in (a new annotation, `agentSteps: true`). Persistent commands stay out
-   (`agent.ts:235,298-299`).
-2. Remove `mcp: false` from the `session` group in the contract template (`contract-templates.ts:57`), and give
-   `session start` the new annotation there.
-3. Add a shared `session status` answer for a pending login.
-
-### 2.3 How a submit step reaches the person
-
-The MCP specification forbids form-mode elicitation for passwords, API keys and tokens, and requires URL mode for them
-([elicitation, 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation), "Form Mode
-Security"; the same rule is in
-[2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)). In URL mode the secret
-does not pass through the client or the model.
-
-So the server serves a **one-time sign-in page**: a single form for the one value it needs, at a random path, valid
-for one use and a few minutes.
-
-- stdio: on `127.0.0.1`, with a random port.
-- HTTP: under the tunnel's public address.
-
-The spec also says the server **must verify that the person who opens the URL is the person who started the
-request** (2025-11-25 page, "Phishing"), and must not hand out a pre-authenticated URL ("Safe URL Handling"). A random
-one-time path alone does not meet that. The existing HTTP owner login does not help: it gives tokens to MCP client
-apps after a code typed from the server's terminal (`cli-core/src/mcp/http/oauth.ts:97-108`); a person opening a link
-in a browser holds no such token. So:
-
-- stdio: the page is on this computer only; besides the random path, it shows a short code that the sign-in step's
-  answer also shows, and the person confirms they match. That is enough for one owner on one machine (I think;
-  not reviewed against the spec's full security text).
-- HTTP: there is no trustworthy way today to know who opens the page. One more reason for NEED-52 **A**. If the owner
-  wants HTTP sign-in, the page needs a browser session bound to the owner login first: a separate piece of work.
-
-The server hands the page to the person in this order:
-
-1. If the client declares URL-mode elicitation, send it (`mode: "url"`). The installed SDK, `@modelcontextprotocol/server`
-   2.4.0, has both shapes: `elicitInput` for 2025-era clients and the `inputRequired(...)` builder for the 2026-07-28
-   multi-round-trip model (`cli-core/node_modules/@modelcontextprotocol/server/dist/mcp-BCJHyo7l.d.mts`). Servers must
-   not send a mode the client did not declare (spec, "Capabilities").
-2. Otherwise, the step's answer carries the URL and a sentence for the model to pass on: "open this link and enter
-   the code there". This works in every client.
-
-Fallback, only if NEED-54 says yes: the value as the command's stdin field (`cli-core/src/mcp/agent.ts:186-195`). It
-stays out of argv, but it does pass through the model's context. Before that ships, check that run records
-(`cli-core/src/cli/command-runs.ts`) and the agent log keep no stdin.
-
-Client support for elicitation: not verified here. I did not find a current support table on modelcontextprotocol.io.
-cli-core's own comment says the browser apps declare form support (`cli-core/src/mcp/http/serve.ts:35-38`). This
-plan does not depend on elicitation: the URL in the answer is the baseline.
-
-Note on the owner's earlier ruling: MCP shows no confirmation forms (NEED-772, commit `1c94a5d1`). A sign-in page is
-not a confirmation of a write, but it is a page outside the chat. NEED-54 asks.
-
-### 2.4 The setting
-
-A new permission key, **`mcp.sign-in`**, checked only by MCP servers, like `bot.api`
-(`cli-core/src/sends/permissions.ts:65-78`). It is not a command key, so `session.start: deny` would not be the same:
-that would also block the owner's own terminal. `mcp.sign-in` covers `session start`, `session end` and `setup`, if
-NEED-55 lets `setup` in.
-
-- Default `allow` over stdio. Default over HTTP: NEED-52.
-- The owner turns it off with one line in the profile's permissions: `mcp.sign-in: deny`. Or, for one server only,
-  with the existing flag `--permission mcp.sign-in=deny`, which can only make levels stricter
-  (`cli-core/src/cli/messenger/mcp-command.ts:40-41`).
-- The read-only lock and a profile that is `readonly` as a whole turn `mcp.sign-in` off. Today a login has no
-  permission key, so the lock does not see it (`cli-core/src/cli/effects.ts:122-135`).
-- Side effect to handle: `mcp config` refuses to install a server that offers any writing tool unless `--allow-writes`
-  is passed (`cli-core/src/cli/messenger/mcp-command.ts:153-157`). With `session start` offered everywhere, every
-  profile would need that flag, including the desktop app's "Advanced: MCP". Leave `mcp.sign-in` commands out of that
-  count.
-- Discovery still lists the command, marked unavailable with the reason, as it does for other blocked commands
-  (`cli-core/src/mcp/agent.ts:236-242`).
-
-**RISK-14 · An agent could switch the setting back on.** Today only `mcp.authority: deny` keeps `config set` away from
-agents. If "allow all by default" also opens `mcp.authority` (NEED-53), an agent could run
-`config set permissions …` and lift `mcp.sign-in: deny` or any other limit. Zoom already refuses this case
-(`zoom-cli/src/mcp.ts:90-93`); memo leaves out `config unset` (`cli-memo/src/mcp/catalogue.ts:20`); the others rely on
-`mcp.authority`. Make it one cli-core rule: **over MCP, nothing writes the `permissions` setting, at any level.**
-
-## 3. Per-tool work
-
-Build it in two phases, so the first ships without any page:
-
-1. **Show steps only.** tg QR without 2FA, WhatsApp pairing code and QR, max QR without a cloud password, the Zoom and
-   Google URLs over stdio, and `session end` everywhere. No secret ever reaches the server through MCP.
-2. **Submit steps.** The one-time page for codes, passwords, tokens and pasted redirects (section 2.3).
-
-**cli-core** (most of the work):
-
-- `PendingSignIn` holder, the one-time page (stdio and HTTP), URL-mode elicitation with the URL-in-answer fallback.
-- `agentSteps` annotation; the catalogue and runner changes; `session status`; `mcp.sign-in` key; the
-  "never write permissions over MCP" rule; drop the connection after a login.
-- The audit row: today a call is not logged until an account is known (`cli-core/src/mcp/server.ts:221`). A sign-in
-  must always be logged, most of all over HTTP.
-- Instructions text: say that sign-in works and how (`cli-core/src/mcp/instructions.ts`).
-
-**cli-base:** contract template and parity check accept `agentSteps` on `session start`; `session` group no longer
-`mcp: false`.
-
-**tg-cli:** `startSession` reports to the holder instead of refusing without a terminal (`session.ts:133-138`). QR: a
-show step with the PNG (as an image result, reusing `pictureTools`, `cli-core/src/mcp/tools.ts`) and the login link. Phone: the number as an argument; code and 2FA password as submit steps. Missing app keys: a submit step for
-`api_id` and `api_hash` (or `--app auto`, if it asks nothing secret: not checked). Recommend QR over MCP.
-
-**max-cli:** remove `mcp: false` from the `session` group (`session.ts:29`). `qr`: show step, then the cloud password
-as a submit step (`session.ts:207-209`). `token`: submit step. `qr-chrome` and `sms` open a local browser: offer them
-over stdio only, refuse over HTTP. Update `SKILL.md:54` and `AGENT_QR_HELP` (`session.ts:134-137`). `setup` follows
-NEED-55.
-
-**whatsapp-cli:** remove `mcp: false` from the group (`session.ts:44`). Recommend the pairing code (`phone`) over MCP:
-one show step that does not expire in seconds. QR stays possible; `session status` returns the current QR, since it
-renews faster than a round trip through the model. Fix FIND-34 in `SKILL.md:34`.
-
-**zoom-cli:** builds its own server from cli-core parts (`zoom-cli/src/mcp.ts:72-108`), so it needs the same wiring by
-hand. Take `session start` out of `changesAuthority` (`mcp.ts:29`) and put it under `mcp.sign-in`. The OAuth URL is a
-show step; when the redirect cannot reach this machine (HTTP mode, the person is elsewhere), the pasted redirect URL
-(`readPaste`) is a submit step. `config set zoom.client_id` stays an authority change.
-
-**drive-cli:** builds its own catalogue without `toolsFromCommands` (`drive-cli/src/mcp.ts:127`), so the shared change
-does not reach it. Remove `mcp: false` from `session start|end` (`session.ts:28,85`), add `agentSteps`. Google URL as a
-show step, `--no-browser` behaviour; over HTTP the redirect paste is a submit step. `--grant write` widens what later
-calls may do: treat that argument as an authority change.
-
-**cli-memo:** no sign-in. Nothing to do beyond following NEED-53 for `mail add`.
-
-Persistent commands (`mcp`, `serve`, `watch`) stay out in every tool: an MCP call must return.
-
-## 4. Security defaults
-
-| | stdio (local agent) | HTTP (`mcp --http --public-url`) |
+| Event | Meaning | Desktop shows |
 | --- | --- | --- |
-| Who can call | whoever started the process: the owner's own agent | whoever holds the owner login of the tunnel |
-| What sign-in adds | the agent can link an account the owner then uses | a remote caller can add an account to this computer, or end one |
-| `mcp.sign-in` default | allow | deny, unless the profile says allow (NEED-52) |
-| Submit steps | page on `127.0.0.1`, with a match code | not until the page can verify the owner (see 2.3) |
-| Browser-based methods (`qr-chrome`, `sms`, OAuth loopback) | allowed | refused, or paste-back only |
+| `{"event":"qr","qr":{"text","link","expires_at","scan"}}` | a QR to scan; a new one replaces the old | the QR as an image from `link`, the `scan` sentence, a countdown |
+| `{"event":"pairing_code","code","expires_at","where"}` | a code to type into the phone (WhatsApp) | the code, large, and where to type it |
+| `{"event":"open_url","url","purpose"}` | a page the person opens: OAuth, my.telegram.org | an "Open in browser" button; the tool may already have opened it |
+| `{"event":"needs","field","secret","prompt","hint"}` | the tool waits for one answer on stdin | an input field; masked when `secret` |
+| `{"event":"progress","step","message"}` | waiting, receiving history | a line under a spinner |
 
-Always, both transports:
+The answer to `needs` is one line on stdin. The run ends as today: exit code and the `--json` answer on stdout
+(`done`), or the usual error envelope (`failed`). Today's `qr` event has `text` only; adding `link` is a small
+change in `loginQr` (`cli-core/src/terminal/login-qr.ts:53-65`), shared by wa and max. Until then Desktop draws
+`text` in a monospace block.
 
-- No secret as a command argument. Secrets go through the one-time page; the stdin fallback only if NEED-54 says yes.
-- One pending login per server, with a deadline; a new start cancels the old one.
-- Nothing writes `permissions` over MCP (RISK-14).
-- Every sign-in step goes into the agent log, with no secret in it.
+`needs` is opt-in: `--answer-stdin` (name to settle in cli-core). Without the flag a tool off a terminal keeps
+refusing, as now. An agent that runs the command in a shell must never hang on a read nobody will answer.
 
-## 5. Decisions for the owner
+Fields per tool: `phone` (not secret), `code` (login code), `password` (2FA or MAX cloud password, secret),
+`api_id`, `api_hash` (secret), `token` (MAX, secret), `redirect` (Zoom or Google pasted redirect, secret).
 
-**NEED-52 · Should sign-in over the remote HTTP server be off by default, even though stdio has it on?**
+### 3.3 What Desktop adds
 
-- Now: the owner ruled that HTTP follows the same permissions as stdio (NEED-774, commit `1c94a5d1`). Sign-in over
-  HTTP lets anyone with the tunnel login add or end an account on this computer.
-- Options: **A** off over HTTP unless the profile says `mcp.sign-in: allow`; on over stdio · **B** same as stdio: on
-  everywhere.
-- Recommendation: **A**. Linking a new account is bigger than reading or sending. The owner still turns it on with
-  one line.
-- If no answer: the plan ships A, which is a narrow exception to NEED-774.
+- One `#[tauri::command]` to start: `sign_in(id, profile, method)`. The tool id and a method from the catalog; the
+  profile validated as today (`catalog::with_profile`). Rust maps them to fixed words (rule 2). Events go back on a
+  typed `Channel`, parsed by valibot in `src/platform/`.
+- One `#[tauri::command]` to answer: `sign_in_answer(run, value)`. Rust writes the value to that run's stdin. The
+  value is never an argument, never logged, never kept after the write.
+- One to stop: `sign_in_stop(run)`. `SIGTERM` to the group, then a few seconds' grace before the kill, so
+  WhatsApp's history wait ends cleanly and keeps what came. Today's `kill` does not wait (`run.rs:304-316`).
+- **Nothing personal reaches a log (rule 4, and SEC-5).** A QR link and a pairing code are login tokens while they
+  are valid. They reach the window unmasked, on the Channel only. The line log Desktop keeps for a run gets the
+  event name and never its payload. Typed answers never appear in any log or bug report.
+- The catalog gets a `signIn.methods` entry per tool (words and labels). The "Open terminal" button stays for
+  tools and methods not yet ported.
+
+## 4. Sign-in over MCP
+
+- `session start` stays out of the MCP catalogue, as today (reasons 1 and 2 in section 1). Instead, every
+  messenger's server instructions (`cli-core/src/mcp/instructions.ts`) and `session status` say the same thing
+  when there is no account: "Sign in from WireCat Desktop (Tools → <tool> → Sign in), or run
+  `<bin> <profile> session start` in a terminal." The terminal line matters: CLI-only users have no Desktop.
+- The agent passes that sentence on. It never sees a code, a password, a QR or a token.
+- `session status` over MCP reports whether the profile is signed in, so the agent can check after the person is
+  done.
+- For browser sign-in (Zoom, Google) the agent may also give the link Desktop would open. Not needed in phase 1.
+- `setup` stays out of MCP (NEED-55, answered).
+- `session end` over MCP: NEED-57. Today tg offers it (`tg-cli/src/commands/session.ts:252`, no `mcp: false`),
+  while wa, max and drive leave it out.
+- Skill text to update: `max-cli/skills/max-cli/SKILL.md:54` ("Через MCP вход недоступен") and wa's
+  `AGENTS_LINK_BY_QR` (`whatsapp-cli/src/commands/session.ts:35-40`) say the same thing in the new words.
+
+## 5. Desktop manages the MCP server
+
+What exists:
+
+- `mcp` serves stdio; `mcp --http --port <n> --public-url <https>` serves Streamable HTTP on `127.0.0.1`
+  (`cli-core/src/cli/messenger/mcp-command.ts:46-90`; default port 8765, `mcp-command.ts:32`). tg, max, wa
+  (cli-core), drive (`drive-cli/src/commands/mcp.ts`) and memo (`cli-memo/src/mcp/command.ts`) have it. **zoom has
+  no HTTP server.**
+- The HTTP server has its own login: an OAuth server for one owner. Any client may register, but no client gets a
+  token without a one-time code (`cli-core/src/mcp/http/oauth.ts:97-108`). The code goes to the server's terminal
+  through `onCode` (`cli-core/src/mcp/server.ts:544-547`), lasts ten minutes and changes after each login
+  (`oauth.ts:15`). Host and Origin checks refuse rebound DNS names (`cli-core/src/mcp/http/serve.ts:108-129`).
+- `mcp --revoke` forgets every issued login (`mcp-command.ts:64-69`). `mcp config` prints the client entry
+  (`mcp-command.ts:93-121`); `mcp add` registers with Codex or Claude Code.
+- `mcp --http` runs in the foreground until `SIGINT` or `SIGTERM` (`server.ts:560-563`). **It has no lock file,
+  no PID file, no background mode.**
+- `serve` already has all of that: `server start|stop|restart|status|logs` with a lock file, the PID, a marker
+  check before a stop, and optional systemd or launchd units
+  (`cli-core/src/cli/messenger/server-command.ts:43-110`).
+
+What the CLI must add (cli-core, then drive and memo):
+
+1. **`mcp server start|stop|status`** on the same pattern as `server`: a lock file with PID, start time, port and
+   public URL; `stop` only kills a PID whose command line carries its marker (`carries`, `server-command.ts:97`).
+   Desktop then never kills a process it did not identify, and status survives a Desktop restart.
+2. **The login code in `mcp server status --json`**, read from a mode-600 status file the server writes on each new
+   code. A background server has no terminal to print it on.
+3. **Clients in the status**: from the token file (`oauth.ts:41,198-206`), the registered clients that hold a live
+   token, with their names and when they last got one. Names come from open registration, so the window shows
+   them as untrusted text. Live connections are in the server's memory only; not reported.
+
+What Desktop adds: an **MCP** block per tool and profile on the Tools page.
+
+- **Local (stdio):** the existing Agents page flow (`mcp check`, `mcp add`, remove); plus "Copy config" from
+  `mcp config`.
+- **Remote (HTTP):** Start / Stop, the state (running since, port, public URL), the login code to type into the
+  browser app, the list of logged-in clients, "Forget all logins" (`mcp --revoke`). Each runs the tool's own
+  command (rules 1 and 2). Zoom shows "not available yet".
+
+## 6. Tunnel
+
+The browser apps (claude.ai, ChatGPT) call the server from their own servers on the internet, so the tunnel must be
+public. A tunnel that only the owner's own devices reach does not work for them.
+
+| | cloudflared quick tunnel | cloudflared named tunnel | Tailscale Funnel | Tailscale Serve |
+| --- | --- | --- | --- | --- |
+| Account | none | Cloudflare account and a domain | Tailscale account | Tailscale account |
+| Install, rule 6 | a single binary, runs as the user ([downloads](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/)) | same binary; `cloudflared tunnel login` in a browser | `tailscaled` is a system service: needs admin; Desktop only uses one already installed | same |
+| Address | new on every start ([quick tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)) | stable | stable `*.ts.net` | stable, tailnet only |
+| Reaches browser apps | yes, but see RISK-15 | yes | yes; ports 443, 8443, 10000 only; first use needs approval in Tailscale's admin page ([Funnel](https://tailscale.com/kb/1223/funnel)) | **no**: tailnet only ([Serve](https://tailscale.com/kb/1242/tailscale-serve)) |
+| Cloudflare's own word | "for testing and development" | for production | — | — |
+
+**RISK-15 · A quick tunnel may break MCP, and breaks the login on every restart.** Cloudflare says quick tunnels "do
+not support Server-Sent Events". cli-core's HTTP transport does not set `enableJsonResponse` (no match in
+`cli-core/src/`), so I think answers may be sent as server-sent events and fail. Not tested. Also, the public URL is
+the OAuth issuer (`serve.ts:98`): a new hostname means every browser app must be added and logged in again.
+Before Desktop offers quick tunnels, test MCP through one; if it fails, the CLI can answer with plain JSON, but
+check that this does not break the 2025-era session path (`serve.ts:35-75`).
+
+What Desktop does, all as user processes:
+
+- **cloudflared:** downloads the release binary into the app's data folder (as for Node.js, `node.rs`), checks it,
+  runs `cloudflared tunnel --url http://127.0.0.1:<port>`, reads the `trycloudflare.com` address from its output,
+  then starts `mcp --http --public-url <that address>`. The order is forced: `--public-url` must be known at start
+  (`cli-core/src/http/public-url.ts:9-28`). Desktop keeps the cloudflared PID it started and stops only that PID.
+- **Tailscale:** if `tailscale` is on PATH and logged in, Desktop runs `tailscale funnel --bg <port>`-style
+  commands and reads the `*.ts.net` name from `tailscale status --json`. If Tailscale is missing, or Linux asks for
+  root, Desktop explains the fix (install it; or the one-time `sudo tailscale set --operator=$USER`) and never runs
+  it (rule 6). The docs I read do not say whether Linux needs `--operator` for `serve`/`funnel`, or document `--bg`
+  for `funnel`: check on a real machine.
+- The order of the two: NEED-58.
+
+## 7. Security
+
+| | stdio (local agent) | HTTP through a tunnel |
+| --- | --- | --- |
+| Who can call | the process that started the server: the owner's agent | anyone with a token from the owner login |
+| Sign-in | never over MCP | never over MCP |
+| Secrets | only in Desktop or the provider's page | same |
+| Permissions | the profile's, as today | the profile's, as today (cli-core ruling 774), unless NEED-59 makes a tunnel start read-only |
+
+- **What protects a tunnel:** the owner login. No token without the one-time code shown only to the owner, five
+  wrong codes pause attempts for 30 s (`oauth.ts:16-17`), tokens stored only as hashes (`oauth.ts:61-71`), and
+  Host and Origin checks. Desktop shows the code only on the owner's screen and offers "Forget all logins".
+- **Stopping the tunnel** is the real off switch. Desktop says plainly when a server is reachable from the internet.
+- **RISK-14 · An agent could lift its own limits.** Still open with NEED-53: today only `mcp.authority: deny` keeps
+  `config set` from agents. If it opens, an agent could write `permissions`. Zoom already refuses this case
+  (`zoom-cli/src/mcp.ts:90-93`); memo leaves out `config unset`. Make it one cli-core rule: over MCP, nothing writes
+  the `permissions` setting, at any level.
+- Typed answers go only on stdin. I found no stdin field in run records (`cli-core/src/cli/command-runs.ts`, a text
+  search only). Confirm with a test before phase 2 ships.
+
+## 8. Phases
+
+1. **WhatsApp QR from Desktop. Desktop only, no CLI change.** `sign_in` runs `wa <profile> session start qr --json`
+   with the existing `stream`, parses `qr` lines from stderr, draws the QR, shows "receiving history" and Stop.
+   Why this one: it asks nothing; the QR line exists and is tested off a terminal (`whatsapp-cli/src/commands/session.test.ts:42-59`, run 2026-10-26, 23 of 23 pass); the hardest part to draw, a QR that renews every 20 s, is proven first.
+   Optional small cli-core change: `link` in the `qr` event. Drive is simpler still, but its sign-in already
+   happens in the browser, so it proves less.
+2. **The rest of sign-in.** cli-core: `pairing_code`, `open_url`, `needs`, `progress` events and the opt-in flag in
+   one shared helper. Per tool: wa phone and pairing code; max QR plus cloud password, and token; tg QR and phone,
+   code, 2FA and app keys (its `ask` becomes the helper); zoom and drive `open_url` plus the pasted redirect.
+   Desktop: the stdin-holding run, `sign_in_answer`, the graceful stop. MCP side: the "finish in Desktop" sentence
+   and skill texts (section 4), FIND-34.
+3. **MCP server management.** cli-core `mcp server start|stop|status` with lock file, login code and clients;
+   drive and memo the same. Desktop: the MCP block (section 5).
+4. **Tunnel.** First test MCP through a quick tunnel (RISK-15). Then the provider NEED-58 picks, then the other.
+
+## 9. Decisions
+
+**NEED-57 · Over MCP, should `session end` be offered by every tool, or by none?**
+
+- Now: tg offers it (`tg-cli/src/commands/session.ts:252`); wa, max and drive leave it out (`mcp: false` on their
+  group). No secret is involved, but it logs the account out on the provider's side; WhatsApp's code says unlinking
+  is not an agent's call (`whatsapp-cli/src/commands/session.ts:43`).
+- Options: **A** none: sign-out from Desktop or a terminal only, tg loses it · **B** all, under the profile's
+  permissions · **C** leave each tool as it is.
+- Recommendation: **A**. Sign-in and sign-out sit in one place, and an agent that cannot sign in back should not
+  sign out.
+- If no answer: C stays (today's mix), and the instructions text says sign-out is in Desktop.
+
+**NEED-58 · Which tunnel should Desktop set up first: Tailscale Funnel or a cloudflared quick tunnel?** (proposal,
+not decided)
+
+- Now: no tunnel support; the owner sets one up by hand.
+- Options: **A** Tailscale Funnel first: stable address, logins survive restarts; needs Tailscale already installed
+  (admin) and a one-time approval · **B** cloudflared quick tunnel first: no account, nothing to install as admin;
+  new address and new logins on every start, and it may break MCP (RISK-15) · **C** a named Cloudflare tunnel:
+  stable, user process; needs a Cloudflare account and a domain.
+- Recommendation: **A**, then **B** as "try it" once tested.
+- If no answer: phase 4 starts with the RISK-15 test only.
+
+**NEED-59 · When Desktop opens a tool to the internet through a tunnel, should that server start read-only?**
+
+- Now: HTTP follows the profile's permissions, like stdio (cli-core ruling 774). A tunnel plus a stolen login token
+  could send messages.
+- Options: **A** read-only by default for a tunnel started from Desktop, one switch "Allow sending" (the tool's
+  `--permission <key>=deny` flags, which only make levels stricter, `mcp-command.ts:40-41`) · **B** the profile's
+  permissions, as today.
+- Recommendation: **A**. The first use of a remote connector is reading; sending is one deliberate click.
+- If no answer: B stays.
 
 **NEED-53 · Does "allow all commands by default" also mean the commands that change what an agent may do later
-(`config set`, `skill install`, `upgrade`, memo `mail add`, bot settings)?**
+(`config set`, `skill install`, `upgrade`, memo `mail add`, bot settings)?** Still open.
 
-- Now: `mcp.authority: deny` blocks them (owner ruling NEED-1662: an agent could lift its own limits).
-- Options: **A** sign-in on by default; `mcp.authority` stays deny · **B** both on by default, with the rule that
-  nothing writes `permissions` over MCP (RISK-14) · **C** both on, no extra rule.
-- Recommendation: **A**. Sign-in is what blocks "full support". Authority commands are rare for an agent, and opening
-  them weakens every other limit.
-- If no answer: A ships; authority commands stay listed as unavailable with the reason.
+- Now: `mcp.authority: deny` blocks them (cli-core ruling 1662: an agent could lift its own limits).
+- Options: **A** `mcp.authority` stays deny · **B** on by default, with the rule that nothing writes `permissions`
+  over MCP (RISK-14) · **C** on, no extra rule.
+- Recommendation: **A**.
+- If no answer: A; authority commands stay listed as unavailable with the reason.
+- **поправка (TASK-18):** the first version paired this with "sign-in on by default". Sign-in no longer runs over
+  MCP, so only the authority half remains.
 
-**NEED-54 · How does an agent hand over a login code or a 2FA password?**
+**NEED-52 · Should sign-in over the remote HTTP server be off by default?** **поправка (TASK-18): superseded.**
+Sign-in runs over no MCP transport. The remaining question about HTTP defaults is NEED-59.
 
-- Now: no way over MCP. The spec forbids passing passwords through form-mode elicitation.
-- Options: **A** only the one-time page (URL mode where the client supports it, else the link in the answer) · **B**
-  the page, plus the command's stdin field as a fallback (the value passes through the model) · **C** stdin only.
-- Recommendation: **A**. It works in every client and keeps the secret out of the model and its logs.
-- If no answer: A ships; phone-code login over MCP needs a browser on the same network as the server.
+**NEED-54 · How does an agent hand over a login code or a 2FA password?** **поправка (TASK-18): superseded.** It
+does not. Codes and passwords are typed into Desktop, which writes them to the tool's stdin (section 3).
 
-**NEED-55 · Should `setup` also run over MCP, or only `session start`?**
+**NEED-55 · Should `setup` also run over MCP?** **поправка (TASK-18): answered — no.** `setup` stays at the terminal
+and in Desktop; with sign-in out of MCP, nothing in it belongs there.
 
-- Now: `setup` signs in, installs skills into agents and writes agent configuration.
-- Options: **A** only `session start` and `session end` over MCP; `setup` stays at the terminal · **B** `setup` too,
-  with skill install under `mcp.authority`.
-- Recommendation: **A**. An agent connected over MCP is already set up; it only needs to sign in.
-- If no answer: A ships; skills say "sign in with `session start`".
+## 10. How to test
 
-## 6. How to test
-
-- **cli-core unit:** catalogue offers `session start` with `agentSteps` and still refuses `persistent`; `mcp.sign-in:
-  deny` marks it unavailable and the runner refuses it; `--permission mcp.sign-in=deny` wins over the profile;
-  `config set permissions` is refused over MCP at every level; HTTP default follows NEED-52.
-- **cli-core integration** with the in-memory MCP client (`cli-core/src/testing/mcp-http-client.ts` already declares
-  elicitation): start → show step → status → submit through the one-time page → done → next call uses the new
-  account. Once with a client that declares URL mode, once without (URL in the answer). Check that the page refuses
-  a second use and an expired token, and that the agent log has the steps and no secret.
-- **Per tool,** with the tool's fake transport: tg QR and phone + 2FA, max QR + password and token, wa pairing code
-  and QR renewal, zoom and drive OAuth with the paste-back step.
-- **By hand, real accounts:** Claude Code over stdio for each tool; one tool over `mcp --http` through the tunnel
-  from a browser app, with NEED-52's default.
-- **Contract:** each tool's shared-contract test passes with the new template.
+- **Phase 1, Desktop:** a mock scenario `?signin=wa` that streams QR lines and renewals; Rust unit test that parses
+  `qr` lines and keeps their payload out of the run log. By hand: link a real WhatsApp profile from the app,
+  light and dark, keyboard only (rule 8).
+- **Phase 2, cli-core:** the shared helper prints each event and reads `needs` answers only with the opt-in flag;
+  without it, a non-terminal run still refuses. Run records and the agent log hold no answer.
+- **Per tool,** with its fake transport: wa phone and pairing code; max QR plus password and token; tg QR, phone
+  plus code plus 2FA, app keys; zoom and drive URL plus pasted redirect.
+- **Phase 3:** `mcp server start` twice refuses the second; `stop` refuses a PID without the marker; `status`
+  shows the login code and clients; Desktop restart keeps the state.
+- **Phase 4:** a real MCP session (`tools/list`, one read) from a browser app through each tunnel type; the
+  address change after a quick-tunnel restart.
+- **Contract:** each tool's shared-contract test passes with any template change.
