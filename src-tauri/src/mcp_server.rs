@@ -11,6 +11,8 @@ use std::time::Duration;
 #[serde(rename_all = "camelCase")]
 #[expect(clippy::struct_excessive_bools, reason = "the tool's own answer, field for field")]
 pub struct ServerStatus {
+    /// False for a tool from before `mcp server`: the row says it arrives with the next update.
+    pub available: bool,
     pub running: bool,
     pub listening: bool,
     /// Started by `mcp server start`, so Stop may end it; one started in a terminal is stopped there.
@@ -129,6 +131,7 @@ fn status_of(v: &Value) -> Option<ServerStatus> {
         })
         .collect();
     Some(ServerStatus {
+        available: true,
         running,
         listening: running && item["listening"].as_bool().unwrap_or(false),
         started_here: running && item["by"].as_str() == Some("server"),
@@ -163,9 +166,34 @@ fn answer(tool: &Tool, args: &[String], timeout: Duration) -> Result<Value, Stri
     }
 }
 
+fn unavailable() -> ServerStatus {
+    ServerStatus {
+        available: false,
+        running: false,
+        listening: false,
+        started_here: false,
+        started_at: None,
+        port: None,
+        connector_url: None,
+        login_code: None,
+        outdated: false,
+        clients: Vec::new(),
+    }
+}
+
+/// Asked on every Manage panel, so a tool too old to answer is a state, not a failure.
 pub fn status(tool: &Tool, profile: Option<&str>) -> Result<ServerStatus, String> {
-    let v = answer(tool, &catalog::with_profile(&source(tool)?.status, profile)?, Duration::from_secs(30))?;
-    status_of(&v).ok_or_else(|| format!("{} answered in a shape WireCat does not know", tool.name))
+    let args = catalog::with_profile(&source(tool)?.status, profile)?;
+    let (out, json) = call(tool, &args, Duration::from_secs(30))?;
+    if unsupported(json.as_ref()) {
+        return Ok(unavailable());
+    }
+    match json {
+        Some(v) if out.code == Some(0) => {
+            status_of(&v).ok_or_else(|| format!("{} answered in a shape WireCat does not know", tool.name))
+        }
+        _ => Err(failure(&out, json.as_ref())),
+    }
 }
 
 /// The CLI waits up to about 30 seconds for the server to listen.
@@ -290,7 +318,9 @@ mod tests {
     #[test]
     fn an_old_cli_says_update() {
         assert!(unsupported(Some(&json!({"error": {"message": "unknown command 'server'"}}))));
-        assert!(unsupported(Some(&json!({"error": {"message": "too many arguments for 'mcp'. Expected 0"}}))));
+        // tg 0.93.0, measured: `tg x mcp server status --json` before cli-core 0.445.
+        let old = "too many arguments for 'mcp'. Expected 0 arguments but got 2: server, status.";
+        assert!(unsupported(Some(&json!({"error": {"message": old}}))));
         assert!(!unsupported(Some(&json!({"error": {"message": "port 8765 is in use"}}))));
     }
 

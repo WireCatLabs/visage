@@ -2,6 +2,8 @@ import * as v from "valibot"
 
 /** The tool's `mcp server status`. The code, the address and the apps' names come unmasked: never log or report them. */
 export const McpServerStatusSchema = v.object({
+  /** False for a tool from before `mcp server`. */
+  available: v.boolean(),
   running: v.boolean(),
   listening: v.boolean(),
   startedHere: v.boolean(),

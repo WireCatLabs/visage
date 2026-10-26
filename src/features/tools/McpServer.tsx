@@ -15,13 +15,14 @@ const keyOf = (profile: string | null) => profile ?? ""
 function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const params = new URLSearchParams(window.location.search)
-  return params.get("mcp") === id || params.get("mcp-fail") === id
+  return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old")].includes(id)
 }
 
 function summaryOf(targets: (string | null)[], states: Record<string, RowState>): string | null {
   const known = targets.map((t) => states[keyOf(t)])
   if (known.some((s) => !s || s.state === "loading")) return null
   if (known.every((s) => s?.state === "error")) return "Could not read it"
+  if (known.every((s) => s?.state === "ready" && !s.data.available)) return "Arrives with the next update"
   const on = targets.filter((t) => {
     const s = states[keyOf(t)]
     return s?.state === "ready" && s.data.running

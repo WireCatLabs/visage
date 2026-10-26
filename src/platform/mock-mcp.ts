@@ -4,12 +4,13 @@ import type { Platform } from "./types"
 
 // `?mcp=<tool>` starts with that tool's `personal` server running, a login code and two apps logged in, one with a
 // name that tries to look like a file; the Tools page opens it (`src/app/scenarios.ts`). `?mcp-fail=<tool>` makes Start
-// fail as when another server holds the port.
+// fail as when another server holds the port. `?mcp-old=<tool>` answers as a tool from before `mcp server`.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const CODE_MS = 10 * 60 * 1000
 
 const stopped = (): McpServerStatus => ({
+  available: true,
   running: false,
   listening: false,
   startedHere: false,
@@ -22,6 +23,7 @@ const stopped = (): McpServerStatus => ({
 })
 
 const running = (port: number, url: string, clients: McpServerStatus["clients"]): McpServerStatus => ({
+  available: true,
   running: true,
   listening: true,
   startedHere: true,
@@ -54,6 +56,7 @@ export function mcpServerMock(): Pick<
   return {
     async mcpServerStatus(id, profile) {
       await delay(300)
+      if (params.get("mcp-old") === id) return { ...stopped(), available: false }
       return servers.get(key(id, profile)) ?? stopped()
     },
     async mcpServerStart(id, profile, port, url) {

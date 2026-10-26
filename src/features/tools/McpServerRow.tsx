@@ -28,12 +28,14 @@ function lampOf(row: RowState, busy: Busy): { tone: LampTone; label: string } {
   if (busy === "stopping" || row.state === "loading") return { tone: "busy", label: "Checking" }
   if (row.state === "error") return { tone: "bad", label: "Could not read it" }
   const s = row.data
+  if (!s.available) return { tone: "idle", label: "Not available yet" }
   if (!s.running) return { tone: "idle", label: "Off" }
   if (s.outdated || !s.listening) return { tone: "warn", label: s.outdated ? "Runs an older version" : "Starting" }
   return { tone: "ok", label: "Running" }
 }
 
-function stateText(s: McpServerStatus) {
+function stateText(s: McpServerStatus, tool: CatalogTool) {
+  if (!s.available) return `Arrives with the next update of ${tool.name}`
   if (!s.running) return "Off"
   const since = s.startedAt ? ` since ${clock(s.startedAt)}` : ""
   return `${s.listening ? "Running" : "Starting"}${since} on port ${s.port ?? "?"}${s.startedHere ? "" : ", started in a terminal"}`
@@ -93,10 +95,10 @@ export function McpServerRow(props: {
         <Lamp tone={lamp.tone} size="sm" label={lamp.label} />
         <span className="selectable font-mono text-[0.95rem] text-ink">{name}</span>
         <span className="min-w-0 text-[0.9rem] text-ink-soft tabular-nums">
-          {data ? stateText(data) : row.state === "error" ? "Could not read it" : <Skeleton chars={22} />}
+          {data ? stateText(data, tool) : row.state === "error" ? "Could not read it" : <Skeleton chars={22} />}
         </span>
         <span className="ml-auto flex gap-2">
-          {data && !data.running && (
+          {data?.available && !data.running && (
             <Button size="sm" onClick={() => setStarting(true)} aria-label={`Start the MCP server for ${name}`}>
               Start
             </Button>
@@ -124,10 +126,10 @@ export function McpServerRow(props: {
         </p>
       )}
       {data?.running && <Running data={data} />}
-      {data && (data.clients.length > 0 || data.running) && (
+      {data?.available && (data.clients.length > 0 || data.running) && (
         <Clients data={data} onForget={() => setForgetting(true)} />
       )}
-      {data && tool.mcpServer?.config && (
+      {data?.available && tool.mcpServer?.config && (
         <div className="pl-[1.6rem]">
           <Button size="sm" variant="ghost" onClick={copyConfig} disabled={busy !== null}>
             {busy === "copying" ? "Copying…" : "Copy config for desktop apps"}

@@ -68,13 +68,14 @@ export function StartServer(props: {
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button onClick={start} disabled={busy}>
+          <Button type="submit" form={`${id}-form`} disabled={busy}>
             {busy ? "Starting…" : "Start"}
           </Button>
         </>
       }
     >
       <form
+        id={`${id}-form`}
         className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault()

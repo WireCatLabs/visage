@@ -16,6 +16,7 @@ const tool = (id: string) => {
 }
 
 const OFF: McpServerStatus = {
+  available: true,
   running: false,
   listening: false,
   startedHere: false,
@@ -28,6 +29,7 @@ const OFF: McpServerStatus = {
 }
 
 const RUNNING: McpServerStatus = {
+  available: true,
   running: true,
   listening: true,
   startedHere: true,
@@ -85,6 +87,17 @@ describe("MCP server", () => {
     expect(within(row).getByText("https://x.ts.net/mcp")).toBeInTheDocument()
     expect(within(row).getByText(/Calls itself/)).toHaveTextContent("Calls itself “Claude”")
     expect(within(rowOf("personal")).queryByText("ABCD-EF23")).not.toBeInTheDocument()
+  })
+
+  it("says calmly that a tool too old for it gets it with an update, and offers nothing to press", async () => {
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({ ...OFF, available: false })
+    render(<McpServer tool={tool("tg")} />)
+
+    await waitFor(() => expect(heading()).toHaveTextContent(/Arrives with the next update$/))
+    await userEvent.setup().click(heading())
+    expect(within(rowOf("personal")).getByText("Arrives with the next update of Telegram")).toBeVisible()
+    expect(within(rowOf("personal")).queryByRole("button")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
   it("says why a start failed and keeps the dialog open", async () => {

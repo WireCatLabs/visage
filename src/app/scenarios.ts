@@ -23,7 +23,7 @@ export async function runMockScenario() {
   if (step) useOnboarding.getState().reopen(step.id)
   const signIn = params.get("signin")
   if (signIn) useSignIn.getState().start(signIn, "personal")
-  const mcp = params.get("mcp") ?? params.get("mcp-fail")
+  const mcp = params.get("mcp") ?? params.get("mcp-fail") ?? params.get("mcp-old")
   if (mcp) {
     useNav.getState().go("tools")
     await useTools.getState().refresh()
