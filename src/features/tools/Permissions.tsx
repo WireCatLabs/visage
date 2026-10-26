@@ -16,10 +16,13 @@ import { Select } from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useProfiles } from "./Health"
+import { LevelsHelp } from "./LevelsHelp"
 import {
   blockedCommands,
   type Count,
+  capped,
   commandLine,
+  defaultLevel,
   type GroupState,
   type GroupSummary,
   isLock,
@@ -28,13 +31,12 @@ import {
   layerOf,
   lockReason,
   locks,
+  moreBlocked,
   overview,
   partialDetail,
   removalWidens,
-  stateLabel,
   stillAllowed,
   summarize,
-  widens,
   widensLevel,
 } from "./permissions"
 
@@ -44,7 +46,6 @@ const TONE: Record<GroupState, LampTone> = {
   readonly: "idle",
   blocked: "bad",
   partial: "warn",
-  default: "idle",
 }
 
 /** What the confirm dialog says each level lets through. */
@@ -55,7 +56,15 @@ const MEANS: Record<Level, string> = {
   deny: "not run these commands at all",
 }
 
-type Change = { key: string; label: string; level: Level | null; from: Level | undefined; overrides: OwnLevel[] }
+/** `level: null` removes the key; `after` is the level that applies after, when the app knows it. */
+type Change = {
+  key: string
+  label: string
+  level: Level | null
+  after?: Level
+  from: Level | undefined
+  overrides: OwnLevel[]
+}
 type Row = { state: "saving" } | { state: "failed"; message: string; tool: string; key: string }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -71,6 +80,8 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
   const { profiles } = useProfiles(tool.id)
   const [profile, setProfile] = useState<string | null>(() => initialProfile(tool.id))
   const [data, setData] = useState<Data | null>(null)
+  // A profile's own key hides the same key in `defaults`, so what removing it gives back is read separately.
+  const [defaults, setDefaults] = useState<OwnLevel[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<Record<string, Row>>({})
@@ -83,9 +94,13 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
     const call = ++latest.current
     setLoading(true)
     try {
-      const next = await platform.permissionsShow(tool.id, profile)
+      const [next, base] = await Promise.all([
+        platform.permissionsShow(tool.id, profile),
+        profile === null ? null : platform.permissionsShow(tool.id, null),
+      ])
       if (call !== latest.current) return
       setData(next)
+      setDefaults(base?.levels ?? null)
       setError(null)
     } catch (e) {
       if (call === latest.current) setError(message(e))
@@ -124,7 +139,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
 
   const request = (change: Change, widening: boolean) => (widening ? setConfirming(change) : save(change))
 
-  const summaries = data ? groups.map((g) => summarize(g, data)) : []
+  const summaries = data ? groups.map((g) => summarize(g, data, defaultLevel(g.key, defaults))) : []
 
   return (
     <section
@@ -187,7 +202,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
                 ) : (
                   " in every profile that sets nothing of its own"
                 )}
-                .
+                . <LevelsHelp tool={tool} />
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -233,8 +248,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
                 <li key={g.key} className={ROW}>
                   <div className={ROW_GRID}>
                     <GroupName label={g.label} groupKey={g.key} detail={null} />
-                    <Skeleton chars={9} label={n === 0 ? "Loading permissions" : ""} />
-                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" label={n === 0 ? "Loading permissions" : ""} />
                   </div>
                 </li>
               ))}
@@ -252,6 +266,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
                   key={s.group.key}
                   tool={tool}
                   summary={s}
+                  ceiling={data.ceiling}
                   defaultsView={defaultsView}
                   rows={rows}
                   onChange={request}
@@ -352,12 +367,18 @@ function Ceiling({ tool, profile, ceiling }: { tool: CatalogTool; profile: strin
 }
 
 const ROW = "flex flex-col gap-2 px-3 py-2.5"
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_7.5rem_9.5rem] items-center gap-x-3"
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_11rem] items-center gap-x-3"
 
-function GroupName({ label, groupKey, detail }: { label: string; groupKey: string; detail: string | null }) {
+function GroupName(props: { label: string; groupKey: string; detail: string | null; tone?: LampTone }) {
+  const { label, groupKey, detail, tone } = props
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 items-baseline gap-2">
+        {tone && (
+          <span className="flex self-center">
+            <Lamp tone={tone} size="sm" />
+          </span>
+        )}
         <span className="truncate font-medium text-ink">{label}</span>
         <span className="font-mono text-[0.8rem] text-ink-dim">{groupKey}</span>
       </div>
@@ -369,41 +390,48 @@ function GroupName({ label, groupKey, detail }: { label: string; groupKey: strin
 function GroupRow(props: {
   tool: CatalogTool
   summary: GroupSummary
+  ceiling: Level | null
   defaultsView: boolean
   rows: Record<string, Row>
   onChange: (change: Change, widening: boolean) => void
 }) {
-  const { tool, summary: s, defaultsView, rows, onChange } = props
+  const { tool, summary: s, ceiling, defaultsView, rows, onChange } = props
   const status = rows[s.group.key]
   const lock = lockReason(s.own, defaultsView) ?? s.commands.find(isLock)?.reason ?? null
   const still = stillAllowed(s)
   const blocked = blockedCommands(s)
+  const held = capped(s.level, ceiling)
   const detail =
     lock ??
+    (held !== s.level ? `${LEVEL_LABEL[held]} for now: your first-run answer holds every tool there` : null) ??
     partialDetail(s) ??
-    (s.own && layerOf(s.own, defaultsView) === "defaults" ? `${LEVEL_LABEL[s.own.level]}, from the defaults` : null)
+    moreBlocked(s, held)
   const separately = s.overrides.length
+  const removable = s.own !== undefined && layerOf(s.own, defaultsView) === "here"
+
+  const choose = (level: Level) => {
+    if (level === s.level) return
+    const base = { key: s.group.key, label: s.group.label, from: s.level, overrides: s.overrides }
+    const widening = widensLevel(s.level, level)
+    if (level === s.fallback && removable) onChange({ ...base, level: null, after: level }, widening)
+    else onChange({ ...base, level }, widening)
+  }
 
   return (
     <li className={ROW}>
       <div className={ROW_GRID}>
-        <GroupName label={s.group.label} groupKey={s.group.key} detail={detail} />
-        <span className="flex items-center gap-2 text-[0.875rem] text-ink">
-          <Lamp tone={TONE[s.state]} size="sm" />
-          {stateLabel(s)}
-        </span>
-        <LevelSelect
-          label={`${s.group.label} permission`}
-          own={s.own}
-          inherited={s.state === "default" ? null : stateLabel(s)}
-          defaultsView={defaultsView}
+        <GroupName label={s.group.label} groupKey={s.group.key} detail={detail} tone={TONE[s.state]} />
+        <Select<Level>
+          aria-label={`${s.group.label} permission`}
+          className="w-full"
+          size="sm"
+          value={s.level}
           disabled={Boolean(lock) || status?.state === "saving"}
-          onChange={(level) =>
-            onChange(
-              { key: s.group.key, label: s.group.label, level, from: s.own?.level, overrides: s.overrides },
-              level === null ? removalWidens(s.own) : widens(s, level),
-            )
-          }
+          onChange={choose}
+          options={LEVELS.map((l) => ({
+            value: l,
+            label: l === s.fallback ? `${LEVEL_LABEL[l]} (default)` : LEVEL_LABEL[l],
+          }))}
         />
       </div>
       <RowStatus row={status} />
@@ -485,30 +513,27 @@ const disclosureLabel = (blocked: number, separately: number) =>
     .filter(Boolean)
     .join(" · ")
 
-function LevelSelect(props: {
+/** A key under a group: its built-in default lives in the tool, so removing it is offered as such, not as a level. */
+function KeySelect(props: {
   label: string
-  own: OwnLevel | undefined
-  /** What the group gets with no level of its own, as the tool reports it; null when the tool does not say. */
-  inherited?: string | null
+  own: OwnLevel
   defaultsView: boolean
   disabled: boolean
   onChange: (level: Level | null) => void
 }) {
-  const { label, own, inherited, defaultsView, disabled, onChange } = props
-  const removable = own !== undefined && layerOf(own, defaultsView) === "here"
+  const { label, own, defaultsView, disabled, onChange } = props
+  const removable = layerOf(own, defaultsView) === "here"
   return (
     <Select<Level | "">
       aria-label={label}
       className="w-full"
       size="sm"
-      value={own?.level ?? ""}
+      value={own.level}
       disabled={disabled}
       onChange={(l) => onChange(l === "" ? null : l)}
       options={[
-        ...(own === undefined || removable
-          ? [{ value: "" as const, label: inherited ? `${inherited} (default)` : "Tool default", disabled: !removable }]
-          : []),
         ...LEVELS.map((l) => ({ value: l, label: LEVEL_LABEL[l] })),
+        ...(removable ? [{ value: "" as const, label: "Remove this key" }] : []),
       ]}
     />
   )
@@ -524,7 +549,7 @@ function Override(props: {
   const lock = lockReason(level, defaultsView)
   return (
     <li className="flex flex-col gap-1">
-      <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] items-center gap-x-3">
+      <div className={ROW_GRID}>
         <span className="min-w-0">
           <code className="selectable font-mono text-[0.85rem] text-ink">{level.key}</code>
           {layerOf(level, defaultsView) === "defaults" && (
@@ -532,7 +557,7 @@ function Override(props: {
           )}
           {lock && <span className="block text-[0.85rem] text-ink-soft">{lock}</span>}
         </span>
-        <LevelSelect
+        <KeySelect
           label={`${level.key} permission`}
           own={level}
           defaultsView={defaultsView}
@@ -601,12 +626,12 @@ function ConfirmWiden(props: {
 }) {
   const { tool, profile, change, ceiling, onClose, onConfirm } = props
   const who = profile ? `the ${profile} profile` : "every profile that sets nothing of its own"
-  const verb = change.level === null ? "Remove the level" : LEVEL_LABEL[change.level]
+  const next = change.level ?? change.after
   return (
     <Dialog
       open
       wide
-      title={change.level === null ? `Remove the level for ${change.label}?` : `${verb}: ${change.label}?`}
+      title={next ? `${LEVEL_LABEL[next]}: ${change.label}?` : `Remove the level for ${change.label}?`}
       onClose={onClose}
       actions={
         <>
@@ -614,15 +639,15 @@ function ConfirmWiden(props: {
             Keep it
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            {change.level === null ? "Remove" : LEVEL_LABEL[change.level]}
+            {next ? LEVEL_LABEL[next] : "Remove"}
           </Button>
         </>
       }
     >
       <p>
-        {change.level === null
-          ? `The tool's own default then applies to ${who}. It may let more through than ${LEVEL_LABEL[change.from ?? "readonly"].toLowerCase()}.`
-          : `Agents and scripts using ${who} will ${MEANS[change.level]}.`}
+        {next
+          ? `Agents and scripts using ${who} will ${MEANS[next]}.`
+          : `The tool's own default then applies to ${who}. It may let more through than ${LEVEL_LABEL[change.from ?? "readonly"].toLowerCase()}.`}
       </p>
       {change.overrides.length > 0 && (
         <p className="mt-2">

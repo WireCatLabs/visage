@@ -44,10 +44,10 @@ describe("Permissions", () => {
 
     const picker = await screen.findByRole("combobox", { name: "Profile" })
     await choose(user, picker, "personal")
-    await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
-    expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument()
-    expect(within(row("Contacts")).getByText("Allowed")).toBeInTheDocument()
-    expect(screen.getByRole("combobox", { name: "Contacts permission" })).toHaveTextContent("Allowed (default)")
+    await waitFor(() => expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument())
+    expect(screen.getByRole("combobox", { name: "Messages permission" })).toHaveTextContent("Read only")
+    expect(screen.getByRole("combobox", { name: "Contacts permission" })).toHaveTextContent("Allow (default)")
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument()
 
     await user.click(within(row("Messages")).getByText(/4 blocked commands · 1 set separately/))
     expect(within(row("Messages")).getByText("tg messages edit")).toBeInTheDocument()
@@ -59,17 +59,74 @@ describe("Permissions", () => {
     const set = vi.spyOn(platform, "settingsSet")
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
     show()
-    await waitFor(() => expect(within(row("Messages")).getByText("Partial write")).toBeInTheDocument())
+    await waitFor(() => expect(within(row("Messages")).getByText(/1 of 5 changes allowed/)).toBeInTheDocument())
 
-    await choose(user, screen.getByRole("combobox", { name: "Messages permission" }), "Allow")
-    const dialog = await screen.findByRole("dialog", { name: "Allow: Messages?" })
-    expect(within(dialog).getByText("tg personal config set --json permissions.messages allow")).toBeInTheDocument()
+    await choose(user, screen.getByRole("combobox", { name: "Messages permission" }), "Ask first")
+    const dialog = await screen.findByRole("dialog", { name: "Ask first: Messages?" })
+    expect(within(dialog).getByText("tg personal config set --json permissions.messages ask")).toBeInTheDocument()
     expect(within(dialog).getByText(/These stay as they are/)).toHaveTextContent("messages.send (allow)")
     expect(set).not.toHaveBeenCalled()
 
+    await user.click(within(dialog).getByRole("button", { name: "Ask first" }))
+    expect(set).toHaveBeenCalledWith("tg", "personal", false, "permissions.messages", "ask")
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Messages permission" })).toHaveTextContent("Ask first"),
+    )
+  })
+
+  it("removes the profile's key when the default level is chosen", async () => {
+    const user = userEvent.setup()
+    const unset = vi.spyOn(platform, "settingsUnset")
+    localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "work" } }))
+    show()
+    const account = await screen.findByRole("combobox", { name: "Account permission" })
+    await waitFor(() => expect(account).toHaveTextContent("Ask first"))
+
+    await choose(user, account, "Allow (default)")
+    const dialog = await screen.findByRole("dialog", { name: "Allow: Account?" })
+    expect(within(dialog).getByText("tg work config unset --json permissions.account")).toBeInTheDocument()
     await user.click(within(dialog).getByRole("button", { name: "Allow" }))
-    expect(set).toHaveBeenCalledWith("tg", "personal", false, "permissions.messages", "allow")
-    await waitFor(() => expect(within(row("Messages")).getByText("Allowed")).toBeInTheDocument())
+    expect(unset).toHaveBeenCalledWith("tg", "work", false, "permissions.account")
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Account permission" })).toHaveTextContent("Allow (default)"),
+    )
+  })
+
+  it("marks the defaults section's level as the default in a profile", async () => {
+    const user = userEvent.setup()
+    const unset = vi.spyOn(platform, "settingsUnset").mockResolvedValue()
+    vi.spyOn(platform, "permissionsShow").mockImplementation(async (_id, profile) => ({
+      levels: [
+        profile === null
+          ? { key: "messages", level: "readonly", origin: "defaults", from: "config file: personal.defaults" }
+          : { key: "messages", level: "allow", origin: "profile", from: "config file: personal.profiles.work" },
+      ],
+      ceiling: null,
+      commands: null,
+      commandsError: null,
+    }))
+    localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "work" } }))
+    show()
+    const messages = await screen.findByRole("combobox", { name: "Messages permission" })
+    await waitFor(() => expect(messages).toHaveTextContent("Allow"))
+    expect(screen.getByRole("combobox", { name: "Polls permission" })).toHaveTextContent("Allow (default)")
+
+    await choose(user, messages, "Read only (default)")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(unset).toHaveBeenCalledWith("tg", "work", false, "permissions.messages")
+  })
+
+  it("explains each level and group in a dialog that Escape closes", async () => {
+    const user = userEvent.setup()
+    show()
+    await user.click(await screen.findByRole("button", { name: "What do these levels mean?" }))
+    const dialog = await screen.findByRole("dialog", { name: "What the levels mean" })
+    expect(within(dialog).getByText("readonly")).toBeInTheDocument()
+    expect(within(dialog).getByText(/checked as Messages, so Block on Messages stops it/)).toBeInTheDocument()
+    expect(within(dialog).getByText("topics")).toBeInTheDocument()
+
+    fireEvent(dialog, new Event("cancel", { cancelable: true }))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
   })
 
   it("narrows without asking", async () => {
@@ -77,7 +134,9 @@ describe("Permissions", () => {
     const set = vi.spyOn(platform, "settingsSet")
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "work" } }))
     show()
-    await waitFor(() => expect(within(row("Contacts")).getByText("Blocked")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Contacts permission" })).toHaveTextContent("Block"),
+    )
 
     await choose(user, screen.getByRole("combobox", { name: "Polls permission" }), "Read only")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
@@ -110,6 +169,6 @@ describe("Permissions", () => {
     localStorage.setItem("wirecat.config.last", JSON.stringify({ targets: { tg: "personal" } }))
     show()
     expect(await screen.findByText(/does not say which commands a profile may run/)).toBeInTheDocument()
-    expect(within(row("Messages")).getByText("Not set")).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Messages permission" })).toHaveTextContent("Allow (default)")
   })
 })

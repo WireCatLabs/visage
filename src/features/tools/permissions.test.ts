@@ -3,15 +3,17 @@ import { findTool } from "@/domain/catalog"
 import type { CommandAccess, Permissions } from "@/platform/permissions-schemas"
 import {
   commandLine,
+  defaultLevel,
   lockReason,
   locks,
+  moreBlocked,
   overview,
   partialDetail,
   removalWidens,
   stateLabel,
   stillAllowed,
   summarize,
-  widens,
+  widensLevel,
 } from "./permissions"
 
 const messages = { key: "messages", label: "Messages" }
@@ -87,8 +89,32 @@ describe("summarize", () => {
   it("falls back to the owner's own level when the tool does not report per command", () => {
     const old = view({ commands: null, levels: [{ key: "messages", level: "allow", origin: "profile", from: null }] })
     expect(summarize(messages, old)).toMatchObject({ state: "allowed", reads: null, writes: null })
-    expect(summarize(messages, view({ commands: null })).state).toBe("default")
     expect(summarize(messages, { ...old, ceiling: "readonly" }).state).toBe("readonly")
+  })
+
+  it("resolves a group nothing names to its fallback, as the tool does", () => {
+    expect(summarize(messages, view({ commands: null }))).toMatchObject({ level: "allow", state: "allowed" })
+    expect(summarize(messages, view({ commands: null }), "readonly")).toMatchObject({
+      level: "readonly",
+      fallback: "readonly",
+      state: "readonly",
+    })
+  })
+
+  it("takes the fallback from the defaults section only, and allow when it names nothing", () => {
+    const defaults = [
+      { key: "messages", level: "readonly" as const, origin: "defaults" as const, from: null },
+      { key: "chats", level: "deny" as const, origin: "profile" as const, from: null },
+    ]
+    expect(defaultLevel("messages", defaults)).toBe("readonly")
+    expect(defaultLevel("chats", defaults)).toBe("allow")
+    expect(defaultLevel("messages", null)).toBe("allow")
+  })
+
+  it("notes when the commands are held tighter than the level says", () => {
+    const s = summarize(messages, view({ commands: [cmd("messages list", false, false)] }))
+    expect(moreBlocked(s, "allow")).toBe("In practice: blocked")
+    expect(moreBlocked(s, "deny")).toBeNull()
   })
 
   it("sums the groups up in one line for the closed panel", () => {
@@ -97,8 +123,6 @@ describe("summarize", () => {
     const readonly = summarize(messages, view({ commands: [...reads, cmd("messages send", true, false)] }))
     expect(overview([allowed, allowed, readonly])).toBe("Allowed for 2 groups · Read only for 1 group")
     expect(overview([readonly, readonly])).toBe("Read only for all 2 groups")
-    const unset = summarize(messages, view({ commands: null }))
-    expect(overview([unset, unset])).toBe("Nothing set; the tool's own defaults apply")
   })
 })
 
@@ -122,9 +146,9 @@ describe("changing a level", () => {
   })
 
   it("widens only above the current level", () => {
-    expect(widens(s, "allow")).toBe(true)
-    expect(widens(s, "ask")).toBe(true)
-    expect(widens(s, "deny")).toBe(false)
+    expect(widensLevel(s.level, "allow")).toBe(true)
+    expect(widensLevel(s.level, "ask")).toBe(true)
+    expect(widensLevel(s.level, "deny")).toBe(false)
   })
 
   it("locks a profile's key in the defaults view and an environment variable everywhere", () => {

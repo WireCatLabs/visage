@@ -12,13 +12,30 @@ export const LEVEL_LABEL: Record<Level, string> = {
 
 const ORDER: Record<Level, number> = { deny: 0, readonly: 1, ask: 2, allow: 3 }
 
-export type GroupState = "allowed" | "ask" | "readonly" | "blocked" | "partial" | "default"
+/**
+ * What a group key gets when no section of the file names it. cli-core's `levelFor` allows a path nothing names, and
+ * its built-in defaults (`DEFAULT_PERMISSIONS`) name only keys under a group, such as `messages.delete`.
+ */
+export const BUILT_IN: Level = "allow"
+
+/** The level a group falls back to here: the `defaults` section's in a profile, else the built-in one. */
+export const defaultLevel = (key: string, defaults: readonly OwnLevel[] | null): Level =>
+  defaults?.find((l) => l.key === key && l.origin === "defaults")?.level ?? BUILT_IN
+
+export const capped = (level: Level, ceiling: Level | null): Level =>
+  ceiling && ORDER[ceiling] < ORDER[level] ? ceiling : level
+
+export type GroupState = "allowed" | "ask" | "readonly" | "blocked" | "partial"
 export type Count = { allowed: number; total: number }
 
 export type GroupSummary = {
   group: PermissionGroup
   /** The level set on the group's own key, if any layer sets it. */
   own: OwnLevel | undefined
+  /** What the group falls back to with no level of its own in this view. */
+  fallback: Level
+  /** The group's own key as it stands: its own level, or the fallback. */
+  level: Level
   /** Keys under the group that the owner set separately, such as `messages.send`. */
   overrides: OwnLevel[]
   /** null when the tool does not report per command. */
@@ -40,21 +57,20 @@ const fromLevel = (level: Level): GroupState =>
  * Only arranges what the tool reported: which commands it lets this profile run, and the levels the owner wrote.
  * The tool's built-in defaults and its rules for which key a command is checked against stay in the tool.
  */
-export function summarize(group: PermissionGroup, permissions: Permissions): GroupSummary {
+export function summarize(group: PermissionGroup, permissions: Permissions, fallback: Level = BUILT_IN): GroupSummary {
   const own = permissions.levels.find((l) => l.key === group.key)
+  const level = own?.level ?? fallback
   const overrides = permissions.levels.filter((l) => l.key.startsWith(`${group.key}.`))
   const commands = (permissions.commands ?? []).filter((c) => c.path[0] === group.key)
-  if (permissions.commands === null || commands.length === 0) {
-    const ceiling = permissions.ceiling
-    const level = own && ceiling && ORDER[own.level] > ORDER[ceiling] ? ceiling : (own?.level ?? ceiling)
-    return { group, own, overrides, reads: null, writes: null, state: level ? fromLevel(level) : "default", commands }
-  }
+  const base = { group, own, fallback, level, overrides, commands }
+  if (permissions.commands === null || commands.length === 0)
+    return { ...base, reads: null, writes: null, state: fromLevel(capped(level, permissions.ceiling)) }
   const reads = count(commands.filter((c) => !c.writes))
   const writes = count(commands.filter((c) => c.writes))
   const allowed = reads.allowed + writes.allowed
   const state: GroupState =
     allowed === commands.length
-      ? own?.level === "ask"
+      ? level === "ask"
         ? "ask"
         : "allowed"
       : allowed === 0
@@ -62,7 +78,7 @@ export function summarize(group: PermissionGroup, permissions: Permissions): Gro
         : reads.allowed === reads.total && writes.allowed === 0
           ? "readonly"
           : "partial"
-  return { group, own, overrides, reads, writes, state, commands }
+  return { ...base, reads, writes, state }
 }
 
 export const STATE_LABEL: Record<GroupState, string> = {
@@ -71,7 +87,6 @@ export const STATE_LABEL: Record<GroupState, string> = {
   readonly: "Read only",
   blocked: "Blocked",
   partial: "Partial",
-  default: "Not set",
 }
 
 const mixed = (c: Count) => c.allowed > 0 && c.allowed < c.total
@@ -87,6 +102,14 @@ export function partialDetail(s: GroupSummary): string | null {
   if (s.state !== "partial" || !s.reads || !s.writes) return null
   if (mixed(s.writes) || !mixed(s.reads)) return `${s.writes.allowed} of ${s.writes.total} changes allowed`
   return `${s.reads.allowed} of ${s.reads.total} reads allowed`
+}
+
+const STATE_ORDER: Record<GroupState, number> = { blocked: 0, readonly: 1, partial: 1, ask: 2, allowed: 3 }
+
+/** When the commands the tool reports are held tighter than the level says, such as reads blocked under another key. */
+export function moreBlocked(s: GroupSummary, level: Level): string | null {
+  if (s.state === "partial" || STATE_ORDER[s.state] >= ORDER[level]) return null
+  return `In practice: ${STATE_LABEL[s.state].toLowerCase()}`
 }
 
 export const blockedCommands = (s: GroupSummary) => s.commands.filter((c) => !c.available)
@@ -105,16 +128,12 @@ export const locks = (commands: readonly CommandAccess[] | null) => [
   ...new Set((commands ?? []).filter(isLock).map((c) => c.reason ?? "The tool blocks it without saying why.")),
 ]
 
-/** Removing a level falls back to the tool's default, which is wider unless the level already allowed everything. */
+/**
+ * Removing a key set under a group falls back to a built-in default the app does not know, such as
+ * `messages.delete: ask`, so anything but allow may widen.
+ */
 export const removalWidens = (own: OwnLevel | undefined) => own?.level !== "allow"
 
-/** How permissive the group is now, for deciding whether a new level widens it. */
-function currentOrder(s: GroupSummary): number {
-  if (s.own) return ORDER[s.own.level]
-  return { allowed: 3, ask: 2, readonly: 1, partial: 1, blocked: 0, default: 1 }[s.state]
-}
-
-export const widens = (s: GroupSummary, next: Level) => ORDER[next] > currentOrder(s)
 export const widensLevel = (from: Level | undefined, next: Level) => ORDER[next] > (from ? ORDER[from] : 1)
 
 /** The view a level belongs to; a key from another layer can be overridden here but not removed. */
@@ -156,7 +175,6 @@ export function overview(summaries: readonly GroupSummary[]): string {
   const groups = (n: number) => `${n} ${n === 1 ? "group" : "groups"}`
   if (counts.size === 1) {
     const [label] = counts.keys()
-    if (label === STATE_LABEL.default) return "Nothing set; the tool's own defaults apply"
     return summaries.length === 1 ? `${label}` : `${label} for all ${groups(summaries.length)}`
   }
   return [...counts].map(([label, n]) => `${label} for ${groups(n)}`).join(" · ")
