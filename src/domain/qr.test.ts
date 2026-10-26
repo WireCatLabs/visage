@@ -13,14 +13,14 @@ const finderAt = (dark: boolean[][], top: number, left: number) =>
 describe("qrModules", () => {
   it("turns the tool's light-glyph drawing back into a square grid with three finder patterns", () => {
     const dark = qrModules(MOCK_CODES[0] ?? "")
-    expect(dark).toHaveLength(33)
-    expect(dark?.every((row) => row.length === 33)).toBe(true)
+    expect(dark).toHaveLength(65)
+    expect(dark?.every((row) => row.length === 65)).toBe(true)
     if (!dark) return
     expect(dark.slice(0, 4).flat().some(Boolean)).toBe(false)
     expect(finderAt(dark, 4, 4)).toBe(true)
-    expect(finderAt(dark, 4, 33 - 11)).toBe(true)
-    expect(finderAt(dark, 33 - 11, 4)).toBe(true)
-    expect(finderAt(dark, 33 - 11, 33 - 11)).toBe(false)
+    expect(finderAt(dark, 4, 65 - 11)).toBe(true)
+    expect(finderAt(dark, 65 - 11, 4)).toBe(true)
+    expect(finderAt(dark, 65 - 11, 65 - 11)).toBe(false)
   })
 
   it("refuses text that is not a drawing", () => {

@@ -12,7 +12,7 @@ import { type Phase, running, useSignIn } from "./store"
 
 type Qr = Extract<SignInEvent, { event: "qr" }>
 
-const STAGE = "flex min-h-[16rem] flex-col items-center justify-center gap-3 text-center"
+const STAGE = "flex min-h-[19rem] flex-col items-center justify-center gap-3 text-center"
 
 /** Signs a profile in with the tool's own sign-in, drawn in the window: the QR code, then the phone's history. */
 export function SignInDialog() {
@@ -30,6 +30,7 @@ export function SignInDialog() {
   return (
     <Dialog
       open={s.tool !== null}
+      wide
       title={`Sign in to ${name}`}
       onClose={s.close}
       actions={<Actions phase={s.phase} stopping={s.stopping} />}
@@ -65,7 +66,7 @@ function Stage({ name }: { name: string }) {
   if (phase === "starting") {
     return (
       <div className={STAGE}>
-        <Skeleton className="size-[13rem]" label="Starting the sign-in" />
+        <Skeleton className="size-[17rem]" label="Starting the sign-in" />
         <p className="text-[0.9rem]">Asking {name} for a code…</p>
       </div>
     )
@@ -102,7 +103,7 @@ function Stage({ name }: { name: string }) {
   }
   if (phase === "failed" && failure) {
     return (
-      <div className="flex min-h-[16rem] flex-col justify-center">
+      <div className="flex min-h-[19rem] flex-col justify-center">
         <ErrorNotice
           action={
             <ReportThis
@@ -126,7 +127,7 @@ const count = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString(
 function ScanStage({ qr }: { qr: Qr }) {
   const scan = qr.scan ? `${qr.scan.charAt(0).toUpperCase()}${qr.scan.slice(1)}.` : null
   return (
-    <div className="flex min-h-[16rem] flex-wrap items-center justify-center gap-x-5 gap-y-3">
+    <div className="flex min-h-[19rem] flex-wrap items-center justify-center gap-x-5 gap-y-3">
       <QrImage text={qr.text} />
       <div className="flex min-w-[11rem] flex-1 flex-col gap-2 text-[0.9rem]">
         {scan && <p className="font-medium text-ink">{scan}</p>}
@@ -165,7 +166,7 @@ function QrImage({ text }: { text: string }) {
       aria-label="QR code to scan with your phone"
       viewBox={`0 0 ${size} ${size}`}
       shapeRendering="crispEdges"
-      className="size-[13rem] shrink-0 rounded-[0.35rem] border border-line"
+      className="size-[17rem] shrink-0 rounded-[0.35rem] border border-line"
     >
       <rect width={size} height={size} fill="#ffffff" />
       <path d={qrPath(dark)} fill="#000000" />

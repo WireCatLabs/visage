@@ -141,6 +141,9 @@ Fields per tool: `phone` (not secret), `code` (login code), `password` (2FA or M
   event name and never its payload. Typed answers never appear in any log or bug report.
 - The catalog gets a `signIn.methods` entry per tool (words and labels). The "Open terminal" button stays for
   tools and methods not yet ported.
+- **поправка (TASK-19, phase 1 built):** phase 1 shipped `signIn.qr` (one list of words) and `sign_in(id, profile)`
+  with no method, plus `sign_in_stop(id)` by tool id. Phase 2 turns `qr` into `methods` and adds the method argument.
+  wa's `qr` line has no `link` and `expires_at` is null (FIND-35), so Desktop decodes the drawing (`src/domain/qr.ts`).
 
 ## 4. Sign-in over MCP
 

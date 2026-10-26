@@ -302,6 +302,10 @@ fn stream_inner(
                         Err(_) => break,
                     }
                 }
+                // A launcher that ran the program as its child, not in its place, ends on SIGTERM and leaves it running.
+                if stopping {
+                    kill(&mut child);
+                }
                 return Ok(status.code());
             }
             Ok(None) => thread::sleep(Duration::from_millis(40)),
@@ -437,6 +441,21 @@ mod tests {
         );
         assert_eq!(result.unwrap(), Some(0));
         assert_eq!(lines, vec!["ready", "kept"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    #[allow(unsafe_code)]
+    fn a_stop_leaves_nothing_behind_a_launcher_that_did_not_exec() {
+        let (result, lines, _) = stop_after_ready(
+            "sleep 30 & echo $!; trap 'exit 0' TERM; while :; do sleep 0.05; done",
+            Duration::from_secs(10),
+        );
+        assert_eq!(result.unwrap(), Some(0));
+        let child: i32 = lines[0].parse().unwrap();
+        thread::sleep(Duration::from_millis(200));
+        // SAFETY: signal 0 only asks whether the pid exists.
+        assert_eq!(unsafe { libc::kill(child, 0) }, -1, "the launcher's child still runs");
     }
 
     #[cfg(unix)]
