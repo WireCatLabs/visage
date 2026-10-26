@@ -237,7 +237,7 @@ runs `mcp --revoke` after a dialog. "Copy config for desktop apps" copies `mcp c
 
 The login code, the address and the apps' names leave Rust unmasked, an exception to rule 4 like the sign-in QR: the
 owner needs them as they are. They are never logged and never put in a report. A tool from before `mcp server`
-(cli-core 0.443) answers "unknown command" and the row says to update it.
+(cli-core 0.444) answers "unknown command" and the row says to update it.
 
 ## Growing the app
 

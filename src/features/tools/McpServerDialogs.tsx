@@ -32,7 +32,8 @@ export function StartServer(props: {
   const { tool, profile, open, onClose, onStarted } = props
   const id = useId()
   const [url, setUrl] = useState("")
-  const [port, setPort] = useState(String(DEFAULT_PORT))
+  const offered = String(tool.mcpServer?.port ?? DEFAULT_PORT)
+  const [port, setPort] = useState(offered)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const name = profile ? `${tool.bin} ${profile}` : tool.bin
@@ -109,7 +110,7 @@ export function StartServer(props: {
             />
           </label>
           <span className="text-[0.8rem] text-ink-dim">
-            Point the tunnel at 127.0.0.1:{port || DEFAULT_PORT}. Each running server needs a port of its own.
+            Point the tunnel at 127.0.0.1:{port || offered}. Each running server needs a port of its own.
           </span>
         </div>
         <p className="text-[0.85rem]">

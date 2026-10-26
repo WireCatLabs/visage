@@ -33,6 +33,7 @@
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
       "mcpServer": {
+        "port": 8765,
         "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
         "stop": ["{profile}", "mcp", "server", "stop", "--json"],
         "status": ["{profile}", "mcp", "server", "status", "--json"],
@@ -134,6 +135,7 @@
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
       "mcpServer": {
+        "port": 8766,
         "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
         "stop": ["{profile}", "mcp", "server", "stop", "--json"],
         "status": ["{profile}", "mcp", "server", "status", "--json"],
@@ -229,6 +231,7 @@
         "add": ["{profile}", "mcp", "add", "{client}", "--json"]
       },
       "mcpServer": {
+        "port": 8768,
         "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
         "stop": ["{profile}", "mcp", "server", "stop", "--json"],
         "status": ["{profile}", "mcp", "server", "status", "--json"],
@@ -383,6 +386,7 @@
       },
       "mcp": null,
       "mcpServer": {
+        "port": 8769,
         "start": ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
         "stop": ["{profile}", "mcp", "server", "stop", "--json"],
         "status": ["{profile}", "mcp", "server", "status", "--json"],
@@ -443,6 +447,7 @@
       },
       "mcp": null,
       "mcpServer": {
+        "port": 8767,
         "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
         "stop": ["mcp", "server", "stop", "--json"],
         "status": ["mcp", "server", "status", "--json"],
