@@ -163,7 +163,7 @@ mod tests {
             "whatsapp": {"label": "WhatsApp", "accounts": ["+34600000000"]}
         }});
         assert_eq!(openclaw_channels(&v), ["telegram", "whatsapp"]);
-        assert!(openclaw_channels(&json!({})).is_empty());
+        assert_eq!(openclaw_channels(&json!({})), Vec::<String>::new());
     }
 
     /// `cargo test -- --ignored real_chats`: the gateway's platform names on this computer.

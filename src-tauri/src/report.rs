@@ -156,6 +156,7 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
     // The interface may have held this for a while; mask again so nothing it carries leaves unmasked.
     if let Some(a) = context.attachments.as_mut() {
         redact::json(a);
+        hide_agent_sessions(a);
     }
     let expected = draft.expected.map(|e| redact::text(e.trim())).filter(|e| !e.is_empty());
     Ok(json!({
@@ -171,6 +172,16 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
             "attachments": context.attachments,
         }
     }))
+}
+
+/// The Logs page filters by an agent's session, so only the report masks it: the id ties a report to a private session log.
+fn hide_agent_sessions(attachments: &mut Value) {
+    let Some(tools) = attachments["runs"].as_array_mut() else { return };
+    for run in tools.iter_mut().filter_map(|t| t["runs"].as_array_mut()).flatten() {
+        if let Some(session) = run.pointer_mut("/agent/session_id").filter(|s| s.is_string()) {
+            *session = Value::String("•••".into());
+        }
+    }
 }
 
 fn accepted(status: u16, answer: &Value) -> Result<Sent, String> {
@@ -232,7 +243,10 @@ mod tests {
             app: json!({ "name": "wirecat-desktop", "version": "0.1.0" }),
             system: json!({ "os": "Linux", "arch": "x86_64", "node": null, "npm": null }),
             tools: vec![],
-            attachments: Some(json!({ "runs": [{ "tool": "tg", "runs": [{ "phone": "+34 600 000 000" }] }] })),
+            attachments: Some(json!({ "runs": [{ "tool": "tg", "runs": [
+                { "phone": "+34 600 000 000", "agent": { "kind": "claude-code", "session_id": "3b8e51d2-7c4a-4f0e" } },
+                { "agent": { "kind": "codex", "session_id": null } }
+            ] }] })),
         }
     }
 
@@ -242,6 +256,9 @@ mod tests {
         assert_eq!(body["report"]["details"], "mail me at [email]");
         assert_eq!(body["report"]["expected"], Value::Null);
         assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["phone"], "•••");
+        assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["agent"]["session_id"], "•••");
+        assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["agent"]["kind"], "claude-code");
+        assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][1]["agent"]["session_id"], Value::Null);
     }
 
     #[test]

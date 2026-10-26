@@ -351,7 +351,7 @@ mod tests {
         let rows = from_status(&v);
         assert_eq!((rows[1].target.as_str(), rows[1].state.as_deref()), ("hermes", Some("current")));
         assert_eq!(from_status(&json!({"item": v})), rows);
-        assert!(from_status(&json!({"targets": []})).is_empty());
+        assert_eq!(from_status(&json!({"targets": []})), Vec::<TargetStatus>::new());
         assert!(validate_target("hermes").is_ok());
         assert!(from_doctor(&json!({"skills": []})).iter().all(|t| t.target != "hermes"));
     }

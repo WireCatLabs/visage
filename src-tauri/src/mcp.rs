@@ -302,7 +302,7 @@ mod tests {
         let file = dir.join("mcp.json");
         std::fs::write(&file, r#"{"mcpServers": {"tg-personal": {"env": {"API_KEY": "x"}}, "github": {}}}"#).unwrap();
         assert_eq!(keys_in(&file, "mcpServers").unwrap(), ["github", "tg-personal"]);
-        assert!(keys_in(&dir.join("absent.json"), "mcpServers").unwrap().is_empty());
+        assert_eq!(keys_in(&dir.join("absent.json"), "mcpServers").unwrap(), Vec::<String>::new());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
