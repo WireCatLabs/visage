@@ -96,8 +96,13 @@ WhatsApp renews it). Three facts force this shape:
 - The model cannot show a QR until its call returns.
 
 **One shared piece in cli-core:** a `PendingSignIn` holder, one per server, handed to commands through the run's
-environment, the same way `spawnJob` and `embedders` are today (`cli-core/src/mcp/server.ts:226-230`). It holds at
-most one login, with a deadline. Each tool's `session start` keeps its own login code and only reports its steps to
+environment, the same way `spawnJob` and `embedders` are today (`cli-core/src/mcp/server.ts:226-230`). It is made in
+`createServer`, next to `session` (`server.ts:195-199`), not in `build()`: `build()` runs again for each throwaway
+stdio probe (`server.ts:92-96`) and for each HTTP session (`cli-core/src/mcp/http/serve.ts:55`). It holds at most one
+login, with a deadline. The holder owns the login's connection and its abort signal, not the call: today everything a
+call opens is closed when the call ends (`trackCloseable`, `signal`, `commandSignal`, `server.ts:57-77`). Before
+sign-in there is no account, so the server's shared connection cannot be lent (`server.ts:236-251`); the login opens
+its own. Each tool's `session start` keeps its own login code and only reports its steps to
 the holder: `show(kind, payload)`, `needs(kind, prompt)`, `done(account)`, `failed(error)`. At a terminal the same
 calls draw the QR and ask the question as they do now. After `done`, the server drops its cached connection, so the
 next call connects as the new account (`MessengerSession`, `cli-core/src/mcp/session.ts`).
@@ -115,7 +120,7 @@ Changes in cli-core and cli-base:
 
 The MCP specification forbids form-mode elicitation for passwords, API keys and tokens, and requires URL mode for them
 ([elicitation, 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation), "Form Mode
-Security"; same rule in
+Security"; the same rule is in
 [2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)). In URL mode the secret
 does not pass through the client or the model.
 
@@ -123,7 +128,19 @@ So the server serves a **one-time sign-in page**: a single form for the one valu
 for one use and a few minutes.
 
 - stdio: on `127.0.0.1`, with a random port.
-- HTTP: under the tunnel's public address, behind the existing owner login (`cli-core/src/mcp/http/serve.ts:91-140`).
+- HTTP: under the tunnel's public address.
+
+The spec also says the server **must verify that the person who opens the URL is the person who started the
+request** (2025-11-25 page, "Phishing"), and must not hand out a pre-authenticated URL ("Safe URL Handling"). A random
+one-time path alone does not meet that. The existing HTTP owner login does not help: it gives tokens to MCP client
+apps after a code typed from the server's terminal (`cli-core/src/mcp/http/oauth.ts:97-108`); a person opening a link
+in a browser holds no such token. So:
+
+- stdio: the page is on this computer only; besides the random path, it shows a short code that the sign-in step's
+  answer also shows, and the person confirms they match. That is enough for one owner on one machine (I think;
+  not reviewed against the spec's full security text).
+- HTTP: there is no trustworthy way today to know who opens the page. One more reason for NEED-52 **A**. If the owner
+  wants HTTP sign-in, the page needs a browser session bound to the owner login first: a separate piece of work.
 
 The server hands the page to the person in this order:
 
@@ -156,6 +173,12 @@ NEED-55 lets `setup` in.
 - The owner turns it off with one line in the profile's permissions: `mcp.sign-in: deny`. Or, for one server only,
   with the existing flag `--permission mcp.sign-in=deny`, which can only make levels stricter
   (`cli-core/src/cli/messenger/mcp-command.ts:40-41`).
+- The read-only lock and a profile that is `readonly` as a whole turn `mcp.sign-in` off. Today a login has no
+  permission key, so the lock does not see it (`cli-core/src/cli/effects.ts:122-135`).
+- Side effect to handle: `mcp config` refuses to install a server that offers any writing tool unless `--allow-writes`
+  is passed (`cli-core/src/cli/messenger/mcp-command.ts:153-157`). With `session start` offered everywhere, every
+  profile would need that flag, including the desktop app's "Advanced: MCP". Leave `mcp.sign-in` commands out of that
+  count.
 - Discovery still lists the command, marked unavailable with the reason, as it does for other blocked commands
   (`cli-core/src/mcp/agent.ts:236-242`).
 
@@ -166,6 +189,12 @@ agents. If "allow all by default" also opens `mcp.authority` (NEED-53), an agent
 `mcp.authority`. Make it one cli-core rule: **over MCP, nothing writes the `permissions` setting, at any level.**
 
 ## 3. Per-tool work
+
+Build it in two phases, so the first ships without any page:
+
+1. **Show steps only.** tg QR without 2FA, WhatsApp pairing code and QR, max QR without a cloud password, the Zoom and
+   Google URLs over stdio, and `session end` everywhere. No secret ever reaches the server through MCP.
+2. **Submit steps.** The one-time page for codes, passwords, tokens and pasted redirects (section 2.3).
 
 **cli-core** (most of the work):
 
@@ -213,7 +242,7 @@ Persistent commands (`mcp`, `serve`, `watch`) stay out in every tool: an MCP cal
 | Who can call | whoever started the process: the owner's own agent | whoever holds the owner login of the tunnel |
 | What sign-in adds | the agent can link an account the owner then uses | a remote caller can add an account to this computer, or end one |
 | `mcp.sign-in` default | allow | deny, unless the profile says allow (NEED-52) |
-| Submit steps | page on `127.0.0.1` | page under the public address, behind the owner login |
+| Submit steps | page on `127.0.0.1`, with a match code | not until the page can verify the owner (see 2.3) |
 | Browser-based methods (`qr-chrome`, `sms`, OAuth loopback) | allowed | refused, or paste-back only |
 
 Always, both transports:
