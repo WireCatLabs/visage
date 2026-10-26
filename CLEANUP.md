@@ -44,3 +44,4 @@
 - 2026-10-26 · .claude/worktrees/tailscale-funnel and its branch feat/tailscale-funnel — Tailscale Funnel step 4 (TASK-22), remove once merged into feat/desktop-mvp
 - /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/funnel-test — sandbox HOME for the NEED-68 Funnel test (npx cache, memo store), 2026-10-26
 - /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/cli-docs — copy of cli-docs built for the skill index (PR #419); its 8 orphaned Next.js workers ran 4h43m at ~92% CPU and ~14 GB RAM until stopped by PID, 2026-10-26
+- 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ts-userspace and …/scratchpad/ts-src — tailscaled 1.104.2 tarball, its test state/logs, and the tailscale source clone for TASK-25 research
