@@ -46,3 +46,6 @@
 - /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/cli-docs — copy of cli-docs built for the skill index (PR #419); its 8 orphaned Next.js workers ran 4h43m at ~92% CPU and ~14 GB RAM until stopped by PID, 2026-10-26
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ts-userspace — tailscaled 1.104.2 tarball and its test state/logs (TASK-25)
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ts-src — tailscale v1.104.2 source clone (TASK-25)
+- 2026-10-27 · .claude/worktrees/tailscale-distros and its branch feat/tailscale-distros — TASK-24, remove once fast-forwarded into feat/desktop-mvp
+- 2026-10-27 · /home/leemour/Projects/AI/cli-docs-wt-tailscale-funnel and its branch docs/desktop-tailscale-funnel — TASK-24 website page, remove once its PR is merged
+- 2026-10-27 · Docker images pulled to test Tailscale's Linux commands (TASK-24): ubuntu:24.04, ubuntu:22.04, debian:12, debian:13, fedora:40, fedora:42, rockylinux:9, almalinux:10, opensuse/tumbleweed, opensuse/leap:15.6, archlinux, amazonlinux:2023
