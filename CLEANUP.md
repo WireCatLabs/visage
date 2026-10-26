@@ -50,3 +50,4 @@
 - 2026-10-27 · /home/leemour/Projects/AI/cli-docs-wt-tailscale-funnel and its branch docs/desktop-tailscale-funnel — TASK-24 website page, remove once its PR is merged
 - 2026-10-27 · Docker images pulled to test Tailscale's Linux commands (TASK-24): ubuntu:24.04, ubuntu:22.04, debian:12, debian:13, fedora:40, fedora:42, rockylinux:9, almalinux:10, opensuse/tumbleweed, opensuse/leap:15.6, archlinux, amazonlinux:2023
 - 2026-10-27 · .claude/worktrees/ux8-permission-levels and its branch feat/ux8-permission-levels — UX-8, remove once fast-forwarded into feat/desktop-mvp
+- 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/himalaya-2.2.1 — Himalaya v2.2.1 config.sample.toml, config.rs, spec, read for BUG-12
