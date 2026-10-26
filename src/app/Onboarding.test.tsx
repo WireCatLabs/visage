@@ -36,8 +36,10 @@ describe("First start", () => {
     expect(await within(signIn).findByText("Google Drive")).toBeInTheDocument()
     const telegram = await within(signIn).findByRole("list", { name: "Telegram accounts" })
     expect(within(telegram).getByText(/Signed in as profile/)).toHaveTextContent("Signed in as profile personal")
-    await user.click(within(telegram).getByRole("button", { name: "Open terminal to sign in" }))
-    expect(await within(signIn).findByRole("button", { name: "Check sign-in" })).toBeInTheDocument()
+    await user.click(within(telegram).getByRole("button", { name: "Sign in" }))
+    const dialog = await screen.findByRole("dialog", { name: "Sign in to Telegram" })
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }))
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Sign in to Telegram" })).toBeNull())
     const driveSignIn = within(signIn).getByRole("heading", { name: "Google Drive" }).closest("li") as HTMLElement
     await user.click(await within(driveSignIn).findByRole("button", { name: "Add another account" }))
     expect(within(driveSignIn).getByRole("textbox", { name: "Name for another account, Google Drive" })).toHaveValue("")

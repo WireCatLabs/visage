@@ -55,8 +55,16 @@ pub struct Tool {
 /// The rest of `signIn` is text for the interface.
 #[derive(Debug, Deserialize)]
 pub struct SignInSource {
-    /// A sign-in that asks nothing: off a terminal the tool prints each QR code as a `{"event":"qr"}` line on stderr.
-    pub qr: Option<Vec<String>>,
+    /// Sign-ins the app runs in its own window: off a terminal the tool prints each step as a JSON line on stderr
+    /// (`qr`, `open_url`, `pairing_code`, `needs`, `progress`) and, with `--answer-stdin`, reads each answer on stdin.
+    #[serde(default)]
+    pub methods: Vec<SignInMethod>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SignInMethod {
+    pub id: String,
+    pub words: Vec<String>,
 }
 
 /// `commands` lists every command with its effects and, from cli-core 0.408, whether the profile may run it.

@@ -35,7 +35,8 @@ src-tauri/src/
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
   terminal.rs   opening a tool's interactive setup in the user's terminal.
-  signin.rs     signing in inside the window: the tool's own `session start` read into steps (QR code, progress, done).
+  signin.rs     signing in inside the window: the tool's own `session start`, its stdin open for the answers.
+  signin_steps.rs the tool's sign-in lines read into steps: QR code, pairing code, page to open, question, progress.
   report.rs     bug reports: what this computer adds, masked, and sending to the WireCat API (docs/dev/report-api.md).
 ```
 
@@ -196,16 +197,27 @@ Doctor output is masked in Rust and summarised in `src/domain/doctor.ts`; the ra
 
 ## Signing in inside the window
 
-A tool whose catalog entry has `signIn.qr` (WhatsApp, phase 1 of `docs/dev/plans/2026-10-26-mcp-full-commands.md`)
-signs in without a terminal: "Sign in here" opens a dialog, and `sign_in` runs those words for the profile the owner
-named, with stdin closed. Off a terminal the tool prints each QR code as a `{"event":"qr"}` line on stderr; `signin.rs`
-reads it, the tool's notes and its stdout answer into `qr`, `note`, `progress`, `done` and `failed` steps on a
-`Channel`. The code comes as a half-block drawing and no link, so `src/domain/qr.ts` turns it back into modules and the
-dialog draws an SVG, dark on white in both themes. The code is a login token while valid: the plain drawing and the
-agents' note that the tool prints beside it are dropped, the account's id and name stay in Rust, and no step is logged
-or put in a report. Cancel, Escape and Stop call `sign_in_stop`: SIGTERM to the tool alone, five seconds for it to
-answer with the history it kept, then the whole group is killed (`run::stream_stoppable`). "Open terminal" stays as
-the second choice, and is the only one for the other tools.
+Each tool with `signIn.methods` in the catalog signs in without a terminal (step 2 of
+`docs/dev/plans/2026-10-26-mcp-full-commands.md`): tg (QR or phone), max (QR), wa (QR), zm and drive (the browser).
+"Sign in here" opens a dialog, and `sign_in(id, method, profile)` runs that method's words for the profile the owner
+named. With `--json` the tool prints each step as a JSON line on stderr, from cli-core's `signInSteps` (0.443) and
+`loginQr`: `qr`, `pairing_code`, `open_url`, `needs` and `progress`. `signin_steps.rs` reads them, the tool's notes and
+its stdout answer into steps on a `Channel`; `signin.rs` runs the tool with its stdin kept open
+(`run::stream_stoppable`). A `needs` step draws a field, masked when `secret`; the answer goes through
+`sign_in_answer(id, value)`, which writes it and a newline to that run's stdin and wipes it (`zeroize`). Only with
+`--answer-stdin` does a tool read answers; without it a tool with no terminal refuses, so an agent's shell never waits.
+A tool too old for the flag answers "unknown option", which becomes "update it on the Tools page"; "Open terminal" stays
+the second choice.
+
+What never leaves the window: a QR code, a pairing code and a sign-in link are login tokens while valid, so they travel
+on the Channel only, and the plain copies the tool prints beside them (the code's drawing, the link's line, the agents'
+note) are dropped. The account's id and name stay in Rust (max's "logged in as" line is dropped too). No step is logged
+or put in a report, and an answer is never kept in the store or repeated in an error. The QR comes as a half-block
+drawing, so `src/domain/qr.ts` turns it back into modules and the dialog draws an SVG, dark on white in both themes.
+Zoom without its own app's Public Client ID fails, and the dialog asks for it and saves it with zm's own `config set`
+before starting again. Cancel, Escape and Stop call `sign_in_stop`: SIGTERM to the tool alone, five seconds for it to
+answer with what it kept (WhatsApp's history), then the whole group is killed. Switching method (tg's QR or phone)
+stops the running sign-in first.
 
 ## The MCP server for browser apps
 

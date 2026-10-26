@@ -19,6 +19,7 @@ mod run;
 mod runs;
 mod settings;
 mod signin;
+mod signin_steps;
 mod skills;
 mod storage;
 mod system;
@@ -438,16 +439,17 @@ fn open_setup(id: String, profile: Option<String>) -> Result<(), String> {
     terminal::open(&bin, &args)
 }
 
-/// Signs a profile in inside the window, for a tool whose catalog entry has a sign-in that asks nothing (`signIn.qr`).
+/// Signs a profile in inside the window with one of the catalog's `signIn.methods`.
 #[tauri::command]
 async fn sign_in(
     id: String,
+    method: String,
     profile: String,
     running: State<'_, Arc<Running>>,
     on_event: Channel<signin::SignInEvent>,
 ) -> Result<(), String> {
     let tool = catalog::tool(&id)?;
-    let args = signin::args(tool, &profile)?;
+    let args = signin::args(tool, &method, &profile)?;
     let running = Arc::clone(&running);
     blocking(move || {
         let send = |e: signin::SignInEvent| {
@@ -464,6 +466,13 @@ async fn sign_in(
         running.finish(&key);
     })
     .await
+}
+
+/// Hands the running sign-in the answer to its last `needs` step, on its stdin; the value is wiped after the write.
+#[tauri::command]
+fn sign_in_answer(id: String, value: String) -> Result<(), String> {
+    let value = signin::Answer::new(value);
+    signin::answer(&catalog::tool(&id)?.id, &value)
 }
 
 /// Asks the running sign-in to stop; `sign_in` answers `stopped`, or `done` when the tool kept what had come.
@@ -535,6 +544,7 @@ pub fn run() {
             permissions_show,
             open_setup,
             sign_in,
+            sign_in_answer,
             sign_in_stop
         ])
         .run(tauri::generate_context!())

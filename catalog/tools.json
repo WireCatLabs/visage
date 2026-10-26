@@ -90,7 +90,19 @@
       },
       "signIn": {
         "gives": "Lets your agent read and search your Telegram chats, and send messages when you ask.",
-        "asks": "The first time, your phone number and the code Telegram sends, to register your own Telegram app. Then a QR code to scan in Telegram: Settings → Devices → Link Desktop Device."
+        "asks": "The first time, your phone number and the code Telegram sends, to register your own Telegram app. Then a QR code to scan in Telegram: Settings → Devices → Link Desktop Device.",
+        "methods": [
+          {
+            "id": "qr",
+            "label": "QR code",
+            "words": ["{profile}", "session", "start", "qr", "--json", "--answer-stdin"]
+          },
+          {
+            "id": "phone",
+            "label": "Phone number",
+            "words": ["{profile}", "session", "start", "phone", "--json", "--answer-stdin"]
+          }
+        ]
       }
     },
     {
@@ -178,7 +190,14 @@
       },
       "signIn": {
         "gives": "Lets your agent read and search your MAX chats, and send messages when you ask.",
-        "asks": "A QR code to scan with the MAX app on your phone."
+        "asks": "A QR code to scan with the MAX app on your phone.",
+        "methods": [
+          {
+            "id": "qr",
+            "label": "QR code",
+            "words": ["{profile}", "session", "start", "qr", "--json", "--answer-stdin"]
+          }
+        ]
       }
     },
     {
@@ -267,7 +286,7 @@
       "signIn": {
         "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",
         "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device.",
-        "qr": ["{profile}", "session", "start", "qr", "--json"]
+        "methods": [{ "id": "qr", "label": "QR code", "words": ["{profile}", "session", "start", "qr", "--json"] }]
       }
     },
     {
@@ -328,7 +347,14 @@
       "signIn": {
         "gives": "Lets your agent find your Zoom meetings and read their transcripts and summaries.",
         "asks": "Your browser opens Zoom to approve access. Zoom first needs an app of your own, made once in the Zoom App Marketplace.",
-        "guide": "https://github.com/WireCatLabs/zoom-cli/blob/main/docs/zoom-app.md"
+        "guide": "https://github.com/WireCatLabs/zoom-cli/blob/main/docs/zoom-app.md",
+        "methods": [
+          {
+            "id": "browser",
+            "label": "Browser",
+            "words": ["{profile}", "session", "start", "--json", "--answer-stdin"]
+          }
+        ]
       }
     },
     {
@@ -389,7 +415,8 @@
       },
       "signIn": {
         "gives": "Lets your agent find and read your Google Drive files. It cannot change them.",
-        "asks": "Your browser opens Google: choose the account and allow read-only access to Drive."
+        "asks": "Your browser opens Google: choose the account and allow read-only access to Drive.",
+        "methods": [{ "id": "browser", "label": "Browser", "words": ["{profile}", "session", "start", "--json"] }]
       }
     },
     {

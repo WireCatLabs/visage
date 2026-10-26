@@ -1,4 +1,5 @@
 import { delay } from "./mock-delay"
+import { saveMockClientId } from "./mock-signin"
 import type { Origin, SettingRow, Settings } from "./settings-schemas"
 import type { Platform } from "./types"
 
@@ -207,6 +208,7 @@ export const settingsMock: Pick<Platform, "settingsShow" | "settingsSet" | "sett
       if (!(setting in zoom)) return reject("unknown config key")
       if (setting === "source" && value !== "api" && value !== "files") return reject("source must be api or files")
       zoom[setting] = value
+      if (setting === "zoom.client_id") saveMockClientId()
       return
     }
     if (id === "drive") {

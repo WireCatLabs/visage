@@ -18,13 +18,14 @@ let finish: () => void = () => undefined
 
 beforeEach(() => {
   useSignIn.setState(useSignIn.getInitialState(), true)
-  vi.spyOn(platform, "signIn").mockImplementation((_id, _profile, onEvent) => {
+  vi.spyOn(platform, "signIn").mockImplementation((_id, _method, _profile, onEvent) => {
     send = (e) => act(() => onEvent(e))
     return new Promise((resolve) => {
       finish = resolve
     })
   })
   vi.spyOn(platform, "signInStop").mockResolvedValue()
+  vi.spyOn(platform, "signInAnswer").mockResolvedValue()
 })
 
 afterEach(() => {
@@ -56,7 +57,7 @@ describe("signing in to WhatsApp inside the window", () => {
     expect(screen.getByRole("button", { name: "Open terminal" })).toBeInTheDocument()
     const dialog = await startAs("personal")
 
-    expect(platform.signIn).toHaveBeenCalledWith("wa", "personal", expect.any(Function))
+    expect(platform.signIn).toHaveBeenCalledWith("wa", "qr", "personal", expect.any(Function))
     send({ event: "note", text: "Before you link: wa is not an official WhatsApp app." })
     send({ event: "qr", text: MOCK_CODES[0] ?? "", expiresAt: null, scan: SCAN })
     const code = within(dialog).getByRole("img", { name: /QR code/ })
@@ -73,7 +74,7 @@ describe("signing in to WhatsApp inside the window", () => {
         ?.getAttribute("d"),
     ).not.toBe(first)
 
-    send({ event: "progress", step: "history" })
+    send({ event: "progress", step: "history", message: null })
     expect(within(dialog).queryByRole("img", { name: /QR code/ })).toBeNull()
     expect(within(dialog).getByText(/Receiving your chat history/)).toBeInTheDocument()
 
@@ -128,5 +129,79 @@ describe("signing in to WhatsApp inside the window", () => {
     expect(screen.getByRole("button", { name: "Sign in here" })).toBeDisabled()
     await userEvent.type(screen.getByLabelText(/Name for this account/), "-bad{Enter}")
     expect(platform.signIn).not.toHaveBeenCalled()
+  })
+})
+
+describe("answering what the tool asks", () => {
+  async function open(tool: string, profile = "personal") {
+    render(<SignInDialog />)
+    act(() => useSignIn.getState().start(tool, profile))
+    await vi.waitFor(() => expect(platform.signIn).toHaveBeenCalled())
+    return screen.getByRole("dialog")
+  }
+
+  it("asks Telegram's questions one at a time, masks the password and keeps no answer", async () => {
+    const dialog = await open("tg")
+    expect(platform.signIn).toHaveBeenCalledWith("tg", "qr", "personal", expect.any(Function))
+    send({ event: "openUrl", url: "https://my.telegram.org/apps", purpose: "copy App api_id and App api_hash" })
+    expect(within(dialog).getByRole("button", { name: "Open my.telegram.org" })).toBeInTheDocument()
+
+    send({ event: "needs", field: "password", secret: true, prompt: "2FA password (not shown)", hint: "the cat" })
+    const field = within(dialog).getByLabelText("2FA password")
+    expect(field).toHaveAttribute("type", "password")
+    expect(field).toHaveFocus()
+    expect(within(dialog).getByText("Hint: the cat")).toBeInTheDocument()
+
+    await userEvent.type(field, "not-a-real-password{Enter}")
+    expect(platform.signInAnswer).toHaveBeenCalledWith("tg", "not-a-real-password")
+    expect(field).toHaveValue("")
+    expect(within(dialog).getByText(/Sent\. Waiting/)).toBeInTheDocument()
+    expect(JSON.stringify(useSignIn.getState())).not.toContain("not-a-real-password")
+
+    send({ event: "done", alreadyLinked: false, received: null })
+    expect(within(dialog).getByText("Signed in.")).toBeInTheDocument()
+  })
+
+  it("offers Telegram's other way in, and starts it after the running one stops", async () => {
+    const dialog = await open("tg", "work")
+    send({ event: "qr", text: MOCK_CODES[0] ?? "", expiresAt: null, scan: "scan in Telegram" })
+    await userEvent.click(within(dialog).getByRole("button", { name: "Use phone number instead" }))
+    expect(platform.signInStop).toHaveBeenCalledWith("tg")
+    finish()
+    await vi.waitFor(() =>
+      expect(platform.signIn).toHaveBeenLastCalledWith("tg", "phone", "work", expect.any(Function)),
+    )
+  })
+
+  it("keeps Zoom's page beside the pasted-address fallback, and drops the question when the browser answers", async () => {
+    const dialog = await open("zm")
+    send({
+      event: "openUrl",
+      url: "https://zoom.us/oauth/authorize?x=1",
+      purpose: "Approve access to Zoom in the browser",
+    })
+    expect(within(dialog).getByText(/Waiting for you to finish in the browser/)).toBeInTheDocument()
+    send({ event: "needs", field: "redirect", secret: true, prompt: "the address it ended on", hint: null })
+    expect(within(dialog).getByRole("button", { name: "Open zoom.us" })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText("The address it ended on")).toBeInTheDocument()
+
+    send({ event: "done", alreadyLinked: false, received: null })
+    expect(within(dialog).queryByLabelText("The address it ended on")).toBeNull()
+  })
+
+  it("asks for Zoom's Public Client ID when the tool has none, saves it with zm's own config set and starts again", async () => {
+    vi.spyOn(platform, "settingsSet").mockResolvedValue()
+    const dialog = await open("zm")
+    send({ event: "failed", code: "configuration_error", message: "run zm config set zoom.client_id <id> first" })
+    await userEvent.type(within(dialog).getByLabelText("Public Client ID"), "abcDEF123{Enter}")
+    expect(platform.settingsSet).toHaveBeenCalledWith("zm", null, false, "zoom.client_id", "abcDEF123")
+    await vi.waitFor(() => expect(platform.signIn).toHaveBeenCalledTimes(2))
+  })
+
+  it("says an older tool must be updated, and offers no field", async () => {
+    const dialog = await open("max")
+    send({ event: "failed", code: "needs_update", message: "This version cannot sign in here yet." })
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("cannot sign in here yet")
+    expect(within(dialog).queryByRole("textbox")).toBeNull()
   })
 })

@@ -8,8 +8,22 @@ export const SignInEventSchema = v.variant("event", [
     expiresAt: v.nullable(v.string()),
     scan: v.nullable(v.string()),
   }),
+  v.object({
+    event: v.literal("pairingCode"),
+    code: v.string(),
+    place: v.nullable(v.string()),
+    expiresAt: v.nullable(v.string()),
+  }),
+  v.object({ event: v.literal("openUrl"), url: v.pipe(v.string(), v.url()), purpose: v.nullable(v.string()) }),
+  v.object({
+    event: v.literal("needs"),
+    field: v.string(),
+    secret: v.boolean(),
+    prompt: v.string(),
+    hint: v.nullable(v.string()),
+  }),
   v.object({ event: v.literal("note"), text: v.string() }),
-  v.object({ event: v.literal("progress"), step: v.picklist(["history", "waiting"]) }),
+  v.object({ event: v.literal("progress"), step: v.string(), message: v.nullable(v.string()) }),
   v.object({
     event: v.literal("done"),
     alreadyLinked: v.boolean(),

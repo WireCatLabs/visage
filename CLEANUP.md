@@ -37,3 +37,4 @@
 - `.claude/worktrees/mcp-server` — Desktop worktree for TASK-20 (MCP server panel), merged into feat/desktop-mvp. 2026-10-26
 - `/home/leemour/Projects/AI/cli-core-wt-mcp-http-server` — cli-core worktree for PR #2044, remove after merge and release. 2026-10-26
 - `/home/leemour/Projects/AI/tg-cli-wt-mcp-e2e` — tg-cli worktree with a packed branch cli-core, used for the live check of `mcp server`. 2026-10-26
+- 2026-10-26 · .claude/worktrees/signin-steps and its branch feat/signin-steps — sign-in step 2 (TASK-21), remove once merged into feat/desktop-mvp

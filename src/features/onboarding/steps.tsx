@@ -1,4 +1,4 @@
-import { Bot, HardDrive, RefreshCw, Terminal } from "lucide-react"
+import { Bot, HardDrive, LogIn, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import { type CatalogTool, findTool, ownerId, signsInHere, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
@@ -314,7 +314,15 @@ export function Agents({ matrix }: { matrix?: ReactNode }) {
 }
 
 /** Without `onSignIn` the tool has no sign-in of its own: a listed account is simply there. */
-function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: (() => void) | undefined }) {
+function ProfileState({
+  profile,
+  onSignIn,
+  here,
+}: {
+  profile: Profile
+  onSignIn: (() => void) | undefined
+  here: boolean
+}) {
   const name = <span className="font-mono font-medium text-ink">{profile.name}</span>
   if (!onSignIn) {
     return (
@@ -341,9 +349,9 @@ function ProfileState({ profile, onSignIn }: { profile: Profile; onSignIn: (() =
           size="sm"
           variant={profile.signedIn === false ? "primary" : "ghost"}
           onClick={onSignIn}
-          icon={<Terminal className="size-4" aria-hidden />}
+          icon={here ? <LogIn className="size-4" aria-hidden /> : <Terminal className="size-4" aria-hidden />}
         >
-          Open terminal to sign in
+          {here ? "Sign in" : "Open terminal to sign in"}
         </Button>
       )}
     </li>
@@ -429,7 +437,12 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
           <ul aria-label={`${tool.name} accounts`} className="flex flex-col gap-1">
             {count > 0 ? (
               profiles?.map((p) => (
-                <ProfileState key={p.name} profile={p} onSignIn={manual ? undefined : () => signInAgain(p.name)} />
+                <ProfileState
+                  key={p.name}
+                  profile={p}
+                  here={signsInHere(tool)}
+                  onSignIn={manual ? undefined : () => signInAgain(p.name)}
+                />
               ))
             ) : (
               <li className="flex min-h-8 items-center gap-x-[0.6rem]">

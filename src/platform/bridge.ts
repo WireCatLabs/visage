@@ -130,7 +130,7 @@ function createTauri(): Platform {
     taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
-    signIn: (id, profile, onEvent) => {
+    signIn: (id, method, profile, onEvent) => {
       const channel = new Channel<unknown>()
       // An event that does not parse is never thrown: the error would carry the code into the window's error list.
       channel.onmessage = (raw) => {
@@ -141,8 +141,9 @@ function createTauri(): Platform {
             : { event: "failed", message: "The app could not read the sign-in's last step.", code: null },
         )
       }
-      return invoke("sign_in", { id, profile, onEvent: channel })
+      return invoke("sign_in", { id, method, profile, onEvent: channel })
     },
+    signInAnswer: (id, value) => invoke("sign_in_answer", { id, value }),
     signInStop: (id) => invoke("sign_in_stop", { id }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),

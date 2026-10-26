@@ -105,10 +105,13 @@ export type Platform = {
   taskRelease(id: string, profile: string, task: string): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
   /**
-   * Signs the named profile in inside the window with the tool's own sign-in (`signIn.qr` in the catalog); steps arrive
-   * as events and the last one is `done`, `failed` or `stopped`. Never with a profile the owner did not choose.
+   * Signs the named profile in inside the window with one of the tool's own sign-ins (`signIn.methods` in the catalog);
+   * steps arrive as events and the last one is `done`, `failed` or `stopped`. Never with a profile the owner did not
+   * choose.
    */
-  signIn(id: string, profile: string, onEvent: (e: SignInEvent) => void): Promise<void>
+  signIn(id: string, method: string, profile: string, onEvent: (e: SignInEvent) => void): Promise<void>
+  /** The answer to the running sign-in's `needs` step, written to the tool's stdin; never logged or kept. */
+  signInAnswer(id: string, value: string): Promise<void>
   /** Asks the tool to stop, then ends it after a few seconds; `signIn` then answers `stopped`, or `done` with what came. */
   signInStop(id: string): Promise<void>
   /** What a bug report carries about this computer, masked, including recent failed runs (private). */

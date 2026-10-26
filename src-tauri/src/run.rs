@@ -1,7 +1,7 @@
 use crate::catalog;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, OnceLock, mpsc};
 use std::thread;
@@ -227,37 +227,49 @@ pub fn stream_with_input(
     cancelled: impl Fn() -> bool,
     on_line: impl FnMut(Line),
 ) -> Result<Option<i32>, RunError> {
-    stream_inner(cmd, input, timeout, cancelled, None, on_line)
+    stream_inner(cmd, input.map_or(Stdin::Closed, Stdin::Bytes), timeout, cancelled, None, on_line)
 }
 
 /// `stream`, where a stop asks before it kills: SIGTERM to the program alone, then `grace` for it to finish and give
 /// its answer, whose lines still arrive; only then the whole group is killed. The program's own children (the
 /// `WhatsApp` engine) are left to it, so it closes them cleanly. `Ok` with the exit code when it ended within the grace.
+/// `answers` receives the program's stdin, open, to write answers to while it runs.
 pub fn stream_stoppable(
     cmd: Command,
     timeout: Duration,
     stopped: impl Fn() -> bool,
     grace: Duration,
+    answers: impl FnOnce(ChildStdin),
     on_line: impl FnMut(Line),
 ) -> Result<Option<i32>, RunError> {
-    stream_inner(cmd, None, timeout, stopped, Some(grace), on_line)
+    stream_inner(cmd, Stdin::Kept(Box::new(answers)), timeout, stopped, Some(grace), on_line)
+}
+
+enum Stdin<'a> {
+    Closed,
+    Bytes(&'a [u8]),
+    Kept(Box<dyn FnOnce(ChildStdin) + 'a>),
 }
 
 fn stream_inner(
     mut cmd: Command,
-    input: Option<&[u8]>,
+    input: Stdin<'_>,
     timeout: Duration,
     cancelled: impl Fn() -> bool,
     grace: Option<Duration>,
     mut on_line: impl FnMut(Line),
 ) -> Result<Option<i32>, RunError> {
-    if input.is_some() {
+    if !matches!(input, Stdin::Closed) {
         cmd.stdin(Stdio::piped());
     }
     let mut child = spawn(cmd)?;
-    if let (Some(input), Some(mut stdin)) = (input, child.stdin.take()) {
+    match (input, child.stdin.take()) {
         // A tool that exits before reading closes the pipe; its own answer says why.
-        let _ = stdin.write_all(input);
+        (Stdin::Bytes(bytes), Some(mut stdin)) => {
+            let _ = stdin.write_all(bytes);
+        }
+        (Stdin::Kept(keep), Some(stdin)) => keep(stdin),
+        _ => {}
     }
     let (tx, rx) = mpsc::channel();
     let out = child.stdout.take().unwrap();
@@ -413,6 +425,32 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[test]
+    fn keeps_stdin_open_for_answers_written_while_the_program_runs() {
+        let kept = Mutex::new(None);
+        let mut lines = Vec::new();
+        let code = stream_stoppable(
+            command(Path::new("sh"), &["-c", "echo asks; read a; echo got:$a; echo asks; read b; echo got:$b"], None),
+            Duration::from_secs(10),
+            || false,
+            Duration::from_secs(1),
+            |stdin| *kept.lock().unwrap() = Some(stdin),
+            |l| {
+                if let Line::Out(l) = l {
+                    if l == "asks" {
+                        let mut stdin = kept.lock().unwrap();
+                        let _ = writeln!(stdin.as_mut().unwrap(), "answer{}", lines.len() / 2 + 1);
+                    }
+                    lines.push(l);
+                }
+            },
+        )
+        .unwrap();
+        assert_eq!(code, Some(0));
+        assert_eq!(lines, ["asks", "got:answer1", "asks", "got:answer2"]);
+    }
+
+    #[cfg(unix)]
     fn stop_after_ready(script: &str, grace: Duration) -> (Result<Option<i32>, RunError>, Vec<String>, Duration) {
         let ready = std::sync::atomic::AtomicBool::new(false);
         let mut lines = Vec::new();
@@ -422,6 +460,7 @@ mod tests {
             Duration::from_secs(20),
             || ready.load(Ordering::Relaxed),
             grace,
+            drop,
             |l| {
                 if let Line::Out(l) = l {
                     ready.store(true, Ordering::Relaxed);
