@@ -245,7 +245,8 @@
       },
       "signIn": {
         "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",
-        "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device."
+        "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device.",
+        "qr": ["{profile}", "session", "start", "qr", "--json"]
       }
     },
     {

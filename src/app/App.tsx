@@ -8,6 +8,7 @@ import { useOnboarding } from "@/features/onboarding/store"
 import { Tour, useTour } from "@/features/onboarding/Tour"
 import { ReportDialog } from "@/features/report/ReportDialog"
 import { useReport } from "@/features/report/store"
+import { SignInDialog } from "@/features/signin/SignInDialog"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { Button } from "@/ui/Button"
@@ -78,6 +79,7 @@ export function App() {
         )}
         <ClearDataOffer />
         <AboutDialog open={about} onClose={() => setAbout(false)} />
+        <SignInDialog />
         <ReportDialog />
       </div>
       <Tour />

@@ -32,6 +32,7 @@ import {
   ToolStatesSchema,
 } from "./schemas"
 import { SettingsSchema } from "./settings-schemas"
+import { SignInEventSchema } from "./signin-schemas"
 import type { Platform } from "./types"
 
 const call = async <S extends v.GenericSchema>(schema: S, cmd: string, args?: Record<string, unknown>) =>
@@ -122,6 +123,20 @@ function createTauri(): Platform {
     taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),
     openSetup: (id, profile) => invoke("open_setup", { id, profile }),
+    signIn: (id, profile, onEvent) => {
+      const channel = new Channel<unknown>()
+      // An event that does not parse is never thrown: the error would carry the code into the window's error list.
+      channel.onmessage = (raw) => {
+        const parsed = v.safeParse(SignInEventSchema, raw)
+        onEvent(
+          parsed.success
+            ? parsed.output
+            : { event: "failed", message: "The app could not read the sign-in's last step.", code: null },
+        )
+      }
+      return invoke("sign_in", { id, profile, onEvent: channel })
+    },
+    signInStop: (id) => invoke("sign_in_stop", { id }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
     reportContext: () => call(ReportContextSchema, "report_context"),

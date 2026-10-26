@@ -221,10 +221,34 @@ pub fn stream(
 /// `stream`, with `input` written to the program's stdin and stdin then closed, so a tool reading to the end gets all
 /// of it. The way to hand a tool a secret: arguments show in the process list, and children inherit the environment.
 pub fn stream_with_input(
+    cmd: Command,
+    input: Option<&[u8]>,
+    timeout: Duration,
+    cancelled: impl Fn() -> bool,
+    on_line: impl FnMut(Line),
+) -> Result<Option<i32>, RunError> {
+    stream_inner(cmd, input, timeout, cancelled, None, on_line)
+}
+
+/// `stream`, where a stop asks before it kills: SIGTERM to the program alone, then `grace` for it to finish and give
+/// its answer, whose lines still arrive; only then the whole group is killed. The program's own children (the
+/// `WhatsApp` engine) are left to it, so it closes them cleanly. `Ok` with the exit code when it ended within the grace.
+pub fn stream_stoppable(
+    cmd: Command,
+    timeout: Duration,
+    stopped: impl Fn() -> bool,
+    grace: Duration,
+    on_line: impl FnMut(Line),
+) -> Result<Option<i32>, RunError> {
+    stream_inner(cmd, None, timeout, stopped, Some(grace), on_line)
+}
+
+fn stream_inner(
     mut cmd: Command,
     input: Option<&[u8]>,
     timeout: Duration,
     cancelled: impl Fn() -> bool,
+    grace: Option<Duration>,
     mut on_line: impl FnMut(Line),
 ) -> Result<Option<i32>, RunError> {
     if input.is_some() {
@@ -250,18 +274,23 @@ pub fn stream_with_input(
         });
     });
 
-    let deadline = Instant::now() + timeout;
+    let mut deadline = Instant::now() + timeout;
+    let mut stopping = false;
     loop {
         while let Ok(line) = rx.try_recv() {
             on_line(line);
         }
-        if cancelled() {
-            kill(&mut child);
-            return Err(RunError::Cancelled);
+        if !stopping && cancelled() {
+            let Some(grace) = grace else {
+                kill(&mut child);
+                return Err(RunError::Cancelled);
+            };
+            stopping = true;
+            deadline = Instant::now() + if terminate(&child) { grace } else { Duration::ZERO };
         }
         if Instant::now() > deadline {
             kill(&mut child);
-            return Err(RunError::TimedOut);
+            return Err(if stopping { RunError::Cancelled } else { RunError::TimedOut });
         }
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -297,6 +326,21 @@ fn wait(child: &mut Child, timeout: Duration, cancelled: impl Fn() -> bool) -> R
         }
         thread::sleep(Duration::from_millis(25));
     }
+}
+
+/// Asks the program itself to stop. False where no such request exists (Windows), so the caller kills at once.
+#[allow(unsafe_code)] // libc::kill with SIGTERM on our own child; std only sends SIGKILL
+fn terminate(child: &Child) -> bool {
+    #[cfg(unix)]
+    if let Ok(pid) = i32::try_from(child.id()) {
+        // SAFETY: plain syscall with the pid of a child we spawned; no memory is touched.
+        unsafe {
+            libc::kill(pid, libc::SIGTERM);
+        }
+        return true;
+    }
+    let _ = child;
+    false
 }
 
 /// npm starts its own children, so killing only the direct child would leave the install running.
@@ -362,6 +406,46 @@ mod tests {
         )
         .unwrap();
         assert_eq!((code, lines), (Some(0), vec!["secret words".to_string()]));
+    }
+
+    #[cfg(unix)]
+    fn stop_after_ready(script: &str, grace: Duration) -> (Result<Option<i32>, RunError>, Vec<String>, Duration) {
+        let ready = std::sync::atomic::AtomicBool::new(false);
+        let mut lines = Vec::new();
+        let started = Instant::now();
+        let result = stream_stoppable(
+            command(Path::new("sh"), &["-c", script], None),
+            Duration::from_secs(20),
+            || ready.load(Ordering::Relaxed),
+            grace,
+            |l| {
+                if let Line::Out(l) = l {
+                    ready.store(true, Ordering::Relaxed);
+                    lines.push(l);
+                }
+            },
+        );
+        (result, lines, started.elapsed())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_stop_lets_the_program_answer_before_it_ends() {
+        let (result, lines, _) = stop_after_ready(
+            "trap 'echo kept; exit 0' TERM; echo ready; while :; do sleep 0.05; done",
+            Duration::from_secs(10),
+        );
+        assert_eq!(result.unwrap(), Some(0));
+        assert_eq!(lines, vec!["ready", "kept"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_stop_kills_a_program_that_ignores_it_after_the_grace() {
+        let (result, _, took) =
+            stop_after_ready("trap '' TERM; echo ready; while :; do sleep 0.05; done", Duration::from_millis(300));
+        assert!(matches!(result, Err(RunError::Cancelled)));
+        assert!(took < Duration::from_secs(5), "{took:?}");
     }
 
     #[test]

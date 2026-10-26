@@ -8,6 +8,7 @@ import { permissionsMock } from "./mock-permissions"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
+import { linkedProfiles, signInMock } from "./mock-signin"
 import type {
   Diagnosis,
   InstallEvent,
@@ -25,7 +26,8 @@ import type { Platform } from "./types"
 // `?state=one` only Telegram, `?fail=<tool>` makes that tool's install fail (`?fail=storage`: reading Storage), `?hold=<tool>` keeps it installing, `?install=<tool>` starts one.
 // `?state=noadmin` has an apt Node whose npm needs administrator rights. With `nonode` or `noadmin`, "Set up Node.js
 // for me" runs a fake download; `?node=fail` makes its checksum mismatch, `?node=ready` starts with it already set up.
-// `?compat=upgrade` offers MAX 0.75, so updating WhatsApp shows the warning with an update to queue.
+// `?compat=upgrade` offers MAX 0.75, so updating WhatsApp shows the warning with an update to queue. `?signin=wa` opens
+// WhatsApp's sign-in on the Tools page (`src/app/scenarios.ts`); `?signin-fail=wa` makes it fail (`mock-signin.ts`).
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const scenario = params.get("state") ?? "mixed"
@@ -319,7 +321,7 @@ export function createMock(os: Platform["os"]): Platform {
       await delay(350)
       if (id === "memo") return null
       if (id === "email") return scenario === "mixed" ? [{ name: "personal", signedIn: null }] : []
-      if (id === "wa") return []
+      if (id === "wa") return linkedProfiles.map((name) => ({ name, signedIn: true }))
       if (id === "tg") {
         return [
           { name: "personal", signedIn: true },
@@ -486,6 +488,7 @@ export function createMock(os: Platform["os"]): Platform {
       cancelled = true
     },
     async openSetup() {},
+    ...signInMock(),
     ...reportMock,
     ...runsMock,
     ...settingsMock,

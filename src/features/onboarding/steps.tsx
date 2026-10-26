@@ -1,6 +1,6 @@
 import { Bot, HardDrive, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import { type CatalogTool, findTool, ownerId, tools } from "@/domain/catalog"
+import { type CatalogTool, findTool, ownerId, signsInHere, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
@@ -11,6 +11,7 @@ import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
 import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
+import { useSignIn } from "../signin/store"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
 import { FinishInTerminal, ManualSetup, NewProfile, useProfiles } from "../tools/Health"
@@ -401,6 +402,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
   }, [count])
 
   const signInAgain = async (profile: string) => {
+    if (signsInHere(tool)) return useSignIn.getState().start(tool.id, profile, reload)
     try {
       await platform.openSetup(tool.id, profile)
       setOpenError(null)

@@ -20,6 +20,7 @@ pub struct Tool {
     pub doctor: Vec<String>,
     pub runs: Option<RunsSource>,
     pub setup: Option<Vec<String>>,
+    pub sign_in: Option<SignInSource>,
     pub storage: Storage,
     pub settings: Option<SettingsSource>,
     /// Only for tools whose `config show` reports `permissions` levels.
@@ -47,6 +48,13 @@ pub struct Tool {
     pub store_reset_preview: Option<Vec<String>>,
     /// `store reset` with no backup beside the store: the app makes its own first, when the owner keeps it.
     pub store_reset: Option<Vec<String>>,
+}
+
+/// The rest of `signIn` is text for the interface.
+#[derive(Debug, Deserialize)]
+pub struct SignInSource {
+    /// A sign-in that asks nothing: off a terminal the tool prints each QR code as a `{"event":"qr"}` line on stderr.
+    pub qr: Option<Vec<String>>,
 }
 
 /// `commands` lists every command with its effects and, from cli-core 0.408, whether the profile may run it.

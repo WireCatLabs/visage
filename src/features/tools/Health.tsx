@@ -1,6 +1,22 @@
-import { AlertTriangle, CheckCircle2, FolderOpen, RefreshCw, Stethoscope, Terminal, XCircle } from "lucide-react"
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FolderOpen,
+  QrCode,
+  RefreshCw,
+  Stethoscope,
+  Terminal,
+  XCircle,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { type CatalogTool, doctorNeedsProfile, isValidProfile, setupCommand, usesProfiles } from "@/domain/catalog"
+import {
+  type CatalogTool,
+  doctorNeedsProfile,
+  isValidProfile,
+  setupCommand,
+  signsInHere,
+  usesProfiles,
+} from "@/domain/catalog"
 import { type ConfigPlace, type Finding, summarize } from "@/domain/doctor"
 import { platform } from "@/platform/bridge"
 import type { Diagnosis, Profile } from "@/platform/schemas"
@@ -12,6 +28,7 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
+import { useSignIn } from "../signin/store"
 
 type Check = { profile: string | null; state: "running" } | { profile: string | null; state: "done"; result: Diagnosis }
 
@@ -117,7 +134,15 @@ function ProfileList(props: {
                 </Button>
               )}
               {tool.setup && p.signedIn !== true && (
-                <Button size="sm" variant="ghost" onClick={() => platform.openSetup(tool.id, p.name)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    signsInHere(tool)
+                      ? useSignIn.getState().start(tool.id, p.name, onReload)
+                      : platform.openSetup(tool.id, p.name)
+                  }
+                >
                   {p.signedIn === false ? "Sign in" : "Set up"}
                 </Button>
               )}
@@ -249,12 +274,16 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
     }
   }
 
+  const here = signsInHere(tool)
+
   return (
     <form
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault()
-        if (valid) open()
+        if (!valid) return
+        if (here) useSignIn.getState().start(tool.id, name, onCheck)
+        else open()
       }}
     >
       <label className="text-[0.85rem] font-medium text-ink" htmlFor={id}>
@@ -275,14 +304,26 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
           aria-describedby={`${id}-hint`}
           className="h-8 min-w-[9rem] flex-1 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.875rem] text-ink aria-[invalid=true]:border-bad"
         />
+        {here && (
+          <Button
+            size="sm"
+            variant="primary"
+            type="submit"
+            disabled={!valid}
+            icon={<QrCode className="size-4" aria-hidden />}
+          >
+            Sign in here
+          </Button>
+        )}
         <Button
           size="sm"
-          variant="primary"
-          type="submit"
+          variant={here ? "secondary" : "primary"}
+          type={here ? "button" : "submit"}
+          onClick={here ? open : undefined}
           disabled={!valid}
           icon={<Terminal className="size-4" aria-hidden />}
         >
-          Open terminal to sign in
+          {here ? "Open terminal" : "Open terminal to sign in"}
         </Button>
       </div>
       {name !== "" && !valid ? (
@@ -291,7 +332,8 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
         </p>
       ) : (
         <p id={`${id}-hint`} className="text-[0.85rem] leading-snug text-ink-soft">
-          Any short name, such as personal or work: one name per account. The terminal window runs{" "}
+          Any short name, such as personal or work: one name per account.{" "}
+          {here ? "Sign in here shows the QR code in this window; the terminal runs " : "The terminal window runs "}
           <code className="font-mono whitespace-nowrap text-ink">{setupCommand(tool, valid ? name : "<name>")}</code>.
         </p>
       )}

@@ -21,7 +21,7 @@ Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install
 `?fail=<tool>`, `?fail=storage` (the Storage page cannot read its folders), `?crash=<section>` (that page breaks while
 rendering, to see the error screen), `?state=one` (only Telegram installed; see `src/platform/mock.ts`). A fresh browser shows the first-run
 setup; `?onboarding=off` hides it for one load, `?onboarding=<step>` (`choose`, `install`, `signin`…) opens that step. Backups: `?backups=none`, `?backup-fail=disk` (not enough space); clearing: `?clear=old` (tool too old, button off), `?clear=busy` (a sync holds the store). Bug reports: `?report=fail` (server
-unreachable), `?report=queued` (stored, no issue yet); Agents: `?chats=none` (Hermes and OpenClaw answer in no chat app). The real app sends to `WIRECAT_API_URL` or `https://api.wirecat.dev`.
+unreachable), `?report=queued` (stored, no issue yet); Agents: `?chats=none` (Hermes and OpenClaw answer in no chat app); sign-in: `?signin=wa` (WhatsApp's QR sign-in opens for a profile named personal), `?signin-fail=wa` (the tool refuses after the first code). The real app sends to `WIRECAT_API_URL` or `https://api.wirecat.dev`.
 
 ## Rules
 

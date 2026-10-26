@@ -8,7 +8,7 @@ the machine and runs the tools. Nothing here duplicates what a CLI already does.
 ```text
 src/
   app/          shell: window frame, sidebar, sections, theme. May import everything below.
-  features/     one folder per area (tools/, agents/, system/, logs/, config/, storage/, onboarding/, report/).
+  features/     one folder per area (tools/, agents/, system/, logs/, config/, storage/, onboarding/, report/, signin/).
   ui/           presentational parts: Button, Lamp, Stepper… Props in, events out.
   platform/     the only door to Rust. Validates every answer with valibot. Has a browser mock.
   domain/       plain TypeScript: catalog, tool status, doctor summaries. No React, no Tauri.
@@ -34,6 +34,7 @@ src-tauri/src/
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
   redact.rs     masking tokens, numbers, addresses and names in tool output.
   terminal.rs   opening a tool's interactive setup in the user's terminal.
+  signin.rs     signing in inside the window: the tool's own `session start` read into steps (QR code, progress, done).
   report.rs     bug reports: what this computer adds, masked, and sending to the WireCat API (docs/dev/report-api.md).
 ```
 
@@ -191,6 +192,19 @@ The CLIs differ: `tg`, `max`, `wa` list profiles with `account list --json`, `dr
 `zm` in `doctor --json`, and `memo` has none; Email lists memo's mail accounts from `item.mail.accounts` of
 `memo doctor --json`, by name only. The catalog records each tool's command and the JSON shape to read.
 Doctor output is masked in Rust and summarised in `src/domain/doctor.ts`; the raw (masked) JSON stays one click away.
+
+## Signing in inside the window
+
+A tool whose catalog entry has `signIn.qr` (WhatsApp, phase 1 of `docs/dev/plans/2026-10-26-mcp-full-commands.md`)
+signs in without a terminal: "Sign in here" opens a dialog, and `sign_in` runs those words for the profile the owner
+named, with stdin closed. Off a terminal the tool prints each QR code as a `{"event":"qr"}` line on stderr; `signin.rs`
+reads it, the tool's notes and its stdout answer into `qr`, `note`, `progress`, `done` and `failed` steps on a
+`Channel`. The code comes as a half-block drawing and no link, so `src/domain/qr.ts` turns it back into modules and the
+dialog draws an SVG, dark on white in both themes. The code is a login token while valid: the plain drawing and the
+agents' note that the tool prints beside it are dropped, the account's id and name stay in Rust, and no step is logged
+or put in a report. Cancel, Escape and Stop call `sign_in_stop`: SIGTERM to the tool alone, five seconds for it to
+answer with the history it kept, then the whole group is killed (`run::stream_stoppable`). "Open terminal" stays as
+the second choice, and is the only one for the other tools.
 
 ## Growing the app
 

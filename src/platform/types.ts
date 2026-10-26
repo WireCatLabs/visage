@@ -18,6 +18,7 @@ import type {
   ToolState,
 } from "./schemas"
 import type { Settings } from "./settings-schemas"
+import type { SignInEvent } from "./signin-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
@@ -92,6 +93,13 @@ export type Platform = {
   /** Releases a claim as the owner, who may release any. */
   taskRelease(id: string, profile: string, task: string): Promise<void>
   openSetup(id: string, profile: string | null): Promise<void>
+  /**
+   * Signs the named profile in inside the window with the tool's own sign-in (`signIn.qr` in the catalog); steps arrive
+   * as events and the last one is `done`, `failed` or `stopped`. Never with a profile the owner did not choose.
+   */
+  signIn(id: string, profile: string, onEvent: (e: SignInEvent) => void): Promise<void>
+  /** Asks the tool to stop, then ends it after a few seconds; `signIn` then answers `stopped`, or `done` with what came. */
+  signInStop(id: string): Promise<void>
   /** What a bug report carries about this computer, masked, including recent failed runs (private). */
   reportContext(): Promise<ReportContext>
   sendReport(draft: ReportDraft, context: ReportContext): Promise<ReportSent>

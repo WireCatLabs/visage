@@ -17,6 +17,7 @@ mod report;
 mod run;
 mod runs;
 mod settings;
+mod signin;
 mod skills;
 mod storage;
 mod system;
@@ -400,6 +401,41 @@ fn open_setup(id: String, profile: Option<String>) -> Result<(), String> {
     terminal::open(&bin, &args)
 }
 
+/// Signs a profile in inside the window, for a tool whose catalog entry has a sign-in that asks nothing (`signIn.qr`).
+#[tauri::command]
+async fn sign_in(
+    id: String,
+    profile: String,
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<signin::SignInEvent>,
+) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    let args = signin::args(tool, &profile)?;
+    let running = Arc::clone(&running);
+    blocking(move || {
+        let send = |e: signin::SignInEvent| {
+            let _ = on_event.send(e);
+        };
+        let key = signin::key(&tool.id);
+        if !running.start(&key) {
+            return send(signin::SignInEvent::Failed {
+                message: format!("A {} sign-in is already running.", tool.name),
+                code: None,
+            });
+        }
+        signin::run(tool, &args, &|| !running.is_running(&key), &send);
+        running.finish(&key);
+    })
+    .await
+}
+
+/// Asks the running sign-in to stop; `sign_in` answers `stopped`, or `done` when the tool kept what had come.
+#[tauri::command]
+fn sign_in_stop(id: String, running: State<'_, Arc<Running>>) -> Result<(), String> {
+    running.cancel(&signin::key(&catalog::tool(&id)?.id));
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // The login shell's PATH takes about half a second; read it while the window opens, not on the first page.
@@ -455,7 +491,9 @@ pub fn run() {
             settings_set,
             settings_unset,
             permissions_show,
-            open_setup
+            open_setup,
+            sign_in,
+            sign_in_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

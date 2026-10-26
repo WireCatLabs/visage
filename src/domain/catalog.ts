@@ -25,6 +25,8 @@ const ToolSchema = v.object({
       guide: v.optional(v.pipe(v.string(), v.url())),
       /** Shown for the owner to run when the tool has no interactive `setup`; the app never runs it. */
       command: v.optional(v.string()),
+      /** A sign-in that asks nothing, which the app runs in its own window instead of a terminal. */
+      qr: v.optional(v.array(v.string())),
     }),
   ),
   skill: v.nullable(
@@ -121,6 +123,9 @@ export function removeCommand(manager: string, pkg: string, path: string) {
 }
 
 export const usesProfiles = (t: CatalogTool) => t.profiles !== null
+
+/** Whether the app can sign this tool in inside its own window (`sign_in`), with no terminal. */
+export const signsInHere = (t: CatalogTool) => Boolean(t.signIn?.qr)
 
 export function setupCommand(t: CatalogTool, profile: string | null): string | null {
   if (!t.setup) return null
