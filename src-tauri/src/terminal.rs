@@ -20,8 +20,8 @@ pub fn open(bin: &Path, args: &[String]) -> Result<(), String> {
     })
 }
 
-/// A whole line from `tailscale::terminal_line`: Tailscale's own install command, or its operator command with a
-/// checked user name. The person reads it in the terminal and types their own password; the app runs no `sudo`.
+/// A fixed line from `tailscale::terminal_line`: Tailscale's own install command. It asks for the password itself;
+/// the app runs no `sudo`.
 pub fn open_line(line: &str) -> Result<(), String> {
     launch(line).map_err(|_| format!("Could not open a terminal. Run this yourself: {line}"))
 }

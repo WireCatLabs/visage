@@ -74,12 +74,12 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
   const [busy, setBusy] = useState<"download" | "terminal" | null>(null)
   const [done, setDone] = useState<TailscaleDownload | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const run = async (what: "download" | "terminal" | "operator") => {
-    setBusy(what === "download" ? "download" : "terminal")
+  const run = async (what: "download" | "terminal") => {
+    setBusy(what)
     setError(null)
     try {
       if (what === "download" && s.package) setDone(await platform.tailscaleDownload(s.package))
-      else await platform.tailscaleTerminal(what === "operator" ? "operator" : "install")
+      else await platform.tailscaleTerminal("install")
     } catch (e) {
       setError(message(e))
     }
@@ -95,13 +95,10 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
           this once: it lets WireCat log in and turn Funnel on without asking for your password each time.
         </Para>
         <CopyField value={line} label="Copy the command" />
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => run("operator")} disabled={busy !== null}>
-            {busy === "terminal" ? "Opening…" : "Open a terminal with it"}
-          </Button>
-        </div>
-        <Note>The terminal asks for your computer password. Then come back here; the step checks itself.</Note>
-        {error && <ErrorNotice inline>{error}</ErrorNotice>}
+        <Note>
+          Paste it in a terminal; it asks for your computer password. WireCat does not run it for you, because it
+          changes who controls Tailscale. Then come back here; the step checks itself.
+        </Note>
       </>
     )
   }
@@ -112,7 +109,7 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
     <>
       <Para>
         Tailscale gives this computer a fixed https address on the internet, so ChatGPT or Claude in the browser can
-        reach the server. It is free for personal use.
+        reach the server.
       </Para>
       {s.package && !done && (
         <Para>
@@ -266,8 +263,8 @@ function LoginStep({ s, check }: { s: TailscaleStatus; check(): Promise<void> })
     <>
       <Para>
         Press Log in. Your browser opens a tailscale.com page that asks you to sign in with Google, Microsoft, GitHub,
-        Apple or a passkey. New to Tailscale? The same page creates a free account. This step finishes by itself when
-        you are done there.
+        Apple or a passkey. New to Tailscale? The same page creates an account. This step finishes by itself when you
+        are done there.
       </Para>
       <div className="flex flex-wrap items-center gap-2">
         {waiting ? (

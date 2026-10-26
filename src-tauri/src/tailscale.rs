@@ -196,14 +196,13 @@ fn port_of(host_port: &str) -> Option<u16> {
     host_port.rsplit_once(':')?.1.parse().ok()
 }
 
-/// Public ports already taken on this computer, by Funnel or by a tailnet-only `serve`, ours or the owner's.
+/// Public ports already taken on this computer, by Funnel or by a tailnet-only `serve`, ours or the owner's. An
+/// `AllowFunnel` entry alone serves nothing, so it does not count.
 fn used_ports(serve: &Value) -> BTreeSet<u16> {
     let mut used = BTreeSet::new();
     let mut add = |cfg: &Value| {
         used.extend(cfg["TCP"].as_object().into_iter().flat_map(|m| m.keys().filter_map(|k| k.parse::<u16>().ok())));
-        for key in ["Web", "AllowFunnel"] {
-            used.extend(cfg[key].as_object().into_iter().flat_map(|m| m.keys().filter_map(|k| port_of(k))));
-        }
+        used.extend(cfg["Web"].as_object().into_iter().flat_map(|m| m.keys().filter_map(|k| port_of(k))));
     };
     add(serve);
     for fg in serve["Foreground"].as_object().into_iter().flat_map(|m| m.values()) {
@@ -332,11 +331,11 @@ pub fn status() -> Status {
     s
 }
 
-/// The two lines the guide offers to run in a terminal, fixed but for a checked user name.
+/// The one line the guide offers to run in a terminal: Tailscale's own installer, which asks for the password itself.
+/// The operator line is shown to copy only, because a terminal would run its `sudo` at once.
 pub fn terminal_line(what: &str) -> Result<String, String> {
     match what {
         "install" => Ok(INSTALL_LINE.to_string()),
-        "operator" => Ok(format!("sudo tailscale set --operator={}", user().ok_or("no user name to give Tailscale")?)),
         _ => Err(format!("unknown step: {what}")),
     }
 }
@@ -439,12 +438,17 @@ pub fn funnel_open(
         return Err("Tailscale is not connected. Finish the steps above first.".into());
     }
     let host = node.host.ok_or("Tailscale gave this computer no name. Turn on MagicDNS in the admin console.")?;
-    let serve = serve_config(&cli)?;
+    let mut serve = serve_config(&cli)?;
     let mut records = load();
-    if let Some(mine) = records.iter().find(|r| r.is(tool, profile) && r.host == host && r.port == port)
-        && is_live(&serve, &host, mine.https, port)
+    if let Some(mine) = records.iter().find(|r| r.is(tool, profile) && r.host == host)
+        && is_live(&serve, &host, mine.https, mine.port)
     {
-        return Ok(mine.url());
+        if mine.port == port {
+            return Ok(mine.url());
+        }
+        // Still ours, pointing at the port this server used before: move it rather than leave it public and untracked.
+        off(&cli, mine.https)?;
+        serve = serve_config(&cli)?;
     }
     let allowed = if node.ports.is_empty() { FUNNEL_PORTS.to_vec() } else { node.ports };
     let https = choose(&records, tool, profile, &used_ports(&serve), &allowed).ok_or_else(|| {
@@ -461,6 +465,8 @@ pub fn funnel_open(
         return Err(failure("Tailscale did not turn Funnel on", &out));
     }
     if !is_live(&serve_config(&cli)?, &host, https, port) {
+        // The port was free a moment ago, so whatever is on it now came from this call.
+        let _ = off(&cli, https);
         return Err("Tailscale answered, but Funnel does not point at this server. Check the admin console.".into());
     }
     records.retain(|r| !r.is(tool, profile));
@@ -469,6 +475,11 @@ pub fn funnel_open(
     records.push(mine);
     save(&records)?;
     Ok(url)
+}
+
+fn off(cli: &Cli, https: u16) -> Result<(), String> {
+    let out = exec(cli, &["funnel", &format!("--https={https}"), "off"])?;
+    if out.code == Some(0) { Ok(()) } else { Err(failure("Tailscale did not turn Funnel off", &out)) }
 }
 
 /// Turns off only the port the app turned on, and only while it still points at the port the app recorded: anything
@@ -480,8 +491,7 @@ pub fn funnel_close(tool: &str, profile: Option<&str>) -> Result<(), String> {
     if !is_live(&serve_config(&cli)?, &mine.host, mine.https, mine.port) {
         return Ok(());
     }
-    let out = exec(&cli, &["funnel", &format!("--https={}", mine.https), "off"])?;
-    if out.code == Some(0) { Ok(()) } else { Err(failure("Tailscale did not turn Funnel off", &out)) }
+    off(&cli, mine.https)
 }
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
@@ -545,10 +555,10 @@ mod tests {
         let serve = json!({
             "TCP": {"443": {"HTTPS": true}},
             "Web": {"h.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:3000"}}}},
-            "AllowFunnel": {"h.ts.net:8443": true},
+            "AllowFunnel": {"h.ts.net:8443": true, "h.ts.net:443": true},
             "Foreground": {"abc": {"TCP": {"10000": {"HTTPS": true}}}}
         });
-        assert_eq!(used_ports(&serve), BTreeSet::from([443, 8443, 10000]));
+        assert_eq!(used_ports(&serve), BTreeSet::from([443, 10000]), "8443 has a Funnel flag but serves nothing");
         assert!(used_ports(&json!({})).is_empty());
     }
 

@@ -269,6 +269,10 @@ What the app turned on is recorded in `<app local data>/dev.wirecat.desktop/tail
 that fails to start, turn off only that port (`tailscale funnel --https=<public> off`), and only while it still points
 at the recorded local port; never `funnel reset`. The row says when a Funnel is still on with the server off.
 
+The computer's Tailscale name, the Unix user name (for the operator line, shown to copy only: a terminal would run its
+`sudo` at once) and the login and approval links leave Rust unmasked, an exception to rule 4 like the MCP login code;
+they are never logged or put in a report. The raw `tailscale status` never leaves Rust.
+
 ## Growing the app
 
 A new area (accounts, memory, people…) is one entry in `src/app/sections.tsx` and one folder in `src/features/`.
