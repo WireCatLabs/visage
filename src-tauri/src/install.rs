@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::ipc::Channel;
 
-const INSTALL_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "event")]
@@ -90,7 +90,7 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
         ));
     }
     let existing = tools::detect(tool).installs.into_iter().next();
-    let manager = existing.as_ref().map(|i| i.manager).unwrap_or("npm");
+    let manager = existing.as_ref().map_or("npm", |i| i.manager);
     let spec = format!("{}@latest", tool.package);
     let (program, args): (&str, Vec<&str>) = match manager {
         "pnpm" => ("pnpm", vec!["add", "--global", &spec]),
@@ -101,7 +101,7 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
         Failure(
             Reason::Requirements,
             format!("{program} was not found."),
-            Some(format!("{} installed this tool; reinstall {program} or install Node.js again.", manager)),
+            Some(format!("{manager} installed this tool; reinstall {program} or install Node.js again.")),
         )
     })?;
     if program == "npm" && ready.npm_prefix_writable == Some(false) {

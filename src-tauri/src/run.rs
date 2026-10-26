@@ -110,12 +110,12 @@ pub fn stream(
     thread::spawn(move || {
         BufReader::new(out).lines().map_while(Result::ok).for_each(|l| {
             let _ = tx.send(Line::Out(l));
-        })
+        });
     });
     thread::spawn(move || {
         BufReader::new(err).lines().map_while(Result::ok).for_each(|l| {
             let _ = tx2.send(Line::Err(l));
-        })
+        });
     });
 
     let deadline = Instant::now() + timeout;
