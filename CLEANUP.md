@@ -32,3 +32,4 @@
 - `/home/leemour/Projects/AI/zoom-cli/.worktrees/skill-mcp-note` — worktree for zoom-cli #276 (MCP note), remove after merge. 2026-10-26
 - `/home/leemour/Projects/AI/tg-cli-wt-skill-mcp-note` (branch docs/skill-mcp-note) — worktree for tg-cli #738 (MCP note), remove after merge. 2026-10-26
 - `/home/leemour/Projects/AI/drive-cli-wt-skill-mcp` (branch docs/skill-mcp-note) — worktree for drive-cli #247 (MCP note), remove after merge. 2026-10-26
+- `/home/leemour/Projects/AI/max-cli-wt-skill-no-npx` (branch docs/skill-doctor-no-npx) — worktree for max-cli #832 (merged), remove. 2026-10-26
