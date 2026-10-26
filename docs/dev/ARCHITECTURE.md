@@ -32,6 +32,7 @@ src-tauri/src/
   mcp_server.rs each tool's HTTP MCP server for browser apps: its own `mcp server start|stop|status` and `mcp --revoke`.
   tailscale.rs  Tailscale Funnel for an MCP server: its state, `tailscale login`, and Funnel on and off for ports the app set up.
   tailscale_install.rs Tailscale's official installer or package, downloaded into Downloads and handed to the system.
+  tailscale_linux.rs Tailscale's install commands for this Linux, from /etc/os-release and lists of known releases.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
@@ -253,8 +254,14 @@ it regains focus. All of it is `tailscale.rs` running the `tailscale` CLI found 
    `tailscale-setup-latest.exe` on pkgs.tailscale.com to the versioned file, checks its `.sha256`, saves it in
    Downloads and opens it; the system's installer asks for the password. Linux (Debian and Fedora families): the newest
    package from Tailscale's apt `Packages` or yum `primary.xml`, checked against the checksum there, shown selected in
-   the file manager (the opener plugin's `reveal_item_in_dir`, D-Bus `FileManager1.ShowItems`). Tailscale's
-   `install.sh` line is the second option, to copy or open in a terminal. On Linux the step also needs this user as
+   the file manager (the opener plugin's `reveal_item_in_dir`, D-Bus `FileManager1.ShowItems`). The second option, or
+   the only one where there is no package (openSUSE, Arch), is Tailscale's own commands for this release:
+   `tailscale_linux.rs` reads `ID`, `VERSION_ID` and the codename from `/etc/os-release` and builds the lines of
+   pkgs.tailscale.com/stable/#linux (Fedora 41+ in the dnf 5 form of Tailscale's `installer.sh`) only from releases on
+   its lists, so os-release text never reaches the terminal. They add Tailscale's package source, so system updates
+   keep it current; when Tailscale is installed and that source file is missing, the done step offers the commands.
+   NixOS gets its configuration line; any other system gets `install.sh` and links. Every step links its section of
+   wirecat.dev/en/docs/desktop/tailscale-funnel. On Linux the step also needs this user as
    Tailscale's operator (`tailscale debug prefs`, a hint only; a refused write says the same).
 2. **Log in.** `tailscale login`, only while `BackendState` is `NeedsLogin`; the page it prints is opened when its host
    is login.tailscale.com or console.tailscale.com. The step polls until the state is `Running`.

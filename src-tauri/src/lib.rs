@@ -25,6 +25,7 @@ mod storage;
 mod system;
 mod tailscale;
 mod tailscale_install;
+mod tailscale_linux;
 mod tasks;
 mod terminal;
 mod tools;

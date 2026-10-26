@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react"
 import { useEffect, useState } from "react"
+import { cx } from "./cx"
 
 export function CopyField({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -15,9 +16,23 @@ export function CopyField({ value, label }: { value: string; label: string }) {
     setCopied(true)
   }
 
+  // Several lines are commands to read before running them, so none is cut short.
+  const lines = value.includes("\n")
   return (
-    <div className="flex items-center gap-2 rounded-[0.4rem] border border-line bg-app-2 py-1 pr-1 pl-3">
-      <code className="selectable min-w-0 flex-1 truncate font-mono text-[0.875rem] text-ink">{value}</code>
+    <div
+      className={cx(
+        "flex gap-2 rounded-[0.4rem] border border-line bg-app-2 py-1 pr-1 pl-3",
+        lines ? "items-start" : "items-center",
+      )}
+    >
+      <code
+        className={cx(
+          "selectable min-w-0 flex-1 font-mono text-[0.875rem] text-ink",
+          lines ? "py-1 break-all whitespace-pre-wrap" : "truncate",
+        )}
+      >
+        {value}
+      </code>
       <button
         type="button"
         onClick={copy}

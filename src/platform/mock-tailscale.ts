@@ -1,23 +1,141 @@
 import { delay } from "./mock-delay"
-import type { FunnelState, TailscaleStatus } from "./tailscale-schemas"
+import type { FunnelState, TailscaleLinux, TailscaleStatus } from "./tailscale-schemas"
 import type { Platform } from "./types"
 
 // `?tailscale=<state>` opens tg's MCP server Start dialog for the profile personal with the Tailscale guide at that
 // state: `missing`, `nooperator` (Linux: only root may change Tailscale), `nodaemon` (installed, not running),
 // `loggedout`, `approval` (the tailnet's admin approves new devices), `stopped`, `nohttps`, `nofunnel`, `full` (all
-// three Funnel ports taken), `ready`. `?tailscale-os=macos|windows` changes the install step; Linux offers a .deb.
+// three Funnel ports taken), `ready`. `?tailscale-os=macos|windows` changes the install step; Linux is Ubuntu, which
+// offers a .deb. `?tailscale-distro=<id>` picks another Linux: `debian`, `fedora` (.rpm, dnf 5), `rhel`, `opensuse`,
+// `arch`, `nixos`, `other` (no commands: Tailscale's script). `?tailscale=nosource` is installed from a package without
+// Tailscale's update source. These commands are the shape `tailscale_linux.rs` builds; its tests hold the real ones.
 // `?tailscale=leftover` with `?mcp=<tool>`: the server is off but the funnel the app set up still points at it.
 // `?tailscale-fail=funnel` makes turning Funnel on fail. Logging in finishes by itself after a few seconds.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const HOST = "laptop.tail4a2c.ts.net"
+const PKGS = "https://pkgs.tailscale.com/stable"
+const INSTALLER = "https://github.com/tailscale/tailscale/blob/main/scripts/installer.sh"
+const ENABLE = "sudo systemctl enable --now tailscaled"
+
+const apt = (dist: string, codename: string) => ({
+  commands: [
+    "sudo mkdir -p --mode=0755 /usr/share/keyrings",
+    `curl -fsSL ${PKGS}/${dist}/${codename}.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null`,
+    `curl -fsSL ${PKGS}/${dist}/${codename}.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list`,
+    "sudo apt-get update && sudo apt-get install tailscale",
+  ],
+  source: `${PKGS}/#${dist}-${codename}`,
+})
+
+const DISTROS = {
+  ubuntu: [
+    "deb",
+    { name: "Ubuntu 24.04.3 LTS", family: "debian", method: "repo", ...apt("ubuntu", "noble"), updates: null },
+  ],
+  debian: [
+    "deb",
+    {
+      name: "Debian GNU/Linux 13 (trixie)",
+      family: "debian",
+      method: "repo",
+      ...apt("debian", "trixie"),
+      updates: null,
+    },
+  ],
+  fedora: [
+    "rpm",
+    {
+      name: "Fedora Linux 42 (Workstation Edition)",
+      family: "fedora",
+      method: "repo",
+      commands: [
+        "sudo dnf install 'dnf-command(config-manager)'",
+        `sudo dnf config-manager addrepo --overwrite --from-repofile=${PKGS}/fedora/tailscale.repo`,
+        "sudo dnf install tailscale",
+        ENABLE,
+      ],
+      source: INSTALLER,
+      updates: null,
+    },
+  ],
+  rhel: [
+    "rpm",
+    {
+      name: "Red Hat Enterprise Linux 9.4 (Plow)",
+      family: "fedora",
+      method: "repo",
+      commands: [
+        `sudo dnf config-manager --add-repo ${PKGS}/rhel/9/tailscale.repo`,
+        "sudo dnf install tailscale",
+        ENABLE,
+      ],
+      source: `${PKGS}/#rhel-9`,
+      updates: null,
+    },
+  ],
+  opensuse: [
+    null,
+    {
+      name: "openSUSE Tumbleweed",
+      family: "opensuse",
+      method: "repo",
+      commands: [
+        `sudo zypper ar -g -r ${PKGS}/opensuse/tumbleweed/tailscale.repo`,
+        "sudo zypper ref && sudo zypper in tailscale",
+        ENABLE,
+      ],
+      source: `${PKGS}/#opensuse-tumbleweed`,
+      updates: null,
+    },
+  ],
+  arch: [
+    null,
+    {
+      name: "Arch Linux",
+      family: "arch",
+      method: "package",
+      commands: ["sudo pacman -S tailscale", ENABLE],
+      source: "https://tailscale.com/download/linux/arch",
+      updates: null,
+    },
+  ],
+  nixos: [
+    null,
+    {
+      name: "NixOS 25.05 (Warbler)",
+      family: "nixos",
+      method: "config",
+      commands: ["services.tailscale.enable = true;"],
+      source: INSTALLER,
+      updates: null,
+    },
+  ],
+  other: [
+    null,
+    {
+      name: "Void Linux",
+      family: "other",
+      method: "script",
+      commands: ["curl -fsSL https://tailscale.com/install.sh | sh"],
+      source: "https://tailscale.com/docs/install/linux",
+      updates: null,
+    },
+  ],
+} satisfies Record<string, [TailscaleStatus["package"], TailscaleLinux]>
 
 function initial(): TailscaleStatus {
+  const scenario = params.get("tailscale")
   const os = (["macos", "windows"] as const).find((o) => o === params.get("tailscale-os")) ?? "linux"
+  const distro = params.get("tailscale-distro") ?? ""
+  const [linuxPackage, linux]: [TailscaleStatus["package"], TailscaleLinux] = Object.hasOwn(DISTROS, distro)
+    ? DISTROS[distro as keyof typeof DISTROS]
+    : DISTROS.ubuntu
   const ready: TailscaleStatus = {
     os,
     installed: true,
-    package: os === "macos" ? "pkg" : os === "windows" ? "exe" : "deb",
+    package: os === "macos" ? "pkg" : os === "windows" ? "exe" : linuxPackage,
+    linux: os === "linux" ? { ...linux, updates: linux.method === "repo" ? scenario !== "nosource" : null } : null,
     operator: os === "linux" ? true : null,
     user: "alex",
     daemon: true,
@@ -28,9 +146,19 @@ function initial(): TailscaleStatus {
     freePorts: [443, 8443, 10000],
   }
   const off = { https: false, funnel: false, host: null, freePorts: [] }
-  switch (params.get("tailscale")) {
+  switch (scenario) {
     case "missing":
-      return { ...ready, installed: false, operator: null, daemon: false, backend: "unknown", ...off }
+      return {
+        ...ready,
+        linux: ready.linux && { ...ready.linux, updates: ready.linux.updates === null ? null : false },
+        installed: false,
+        operator: null,
+        daemon: false,
+        backend: "unknown",
+        ...off,
+      }
+    case "nosource":
+      return { ...ready, backend: "needsLogin", ...off }
     case "nooperator":
       return { ...ready, operator: false, backend: "needsLogin", ...off }
     case "nodaemon":

@@ -19,9 +19,6 @@ const FUNNEL_PORTS_CAP: &str = "https://tailscale.com/cap/funnel-ports?ports=";
 /// A login or a first Funnel approval waits for the person in the browser.
 const WAIT: Duration = Duration::from_mins(10);
 
-/// <https://tailscale.com/kb/1031/install-linux>
-pub const INSTALL_LINE: &str = "curl -fsSL https://tailscale.com/install.sh | sh";
-
 pub const LOGIN: &str = "tailscale-login";
 pub const FUNNEL: &str = "tailscale-funnel";
 
@@ -127,6 +124,8 @@ pub struct Status {
     pub installed: bool,
     /// What the app can download for this computer: `pkg`, `exe`, `deb` or `rpm`.
     pub package: Option<&'static str>,
+    /// Linux only: Tailscale's commands for this distribution.
+    pub linux: Option<crate::tailscale_linux::Linux>,
     /// Linux only: whether this user may change Tailscale's settings. None where it does not apply or is not known.
     pub operator: Option<bool>,
     pub user: Option<String>,
@@ -299,6 +298,7 @@ pub fn status() -> Status {
     let mut s = Status {
         os: os(),
         package: package(&os_release),
+        linux: cfg!(target_os = "linux").then(crate::tailscale_linux::read),
         user: user(),
         backend: "unknown".into(),
         ..Status::default()
@@ -331,11 +331,11 @@ pub fn status() -> Status {
     s
 }
 
-/// The one line the guide offers to run in a terminal: Tailscale's own installer, which asks for the password itself.
-/// The operator line is shown to copy only, because a terminal would run its `sudo` at once.
+/// The one line the guide offers to run in a terminal: Tailscale's own commands for this Linux, which ask for the
+/// password themselves. The operator line is shown to copy only, because a terminal would run its `sudo` at once.
 pub fn terminal_line(what: &str) -> Result<String, String> {
     match what {
-        "install" => Ok(INSTALL_LINE.to_string()),
+        "install" => crate::tailscale_linux::terminal_line(),
         _ => Err(format!("unknown step: {what}")),
     }
 }

@@ -6,6 +6,7 @@ const READY: TailscaleStatus = {
   os: "linux",
   installed: true,
   package: "deb",
+  linux: null,
   operator: true,
   user: "alex",
   daemon: true,

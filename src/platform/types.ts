@@ -105,7 +105,7 @@ export type Platform = {
   tailscaleStatus(): Promise<TailscaleStatus>
   /** Downloads Tailscale's official installer into Downloads, then opens it or shows it in the file manager. */
   tailscaleDownload(kind: NonNullable<TailscaleStatus["package"]>): Promise<TailscaleDownload>
-  /** Opens a terminal running Tailscale's own install command, which asks for the password itself. */
+  /** Opens a terminal running Tailscale's install commands for this Linux, which ask for the password themselves. */
   tailscaleTerminal(what: "install"): Promise<void>
   /** `tailscale login` on a logged-out computer; the login page opens in the browser and `onPage` gets its link. */
   tailscaleLogin(onPage: (url: string) => void): Promise<void>

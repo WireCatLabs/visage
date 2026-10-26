@@ -1,26 +1,50 @@
 import { Check } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { platform } from "@/platform/bridge"
-import type { TailscaleDownload, TailscaleStatus } from "@/platform/tailscale-schemas"
+import type { TailscaleDownload, TailscaleLinux, TailscaleStatus } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
+import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { addressOf, type Step, type StepId, stepsOf } from "./tailscale-steps"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-const INSTALL_LINE = "curl -fsSL https://tailscale.com/install.sh | sh"
 const PAGES = {
   download: {
     macos: "https://tailscale.com/download/mac",
     windows: "https://tailscale.com/download/windows",
     linux: "https://tailscale.com/download/linux",
   },
+  linux: "https://tailscale.com/docs/install/linux",
+  staticBinaries: "https://pkgs.tailscale.com/stable/#static",
+  nixosWiki: "https://wiki.nixos.org/wiki/Tailscale",
   dns: "https://console.tailscale.com/admin/dns",
   acls: "https://console.tailscale.com/admin/acls",
   machines: "https://console.tailscale.com/admin/machines",
+}
+
+/** The website's guide; each step links the section that covers it on this system. */
+const GUIDE = "https://wirecat.dev/en/docs/desktop/tailscale-funnel"
+const INSTALL_SECTION: Record<TailscaleLinux["family"], string> = {
+  debian: "debian-and-ubuntu",
+  fedora: "fedora-and-red-hat",
+  opensuse: "opensuse",
+  arch: "arch-linux",
+  nixos: "nixos",
+  other: "other-linux",
+}
+
+export function guideUrl(step: StepId, s: TailscaleStatus): string {
+  const section = {
+    install: s.os === "linux" ? INSTALL_SECTION[s.linux?.family ?? "other"] : s.os,
+    login: "log-in-to-tailscale",
+    funnel: "allow-funnel",
+    connect: "connect-the-server",
+  }[step]
+  return `${GUIDE}#${section}`
 }
 
 /** Tailscale's state for the guide, read again on Check and whenever the window comes back into focus. */
@@ -70,20 +94,144 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="max-w-[62ch] text-[0.85rem] text-ink-dim">{children}</p>
 }
 
-function InstallStep({ s }: { s: TailscaleStatus }) {
-  const [busy, setBusy] = useState<"download" | "terminal" | null>(null)
-  const [done, setDone] = useState<TailscaleDownload | null>(null)
+function Link({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="text-brand underline hover:text-brand-hover"
+      onClick={() => platform.openUrl(href)}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** This Linux's commands from Tailscale, to copy or run in a terminal; the terminal gets them from Rust, not from here. */
+function Commands({ linux, label }: { linux: TailscaleLinux; label: string }) {
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const run = async (what: "download" | "terminal") => {
-    setBusy(what)
+  const open = async () => {
+    setBusy(true)
     setError(null)
     try {
-      if (what === "download" && s.package) setDone(await platform.tailscaleDownload(s.package))
-      else await platform.tailscaleTerminal("install")
+      await platform.tailscaleTerminal("install")
     } catch (e) {
       setError(message(e))
     }
-    setBusy(null)
+    setBusy(false)
+  }
+  return (
+    <>
+      <CopyField value={linux.commands.join("\n")} label={label} />
+      {linux.method !== "config" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={open} disabled={busy}>
+            {busy ? "Opening…" : linux.commands.length > 1 ? "Open a terminal with them" : "Open a terminal with it"}
+          </Button>
+        </div>
+      )}
+      {error && <ErrorNotice inline>{error}</ErrorNotice>}
+    </>
+  )
+}
+
+const UPDATES: Record<TailscaleLinux["method"], string> = {
+  repo: "They add Tailscale's own update source, so your system's updates keep Tailscale current.",
+  package: "This is your distribution's own Tailscale package, so your system's updates keep it current.",
+  config: "",
+  script: "",
+}
+
+function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boolean }) {
+  const linux = s.linux
+  if (!linux) return null
+  const source = (
+    <Note>
+      {linux.method === "script" ? (
+        <>
+          Tailscale lists no commands for {linux.name}. See its <Link href={PAGES.linux}>Linux install page</Link> or
+          the <Link href={PAGES.staticBinaries}>static binaries</Link> that run on any Linux.
+        </>
+      ) : (
+        <>
+          {UPDATES[linux.method]} {linux.method !== "config" && "They ask for your computer password. "}
+          <Link href={linux.source}>Tailscale's instructions</Link>
+          {linux.method === "config" && (
+            <>
+              {" "}
+              and the <Link href={PAGES.nixosWiki}>NixOS wiki</Link>
+            </>
+          )}
+          .
+        </>
+      )}
+    </Note>
+  )
+  if (linux.method === "config")
+    return (
+      <>
+        <Para>On NixOS, Tailscale is part of your system configuration. Add this line to it, then rebuild:</Para>
+        <Commands linux={linux} label="Copy the line" />
+        {source}
+      </>
+    )
+  if (linux.method === "script")
+    return (
+      <>
+        <h4 className="pt-1 text-[0.85rem] font-medium text-ink-dim">Install with Tailscale's install script</h4>
+        <Commands linux={linux} label="Copy the install command" />
+        <Note>It asks for your computer password, because it installs a system service.</Note>
+        {source}
+      </>
+    )
+  const heading = downloaded
+    ? `Then add Tailscale's update source for ${linux.name}`
+    : s.package
+      ? `Or install with Tailscale's commands for ${linux.name}`
+      : `Install with Tailscale's commands for ${linux.name}`
+  return (
+    <>
+      {s.package && !downloaded && (
+        <Note>A package installed by double-click does not update itself. The commands below do.</Note>
+      )}
+      <h4 className="pt-1 text-[0.85rem] font-medium text-ink-dim">{heading}</h4>
+      <Commands linux={linux} label="Copy the commands" />
+      {source}
+    </>
+  )
+}
+
+/** Installed from a package without Tailscale's update source: it works, but will not update with the system. */
+function UpdateSource({ linux }: { linux: TailscaleLinux }) {
+  return (
+    <div className="flex flex-col gap-2 pl-9 text-[0.9rem]">
+      <Note>Tailscale is installed without its update source, so your system's updates will not update it.</Note>
+      <Disclosure summary="Add the update source">
+        <div className="flex flex-col gap-2.5">
+          <Commands linux={linux} label="Copy the commands" />
+          <Note>
+            {UPDATES.repo} <Link href={linux.source}>Tailscale's instructions</Link>.
+          </Note>
+        </div>
+      </Disclosure>
+    </div>
+  )
+}
+
+function InstallStep({ s }: { s: TailscaleStatus }) {
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<TailscaleDownload | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const download = async () => {
+    if (!s.package) return
+    setBusy(true)
+    setError(null)
+    try {
+      setDone(await platform.tailscaleDownload(s.package))
+    } catch (e) {
+      setError(message(e))
+    }
+    setBusy(false)
   }
 
   if (s.installed && s.operator === false) {
@@ -120,12 +268,8 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
       )}
       {s.package && !done && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="primary" onClick={() => run("download")} disabled={busy !== null}>
-            {busy === "download"
-              ? "Downloading…"
-              : desktop
-                ? "Download and open the installer"
-                : `Download Tailscale (.${s.package})`}
+          <Button size="sm" variant="primary" onClick={download} disabled={busy}>
+            {busy ? "Downloading…" : desktop ? "Download and open the installer" : `Download Tailscale (.${s.package})`}
           </Button>
           <span className="text-[0.85rem] text-ink-dim">
             From pkgs.tailscale.com, checked against Tailscale's checksum.
@@ -145,40 +289,17 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
           ) : (
             <p>
               Your file manager shows it. Double-click it: your Software app installs it and asks for your password. If
-              nothing opens it, use the command below.
+              nothing opens it, run the commands below instead.
             </p>
           )}
         </div>
       )}
       {desktop ? (
         <Note>
-          Or get it yourself from{" "}
-          <button type="button" className="text-brand underline" onClick={() => platform.openUrl(PAGES.download[s.os])}>
-            Tailscale's download page
-          </button>
-          .
+          Or get it yourself from <Link href={PAGES.download[s.os]}>Tailscale's download page</Link>.
         </Note>
       ) : (
-        <>
-          {s.package && (
-            <Note>
-              A package installed this way does not update itself. The command below also adds Tailscale's own update
-              source, so your system's updates keep it current.
-            </Note>
-          )}
-          <h4 className="pt-1 text-[0.85rem] font-medium text-ink-dim">
-            {s.package ? "Or install with Tailscale's command" : "Install with Tailscale's command"}
-          </h4>
-          <CopyField value={INSTALL_LINE} label="Copy the install command" />
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => run("terminal")} disabled={busy !== null}>
-              {busy === "terminal" ? "Opening…" : "Open a terminal with it"}
-            </Button>
-          </div>
-          <Note>
-            It asks for your computer password, because it installs a system service. WireCat never does that itself.
-          </Note>
-        </>
+        <LinuxInstall s={s} downloaded={done !== null} />
       )}
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
     </>
@@ -437,7 +558,13 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
                 )}
                 {step.id === "connect" && step.missing && <p className="text-warn-ink">{step.missing}</p>}
                 {body[step.id]}
+                <Note>
+                  <Link href={guideUrl(step.id, status)}>Full guide</Link> for this step on wirecat.dev.
+                </Note>
               </div>
+            )}
+            {step.id === "install" && step.done && status.linux?.updates === false && (
+              <UpdateSource linux={status.linux} />
             )}
           </li>
         )
