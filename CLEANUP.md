@@ -58,3 +58,5 @@
 - `.claude/worktrees/connect-ai` (branch `feat/connect-ai-app`) — TASK-28 worktree, fast-forwarded into feat/desktop-mvp. 2026-10-27
 - /home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/monetization — cli-private worktree for POST-108 and MONETIZATION.md, 2026-10-27
 - ~/.local/share/tg-cli/accounts/default.json and tgtest.json — tg profiles with no session, leftovers; owner said remove (NEED-103 A), 2026-10-27
+- `.claude/worktrees/cloudflare-fallback` (branch `feat/cloudflare-fallback`) — TASK-30 Cloudflare tunnel fallback, fast-forwarded into feat/desktop-mvp; remove the worktree and branch. 2026-10-27
+- `/var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/cf` — TASK-30 cloudflared downloads, source clone and test configs. 2026-10-27
