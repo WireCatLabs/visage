@@ -154,7 +154,9 @@ agent's recent sessions and the tasks it holds.
   environment and headers never do. zm, drive and memo serve MCP but cannot register themselves yet. Not read yet: a
   Claude Code home moved with `CLAUDE_CONFIG_DIR`, OpenCode's `opencode.jsonc` (JSON with comments) and project-level
   servers. `run::command` drops the agents' own variables (`CLAUDECODE`, `CODEX_THREAD_ID`…), so the tools never
-  record the app's calls as an agent session even when the app was started from an agent's terminal.
+  record the app's calls as an agent session even when the app was started from an agent's terminal. It also sets
+  `WIRECAT_CALLER=desktop`, so cli-core records the app's own calls as `via: "desktop"` and keeps only their failures;
+  `mcp_server::start` removes it, because the server it starts outlives the call and serves agents and apps.
 - **Sessions** come from the runs the Logs page already read: runs grouped by `agent.kind` and `agent.session_id`
   (`src/domain/agents.ts`). A run with `argv` and no agent was started by a person; one without either comes from a
   tool too old to record it.

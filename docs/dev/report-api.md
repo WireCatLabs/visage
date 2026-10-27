@@ -50,7 +50,7 @@ Body, at most 1 MB:
 | `expected` | optional, up to 5 000 characters |
 | `tool` | optional, one of `tg max wa zm drive memo`, or null for the app itself |
 | `app`, `system`, `tools` | required objects; versions may be null when unknown |
-| `attachments` | optional object; **private**, stored on the server only, never copied into the issue. The desktop app always sends `runs` (each installed tool's last 20 failed runs, from its `runs list`), plus `installLog` (the masked output of a failed install, up to 200 lines) when a failed install opened the report, and `appErrors` (the window's last 10 uncaught errors, each `{ at, kind, name, message, stack }`, stack cut to 2 000 characters) when an error message's "Report this" opened it. A body over 1 MB loses `runs` first. Store it as given; new keys may appear |
+| `attachments` | optional object; **private**, stored on the server only, never copied into the issue. The desktop app always sends `runs` (each installed tool's last 20 failed runs, from its `runs list`, cut to an allowlist of fields in `report.rs` `safe_run`: no profile, chat or person ids, paths, typed words or caller ids; where a session, client, connection, request or trace id existed it reads `•••`), plus `installLog` (the masked output of a failed install, up to 200 lines) when a failed install opened the report, and `appErrors` (the window's last 10 uncaught errors, each `{ at, kind, name, message, stack }`, stack cut to 2 000 characters) when an error message's "Report this" opened it. A body over 1 MB loses `runs` first. Store it as given; new keys may appear |
 
 Responses:
 
