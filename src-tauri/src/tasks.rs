@@ -34,6 +34,8 @@ pub struct Claims {
     pub open: usize,
     /// More open tasks than one page holds: claims past it are not seen.
     pub more: bool,
+    /// The profile was never signed in, so it has no tasks to read: not a failure to report.
+    pub signed_out: bool,
 }
 
 /// The list asks for these four fields only, so no task title or source reaches the app. A lapsed claim reads as none.
@@ -51,7 +53,19 @@ fn claims_of(v: &Value) -> Claims {
             })
         })
         .collect();
-    Claims { items: claims, open: items.len(), more: v["page"]["has_more"].as_bool().unwrap_or(false) }
+    Claims {
+        items: claims,
+        open: items.len(),
+        more: v["page"]["has_more"].as_bool().unwrap_or(false),
+        signed_out: false,
+    }
+}
+
+/// cli-core answers `not_found` both for a profile it does not know and for one never signed in; only the wording
+/// tells them apart, and only the second is the owner's next step rather than a fault.
+fn never_signed_in(v: &Value) -> bool {
+    v["error"]["code"] == "not_found"
+        && v["error"]["message"].as_str().is_some_and(|m| m.starts_with("nothing recorded for profile"))
 }
 
 pub fn claims(tool: &Tool, profile: &str) -> Result<Claims, String> {
@@ -59,6 +73,7 @@ pub fn claims(tool: &Tool, profile: &str) -> Result<Claims, String> {
     let (out, json) = call(tool, &args, Duration::from_mins(1))?;
     match json {
         Some(v) if out.code == Some(0) => Ok(claims_of(&v)),
+        Some(v) if never_signed_in(&v) => Ok(Claims { items: Vec::new(), open: 0, more: false, signed_out: true }),
         j => Err(failure(&out, j.as_ref())),
     }
 }
@@ -123,5 +138,14 @@ mod tests {
         assert!(c.more);
         assert_eq!(c.items.iter().map(|x| x.holder.as_str()).collect::<Vec<_>>(), ["claude-code:3b8e", "codex"]);
         assert_eq!(c.items[0].key.as_deref(), Some("Q-1"));
+    }
+
+    #[test]
+    fn tells_a_profile_never_signed_in_from_a_profile_that_does_not_exist() {
+        let never = json!({"error": {"code": "not_found", "message": "nothing recorded for profile \"personal\" yet — log in with `max personal setup`"}});
+        let unknown =
+            json!({"error": {"code": "not_found", "message": "no profile named \"x\" — profiles here: personal"}});
+        assert!(never_signed_in(&never));
+        assert!(!never_signed_in(&unknown));
     }
 }

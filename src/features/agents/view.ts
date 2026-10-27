@@ -140,6 +140,12 @@ export function useAgentsView() {
   const claimErrors = Object.entries(connect.claims).flatMap(([key, loaded]) =>
     loaded.state === "error" ? [{ key, error: loaded.error }] : [],
   )
+  const signedOutCounts = Object.entries(connect.claims).reduce<Map<string, number>>((m, [key, loaded]) => {
+    const tool = key.split("/")[0] ?? ""
+    if (loaded.state === "ready" && loaded.data.signedOut) m.set(tool, (m.get(tool) ?? 0) + 1)
+    return m
+  }, new Map())
+  const signedOutTasks = [...signedOutCounts].map(([tool, profiles]) => ({ tool, profiles }))
   const otherClaims = claims.filter((c) => c.holder.type !== "agent" || c.holder.agent === null)
   const claimsPending =
     !answered ||
@@ -239,7 +245,7 @@ export function useAgentsView() {
     checkAll,
     checkOne,
     opened,
-    elsewhere: { pending: elsewherePending, otherClaims, claimErrors, unknownRuns },
+    elsewhere: { pending: elsewherePending, otherClaims, claimErrors, signedOutTasks, unknownRuns },
   }
 }
 

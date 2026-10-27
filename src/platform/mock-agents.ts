@@ -196,7 +196,7 @@ export function agentsMock(versionOf: (id: string) => string | undefined) {
       await delay(600 + id.length * 100)
       if (id === "wa") throw new Error("the message store was written by a newer version — upgrade this tool")
       const items = claims[`${id}/${profile}`] ?? []
-      return { items, open: items.length + 4, more: false }
+      return { items, open: items.length + 4, more: false, signedOut: false }
     },
     async taskRelease(id, profile, task) {
       await delay(600)

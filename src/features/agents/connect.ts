@@ -5,7 +5,7 @@ import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 
 export type Loaded<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; error: string }
-export type ProfileClaims = Loaded<{ items: Claim[]; more: boolean }>
+export type ProfileClaims = Loaded<{ items: Claim[]; more: boolean; signedOut: boolean }>
 
 type ConnectState = {
   reach: Record<string, boolean> | null
@@ -49,7 +49,7 @@ export const useConnect = create<ConnectState>((set, get) => {
     // A revisit keeps the last answer on screen while asking again, so the tasks box does not vanish and return.
     set((s) => (s.claims[key]?.state === "ready" ? {} : { claims: { ...s.claims, [key]: { state: "loading" } } }))
     const next: ProfileClaims = await platform.taskClaims(tool, profile).then(
-      (c) => ({ state: "ready", data: { items: c.items, more: c.more } }),
+      (c) => ({ state: "ready", data: { items: c.items, more: c.more, signedOut: c.signedOut } }),
       (e) => ({ state: "error", error: message(e) }),
     )
     // The last answer stays on screen now, so an older ask finishing late must not replace a newer one.
@@ -103,7 +103,18 @@ export const useConnect = create<ConnectState>((set, get) => {
       const profiles = withProfiles.map(async (id) => {
         const list = (await platform.listProfiles(id).catch(() => null)) ?? []
         set((s) => ({ profiles: { ...s.profiles, [id]: list } }))
-        if (findTool(id)?.tasks) await Promise.all(list.map((p) => loadClaims(id, p.name)))
+        if (!findTool(id)?.tasks) return
+        // A profile never signed in has no tasks, and asking would only leave a failed run in the owner's logs.
+        const signedOut = Object.fromEntries(
+          list
+            .filter((p) => p.signedIn === false)
+            .map((p): [string, ProfileClaims] => [
+              pairKey(id, p.name),
+              { state: "ready", data: { items: [], more: false, signedOut: true } },
+            ]),
+        )
+        set((s) => ({ claims: { ...s.claims, ...signedOut } }))
+        await Promise.all(list.filter((p) => p.signedIn !== false).map((p) => loadClaims(id, p.name)))
       })
       await Promise.all([reach, ...own, ...servers, ...profiles])
     },

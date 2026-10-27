@@ -69,6 +69,7 @@ export const ClaimsSchema = v.object({
   ),
   open: v.number(),
   more: v.boolean(),
+  signedOut: v.optional(v.boolean(), false),
 })
 
 export type SkillText = v.InferOutput<typeof SkillTextSchema>

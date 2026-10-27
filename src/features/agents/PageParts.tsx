@@ -9,6 +9,7 @@ import { Skeleton, StableText } from "@/ui/Skeleton"
 import { useLogs } from "../logs/store"
 import { useNav } from "../nav"
 import { ReportThis } from "../report/ReportThis"
+import { openManage } from "./AgentDetails"
 import { ClaimRow } from "./ClaimRow"
 import { ConfirmCommand } from "./Confirm"
 import { pairKey } from "./connect"
@@ -66,9 +67,10 @@ export function Notices({ view }: { view: AgentsView }) {
 
 /** Things that belong to no agent on this list, last on the page. */
 export function Elsewhere({ view }: { view: AgentsView }) {
-  const { pending, otherClaims, claimErrors, unknownRuns } = view.elsewhere
+  const { pending, otherClaims, claimErrors, signedOutTasks, unknownRuns } = view.elsewhere
   if (pending) return <Skeleton className="h-[3rem] w-full max-w-[80ch]" label="Reading tasks and run logs" />
-  if (otherClaims.length === 0 && claimErrors.length === 0 && unknownRuns === 0) return null
+  if (otherClaims.length === 0 && claimErrors.length === 0 && signedOutTasks.length === 0 && unknownRuns === 0)
+    return null
   return (
     <div className="flex max-w-[80ch] flex-col gap-2 text-[0.9rem] text-ink-soft">
       {unknownRuns > 0 && (
@@ -77,6 +79,19 @@ export function Elsewhere({ view }: { view: AgentsView }) {
           started them.
         </p>
       )}
+      {signedOutTasks.map(({ tool, profiles }) => (
+        <p key={`signed-out:${tool}`}>
+          {findTool(tool)?.name ?? tool}: {plural(profiles, "profile")} not signed in.{" "}
+          <button
+            type="button"
+            onClick={() => openManage(tool)}
+            className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
+          >
+            Sign in
+          </button>{" "}
+          to see their tasks.
+        </p>
+      ))}
       {claimErrors.map(({ key, error }) => {
         const [tool, profile] = key.split("/")
         const name = findTool(tool ?? "")?.name ?? tool

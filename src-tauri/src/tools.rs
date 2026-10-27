@@ -203,7 +203,11 @@ fn parse_profiles(v: &Value, shape: &str) -> Vec<Profile> {
             Value::Object(o) => Some(Profile {
                 // memo's mail accounts carry `name`, beside an address that must stay in Rust.
                 name: o.get("profile").or_else(|| o.get("name"))?.as_str()?.to_string(),
-                signed_in: o.get("account").map(|a| !a.is_null()),
+                // cli-core 0.466 says it outright; older tools only leave `account` empty.
+                signed_in: o
+                    .get("signed_in")
+                    .and_then(Value::as_bool)
+                    .or_else(|| o.get("account").map(|a| !a.is_null())),
             }),
             _ => None,
         })
