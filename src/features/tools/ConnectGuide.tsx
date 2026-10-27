@@ -79,7 +79,7 @@ export function ConnectGuide(props: {
   const [tunnel, setTunnel] = useKept<Tunnel>(kept, "tunnel", scenario?.tunnel ?? "tailscale")
   const [confirmed, setConfirmed] = useKept(kept, "confirmed", scenario?.confirmed ?? false)
   const [added, setAdded] = useKept(kept, "added", scenario?.added ?? false)
-  const [reach, setReach] = useState<ReachState>({ state: "checking" })
+  const [reach, setReach] = useKept<ReachState>(kept, "reach", { state: "checking" })
   const [goOn, setGoOn] = useKept(kept, "goOn", false)
   const [phase, setPhase] = useState<Phase>("idle")
   const [failure, setFailure] = useState<Failure | null>(null)
@@ -205,16 +205,18 @@ export function ConnectGuide(props: {
         summary={summary}
         onChoose={current !== "choose" ? () => setApp(null) : undefined}
       />
-      <AutoHeight className="min-w-0">
+      <AutoHeight swap={current} className="min-w-0">
         <div
           key={current}
           className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
           aria-live="polite"
         >
-          <h5 ref={heading} tabIndex={-1} className="step-heading text-[1.05rem] font-semibold text-ink">
+          <h5 ref={heading} tabIndex={-1} className="step-heading scroll-mt-3 text-[1.05rem] font-semibold text-ink">
             {current === "test" && test.state === "called"
               ? `${name} can now use your ${tool.name}`
-              : STEP_TITLES[current]}
+              : current === "connect" && app && app !== "other"
+                ? `Add it in ${name}`
+                : STEP_TITLES[current]}
           </h5>
           {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
           {current === "address" && (
@@ -258,6 +260,16 @@ export function ConnectGuide(props: {
           )}
           {tunnelOff && (current === "reach" || current === "connect" || current === "test") && (
             <TunnelOff tool={tool} port={route.port} name={name} reload={reload} />
+          )}
+          {/* The address check can pass in one look; its result stays in sight, so the step is not missed. */}
+          {current === "connect" && serving(server) && !local && (
+            <ul>
+              <Progress state={reach.state === "live" ? "done" : "todo"}>
+                {reach.state === "live"
+                  ? `${new URL(server.connectorUrl).host} answers on the internet.`
+                  : `Not checked whether ${new URL(server.connectorUrl).host} answers on the internet.`}
+              </Progress>
+            </ul>
           )}
           {current === "connect" && app && serving(server) && (
             <ConnectStep tool={tool} app={app} server={server} onAdded={() => setAdded(true)} />

@@ -122,7 +122,9 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
         </div>
       </div>
       <Collapse id={panelId} open={expanded || showInstallPanel}>
-        <AutoHeight>{showInstallPanel ? <InstallPanel tool={tool} /> : <ToolDetails tool={tool} />}</AutoHeight>
+        <AutoHeight swap={showInstallPanel}>
+          {showInstallPanel ? <InstallPanel tool={tool} /> : <ToolDetails tool={tool} />}
+        </AutoHeight>
       </Collapse>
     </li>
   )

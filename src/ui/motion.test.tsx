@@ -81,7 +81,7 @@ describe("focusInPlace", () => {
 describe("AutoHeight", () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it("pins its height and moves to the new one with a transition, or at once under reduced motion", () => {
+  it("animates only a swap of its content, follows other changes at once, and never animates under reduced motion", () => {
     let notify = () => undefined as void
     vi.stubGlobal(
       "ResizeObserver",
@@ -96,16 +96,23 @@ describe("AutoHeight", () => {
     let height = 200
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(() => height)
     reduce(false)
-    const { container } = render(<AutoHeight>step</AutoHeight>)
+    const { container, rerender } = render(<AutoHeight swap="a">step</AutoHeight>)
     const box = container.firstElementChild as HTMLElement
     expect(box.style.height).toBe("200px")
 
+    height = 250
+    notify()
+    expect(box.style.height).toBe("250px")
+    expect(box.style.transition).toBe("")
+
+    rerender(<AutoHeight swap="b">next step</AutoHeight>)
     height = 320
     notify()
     expect(box.style.height).toBe("320px")
     expect(box.style.transition).toContain(`height ${PANEL_MS}ms`)
 
     reduce(true)
+    rerender(<AutoHeight swap="c">last step</AutoHeight>)
     height = 90
     notify()
     expect(box.style.height).toBe("90px")

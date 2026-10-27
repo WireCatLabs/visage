@@ -1,6 +1,6 @@
 import { Bot, HardDrive, LogIn, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import { type CatalogTool, findTool, ownerId, signsInHere, tools } from "@/domain/catalog"
+import { type CatalogTool, findTool, ownerId, samePackage, signsInHere, tools } from "@/domain/catalog"
 import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
@@ -10,10 +10,12 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
 import { Skeleton, StableText } from "@/ui/Skeleton"
+import { useNav } from "../nav"
 import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
+import { openConnect } from "../tools/go"
 import { FinishInTerminal, ManualSetup, NewProfile, useProfiles } from "../tools/Health"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
@@ -561,26 +563,56 @@ export function SignIn() {
   )
 }
 
+// Successful installs would otherwise each leave an open "installed and runs" panel on the Tools page.
+export function leave() {
+  const { sessions, dismiss } = useTools.getState()
+  for (const [id, s] of Object.entries(sessions))
+    if (s.outcome?.event === "done") for (const t of samePackage(id)) dismiss(t.id)
+}
+
 export function Done() {
   const chosen = useOnboarding((s) => s.chosen)
   const installs = useTools((s) => s.installs)
   const list = tools.filter((t) => chosen.includes(t.id))
-  if (list.length === 0) return null
+  const browserReady = list.find((t) => t.mcpServer && installs[t.id]?.[0]?.version)
+  // Rule 9: after the goal, the next things worth doing, each one leaving the setup for the page that does it.
+  const go = (then: () => void) => {
+    leave()
+    useOnboarding.getState().finish()
+    then()
+  }
   return (
-    <ul aria-label="Your tools" className={rack}>
-      {list.map((t) => {
-        const version = installs[t.id]?.[0]?.version
-        return (
-          <li key={t.id} className={row}>
-            <Lamp tone={version ? "ok" : "idle"} />
-            <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
-            <span className="flex-1 font-semibold">{t.name}</span>
-            <span className={cx("font-mono text-[1.02rem] tabular-nums", version ? "text-ink" : "text-ink-soft")}>
-              {version ?? "Not installed"}
-            </span>
-          </li>
-        )
-      })}
-    </ul>
+    <div className="flex flex-col gap-[1.5rem]">
+      {list.length > 0 && (
+        <ul aria-label="Your tools" className={rack}>
+          {list.map((t) => {
+            const version = installs[t.id]?.[0]?.version
+            return (
+              <li key={t.id} className={row}>
+                <Lamp tone={version ? "ok" : "idle"} />
+                <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
+                <span className="flex-1 font-semibold">{t.name}</span>
+                <span className={cx("font-mono text-[1.02rem] tabular-nums", version ? "text-ink" : "text-ink-soft")}>
+                  {version ?? "Not installed"}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <section aria-label="What next" className="flex flex-col gap-2">
+        <h2 className="text-[1.05rem] font-semibold">What next</h2>
+        <div className="flex flex-wrap gap-2">
+          {browserReady && (
+            <Button onClick={() => go(() => openConnect(browserReady.id))}>
+              Let ChatGPT or Claude use {browserReady.name}
+            </Button>
+          )}
+          <Button variant="ghost" onClick={() => go(() => useNav.getState().go("agents"))}>
+            See which agents use them
+          </Button>
+        </div>
+      </section>
+    </div>
   )
 }

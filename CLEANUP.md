@@ -64,3 +64,4 @@
 - `~/.local/share/dev.wirecat.desktop/cloudflared/{tunnel.json,config.yml,cloudflared.log,login-home,no-browser}` — TASK-32 leftovers of the deleted test tunnel `wirecat-mcp-test-wirecat-dev` (no secrets; the binary itself is Desktop's normal install and can stay). 2026-10-27
 - `/var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/scripts/cf_dns_delete.py` and `scratchpad/cf/{harness,login.log,login.pid,login-start.txt}` — TASK-32 run files (certificate copy already removed). 2026-10-27
 - `.claude/worktrees/record-every-run` (branch `feat/record-every-run`) — TASK-31 Desktop phase 4, fast-forwarded into feat/desktop-mvp; remove the worktree and branch. 2026-10-27
+- `.claude/worktrees/ux11-motion` (ветка fix/ux11-motion) — worktree UX-11, всё влито в feat/desktop-mvp. 2026-10-27

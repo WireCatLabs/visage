@@ -1,6 +1,5 @@
 import { Check } from "lucide-react"
 import { type ComponentType, useEffect, useId, useRef } from "react"
-import { samePackage } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
@@ -8,7 +7,7 @@ import { reducedMotion } from "@/ui/motion"
 import { AgentsMatrix } from "../agents/AgentsMatrix"
 import { useSystem } from "../system/store"
 import { useTools } from "../tools/store"
-import { Agents, Choose, Computer, Done, Install, installChosen, SignIn, Welcome } from "./steps"
+import { Agents, Choose, Computer, Done, Install, installChosen, leave, SignIn, Welcome } from "./steps"
 import { STEPS, type StepId, useOnboarding } from "./store"
 
 type Page = { title: string; lead: string; body: ComponentType }
@@ -46,7 +45,7 @@ const pages: Record<StepId, Page> = {
   },
   done: {
     title: "You are set up",
-    lead: "Your tools are on the Tools page. Help, the question mark at the top, has a short tour of the window.",
+    lead: "The tools below are installed on this computer. Help, the question mark at the top, has a short tour of the window.",
     body: Done,
   },
 }
@@ -129,13 +128,6 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
       </div>
     </aside>
   )
-}
-
-// Successful installs would otherwise each leave an open "installed and runs" panel on the Tools page.
-function leave() {
-  const { sessions, dismiss } = useTools.getState()
-  for (const [id, s] of Object.entries(sessions))
-    if (s.outcome?.event === "done") for (const t of samePackage(id)) dismiss(t.id)
 }
 
 export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () => void }) {

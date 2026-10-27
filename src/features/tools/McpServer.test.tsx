@@ -128,7 +128,7 @@ describe("Connect an AI app", () => {
 
     await waitFor(() => expect(start).toHaveBeenCalledExactlyOnceWith("tg", 8765, "https://h.ts.net/tg"))
     expect(open).toHaveBeenCalledExactlyOnceWith("tg", 8765, expect.any(Function))
-    expect(await screen.findByRole("heading", { name: "Add it in the app" })).toHaveFocus()
+    expect(await screen.findByRole("heading", { name: /^Add it in / })).toHaveFocus()
     expect(screen.getAllByText("https://x.ts.net/tg/mcp")[0]).toBeVisible()
     expect(screen.getAllByText("ABCD-EF23")[0]).toBeVisible()
     expect(screen.getByText(/Add custom MCP server/)).toBeVisible()
@@ -210,6 +210,27 @@ describe("Connect an AI app", () => {
     expect(screen.getByRole("button", { name: "Copy a prompt to try" })).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Finish" }))
     expect((await screen.findAllByText(/last call just now · tg_read · 1 today/))[0]).toBeVisible()
+  })
+
+  it("keeps the step on screen when one read of the server fails, and says so", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const status = vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(RUNNING)
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: "Connect another app" }))
+    await user.click(screen.getByRole("button", { name: /^ChatGPT/ }))
+    expect(await screen.findByRole("heading", { name: "Add it in ChatGPT" })).toBeVisible()
+    expect(screen.getByText("x.ts.net answers on the internet.")).toBeVisible()
+
+    status.mockRejectedValue(new Error("timed out"))
+    await vi.advanceTimersByTimeAsync(4100)
+
+    expect(await screen.findByText(/Could not read the server's state just now \(timed out\)/)).toBeVisible()
+    expect(screen.getByRole("heading", { name: "Add it in ChatGPT" })).toBeVisible()
+    status.mockResolvedValue(RUNNING)
+    await vi.advanceTimersByTimeAsync(4100)
+    await waitFor(() => expect(screen.queryByText(/Could not read the server's state/)).not.toBeInTheDocument())
   })
 
   it("does not take an app that logged in before the guide opened for this one", async () => {
@@ -294,7 +315,7 @@ describe("Connect an AI app", () => {
 
     pub.mockResolvedValue({ host: "x.ts.net", dns: "live", answer: { kind: "unreached", reason: "refused" } })
     await vi.advanceTimersByTimeAsync(15_100)
-    expect(await screen.findByRole("heading", { name: "Add it in the app" })).toHaveFocus()
+    expect(await screen.findByRole("heading", { name: /^Add it in / })).toHaveFocus()
   })
 
   it("lets the owner go on, warned, when no public DNS service answers", async () => {
@@ -311,7 +332,7 @@ describe("Connect an AI app", () => {
 
     expect(await screen.findByText(/No public DNS service answered from this computer/)).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Go on without the check" }))
-    expect(await screen.findByRole("heading", { name: "Add it in the app" })).toBeVisible()
+    expect(await screen.findByRole("heading", { name: /^Add it in / })).toBeVisible()
   })
 
   it("says calmly that a tool too old for it gets it with an update, and offers nothing to press", async () => {

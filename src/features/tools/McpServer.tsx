@@ -94,14 +94,20 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
     if (open) loadFunnels()
   }, [open, loadFunnels])
 
+  const [stale, setStale] = useState<string | null>(null)
   const load = useCallback(async () => {
     const call = ++calls.current
     setRow((r) => (r.state === "ready" ? r : { state: "loading" }))
     try {
       const data = await platform.mcpServerStatus(tool.id)
-      if (calls.current === call) setRow({ state: "ready", data })
+      if (calls.current !== call) return
+      setRow({ state: "ready", data })
+      setStale(null)
     } catch (e) {
-      if (calls.current === call) setRow({ state: "error", message: message(e) })
+      if (calls.current !== call) return
+      // A failed re-read keeps what is on screen: the guide must not vanish mid-step because one read failed.
+      setRow((r) => (r.state === "ready" ? r : { state: "error", message: message(e) }))
+      setStale(message(e))
     }
   }, [tool.id])
 
@@ -188,6 +194,11 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
           app gets through. Nothing starts until you press Start the server.
         </p>
         {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
+        {stale && row.state === "ready" && (
+          <p role="status" className="text-[0.88rem] text-warn-ink">
+            Could not read the server's state just now ({stale}); showing the last answer and trying again.
+          </p>
+        )}
         {data && !data.available && (
           <p className="text-[0.92rem] text-ink-soft">
             This version of {tool.name} cannot do it yet. It arrives with the next update of {tool.bin}.

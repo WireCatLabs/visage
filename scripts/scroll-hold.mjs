@@ -72,7 +72,8 @@ async function watch(i) {
     i,
   )
   const jump = Math.max(0, ...tops.slice(1).map((t, k) => Math.abs(t - tops[k])))
-  return { before, after: tops.at(-1), jump }
+  const atTop = await page.evaluate(() => document.querySelector("main").scrollTop === 0)
+  return { before, after: tops.at(-1), jump, atTop }
 }
 
 const cases = []
@@ -87,11 +88,43 @@ await page.waitForTimeout(500)
 await scrollRowTo(last, height / 2)
 cases.push(["open a tool below an open one", await watch(last)])
 
+// The connect guide: after Start the server, the next step is on screen, and the page only ever glides to it.
+await page.goto(`http://localhost:${port}/?onboarding=off&section=tools&connect=address&tailscale=ready`)
+await page.waitForSelector('button:text-is("Start the server")')
+await page.waitForTimeout(800)
+const guide = await page.evaluate(
+  (y) =>
+    new Promise((done) => {
+      const m = document.querySelector("main")
+      const start = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Start the server")
+      m.scrollTop += start.getBoundingClientRect().top - y
+      const seen = [m.scrollTop]
+      start.click()
+      const end = performance.now() + 1500
+      const tick = () => {
+        seen.push(m.scrollTop)
+        if (performance.now() < end) return requestAnimationFrame(tick)
+        const box = document.querySelector("h5.step-heading").getBoundingClientRect()
+        const view = m.getBoundingClientRect()
+        done({ seen, visible: box.top >= view.top && box.bottom <= view.bottom })
+      }
+      requestAnimationFrame(tick)
+    }),
+  height / 2,
+)
+const glide = Math.max(0, ...guide.seen.slice(1).map((t, k) => Math.abs(t - guide.seen[k])))
+
 await browser.close()
-let failed = false
+const guideOk = guide.visible && glide <= 80
+console.log(
+  `${guideOk ? "ok  " : "FAIL"} start the server in the connect guide: next step ${guide.visible ? "" : "not "}on ` +
+    `screen, largest scroll step between frames ${Math.round(glide)}px`,
+)
+let failed = !guideOk
 for (const [name, r] of cases) {
   const moved = Math.abs(r.after - r.before)
-  const ok = moved <= 2 && r.jump <= 40
+  // With no page above to give back, the row can only slide to its place, never jump.
+  const ok = (moved <= 2 || r.atTop) && r.jump <= 40
   failed ||= !ok
   console.log(
     `${ok ? "ok  " : "FAIL"} ${name}: row ${Math.round(r.before)} → ${Math.round(r.after)}px, ` +
