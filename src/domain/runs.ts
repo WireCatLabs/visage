@@ -29,6 +29,8 @@ export const FACETS = [
   "cli_command",
   "profile",
   "agent",
+  "via",
+  "client",
   "error_code",
   "error.class",
   "error.http.status",
@@ -42,13 +44,23 @@ export const FACET_LABELS: Record<string, string> = {
   profile: "Profile",
   agent: "Agent",
   session_id: "Agent session",
+  via: "Started through",
+  client: "App",
+  connection: "MCP connection",
+  trace_id: "Trace",
+  conversation: "Conversation",
   "error.class": "Error class",
   "error.http.status": "HTTP status",
   cli_version: "Version",
 }
 
 // Short names for fields a run keeps nested; `valuesAt` reads them at their real path.
-const PATHS: Record<string, string> = { agent: "agent.kind", session_id: "agent.session_id" }
+const PATHS: Record<string, string> = {
+  agent: "agent.kind",
+  session_id: "agent.session_id",
+  client: "agent.client.name",
+  connection: "mcp.connection_id",
+}
 
 // A tool records `command` without its own name ("chats list"), except when it recognised no command at all: then
 // it records the bare name ("tg"). Prefixing the name keeps tg and max commands apart in facets and groups.
@@ -76,6 +88,7 @@ const AGENT_NAMES: Record<string, string> = {
   opencode: "OpenCode",
   "hermes-agent": "Hermes Agent",
   openclaw: "OpenClaw",
+  "mcp-client": "MCP app",
 }
 export const agentName = (kind: string) => AGENT_NAMES[kind] ?? kind
 /** Enough of a session id to tell sessions apart in a column; the whole id is one click away. */
@@ -138,7 +151,10 @@ const ordered = (o: Record<string, unknown>, first: readonly string[], last: rea
 
 const RECORD_NEXT = [
   "profile",
+  "via",
   "agent",
+  "mcp",
+  "trace_id",
   "started_at",
   "completed_at",
   "duration_ms",
@@ -179,6 +195,10 @@ const TEXT_FIELDS = [
   "unknown_command",
   "agent",
   "session_id",
+  "via",
+  "client",
+  "connection",
+  "trace_id",
   "error.class",
   "error.message",
   "error.http.endpoint_template",
@@ -360,6 +380,161 @@ export function groupRuns(runs: Run[], field: string): Group[] {
   return [...groups.values()].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
 }
 
+const VIA_NAMES: Record<string, string> = {
+  cli: "Terminal",
+  "mcp-stdio": "MCP on this computer",
+  "mcp-http": "MCP over the internet",
+  desktop: "WireCat Desktop",
+}
+export const viaName = (via: string) => VIA_NAMES[via] ?? via
+
+/** The app that called an MCP server, as it named itself; `id` is a hash of its login, never the login. */
+export type RunClient = { name: string; version?: Maybe<string>; id?: Maybe<string> }
+export function clientOf(run: Run): RunClient | null {
+  const c = obj(obj(run.agent)?.client)
+  const name = str(c?.name)
+  return name ? { name, version: str(c?.version), id: str(c?.id) } : null
+}
+
+export const CONVERSATION = "conversation"
+/** Runs of one app with no session, connection or trace are one conversation until this long passes with no run. */
+export const CONVERSATION_GAP_MS = 30 * 60_000
+
+function directConversation(run: Run): string | null {
+  const agent = obj(run.agent)
+  const kind = str(agent?.kind)
+  const session = str(agent?.session_id)
+  if (kind && session) return `session:${kind}:${session}`
+  const connection = str(obj(run.mcp)?.connection_id)
+  if (connection) return `connection:${connection}`
+  const trace = str(run.trace_id)
+  return trace ? `trace:${trace}` : null
+}
+
+/**
+ * Each run with its `conversation` key: the agent's session, else the MCP connection, else the trace, else the app
+ * and how it called, cut where 30 minutes pass with no run. Computed over every loaded run before any filter, so a
+ * search cannot move where the gaps fall. A run that says none of these, older ones, gets "".
+ */
+export function withConversations(runs: readonly Run[]): Run[] {
+  const keys = new Map<Run, string>()
+  const loose = new Map<string, Run[]>()
+  for (const run of runs) {
+    const direct = directConversation(run)
+    if (direct) {
+      keys.set(run, direct)
+      continue
+    }
+    const via = str(run.via)
+    const client = clientOf(run)?.id
+    if (!via && !client) {
+      keys.set(run, "")
+      continue
+    }
+    const bucket = [agentOf(run)?.kind ?? "", client ?? "", via ?? ""].join("|")
+    loose.set(bucket, [...(loose.get(bucket) ?? []), run])
+  }
+  for (const [bucket, members] of loose) {
+    let start = ""
+    let previous = Number.NEGATIVE_INFINITY
+    for (const run of [...members].sort(oldestFirst)) {
+      const at = Date.parse(run.started_at)
+      if (!(at - previous <= CONVERSATION_GAP_MS)) start = run.started_at
+      previous = at
+      keys.set(run, `app:${bucket}@${start}`)
+    }
+  }
+  return runs.map((run) => ({ ...run, [CONVERSATION]: keys.get(run) ?? "" }))
+}
+
+export type Conversation = {
+  key: string
+  agent: string | null
+  session: string | null
+  client: RunClient | null
+  via: string | null
+  first: string
+  last: string
+  /** Oldest first, the order they happened in. */
+  runs: Run[]
+  failed: number
+}
+
+/** Runs grouped by their `conversation` key, the latest active first; runs in no conversation come last. */
+export function conversations(runs: readonly Run[]): Conversation[] {
+  const groups = new Map<string, Run[]>()
+  for (const run of runs) {
+    const key = typeof run[CONVERSATION] === "string" ? (run[CONVERSATION] as string) : ""
+    groups.set(key, [...(groups.get(key) ?? []), run])
+  }
+  return [...groups]
+    .map(([key, members]): Conversation => {
+      const sorted = [...members].sort(oldestFirst)
+      const first = sorted[0] as Run
+      const agent = sorted.map(agentOf).find(Boolean) ?? null
+      return {
+        key,
+        agent: agent?.kind ?? null,
+        session: agent?.session ?? null,
+        client: sorted.map(clientOf).find(Boolean) ?? null,
+        via: sorted.map((r) => str(r.via)).find(Boolean) ?? null,
+        first: first.started_at,
+        last: (sorted[sorted.length - 1] as Run).started_at,
+        runs: sorted,
+        failed: sorted.filter((r) => r.status === "failed").length,
+      }
+    })
+    .sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : b.last.localeCompare(a.last)))
+}
+
+/** One recorded event read for a person: what was asked, of whom, how it went. */
+export type Step = {
+  kind: "request" | "response" | "dropped" | "other"
+  /** The operation, else method and endpoint template, else the event's own name. */
+  name: string
+  /** "wire" lines are the transport's own calls under an operation. */
+  wire: boolean
+  transport: string | null
+  /** Set only for a retry: 2 for the first retry. */
+  retry: number | null
+  waitMs: number | null
+  /** "3 messages, 1 chat". */
+  counts: string | null
+  /** How many steps the tool counted but did not keep. */
+  dropped: number | null
+}
+
+const countWords = (counts: Record<string, unknown> | null) => {
+  const parts = Object.entries(counts ?? {}).flatMap(([field, n]) =>
+    typeof n === "number" ? [`${n} ${n === 1 && field.endsWith("s") ? field.slice(0, -1) : field}`] : [],
+  )
+  return parts.length ? parts.join(", ") : null
+}
+
+export function stepOf(event: Record<string, unknown>): Step {
+  const name = String(event.event ?? "")
+  const kind =
+    name === "provider.request"
+      ? "request"
+      : name === "provider.response"
+        ? "response"
+        : name === "events.dropped"
+          ? "dropped"
+          : "other"
+  const http = [str(event.method), str(event.endpoint_template)].filter(Boolean).join(" ")
+  const attempt = num(event.attempt)
+  return {
+    kind,
+    name: kind === "request" || kind === "response" ? (str(event.operation) ?? (http || name)) : name,
+    wire: event.level === "wire",
+    transport: str(event.transport) ?? null,
+    retry: attempt !== undefined && attempt >= 2 ? attempt : null,
+    waitMs: num(event.wait_ms) ?? null,
+    counts: kind === "dropped" ? null : countWords(obj(event.counts)),
+    dropped: kind === "dropped" ? (num(event.dropped) ?? null) : null,
+  }
+}
+
 export type TermState = "include" | "exclude" | null
 
 export function termState(terms: Term[], field: string, value: string): TermState {
@@ -450,6 +625,7 @@ export function inRange(runs: Run[], range: RangeId, now: number): Run[] {
 }
 
 export const newestFirst = (a: Run, b: Run) => (a.started_at < b.started_at ? 1 : a.started_at > b.started_at ? -1 : 0)
+const oldestFirst = (a: Run, b: Run) => newestFirst(b, a)
 
 export type Tone = "ok" | "warn" | "bad" | "busy" | "idle"
 export const statusTone = (status: string): Tone =>
