@@ -362,3 +362,18 @@ dialog[data-closing] {
 dialog[data-closing]::backdrop {
   animation: backdrop-out 150ms var(--ease-out-quart) forwards;
 }
+
+/* Crossfade: the old view fades out over the new one, so the area is never empty between them. */
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.fade-out {
+  animation: fade-out 200ms var(--ease-out-quart) forwards;
+}
+
+.fade-in {
+  animation: reveal 200ms var(--ease-out-quart);
+}

@@ -1,7 +1,10 @@
 import { useEffect } from "react"
+import { AutoHeight } from "@/ui/AutoHeight"
+import { Crossfade } from "@/ui/Crossfade"
 import { AgentList, PANEL_ID, selectedEntry, useAgentChoice } from "./AgentList"
 import { AgentPane } from "./AgentPane"
 import { agentTabId } from "./actions"
+import { useConnect } from "./connect"
 import { Dialogs, Elsewhere, Notices, PageHead } from "./PageParts"
 import { useAgentsView } from "./view"
 
@@ -11,6 +14,8 @@ export function AgentsPage() {
   const selected = selectedEntry(view.entries, chosen)
   const selectedFound = selected?.type === "found" ? selected.id : null
   const { opened } = view
+  const checking = useConnect((s) => (selectedFound ? s.checking[selectedFound] === true : false))
+  const shown = selected ? `${selected.type}:${selected.id}` : "none"
   // The pane can open on an agent nobody clicked, and its details still need that agent's own check.
   useEffect(() => {
     if (selectedFound) opened(selectedFound)
@@ -30,7 +35,12 @@ export function AgentsPage() {
             aria-labelledby={selected ? agentTabId(selected.id) : undefined}
             className="min-h-[24rem] rounded-[0.2rem] border border-line-strong bg-app px-[1.5rem] pt-4 pb-5"
           >
-            <AgentPane entry={selected} all={view} />
+            {/* The agent's own check adds rows when it ends; that growth slides like a switch instead of snapping. */}
+            <AutoHeight swap={`${shown}:${checking}`}>
+              <Crossfade swap={shown}>
+                <AgentPane entry={selected} all={view} />
+              </Crossfade>
+            </AutoHeight>
           </section>
         </div>
       )}

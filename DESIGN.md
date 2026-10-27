@@ -376,10 +376,11 @@ The platform's modal dialog: `app` fill, `line` border, 0.6rem corners, the pane
 
 One easing, `cubic-bezier(0.25, 1, 0.5, 1)` (quart out). 150ms for hover and press, 300ms for lamp tone and panel expand, 500ms for the stepper track. Loading uses a shimmer skeleton (1.6s). Every animation and transition collapses to near zero under reduced motion.
 
-Rule 9 (CLAUDE.md) uses four shared pieces, never ad hoc CSS:
+Rule 9 (CLAUDE.md) uses five shared pieces, never ad hoc CSS:
 
 - **`Collapse`** (`src/ui/Collapse.tsx`): anything that opens and closes in place (a row's panel, a section, a disclosure, a guide's step). Grid rows 0fr → 1fr over 300ms; closing content stays until it has folded away, then unmounts.
 - **`AutoHeight`** (`src/ui/AutoHeight.tsx`): content that swaps for taller or shorter content (a guide's step, an install that becomes the tool's details). Its height follows the content over 300ms.
+- **`Crossfade`** (`src/ui/Crossfade.tsx`): one view that replaces another in the same place (the selected agent's pane). The old view stays mounted, inert and out of the flow, and fades out over the new one in 200ms, so the area never goes blank; wrap it in `AutoHeight` for the height. Instant under reduced motion.
 - **`.step-in`** for the new step of a multi-step flow, **`.reveal`** for content that replaces a placeholder; dialogs rise in over 200ms and fade out over 150ms.
 - **`src/ui/motion.ts`**: `focusInPlace` moves focus without scrolling and scrolls, smoothly, only to what is off screen; `holdInPlace` keeps a clicked row where it is while panels around it open and close; both keep the page's room when content shrinks, so the scroll is never clamped to the top.
 
