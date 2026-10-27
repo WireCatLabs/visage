@@ -6,6 +6,7 @@ import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { Lamp } from "@/ui/Lamp"
@@ -13,6 +14,7 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ConnectGuide } from "./ConnectGuide"
 import { scenarioOf } from "./connect-scenario"
 import { activityOf, appLabel, busiest } from "./connect-steps"
+import { forgetKept, useKept } from "./kept"
 import { McpServerRow, type RowState } from "./McpServerRow"
 
 const CODE_POLL_MS = 3000
@@ -53,9 +55,16 @@ function summaryOf(row: RowState): string | null {
  */
 export function McpServer({ tool }: { tool: CatalogTool }) {
   const headingId = useId()
-  const [open, setOpen] = useState(() => openedByScenario(tool.id))
+  const [open, setOpen] = useKept(`mcp:${tool.id}`, "open", () => openedByScenario(tool.id))
   const [row, setRow] = useState<RowState>({ state: "loading" })
-  const [guiding, setGuiding] = useState<boolean | null>(() => (scenarioOf(tool.id) ? true : null))
+  const [guiding, setGuiding] = useKept<boolean | null>(`mcp:${tool.id}`, "guiding", () =>
+    scenarioOf(tool.id) ? true : null,
+  )
+  // A new run of the guide starts from its first step; a finished one is forgotten.
+  const guide = (on: boolean) => {
+    forgetKept(`connect:${tool.id}`)
+    setGuiding(on)
+  }
   const calls = useRef(0)
   const [funnels, setFunnels] = useState<FunnelState[]>([])
   const [route, setRoute] = useState<TunnelRoute | null>(null)
@@ -125,16 +134,13 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
   const ready = data !== null
   useEffect(() => {
     if (ready && guiding === null) setGuiding(!connected)
-  }, [ready, guiding, connected])
+  }, [ready, guiding, connected, setGuiding])
   const showGuide = data?.available === true && (guiding ?? !connected)
   const funnel = funnels.find((f) => f.shared) ?? null
   const summary = summaryOf(row)
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="flex min-w-0 flex-col gap-3 border-line border-t pt-4 lg:col-span-2"
-    >
+    <section aria-labelledby={headingId} className="flex min-w-0 flex-col border-line border-t pt-4 lg:col-span-2">
       <h4 id={headingId}>
         <button
           type="button"
@@ -160,51 +166,49 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
           )}
         </button>
       </h4>
-      {open && (
-        <div id={`${headingId}-body`} className="reveal flex min-w-0 flex-col gap-4">
-          <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">
-            Let ChatGPT or Claude in the browser use {tool.name}, within each profile's permissions. WireCat gives this
-            computer an internet address, starts {tool.bin}'s server, shows what to click in the app and checks that the
-            app gets through. Nothing starts until you press Start the server.
+      <Collapse open={open} id={`${headingId}-body`} className="flex min-w-0 flex-col gap-4 pt-3">
+        <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">
+          Let ChatGPT or Claude in the browser use {tool.name}, within each profile's permissions. WireCat gives this
+          computer an internet address, starts {tool.bin}'s server, shows what to click in the app and checks that the
+          app gets through. Nothing starts until you press Start the server.
+        </p>
+        {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
+        {data && !data.available && (
+          <p className="text-[0.92rem] text-ink-soft">
+            This version of {tool.name} cannot do it yet. It arrives with the next update of {tool.bin}.
           </p>
-          {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
-          {data && !data.available && (
-            <p className="text-[0.92rem] text-ink-soft">
-              This version of {tool.name} cannot do it yet. It arrives with the next update of {tool.bin}.
-            </p>
-          )}
-          {data && showGuide && (
-            <ConnectGuide
-              tool={tool}
-              server={data}
-              funnel={funnel}
-              route={route}
-              reload={reload}
-              settle={settle}
-              onDone={() => setGuiding(false)}
-            />
-          )}
-          {data?.available === true && !showGuide && <Connected data={data} onConnect={() => setGuiding(true)} />}
-          {row.state !== "loading" && (
-            <Disclosure summary="Server details">
-              <ul
-                className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
-                aria-label={`${tool.name} MCP server`}
-              >
-                <McpServerRow
-                  tool={tool}
-                  row={row}
-                  funnel={funnel}
-                  route={route}
-                  leftovers={funnels.filter((f) => !f.shared && f.live)}
-                  reload={reload}
-                  onStart={() => setGuiding(true)}
-                />
-              </ul>
-            </Disclosure>
-          )}
-        </div>
-      )}
+        )}
+        {data && showGuide && (
+          <ConnectGuide
+            tool={tool}
+            server={data}
+            funnel={funnel}
+            route={route}
+            reload={reload}
+            settle={settle}
+            onDone={() => guide(false)}
+          />
+        )}
+        {data?.available === true && !showGuide && <Connected data={data} onConnect={() => guide(true)} />}
+        {row.state !== "loading" && (
+          <Disclosure summary="Server details">
+            <ul
+              className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
+              aria-label={`${tool.name} MCP server`}
+            >
+              <McpServerRow
+                tool={tool}
+                row={row}
+                funnel={funnel}
+                route={route}
+                leftovers={funnels.filter((f) => !f.shared && f.live)}
+                reload={reload}
+                onStart={() => guide(true)}
+              />
+            </ul>
+          </Disclosure>
+        )}
+      </Collapse>
     </section>
   )
 }

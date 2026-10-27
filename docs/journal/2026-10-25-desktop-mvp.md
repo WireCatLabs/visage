@@ -867,3 +867,4 @@ NEED-88 → **A** (2026-10-27): проверять curl и добавлять с
   - **UX-11.i · Logs «показать новые» прыгает наверх мгновенно.** `LogsPage.tsx:87` — прокрутка намеренная, но без плавности.
   - **UX-11.j · Фокус без `preventScroll` в странице:** `CategoriesEditor.tsx:23,316` (Config).
   - **UX-11.k · «После Start окно пропадает» на текущем коде не воспроизводится.** Гайд UX-9 остаётся и после Start показывает «Add it in the app». Но шаг «Check the address» в моке проскакивает за доли секунды (сразу «live»), а уход со страницы Tools сбрасывает гайд (`App.tsx` `key={active}`, состояние гайда в `useState`) — проверить и исправить.
+  - **UX-11.k поправка (проверено):** уход со страницы Tools и возврат сбрасывали раздел «Connect an AI app» в закрытый, а гайд — на «Choose the app». Исправлено: состояние гайда в `src/features/tools/kept.ts`, тест «comes back at the same step…» в `McpServer.test.tsx`.

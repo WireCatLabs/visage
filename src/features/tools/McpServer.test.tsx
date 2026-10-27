@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
@@ -97,6 +97,21 @@ describe("Connect an AI app", () => {
     expect(await screen.findByRole("button", { name: /^ChatGPT/ })).toBeVisible()
     expect(screen.getByRole("button", { name: /^Claude/ })).toBeVisible()
     expect(start).not.toHaveBeenCalled()
+  })
+
+  it("comes back at the same step after the owner leaves the page mid-guide", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    await guideAtAddress(user, "Claude")
+    expect(await screen.findByRole("heading", { name: "Public address" })).toBeVisible()
+
+    cleanup()
+    render(<McpServer tool={tool("tg")} />)
+
+    expect(heading()).toHaveAttribute("aria-expanded", "true")
+    expect(await screen.findByRole("heading", { name: "Public address" })).toBeVisible()
+    expect(screen.getByText("Claude")).toBeVisible()
   })
 
   it("turns Funnel on, then starts the server with the address Funnel got, once, after Start the server", async () => {

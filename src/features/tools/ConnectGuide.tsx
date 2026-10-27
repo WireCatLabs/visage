@@ -5,12 +5,14 @@ import { platform } from "@/platform/bridge"
 import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
+import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
+import { focusInPlace } from "@/ui/motion"
 import { CloudflareGuide, PRIVACY, useCloudflare } from "./CloudflareGuide"
 import { cloudflareSteps } from "./cloudflare-steps"
 import { APPS, type AppId, type AppStep, connectorName, testPrompt } from "./connect-apps"
@@ -27,6 +29,7 @@ import {
   type TestState,
   testState,
 } from "./connect-steps"
+import { useKept } from "./kept"
 import { LoginCode } from "./LoginCode"
 import { formProblem } from "./McpServerDialogs"
 import { TailscaleGuide, useTailscale } from "./TailscaleGuide"
@@ -64,18 +67,22 @@ export function ConnectGuide(props: {
 }) {
   const { tool, server, funnel, route, reload, settle, onDone } = props
   const scenario = useRef(scenarioOf(tool.id)).current
-  const [app, setApp] = useState<AppId | null>(scenario?.app ?? null)
-  const [tunnel, setTunnel] = useState<Tunnel>(scenario?.tunnel ?? "tailscale")
-  const [confirmed, setConfirmed] = useState(scenario?.confirmed ?? false)
-  const [added, setAdded] = useState(scenario?.added ?? false)
+  // Kept outside the component, so leaving the page mid-guide and coming back lands on the same step.
+  const kept = `connect:${tool.id}`
+  const [app, setApp] = useKept<AppId | null>(kept, "app", scenario?.app ?? null)
+  const [tunnel, setTunnel] = useKept<Tunnel>(kept, "tunnel", scenario?.tunnel ?? "tailscale")
+  const [confirmed, setConfirmed] = useKept(kept, "confirmed", scenario?.confirmed ?? false)
+  const [added, setAdded] = useKept(kept, "added", scenario?.added ?? false)
   const [reach, setReach] = useState<ReachState>({ state: "checking" })
-  const [goOn, setGoOn] = useState(false)
+  const [goOn, setGoOn] = useKept(kept, "goOn", false)
   const [phase, setPhase] = useState<Phase>("idle")
   const [failure, setFailure] = useState<Failure | null>(null)
   const [approval, setApproval] = useState<string | null>(null)
-  const [ownUrl, setOwnUrl] = useState("")
-  const [port, setPort] = useState(String(tool.mcpServer?.port ?? DEFAULT_PORT))
-  const since = useRef(Date.now()).current
+  const [ownUrl, setOwnUrl] = useKept(kept, "ownUrl", "")
+  const [port, setPort] = useKept(kept, "port", String(tool.mcpServer?.port ?? DEFAULT_PORT))
+  const [since] = useKept(kept, "since", () => Date.now())
+  // Mutable like refs, but outlive the component: a start already pressed is not pressed again on coming back.
+  const [runs] = useKept(kept, "runs", () => ({ attempt: scenario?.confirmed ? 1 : 0, started: 0, offered: false }))
 
   // A tunnel on this computer only (http://127.0.0.1) has no public name to look up.
   const local = serving(server) && server.connectorUrl.startsWith("http://")
@@ -87,17 +94,16 @@ export function ConnectGuide(props: {
   const cloudflare = useCloudflare(current === "address" && tunnel === "cloudflare")
 
   // A tool that used the Cloudflare tunnel before starts on it again; the record arrives after the first render.
-  const offered = useRef(false)
   useEffect(() => {
-    if (offered.current || !route) return
-    offered.current = true
+    if (runs.offered || !route) return
+    runs.offered = true
     setTunnel("cloudflare")
-  }, [route])
+  }, [route, runs, setTunnel])
 
   // An app that logs in while the owner still reads the instructions moves the guide on by itself.
   useEffect(() => {
     if (current === "connect" && test.state !== "waiting") setAdded(true)
-  }, [current, test.state])
+  }, [current, test.state, setAdded])
 
   const watching = (current === "connect" || current === "test") && test.state !== "called"
   useEffect(() => {
@@ -107,8 +113,6 @@ export function ConnectGuide(props: {
   }, [watching, reload])
 
   // Strict mode runs effects twice; the server must start once per press.
-  const attempt = useRef(scenario?.confirmed ? 1 : 0)
-  const started = useRef(0)
   const start = useCallback(async () => {
     setFailure(null)
     setApproval(null)
@@ -140,21 +144,22 @@ export function ConnectGuide(props: {
       setFailure({ at, message: message(e) })
       setPhase("failed")
     }
-  }, [tunnel, tool.id, port, ownUrl, settle])
+  }, [tunnel, tool.id, port, ownUrl, settle, setConfirmed])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `runs` is mutated like a ref; a press changes `current`
   useEffect(() => {
-    if (current !== "start" || started.current === attempt.current) return
-    started.current = attempt.current
+    if (current !== "start" || runs.started === runs.attempt) return
+    runs.started = runs.attempt
     start()
   }, [current, start])
 
   const confirm = () => {
-    attempt.current++
+    runs.attempt++
     setConfirmed(true)
   }
 
   const retry = () => {
-    started.current = ++attempt.current
+    runs.started = ++runs.attempt
     start()
   }
 
@@ -171,7 +176,7 @@ export function ConnectGuide(props: {
   useEffect(() => {
     if (shown.current === current) return
     shown.current = current
-    heading.current?.focus()
+    focusInPlace(heading.current)
   }, [current])
 
   const funnelOff = tunnel === "tailscale" && serving(server) && funnel !== null && !funnel.live
@@ -194,73 +199,75 @@ export function ConnectGuide(props: {
         summary={summary}
         onChoose={current !== "choose" ? () => setApp(null) : undefined}
       />
-      <div
-        key={current}
-        className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
-        aria-live="polite"
-      >
-        <h5 ref={heading} tabIndex={-1} className="step-heading text-[1.05rem] font-semibold text-ink">
-          {current === "test" && test.state === "called" ? `${name} can use ${tool.name}` : STEP_TITLES[current]}
-        </h5>
-        {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
-        {current === "address" && (
-          <AddressStep
-            tool={tool}
-            appName={name}
-            tunnel={tunnel}
-            setTunnel={setTunnel}
-            tailscale={tailscale}
-            cloudflare={cloudflare}
-            ownUrl={ownUrl}
-            setOwnUrl={setOwnUrl}
-            port={port}
-            setPort={setPort}
-            onConfirm={confirm}
-          />
-        )}
-        {current === "start" && (
-          <StartStep
-            tool={tool}
-            tunnel={tunnel}
-            phase={phase}
-            failure={failure}
-            approval={approval}
-            onRetry={retry}
-            onBack={back}
-          />
-        )}
-        {current === "reach" && serving(server) && (
-          <ReachStep
-            tool={tool}
-            app={app}
-            server={server}
-            reach={reach}
-            setReach={setReach}
-            onGoOn={() => setGoOn(true)}
-          />
-        )}
-        {funnelOff && (current === "reach" || current === "connect" || current === "test") && (
-          <FunnelOff tool={tool} port={server?.port ?? Number(port)} name={name} reload={reload} />
-        )}
-        {tunnelOff && (current === "reach" || current === "connect" || current === "test") && (
-          <TunnelOff tool={tool} port={route.port} name={name} reload={reload} />
-        )}
-        {current === "connect" && app && serving(server) && (
-          <ConnectStep tool={tool} app={app} server={server} onAdded={() => setAdded(true)} />
-        )}
-        {current === "test" && app && serving(server) && (
-          <TestStep
-            tool={tool}
-            app={app}
-            server={server}
-            test={test}
-            since={since}
-            quietFromStart={scenario?.quiet ?? false}
-            onBack={() => setAdded(false)}
-            onDone={onDone}
-          />
-        )}
-      </div>
+      <AutoHeight className="min-w-0">
+        <div
+          key={current}
+          className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
+          aria-live="polite"
+        >
+          <h5 ref={heading} tabIndex={-1} className="step-heading text-[1.05rem] font-semibold text-ink">
+            {current === "test" && test.state === "called" ? `${name} can use ${tool.name}` : STEP_TITLES[current]}
+          </h5>
+          {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
+          {current === "address" && (
+            <AddressStep
+              tool={tool}
+              appName={name}
+              tunnel={tunnel}
+              setTunnel={setTunnel}
+              tailscale={tailscale}
+              cloudflare={cloudflare}
+              ownUrl={ownUrl}
+              setOwnUrl={setOwnUrl}
+              port={port}
+              setPort={setPort}
+              onConfirm={confirm}
+            />
+          )}
+          {current === "start" && (
+            <StartStep
+              tool={tool}
+              tunnel={tunnel}
+              phase={phase}
+              failure={failure}
+              approval={approval}
+              onRetry={retry}
+              onBack={back}
+            />
+          )}
+          {current === "reach" && serving(server) && (
+            <ReachStep
+              tool={tool}
+              app={app}
+              server={server}
+              reach={reach}
+              setReach={setReach}
+              onGoOn={() => setGoOn(true)}
+            />
+          )}
+          {funnelOff && (current === "reach" || current === "connect" || current === "test") && (
+            <FunnelOff tool={tool} port={server?.port ?? Number(port)} name={name} reload={reload} />
+          )}
+          {tunnelOff && (current === "reach" || current === "connect" || current === "test") && (
+            <TunnelOff tool={tool} port={route.port} name={name} reload={reload} />
+          )}
+          {current === "connect" && app && serving(server) && (
+            <ConnectStep tool={tool} app={app} server={server} onAdded={() => setAdded(true)} />
+          )}
+          {current === "test" && app && serving(server) && (
+            <TestStep
+              tool={tool}
+              app={app}
+              server={server}
+              test={test}
+              since={since}
+              quietFromStart={scenario?.quiet ?? false}
+              onBack={() => setAdded(false)}
+              onDone={onDone}
+            />
+          )}
+        </div>
+      </AutoHeight>
     </div>
   )
 }

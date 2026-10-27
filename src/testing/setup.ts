@@ -2,10 +2,12 @@ import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach } from "vitest"
 import { useNav } from "@/features/nav"
+import { resetKept } from "@/features/tools/kept"
 
 afterEach(() => {
   cleanup()
   useNav.setState({ active: "tools" })
+  resetKept()
 })
 
 // jsdom has no matchMedia; the theme follows it.
