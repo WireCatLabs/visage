@@ -43,7 +43,15 @@ export function doneNext(what: SyncWhat): string {
 }
 
 export type SyncFailure = { message: string; code: string | null; reason: string | null; run: string | null }
-export type Advice = { title: string; text: string; again: boolean; signIn: boolean; report: boolean }
+export type Advice = {
+  title: string
+  text: string
+  again: boolean
+  signIn: boolean
+  report: boolean
+  /** Offer the tool's update, when there is one: the tool may be the side that is behind. */
+  update?: boolean
+}
 
 const BUSY = new Set(["profile.locked", "sync.running", "device.in-use", "app.busy"])
 
@@ -101,6 +109,17 @@ export function advice(f: SyncFailure, account: string): Advice {
       again: true,
       signIn: false,
       report: false,
+    }
+  }
+  // The tool's own words can name chats or people (RISK-44), so a refusal is told in fixed words only.
+  if (f.code === "validation_error" || f.reason === "input.invalid") {
+    return {
+      title: "The tool refused the command",
+      text: "The tool did not accept the sync command WireCat sent. It is likely older or newer than this app expects.",
+      again: false,
+      signIn: false,
+      report: true,
+      update: true,
     }
   }
   const logs = f.code || f.run ? " Its run on the Logs page shows what happened." : ""

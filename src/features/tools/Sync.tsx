@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleStop, LoaderCircle, RefreshCw, X } from "lucide-react"
 import { useEffect } from "react"
-import { type CatalogTool, signsInHere, syncNeedsProfile, syncsHere } from "@/domain/catalog"
+import { type CatalogTool, ownerId, signsInHere, syncNeedsProfile, syncsHere } from "@/domain/catalog"
+import { toolStatus } from "@/domain/status"
 import { advice, clock, doneNext, progressLine, resultLine, resultNext, type SyncWhat, share } from "@/domain/sync"
 import { platform } from "@/platform/bridge"
 import type { LastSync } from "@/platform/sync-schemas"
@@ -14,6 +15,7 @@ import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
 import { useElapsed } from "../storage/useElapsed"
 import { ago } from "./connect-steps"
+import { useTools } from "./store"
 import { blockedBy, type SyncRun, syncKey, useSync } from "./sync-store"
 
 /**
@@ -155,6 +157,14 @@ function Outcome({ run, what, account }: { run: SyncRun; what: SyncWhat; account
 function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; what: SyncWhat }) {
   const { run, tool: entry, profile, what } = props
   const dismiss = () => useSync.getState().dismiss(entry.id, profile)
+  const outdated = useTools(
+    (s) =>
+      toolStatus(
+        s.installs[entry.id],
+        s.latest ? (s.latest[entry.id] ?? null) : undefined,
+        s.sessions[ownerId(entry.id)],
+      ).kind === "outdated",
+  )
   const close = (
     <Button
       size="sm"
@@ -186,6 +196,11 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
               }
             >
               Sign in
+            </Button>
+          )}
+          {a.update && outdated && (
+            <Button size="sm" onClick={() => useTools.getState().install(entry.id)}>
+              Update {entry.name}
             </Button>
           )}
           {a.report && <ReportThis what={`Syncing ${entry.name}`} tool={entry.id} error={failure.message} />}

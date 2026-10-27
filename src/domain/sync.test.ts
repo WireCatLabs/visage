@@ -33,6 +33,17 @@ describe("a failed sync in plain words", () => {
     }
   })
 
+  it("tells a refused command in fixed words, with an update and a report, never the tool's text", () => {
+    for (const f of [
+      { message: "MAX stopped with the error validation_error.", code: "validation_error", reason: null, run: null },
+      { message: "chat Family failed", code: "usage_error", reason: "input.invalid", run: null },
+    ]) {
+      const a = advice(f, "personal")
+      expect([a.title, a.update, a.report]).toEqual(["The tool refused the command", true, true])
+      expect(a.text).not.toContain(f.message)
+    }
+  })
+
   it("sends a signed-out profile to sign in, and an unknown failure to a report", () => {
     expect(advice({ message: "x", code: "authentication_error", reason: null, run: null }, "work").signIn).toBe(true)
     const unknown = advice({ message: "boom", code: null, reason: null, run: null }, "work")
