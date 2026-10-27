@@ -182,7 +182,7 @@ export function mcpServerMock(): Pick<
     },
     async mcpServerConfig(id) {
       await delay(300)
-      const args = [`/home/you/.local/share/pnpm/global/5/node_modules/.bin/${id}`, "mcp"]
+      const args = [`/home/you/.local/share/pnpm/global/5/node_modules/.bin/${id}`, "mcp", "serve"]
       return JSON.stringify({ mcpServers: { [id]: { type: "stdio", command: "/usr/bin/node", args } } }, null, 2)
     },
   }

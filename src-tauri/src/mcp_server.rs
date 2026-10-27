@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::time::Duration;
 
 /// The tool's HTTP MCP server, for browser apps behind the owner's tunnel: the tool's own `mcp server start|stop|status`
-/// and `mcp --revoke`, with no profile, so one server serves every profile and each call names one (TASK-26). The login code, the address and the apps' names leave Rust unmasked, as the sign-in QR does: the
+/// and `mcp revoke` (`mcp --revoke` before cli-core 0.463), with no profile, so one server serves every profile and each call names one (TASK-26). The login code, the address and the apps' names leave Rust unmasked, as the sign-in QR does: the
 /// owner needs them as they are. None of it is logged or put in a report.
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -251,9 +251,23 @@ pub fn stop(tool: &Tool) -> Result<(), String> {
     answer(tool, &catalog::with_profile(&source(tool)?.stop, None)?, Duration::from_mins(1)).map(|_| ())
 }
 
-/// `mcp --revoke`: every browser app must log in again.
+/// `mcp revoke`: every browser app must log in again. A tool before cli-core 0.463 has only `mcp --revoke`, and each
+/// form is an error to the other version, so the old one is the fallback.
 pub fn revoke(tool: &Tool) -> Result<(), String> {
-    answer(tool, &catalog::with_profile(&source(tool)?.revoke, None)?, Duration::from_secs(30)).map(|_| ())
+    let args = catalog::with_profile(&source(tool)?.revoke, None)?;
+    let (out, json) = call(tool, &args, Duration::from_secs(30))?;
+    if unsupported(json.as_ref()) || unknown_revoke(json.as_ref()) {
+        let legacy: Vec<String> = ["mcp", "--revoke", "--json"].map(String::from).to_vec();
+        return answer(tool, &legacy, Duration::from_secs(30)).map(|_| ());
+    }
+    match json {
+        Some(_) if out.code == Some(0) => Ok(()),
+        _ => Err(failure(&out, json.as_ref())),
+    }
+}
+
+fn unknown_revoke(json: Option<&Value>) -> bool {
+    json.and_then(|v| v["error"]["message"].as_str()).is_some_and(|m| m.contains("unknown command 'revoke'"))
 }
 
 /// Every address must be on the connector's own origin: the server builds them from its public address.
@@ -466,6 +480,15 @@ mod tests {
         let unnamed = "name a profile: `tg <profile> …` — profiles here: personal (or set TG_PROFILE)";
         assert!(unsupported(Some(&json!({"error": {"message": unnamed}}))));
         assert!(!unsupported(Some(&json!({"error": {"message": "port 8765 is in use"}}))));
+    }
+
+    #[test]
+    fn an_old_tool_refusing_mcp_revoke_falls_back_to_the_flag() {
+        let old = json!({ "error": { "message": "unknown command 'revoke'" } });
+        let other = json!({ "error": { "message": "the server is busy" } });
+        assert!(unknown_revoke(Some(&old)));
+        assert!(!unknown_revoke(Some(&other)));
+        assert!(!unknown_revoke(None));
     }
 
     #[test]
