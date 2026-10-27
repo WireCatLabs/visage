@@ -196,7 +196,8 @@ export function useAgentsView() {
     }
   }
 
-  const known = new Set(Object.values(AGENT_KIND))
+  // A browser app over MCP (`mcp-client`) is not an agent on this computer; the Logs page groups its runs instead.
+  const known = new Set([...Object.values(AGENT_KIND), "mcp-client"])
   const seen = (sessions ?? []).reduce<Map<string, number>>((m, s) => {
     if (s.who === "agent" && s.kind && !known.has(s.kind)) m.set(s.kind, (m.get(s.kind) ?? 0) + 1)
     return m
