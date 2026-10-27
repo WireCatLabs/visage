@@ -25,7 +25,7 @@ describe("Logs", () => {
     })
     render(<LogsPage />)
 
-    expect(screen.getByText(/keeps a run only when it fails/)).toBeInTheDocument()
+    expect(screen.getByText(/successful ones for 7 days, failed ones for 30/)).toBeInTheDocument()
     expect(await screen.findByRole("progressbar", { name: "Tools read" })).toBeInTheDocument()
     release()
     await loaded()
@@ -49,37 +49,66 @@ describe("Logs", () => {
     expect(screen.getByRole("region", { name: "Steps" })).toHaveTextContent(/request the tool sent to WhatsApp/)
   }, 15000)
 
-  it("keeps every run only after the owner confirms, through the defaults of config set", async () => {
+  it("keeps failed runs only after the owner confirms, and goes back to every run by removing the setting", async () => {
     const user = userEvent.setup()
     const set = vi.spyOn(platform, "settingsSet")
+    const unset = vi.spyOn(platform, "settingsUnset")
     render(<LogsPage />)
     await loaded()
 
     const keeping = screen.getByRole("region", { name: "Which runs each tool keeps" })
     const telegram = await within(keeping).findByRole("combobox", { name: "Which Telegram runs to keep" })
-    expect(within(keeping).getAllByRole("img", { name: /keeps failed runs only$/ })).toHaveLength(3)
+    const every = /keeps successful runs for 7 days, failed runs for 30 days$/
+    expect(within(keeping).getAllByRole("img", { name: every })).toHaveLength(3)
+    expect(telegram).toHaveTextContent("Every run")
+
+    await user.click(telegram)
+    await user.click(screen.getByRole("option", { name: "Failed runs only" }))
+    const dialog = screen.getByRole("dialog", { name: "Stop keeping successful Telegram runs?" })
+    expect(dialog).toHaveTextContent("tg config set --defaults record false")
+    expect(set).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole("button", { name: "Keep failed runs only" }))
+    expect(set).toHaveBeenCalledWith("tg", null, true, "record", "false")
+    expect(
+      await within(keeping).findByRole("img", { name: "Telegram keeps failed runs only for 30 days" }),
+    ).toBeVisible()
     expect(telegram).toHaveTextContent("Failed runs only")
 
     await user.click(telegram)
     await user.click(screen.getByRole("option", { name: "Every run" }))
-    const dialog = screen.getByRole("dialog", { name: "Keep every Telegram run?" })
-    expect(dialog).toHaveTextContent(/kept for 30 days/)
-    expect(set).not.toHaveBeenCalled()
-
-    await user.click(within(dialog).getByRole("button", { name: "Keep every run" }))
-    expect(set).toHaveBeenCalledWith("tg", null, true, "record", "true")
-    expect(await within(keeping).findByRole("img", { name: "Telegram keeps every run for 30 days" })).toBeVisible()
-    expect(telegram).toHaveTextContent("Every run")
-
-    const unset = vi.spyOn(platform, "settingsUnset")
-    await user.click(telegram)
-    await user.click(screen.getByRole("option", { name: "Failed runs only" }))
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Keep failed runs only" }))
-    // record: false would stop keeping failed runs too, so going back removes the setting.
+    const back = screen.getByRole("dialog", { name: "Keep every Telegram run?" })
+    expect(back).toHaveTextContent(/successful runs for 7 days, failed runs for 30 days/)
+    await user.click(within(back).getByRole("button", { name: "Keep every run" }))
     expect(unset).toHaveBeenCalledWith("tg", null, true, "record")
-    await waitFor(() =>
-      expect(within(keeping).getAllByRole("img", { name: /keeps failed runs only$/ })).toHaveLength(3),
-    )
+    await waitFor(() => expect(within(keeping).getAllByRole("img", { name: every })).toHaveLength(3))
+  }, 15000)
+
+  it("on a tool from before every run was kept, turns it on with record true and off by removing it", async () => {
+    const user = userEvent.setup()
+    const show = platform.settingsShow.bind(platform)
+    vi.spyOn(platform, "settingsShow").mockImplementation(async (id, profile) => {
+      const s = await show(id, profile)
+      const rows = s.rows
+        .filter((r) => r.key !== "keep_successful_runs_for_days")
+        .map((r) => (r.key === "record" && r.origin === "default" ? { ...r, value: false } : r))
+      return { ...s, rows }
+    })
+    const set = vi.spyOn(platform, "settingsSet")
+    render(<LogsPage />)
+    await loaded()
+
+    const keeping = screen.getByRole("region", { name: "Which runs each tool keeps" })
+    const max = await within(keeping).findByRole("combobox", { name: "Which MAX runs to keep" })
+    expect(max).toHaveTextContent("Failed runs only")
+    await user.click(max)
+    await user.click(screen.getByRole("option", { name: "Every run" }))
+    const dialog = screen.getByRole("dialog", { name: "Keep every MAX run?" })
+    expect(dialog).toHaveTextContent(/keeps every run for 30 days/)
+    await user.click(within(dialog).getByRole("button", { name: "Keep every run" }))
+    expect(set).toHaveBeenCalledWith("max", null, true, "record", "true")
+    await waitFor(() => expect(max).toHaveTextContent("Every run"))
+    await platform.settingsUnset("max", null, true, "record")
   }, 15000)
 
   it("says an older tool gets its logs with the next update instead of failing", async () => {
@@ -134,6 +163,65 @@ describe("Logs", () => {
     expect((screen.getByRole("combobox", { name: "Search runs" }) as HTMLInputElement).value).toMatch(
       /^-no_command:true error\.http\.status:429 session_id:[0-9a-f-]+$/,
     )
+  }, 15000)
+
+  it("groups runs by conversation, each under a header with who held it, and its runs in time order", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+
+    await user.click(screen.getByRole("combobox", { name: "Group by" }))
+    await user.click(screen.getByRole("option", { name: "Conversation" }))
+    expect(screen.getByText(/runs match, in \d+ conversations/)).toBeInTheDocument()
+
+    const session = screen.getByRole("rowgroup", { name: "Claude Code, session 5c0e9d41" })
+    const header = within(session).getAllByRole("row")[0] as HTMLElement
+    expect(header).toHaveTextContent(/claude-code · MCP on this computer · session 5c0e9d41/)
+    expect(header).toHaveTextContent(/3 runs\s*1 failed/)
+    const order = within(session)
+      .getAllByRole("button", { name: /^Show run / })
+      .map((b) => b.getAttribute("aria-label")?.split(" at ")[0])
+    expect(order).toEqual(["Show run tg chats list", "Show run tg messages read", "Show run tg messages search"])
+
+    const browser = screen.getByRole("rowgroup", { name: "claude-ai" })
+    expect(within(browser).getAllByRole("row")[0]).toHaveTextContent(/MCP over the internet\s*from .+3 runs\s*1 failed/)
+    expect(screen.getByRole("rowgroup", { name: "WireCat Desktop" })).toHaveTextContent(/1 run\s*1 failed/)
+  }, 15000)
+
+  it("shows a run's requests as lines, with the retry, the wait and the steps not kept marked", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+    await user.type(
+      screen.getByRole("combobox", { name: "Search runs" }),
+      ' cli_command:"tg messages read" via:mcp-stdio',
+    )
+    await user.click(await screen.findByRole("button", { name: /^Show run tg messages read / }))
+
+    const steps = screen.getByRole("region", { name: "Steps" })
+    await waitFor(() => expect(within(steps).getAllByRole("row").length).toBeGreaterThan(5))
+    expect(steps).toHaveTextContent(/Steps · 7, 412 more not kept/)
+    const lines = within(steps)
+      .getAllByRole("row")
+      .map((r) => r.textContent ?? "")
+    expect(lines.some((l) => /→messages\.getHistorymtprotoretry 1waited 3\.0 s/.test(l))).toBe(true)
+    expect(lines.some((l) => /←messages\.getHistorymtprotoretry 13 messagesok118 ms/.test(l))).toBe(true)
+    expect(lines.some((l) => /412 more steps not kept/.test(l))).toBe(true)
+    expect(screen.getByRole("region", { name: "Command line" })).toHaveTextContent(
+      /Started by Claude Code through claude-code \(MCP on this computer\) in session 5c0e9d41/,
+    )
+  }, 15000)
+
+  it("says a success kept as its summary line has no steps to show", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+    await user.type(
+      screen.getByRole("combobox", { name: "Search runs" }),
+      ' cli_command:"tg messages search" status:success via:cli',
+    )
+    await user.click(await screen.findByRole("button", { name: /^Show run tg messages search / }))
+    expect(await screen.findByText(/keeps only this summary, not its steps/)).toBeInTheDocument()
   }, 15000)
 
   it("hides runs with no command by default, counts them, and lists them again once that filter is removed", async () => {

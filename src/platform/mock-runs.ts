@@ -315,11 +315,214 @@ function build(tool: string, now: number): MockRun[] {
   return runs
 }
 
+// Runs that show conversations (TASK-31): one Claude Code session over stdio MCP, the claude.ai browser app over
+// HTTP MCP with a hashed login id, WireCat Desktop's own failed call, a person in a terminal, and a success kept
+// only as its summary line. One run carries request lines with a flood-wait retry and steps the tool did not keep.
+const SESSION = { kind: "claude-code", session_id: "5c0e9d41-2b7a-4c13-8f6e-91a0d3b7c2f5" }
+const STDIO = { tool: "tg_read", connection_id: "0d6f3a2e-1c84-4b57-9e2d-7a5c1f8b3e06" }
+const BROWSER = { kind: "mcp-client", session_id: null, client: { name: "claude-ai", version: "1.0", id: "3f9a1c2e" } }
+
+function conversationRuns(now: number): MockRun[] {
+  const at = (minutesAgo: number, ms = 0) => new Date(now - minutesAgo * 60_000 + ms).toISOString()
+  const base = (minutesAgo: number, command: string, slug: string) => ({
+    run_id: `${stamp(new Date(at(minutesAgo)))}-${command.replace(/\s+/g, "-")}-${slug}`,
+    command,
+    cli_command: `tg ${command}`,
+    started_at: at(minutesAgo),
+    cli_version: "0.89.0",
+    runtime: "node 24.19.0",
+    platform: "linux",
+    arch: "x64",
+  })
+  const t = (minutesAgo: number) => (ms: number) => at(minutesAgo, ms)
+  const history = t(14)
+  const chat = { chat: "-1001873246510" }
+  return [
+    {
+      ...base(18, "chats list", "c0a1b2"),
+      profile: "personal",
+      status: "success",
+      duration_ms: 412,
+      completed_at: at(18, 412),
+      requests: 1,
+      via: "mcp-stdio",
+      agent: { ...SESSION, client: { name: "claude-code", version: "2.1.3" } },
+      mcp: { ...STDIO, tool: "tg_chats", request_id: "3" },
+      argv: ["personal", "chats", "list", "--limit", "50"],
+      operations: ["messages.getDialogs"],
+      codes: [],
+      events: [
+        {
+          time: at(18, 10),
+          severity: "info",
+          event: "provider.response",
+          level: "operation",
+          transport: "mtproto",
+          operation: "messages.getDialogs",
+          attempt: 1,
+          duration_ms: 388,
+          counts: { chats: 50 },
+          outcome: "ok",
+        },
+      ],
+    },
+    {
+      ...base(14, "messages read", "c0a1b3"),
+      profile: "personal",
+      status: "failed",
+      duration_ms: 3410,
+      completed_at: history(3410),
+      requests: 3,
+      events_dropped: 412,
+      via: "mcp-stdio",
+      agent: { ...SESSION, client: { name: "claude-code", version: "2.1.3" } },
+      mcp: { ...STDIO, request_id: "4" },
+      argv: ["personal", "messages", "read", "-1001873246510", "--limit", "200"],
+      error_code: "rate_limited",
+      provider_error: "FLOOD_WAIT",
+      kept_because_failed: true,
+      operations: ["messages.getHistory"],
+      codes: ["rate_limited"],
+      error: FAILURES.rate_limited?.("tg", "messages read"),
+      events: [
+        {
+          time: history(5),
+          severity: "info",
+          event: "provider.request",
+          level: "operation",
+          operation: "messages.getHistory",
+          ids: chat,
+        },
+        {
+          time: history(8),
+          severity: "info",
+          event: "provider.request",
+          level: "wire",
+          transport: "mtproto",
+          operation: "messages.getHistory",
+          attempt: 1,
+        },
+        {
+          time: history(130),
+          severity: "warn",
+          event: "provider.response",
+          level: "wire",
+          transport: "mtproto",
+          operation: "messages.getHistory",
+          attempt: 1,
+          duration_ms: 122,
+          outcome: "error",
+          error_code: "rate_limited",
+          provider_error: "FLOOD_WAIT",
+          wait_ms: 3000,
+        },
+        {
+          time: history(3131),
+          severity: "info",
+          event: "provider.request",
+          level: "wire",
+          transport: "mtproto",
+          operation: "messages.getHistory",
+          attempt: 2,
+          wait_ms: 3000,
+        },
+        {
+          time: history(3249),
+          severity: "info",
+          event: "provider.response",
+          level: "wire",
+          transport: "mtproto",
+          operation: "messages.getHistory",
+          attempt: 2,
+          duration_ms: 118,
+          counts: { messages: 3 },
+          outcome: "ok",
+          ids: chat,
+        },
+        {
+          time: history(3300),
+          severity: "info",
+          event: "events.dropped",
+          dropped: 412,
+          counts: { "messages.getHistory": 412 },
+        },
+        {
+          time: history(3410),
+          severity: "error",
+          event: "provider.response",
+          level: "operation",
+          operation: "messages.getHistory",
+          duration_ms: 3405,
+          outcome: "error",
+          error_code: "rate_limited",
+          provider_error: "FLOOD_WAIT",
+          ids: chat,
+        },
+      ],
+    },
+    {
+      ...base(9, "messages search", "c0a1b4"),
+      profile: "personal",
+      status: "success",
+      duration_ms: 655,
+      completed_at: at(9, 655),
+      requests: 4,
+      via: "cli",
+      agent: SESSION,
+      argv: ["personal", "messages", "search", "[redacted]", "--limit", "20"],
+      operations: ["messages.search"],
+      codes: [],
+      events: [],
+    },
+    ...[42, 39, 36].map((minutesAgo, i) => ({
+      ...base(minutesAgo, i === 1 ? "messages send" : "chats list", `b7e4f${i}`),
+      profile: "work",
+      status: i === 1 ? "failed" : "success",
+      duration_ms: 240 + i * 90,
+      completed_at: at(minutesAgo, 240 + i * 90),
+      requests: 1,
+      via: "mcp-http",
+      agent: BROWSER,
+      mcp: { tool: i === 1 ? "tg_send" : "tg_chats", connection_id: "mcp-conn-7f21c9", request_id: String(17 + i) },
+      trace_id: `4bf92f3577b34da6a3ce929d0e0e47${36 + i}`,
+      argv: ["work", ...(i === 1 ? ["messages", "send", "[redacted]", "[redacted]"] : ["chats", "list"])],
+      operations: [i === 1 ? "messages.sendMessage" : "messages.getDialogs"],
+      codes: i === 1 ? ["rate_limited"] : [],
+      ...(i === 1
+        ? {
+            error_code: "rate_limited",
+            kept_because_failed: true,
+            error: FAILURES.flood_wait?.("tg", "messages send"),
+          }
+        : {}),
+      events: [],
+    })),
+    {
+      ...base(27, "chats list", "d35c11"),
+      profile: "personal",
+      status: "failed",
+      duration_ms: 30_120,
+      completed_at: at(27, 30_120),
+      requests: 0,
+      via: "desktop",
+      argv: ["personal", "chats", "list", "--json"],
+      error_code: "timeout",
+      kept_because_failed: true,
+      operations: [],
+      codes: ["timeout"],
+      error: FAILURES.timeout?.("tg", "chats list"),
+      events: [],
+    },
+  ]
+}
+
+const newest = (a: MockRun, b: MockRun) => b.started_at.localeCompare(a.started_at)
 const cache = new Map<string, MockRun[]>()
 const runsOf = (tool: string) => {
   let runs = cache.get(tool)
   if (!runs) {
-    runs = build(tool, Date.now())
+    const now = Date.now()
+    runs = tool === "tg" ? [...conversationRuns(now), ...build(tool, now)].sort(newest) : build(tool, now)
     cache.set(tool, runs)
   }
   return runs

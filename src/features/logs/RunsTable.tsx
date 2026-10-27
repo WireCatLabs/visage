@@ -1,9 +1,11 @@
-import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react"
+import { ArrowDown, ArrowUp, BotMessageSquare, ChevronRight, Globe, SquareTerminal, UserRound } from "lucide-react"
 import { Fragment } from "react"
 import {
   agentName,
   agentOf,
   BARE_COMMAND_HINT,
+  type Conversation,
+  clientOf,
   commandLabel,
   formatDuration,
   formatWhen,
@@ -11,6 +13,7 @@ import {
   type Run,
   shortSession,
   statusTone,
+  viaName,
 } from "@/domain/runs"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
@@ -22,6 +25,8 @@ import { type Detail, runKey } from "./store"
 
 type Props = {
   runs: Run[]
+  /** Runs grouped by conversation, each under a header row; `runs` is then not read. */
+  sections?: Conversation[] | undefined
   /** Rows to hold at the real row height while the first runs are read. */
   placeholders?: number
   /** Runs a live round just added; they fade in. */
@@ -60,6 +65,8 @@ function CommandCell({ value, unknown }: { value: string; unknown: string | null
 function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] }) {
   const agent = agentOf(run)
   if (!agent) return <td className="text-ink-dim">—</td>
+  // A browser app has no session of its own to show; the name it gave says who it is.
+  const shown = agent.kind === "mcp-client" ? (clientOf(run)?.name ?? agentName(agent.kind)) : agentName(agent.kind)
   const [field, value] = agent.session ? ["session_id", agent.session] : ["agent", agent.kind]
   return (
     <td className="pr-[0.6rem]">
@@ -69,10 +76,10 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
           e.stopPropagation()
           onFilter(field, value, false)
         }}
-        title={agent.session ? `Only runs of session ${agent.session}` : `Only runs ${agentName(agent.kind)} started`}
+        title={agent.session ? `Only runs of session ${agent.session}` : `Only runs ${shown} started`}
         className="flex max-w-full min-w-0 items-baseline gap-[0.4rem] rounded-[0.3rem] text-left hover:text-brand"
       >
-        <span className="truncate">{agentName(agent.kind)}</span>
+        <span className="truncate">{shown}</span>
         {agent.session && (
           <span className="shrink-0 font-mono text-[0.8rem] text-ink-dim tabular-nums">
             {shortSession(agent.session)}
@@ -90,8 +97,61 @@ const STATUS_WORD: Record<string, string> = {
   running: "Running",
 }
 
+const CHAT_KINDS = new Set(["hermes-agent", "openclaw"])
+
+/** Who held the conversation: the agent, else the app that called, else how the runs were started. */
+export function conversationTitle(c: Conversation): string {
+  if (c.agent === "mcp-client" || (!c.agent && c.client)) return c.client?.name ?? agentName("mcp-client")
+  if (c.agent) return agentName(c.agent)
+  return c.via ? viaName(c.via) : "Not in a conversation"
+}
+
+function WhoIcon({ c }: { c: Conversation }) {
+  const Icon =
+    c.agent === "mcp-client" || (!c.agent && c.client)
+      ? Globe
+      : c.agent && CHAT_KINDS.has(c.agent)
+        ? BotMessageSquare
+        : c.agent
+          ? SquareTerminal
+          : UserRound
+  return <Icon className="size-[1rem] shrink-0 text-ink-soft" strokeWidth={1.7} aria-hidden />
+}
+
+function ConversationRow({ conversation: c, now }: { conversation: Conversation; now: Date }) {
+  const client = c.client && c.agent !== "mcp-client" ? c.client.name : null
+  const details = [
+    client,
+    c.via && (c.agent || c.client) ? viaName(c.via) : null,
+    c.session ? `session ${shortSession(c.session)}` : null,
+  ].filter(Boolean)
+  return (
+    <tr className="h-[2.6rem] border-line-strong border-b bg-app-2/70">
+      <td colSpan={9} className="pl-[0.8rem]">
+        <span className="flex min-w-0 items-center gap-[0.55rem] text-[0.9rem]">
+          {c.key ? <WhoIcon c={c} /> : <span className="size-[1rem] shrink-0" />}
+          <span className="truncate font-medium">{conversationTitle(c)}</span>
+          {details.length > 0 && <span className="truncate text-ink-dim">{details.join(" · ")}</span>}
+          <span className="ml-auto flex shrink-0 items-baseline gap-[1.1rem] text-[0.85rem] text-ink-soft">
+            {c.key && (
+              <span className="font-mono tabular-nums" title={new Date(c.first).toString()}>
+                from {formatWhen(c.first, now)}
+              </span>
+            )}
+            <span className="tabular-nums">
+              {c.runs.length} {c.runs.length === 1 ? "run" : "runs"}
+            </span>
+            <span className={cx("tabular-nums", c.failed > 0 ? "text-bad" : "text-ink-dim")}>{c.failed} failed</span>
+          </span>
+        </span>
+      </td>
+    </tr>
+  )
+}
+
 export function RunsTable({
   runs,
+  sections,
   placeholders = 0,
   fresh,
   now,
@@ -103,6 +163,80 @@ export function RunsTable({
   onFilter,
   onGroup,
 }: Props) {
+  const row = (run: Run) => {
+    const key = runKey(run)
+    const open = expanded === key
+    return (
+      <Fragment key={key}>
+        <tr
+          onClick={() => onToggle(key, run)}
+          className={cx(
+            "group h-[2.6rem] cursor-pointer border-line border-b transition-colors duration-150 hover:bg-app-2",
+            open && "bg-app-2",
+            fresh?.has(key) && "reveal",
+          )}
+        >
+          <td className="pl-[0.55rem]">
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-label={`${open ? "Hide" : "Show"} run ${commandLabel(commandOf(run))} at ${formatWhen(run.started_at, now)}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggle(key, run)
+              }}
+              className="grid size-[1.5rem] place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
+            >
+              <ChevronRight
+                aria-hidden
+                className={cx("size-[0.95rem] transition-transform duration-150", open && "rotate-90")}
+              />
+            </button>
+          </td>
+          <td
+            className="font-mono text-[0.85rem] text-ink-soft tabular-nums"
+            title={new Date(run.started_at).toString()}
+          >
+            {formatWhen(run.started_at, now)}
+          </td>
+          <td>
+            <span className="flex min-w-0 items-center gap-[0.4rem]">
+              <ToolIcon id={run.tool} className="size-[1rem] shrink-0 text-ink-soft" />
+              <span className="truncate">{toolName(run.tool)}</span>
+            </span>
+          </td>
+          <td className="truncate font-mono text-[0.85rem] text-ink-soft">{run.profile ?? "—"}</td>
+          <CommandCell
+            value={commandOf(run)}
+            unknown={typeof run.unknown_command === "string" ? run.unknown_command : null}
+          />
+          <AgentCell run={run} onFilter={onFilter} />
+          <td>
+            <span className="flex items-center gap-[0.45rem]">
+              <Lamp tone={statusTone(run.status)} size="sm" />
+              <span className={cx(run.status === "partial" && "text-warn-ink")}>
+                {STATUS_WORD[run.status] ?? run.status}
+              </span>
+            </span>
+          </td>
+          <td className="pr-[1rem] text-right font-mono text-[0.85rem] text-ink-soft tabular-nums">
+            {formatDuration(run.duration_ms)}
+          </td>
+          <td className="truncate pr-[1.3rem] font-mono text-[0.85rem]">
+            {run.error_code ?? <span className="text-ink-dim">—</span>}
+          </td>
+        </tr>
+        {open && (
+          <tr className="border-line border-b">
+            <td colSpan={9} className="p-0">
+              <RunDetail run={run} detail={details[key]} onFilter={onFilter} onGroup={onGroup} />
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    )
+  }
+
   // The fixed columns alone take ~55rem; below that the command column would shrink to nothing, so the table
   // keeps a minimum width and scrolls sideways instead.
   return (
@@ -146,93 +280,33 @@ export function RunsTable({
             <th className="pr-[1.3rem] font-medium">Error code</th>
           </tr>
         </thead>
-        <tbody>
-          {runs.map((run) => {
-            const key = runKey(run)
-            const open = expanded === key
-            return (
-              <Fragment key={key}>
-                <tr
-                  onClick={() => onToggle(key, run)}
-                  className={cx(
-                    "group h-[2.6rem] cursor-pointer border-line border-b transition-colors duration-150 hover:bg-app-2",
-                    open && "bg-app-2",
-                    fresh?.has(key) && "reveal",
+        {sections ? (
+          sections.map((c) => (
+            <tbody
+              key={c.key || "none"}
+              aria-label={`${conversationTitle(c)}${c.session ? `, session ${shortSession(c.session)}` : ""}`}
+            >
+              <ConversationRow conversation={c} now={now} />
+              {c.runs.map(row)}
+            </tbody>
+          ))
+        ) : (
+          <tbody>
+            {runs.map(row)}
+            {Array.from({ length: placeholders }, (_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+              <tr key={i} className="h-[2.6rem] border-line border-b">
+                <td colSpan={9} className="px-[1.3rem]">
+                  {i === 0 ? (
+                    <Skeleton className="h-[1.3rem] w-full" label="Loading runs" />
+                  ) : (
+                    <Skeleton className="h-[1.3rem] w-full" />
                   )}
-                >
-                  <td className="pl-[0.55rem]">
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      aria-label={`${open ? "Hide" : "Show"} run ${commandLabel(commandOf(run))} at ${formatWhen(run.started_at, now)}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onToggle(key, run)
-                      }}
-                      className="grid size-[1.5rem] place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
-                    >
-                      <ChevronRight
-                        aria-hidden
-                        className={cx("size-[0.95rem] transition-transform duration-150", open && "rotate-90")}
-                      />
-                    </button>
-                  </td>
-                  <td
-                    className="font-mono text-[0.85rem] text-ink-soft tabular-nums"
-                    title={new Date(run.started_at).toString()}
-                  >
-                    {formatWhen(run.started_at, now)}
-                  </td>
-                  <td>
-                    <span className="flex min-w-0 items-center gap-[0.4rem]">
-                      <ToolIcon id={run.tool} className="size-[1rem] shrink-0 text-ink-soft" />
-                      <span className="truncate">{toolName(run.tool)}</span>
-                    </span>
-                  </td>
-                  <td className="truncate font-mono text-[0.85rem] text-ink-soft">{run.profile ?? "—"}</td>
-                  <CommandCell
-                    value={commandOf(run)}
-                    unknown={typeof run.unknown_command === "string" ? run.unknown_command : null}
-                  />
-                  <AgentCell run={run} onFilter={onFilter} />
-                  <td>
-                    <span className="flex items-center gap-[0.45rem]">
-                      <Lamp tone={statusTone(run.status)} size="sm" />
-                      <span className={cx(run.status === "partial" && "text-warn-ink")}>
-                        {STATUS_WORD[run.status] ?? run.status}
-                      </span>
-                    </span>
-                  </td>
-                  <td className="pr-[1rem] text-right font-mono text-[0.85rem] text-ink-soft tabular-nums">
-                    {formatDuration(run.duration_ms)}
-                  </td>
-                  <td className="truncate pr-[1.3rem] font-mono text-[0.85rem]">
-                    {run.error_code ?? <span className="text-ink-dim">—</span>}
-                  </td>
-                </tr>
-                {open && (
-                  <tr className="border-line border-b">
-                    <td colSpan={9} className="p-0">
-                      <RunDetail run={run} detail={details[key]} onFilter={onFilter} onGroup={onGroup} />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            )
-          })}
-          {Array.from({ length: placeholders }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
-            <tr key={i} className="h-[2.6rem] border-line border-b">
-              <td colSpan={9} className="px-[1.3rem]">
-                {i === 0 ? (
-                  <Skeleton className="h-[1.3rem] w-full" label="Loading runs" />
-                ) : (
-                  <Skeleton className="h-[1.3rem] w-full" />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        )}
       </table>
     </div>
   )

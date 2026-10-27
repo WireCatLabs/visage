@@ -2,6 +2,8 @@ import { ArrowUp, ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-reac
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
 import { tools } from "@/domain/catalog"
 import {
+  CONVERSATION,
+  conversations,
   FACET_LABELS,
   FACETS,
   facetCounts,
@@ -17,6 +19,7 @@ import {
   type Run,
   toggleTerm,
   unknownFields,
+  withConversations,
   withZeros,
 } from "@/domain/runs"
 import { platform } from "@/platform/bridge"
@@ -89,7 +92,8 @@ export function LogsPage() {
     setReleased((n) => n + 1)
   }
 
-  const ranged = useMemo(() => inRange(all, range, loadedAt ?? Date.now()), [all, range, loadedAt])
+  const keyed = useMemo(() => withConversations(all), [all])
+  const ranged = useMemo(() => inRange(keyed, range, loadedAt ?? Date.now()), [keyed, range, loadedAt])
   const parsed = useMemo(() => parseQuery(deferred), [deferred])
   const problems = useMemo(() => [...parsed.problems, ...unknownFields(parsed, all)], [parsed, all])
   const matched = useMemo(() => {
@@ -107,7 +111,24 @@ export function LogsPage() {
       ),
     [ranged, parsed, toolIds],
   )
-  const groups = useMemo(() => (groupBy ? groupRuns(matched, groupBy) : []), [matched, groupBy])
+  const byConversation = groupBy === CONVERSATION
+  const groups = useMemo(
+    () => (groupBy && groupBy !== CONVERSATION ? groupRuns(matched, groupBy) : []),
+    [matched, groupBy],
+  )
+  // Whole conversations only, as many as fit in the runs shown, so one is never cut in half.
+  const { sections, sectionRuns, sectionsTotal } = useMemo(() => {
+    if (!byConversation) return { sections: [], sectionRuns: 0, sectionsTotal: 0 }
+    const every = conversations(matched)
+    if (!newest) every.reverse()
+    let runs = 0
+    const shownSections = every.filter((c, i) => {
+      if (i > 0 && runs + c.runs.length > shown) return false
+      runs += c.runs.length
+      return true
+    })
+    return { sections: shownSections, sectionRuns: runs, sectionsTotal: every.length }
+  }, [byConversation, matched, newest, shown])
   const bareHidden = useMemo(() => {
     const hides = parsed.terms.some((t) => t.kind === "field" && t.field === NO_COMMAND && t.negate)
     return hides ? ranged.filter(matcher(parsed.terms, NO_COMMAND)).length - matched.length : 0
@@ -126,8 +147,9 @@ export function LogsPage() {
         <div>
           <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Logs</h1>
           <p className="mt-3 max-w-[72ch] text-[0.95rem] text-ink-soft">
-            What each tool recorded about its own runs. Out of the box a tool keeps a run only when it fails, so this
-            list is mostly failures by design. It does not mean everything is broken.{" "}
+            What each tool recorded about its own runs. A tool keeps every run: successful ones for 7 days, failed ones
+            for 30. A tool set to keep failed runs only, or one older than that, lists mostly failures by design; it
+            does not mean everything is broken.{" "}
             <button
               type="button"
               onClick={() => platform.openUrl(LOGS_DOCS)}
@@ -219,7 +241,8 @@ export function LogsPage() {
                   failed={failed}
                   since={oldest}
                   reading={older}
-                  grouped={groupBy ? groups.length : null}
+                  grouped={byConversation ? sectionsTotal : groupBy ? groups.length : null}
+                  groupWord={byConversation ? ["conversation", "conversations"] : ["group", "groups"]}
                   bareHidden={bareHidden}
                   onShowBare={() => setQuery(toggleTerm(query, NO_COMMAND, "true", true))}
                 />
@@ -235,7 +258,7 @@ export function LogsPage() {
                   {matched.length === 0 ? (
                     <p className="flex flex-wrap items-center gap-3 px-[1.3rem] py-[1.6rem] text-[0.95rem] text-ink-soft">
                       {all.length === 0
-                        ? "Nothing recorded. An empty log means none of these tools has failed lately."
+                        ? "Nothing recorded. An empty log means none of these tools has run lately, or failed if it keeps failed runs only."
                         : "No run matches this search in the chosen time range."}
                       {query && (
                         <Button size="sm" variant="ghost" onClick={() => setQuery("")}>
@@ -248,6 +271,20 @@ export function LogsPage() {
                         </Button>
                       )}
                     </p>
+                  ) : byConversation ? (
+                    <RunsTable
+                      runs={[]}
+                      sections={sections}
+                      fresh={fresh}
+                      now={now}
+                      expanded={expanded}
+                      details={details}
+                      newest={newest}
+                      onSort={() => setNewest(!newest)}
+                      onToggle={toggle}
+                      onFilter={onFilter}
+                      onGroup={setGroupBy}
+                    />
                   ) : groupBy ? (
                     <Groups
                       field={groupBy}
@@ -273,6 +310,14 @@ export function LogsPage() {
                     />
                   )}
                 </div>
+                {byConversation && sections.length < sectionsTotal && (
+                  <div className="flex items-center justify-center gap-3 text-[0.85rem] text-ink-dim">
+                    Showing {sections.length} of {sectionsTotal} conversations
+                    <Button size="sm" onClick={() => setShown(Math.max(shown, sectionRuns) + STEP)}>
+                      Show more
+                    </Button>
+                  </div>
+                )}
                 {!groupBy && matched.length > shown && (
                   <div className="flex items-center justify-center gap-3 text-[0.85rem] text-ink-dim">
                     Showing {shown} of {matched.length}
@@ -405,16 +450,17 @@ function Summary(props: {
   since: string
   reading: Source[]
   grouped: number | null
+  groupWord: [string, string]
   bareHidden: number
   onShowBare: () => void
 }) {
-  const { matched, total, failed, since, reading, grouped, bareHidden, onShowBare } = props
+  const { matched, total, failed, since, reading, grouped, groupWord, bareHidden, onShowBare } = props
   return (
     <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
       <span>
         <strong className="font-mono font-semibold text-ink tabular-nums">{matched}</strong>{" "}
         {matched === 1 ? "run matches" : "runs match"}
-        {grouped !== null && `, in ${grouped} ${grouped === 1 ? "group" : "groups"}`}
+        {grouped !== null && `, in ${grouped} ${grouped === 1 ? groupWord[0] : groupWord[1]}`}
       </span>
       {total > 0 && (
         <span className="text-ink-dim">
@@ -487,7 +533,7 @@ function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => 
   )
 }
 
-const GROUPABLE: string[] = [...FACETS, "cli_version"]
+const GROUPABLE: string[] = [CONVERSATION, ...FACETS, "cli_version"]
 
 function GroupBy({ value, onChange }: { value: string | null; onChange: (f: string | null) => void }) {
   const id = useId()

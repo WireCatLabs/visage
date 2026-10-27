@@ -29,7 +29,11 @@ export type Source = {
 }
 export type Detail = { state: "loading" | "ready" | "error"; item: RunDetail["item"] | null; error: string | null }
 
-/** Whether a tool keeps successful runs too: its `record` setting in the defaults every profile gets. */
+/**
+ * Whether a tool keeps successful runs too: its `record` setting in the defaults every profile gets. `everyByDefault`:
+ * the tool keeps every run unless `record` is false (cli-core with `keep_successful_runs_for_days`); an older one keeps
+ * failed runs only unless `record` is true, and there `record: false` stops keeping failures too.
+ */
 export type Keeping =
   | { state: "loading" }
   | { state: "error"; error: string }
@@ -38,7 +42,10 @@ export type Keeping =
       record: boolean
       /** Why the defaults cannot change it here (an environment variable, a profile named "default"). */
       locked: string | null
+      everyByDefault: boolean
+      /** How long failed runs are kept; on older tools every kept run. */
       days: number | null
+      successDays: number | null
       saving: boolean
       error: string | null
     }
@@ -224,6 +231,7 @@ export const useLogs = create<LogsState>((set, get) => {
       const { rows } = await platform.settingsShow(id, null)
       const record = rows.find((r) => r.key === "record")
       const days = rows.find((r) => r.key === "keep_runs_for_days")?.value
+      const success = rows.find((r) => r.key === "keep_successful_runs_for_days")
       if (!record) {
         keep(id, { state: "error", error: "The tool does not report a record setting." })
         return
@@ -232,7 +240,9 @@ export const useLogs = create<LogsState>((set, get) => {
         state: "ready",
         record: record.value === true,
         locked: record.locked,
+        everyByDefault: success !== undefined,
         days: typeof days === "number" ? days : null,
+        successDays: typeof success?.value === "number" ? success.value : null,
         saving: false,
         error,
       })
@@ -279,10 +289,9 @@ export const useLogs = create<LogsState>((set, get) => {
       keep(id, { ...k, saving: true, error: null })
       let error: string | null = null
       try {
-        // `record: false` also stops keeping failed runs (cli-core settings.ts: kept when true or left at the default),
-        // so going back means removing the setting, not setting it false.
-        if (on) await platform.settingsSet(id, null, true, "record", "true")
-        else await platform.settingsUnset(id, null, true, "record")
+        // Whichever value is the tool's default is reached by removing the setting, so the defaults stay clean.
+        if (on === k.everyByDefault) await platform.settingsUnset(id, null, true, "record")
+        else await platform.settingsSet(id, null, true, "record", String(on))
       } catch (e) {
         error = message(e)
       }

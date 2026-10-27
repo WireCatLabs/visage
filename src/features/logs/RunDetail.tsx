@@ -1,12 +1,24 @@
 import { ChevronRight } from "lucide-react"
 import { Fragment, useState } from "react"
 import { findTool } from "@/domain/catalog"
-import { agentName, agentOf, commandLine, errorOf, formatDuration, orderRecord, type Run } from "@/domain/runs"
+import {
+  agentName,
+  agentOf,
+  clientOf,
+  commandLine,
+  errorOf,
+  formatDuration,
+  orderRecord,
+  type Run,
+  stepOf,
+  viaName,
+} from "@/domain/runs"
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
+import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
@@ -41,10 +53,13 @@ const EVENT_MEANINGS: Record<string, string> = {
   "schedule.start": "A scheduled run started",
   "schedule.exit": "A scheduled run ended",
   "agent.action": "One action an AI agent asked the tool for",
+  "events.dropped": "The run had more steps than the tool keeps; it counted the rest without keeping them",
 }
 
 function noSteps(run: Run, service: string): string {
   const n = typeof run.requests === "number" ? run.requests : null
+  if (run.status === "success")
+    return "The run succeeded, and for a success the tool keeps only this summary, not its steps."
   if (n === 0) return `The tool stopped before contacting ${service}, so there are no steps to show.`
   if (n !== null)
     return `The tool made ${n} ${n === 1 ? "request" : "requests"} to ${service} but did not log them as steps.`
@@ -54,7 +69,7 @@ function noSteps(run: Run, service: string): string {
 type Props = { run: Run; detail: Detail | undefined; onFilter: Filter; onGroup: (field: string) => void }
 
 export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
-  const { tool: _, cli_command: __, ...summary } = run
+  const { tool: _, cli_command: __, conversation: ___, ...summary } = run
   const item = detail?.item ?? null
   const { events = [], ...rest } = item ?? { ...summary, events: undefined }
   const record = orderRecord(rest)
@@ -91,10 +106,13 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
         <div>
           <h4 className="text-[0.85rem] font-medium text-ink-dim">
             Steps{item ? ` · ${item.event_count ?? events.length}` : ""}
+            {typeof run.events_dropped === "number" && run.events_dropped > 0
+              ? `, ${run.events_dropped} more not kept`
+              : ""}
           </h4>
           <p className="text-[0.85rem] text-ink-dim">
-            Each request the tool sent to {service} and its answer, plus notable moments: a warning, an answer from what
-            it already kept, a crash.
+            Each request the tool sent to {service} (→) and its answer (←), plus notable moments: a warning, an answer
+            from what it already kept, a crash. A retry and the wait before it are marked.
           </p>
         </div>
         {detail?.state === "loading" && <Skeleton className="h-[4.5rem] w-full" label="Reading this run" />}
@@ -133,6 +151,8 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
 
 function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter: Filter }) {
   const agent = agentOf(run)
+  const client = clientOf(run)
+  const via = typeof run.via === "string" && run.via !== "cli" ? viaName(run.via) : null
   return (
     <section aria-label="Command line" className="flex flex-col gap-[0.4rem]">
       <h4 className="text-[0.85rem] font-medium text-ink-dim">Command line</h4>
@@ -146,8 +166,10 @@ function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter
               onClick={() => onFilter("agent", agent.kind, false)}
               className="font-medium text-ink-soft hover:text-brand"
             >
-              {agentName(agent.kind)}
+              {agent.kind === "mcp-client" && client ? client.name : agentName(agent.kind)}
             </button>
+            {client && agent.kind !== "mcp-client" && <> through {client.name}</>}
+            {via && <> ({via})</>}
             {agent.session && (
               <>
                 {" "}
@@ -210,8 +232,8 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
         <colgroup>
           <col className="w-[1.8rem]" />
           <col className="w-[7.4rem]" />
-          <col className="w-[12.5rem]" />
           <col />
+          <col className="w-[16rem]" />
           <col className="w-[8rem]" />
           <col className="w-[5rem]" />
         </colgroup>
@@ -220,7 +242,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
             <th className="sr-only">Details</th>
             <th className="py-[0.4rem] font-medium">Time</th>
             <th className="font-medium">Step</th>
-            <th className="font-medium">Operation</th>
+            <th className="font-medium">Details</th>
             <th className="font-medium">Outcome</th>
             <th className="pr-[0.8rem] text-right font-medium">Took</th>
           </tr>
@@ -228,6 +250,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
         <tbody>
           {events.map((e, i) => {
             const isOpen = open === i
+            const dropped = stepOf(e).kind === "dropped"
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: events have no id and never reorder
               <Fragment key={i}>
@@ -253,15 +276,9 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
                     </button>
                   </td>
                   <td className="py-[0.35rem] text-ink-soft tabular-nums">{clock(e.time)}</td>
-                  <td className="truncate pr-[0.8rem]" title={EVENT_MEANINGS[String(e.event)]}>
-                    <span className="inline-flex items-center gap-[0.4rem]">
-                      <Lamp tone={severityTone(e.severity)} size="sm" label={String(e.severity ?? "info")} />
-                      {String(e.event ?? "")}
-                    </span>
-                  </td>
-                  <td className="truncate text-ink-soft">{String(e.operation ?? "")}</td>
+                  <StepCells event={e} />
                   <td className={cx("truncate", e.outcome === "error" ? "text-bad" : "text-ink-soft")}>
-                    {String(e.error_code ?? e.outcome ?? "")}
+                    {dropped ? "" : String(e.error_code ?? e.outcome ?? "")}
                   </td>
                   <td className="pr-[0.8rem] text-right text-ink-soft tabular-nums">
                     {typeof e.duration_ms === "number" ? formatDuration(e.duration_ms) : ""}
@@ -286,5 +303,44 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
         </tbody>
       </table>
     </div>
+  )
+}
+
+const ARROW = { request: "→", response: "←" } as const
+
+function StepCells({ event }: { event: RunEvent }) {
+  const step = stepOf(event)
+  if (step.kind === "dropped")
+    return (
+      <>
+        <td className="truncate pr-[0.8rem] font-sans text-ink-soft" title={EVENT_MEANINGS["events.dropped"]}>
+          {step.dropped ?? "Some"} more {step.dropped === 1 ? "step" : "steps"} not kept
+        </td>
+        <td />
+      </>
+    )
+  const arrow = step.kind === "request" || step.kind === "response" ? ARROW[step.kind] : null
+  return (
+    <>
+      <td className="truncate pr-[0.8rem]" title={EVENT_MEANINGS[String(event.event)] ?? step.name}>
+        <span className={cx("inline-flex min-w-0 items-center gap-[0.4rem]", step.wire && "pl-[1.1rem]")}>
+          <Lamp tone={severityTone(event.severity)} size="sm" label={String(event.severity ?? "info")} />
+          {arrow && (
+            <span aria-hidden className="text-ink-dim">
+              {arrow}
+            </span>
+          )}
+          <span className="truncate">{step.name}</span>
+          {step.transport && <span className="text-[0.8rem] text-ink-dim">{step.transport}</span>}
+        </span>
+      </td>
+      <td className="truncate pr-[0.8rem] text-ink-soft">
+        <span className="inline-flex min-w-0 items-center gap-[0.4rem]">
+          {step.retry !== null && <Pill tone="warn">retry {step.retry - 1}</Pill>}
+          {step.waitMs !== null && <Pill tone="warn">waited {formatDuration(step.waitMs)}</Pill>}
+          {step.counts && <span className="truncate">{step.counts}</span>}
+        </span>
+      </td>
+    </>
   )
 }

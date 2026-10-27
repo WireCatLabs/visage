@@ -11,6 +11,7 @@ import {
   statusTone,
   type Term,
   termState,
+  viaName,
 } from "@/domain/runs"
 import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
@@ -210,6 +211,8 @@ export function ValueLabel({ field, value }: { field: string; value: string }) {
       </span>
     )
   if (field === "agent") return <span className="truncate">{agentName(value)}</span>
+  if (field === "via") return <span className="truncate">{viaName(value)}</span>
+  if (field === "client") return <span className="truncate">{value}</span>
   if (field === "cli_command" && isBareCommand(value))
     return (
       <span className="truncate font-mono text-[0.85rem]" title={BARE_COMMAND_HINT}>

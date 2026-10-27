@@ -10,7 +10,7 @@ import { ToolIcon } from "../tools/ToolIcon"
 import { toolName } from "./names"
 import { type Keeping, useLogs, useShownLogs } from "./store"
 
-type Ask = { id: string; on: boolean; days: number | null }
+type Ask = { id: string; on: boolean; k: Extract<Keeping, { state: "ready" }> }
 
 export function KeepRuns() {
   const keeping = useShownLogs((s) => s.keeping)
@@ -64,29 +64,7 @@ export function KeepRuns() {
           </>
         }
       >
-        {ask?.on ? (
-          <div className="flex flex-col gap-3">
-            <p>
-              From now on {name} records every run, also the ones that succeed. Each run is kept
-              {ask.days !== null ? ` for ${ask.days} days` : " for as long as the tool keeps runs"} and then removed;
-              until then every run takes disk space in the tool's own folder.
-            </p>
-            <p>
-              This sets{" "}
-              <code className="font-mono text-[0.88rem] text-ink">{`${bin} config set --defaults record true`}</code>,
-              the default for every {name} profile. A profile that sets <code className="font-mono">record</code> itself
-              keeps its own choice; change that on the Config page. Runs that already ended are not recovered.
-            </p>
-          </div>
-        ) : (
-          <p>
-            From now on {name} keeps a run only when it fails, as it does out of the box. Successful runs it already
-            kept stay until the tool removes old runs{typeof ask?.days === "number" ? `, after ${ask.days} days` : ""}.
-            This runs{" "}
-            <code className="font-mono text-[0.88rem] text-ink">{`${bin} config unset --defaults record`}</code>, which
-            puts the setting back to the tool's default.
-          </p>
-        )}
+        {ask && <AskBody ask={ask} name={name} bin={bin} />}
       </Dialog>
     </section>
   )
@@ -101,11 +79,68 @@ const CHOICES = [
 const tone = (k: Keeping): LampTone =>
   k.state === "loading" ? "busy" : k.state === "error" || k.error ? "bad" : k.record ? "ok" : "idle"
 
+type Ready = Extract<Keeping, { state: "ready" }>
+
+const forDays = (days: number | null) => (days !== null ? ` for ${days} days` : "")
+
+/** "successful runs for 7 days, failed runs for 30"; older tools keep every run for one period. */
+function periods(k: Ready): string {
+  if (k.successDays === null) return `every run${forDays(k.days)}`
+  return `successful runs${forDays(k.successDays)}, failed runs${forDays(k.days)}`
+}
+
 function words(k: Keeping): string {
   if (k.state === "loading") return "is reading its settings"
   if (k.state === "error") return `could not say whether it keeps successful runs: ${k.error}`
-  const now = k.record ? `keeps every run${k.days !== null ? ` for ${k.days} days` : ""}` : "keeps failed runs only"
+  const now = k.record ? `keeps ${periods(k)}` : `keeps failed runs only${forDays(k.days)}`
   return [now, k.locked, k.error && `the tool refused the change: ${k.error}`].filter(Boolean).join(". ")
+}
+
+const Code = ({ children }: { children: string }) => (
+  <code className="font-mono text-[0.88rem] text-ink">{children}</code>
+)
+
+function AskBody({ ask, name, bin }: { ask: Ask; name: string; bin: string }) {
+  const { k } = ask
+  // Going to the tool's own default removes the setting; the other value is written into the defaults.
+  const command =
+    ask.on === k.everyByDefault
+      ? `${bin} config unset --defaults record`
+      : `${bin} config set --defaults record ${String(ask.on)}`
+  const how =
+    ask.on === k.everyByDefault ? (
+      <>
+        This runs <Code>{command}</Code>, which puts the setting back to the tool's default
+      </>
+    ) : (
+      <>
+        This sets <Code>{command}</Code>, the default for every {name} profile
+      </>
+    )
+  if (ask.on)
+    return (
+      <div className="flex flex-col gap-3">
+        <p>
+          From now on {name} records every run, also the ones that succeed: it keeps {periods(k)}, then removes them.
+          Until then every run takes disk space in the tool's own folder.
+        </p>
+        <p>
+          {how}. A profile that sets <code className="font-mono">record</code> itself keeps its own choice; change that
+          on the Config page. Runs that already ended are not recovered.
+        </p>
+      </div>
+    )
+  return (
+    <div className="flex flex-col gap-3">
+      <p>
+        From now on {name} keeps a run only when it fails{forDays(k.days)}. Successful runs it already kept stay until
+        the tool removes old runs{k.successDays !== null ? `, after ${k.successDays} days` : forDays(k.days)}.
+      </p>
+      <p>
+        {how}. A profile that sets <code className="font-mono">record</code> itself keeps its own choice.
+      </p>
+    </div>
+  )
 }
 
 // A chip is as tall as the select it ends with, so the setting arriving moves nothing.
@@ -129,19 +164,17 @@ function Chip({ id, k, first, onAsk }: { id: string; k: Keeping; first: boolean;
         </span>
       )}
       {k.state === "ready" && (
-        <>
-          <Select<Choice>
-            size="sm"
-            aria-label={`Which ${name} runs to keep`}
-            value={k.record ? "every" : "failed"}
-            options={CHOICES}
-            disabled={k.saving || Boolean(k.locked)}
-            onChange={(v) => {
-              if ((v === "every") !== k.record) onAsk({ id, on: v === "every", days: k.days })
-            }}
-            className="w-[9.4rem]"
-          />
-        </>
+        <Select<Choice>
+          size="sm"
+          aria-label={`Which ${name} runs to keep`}
+          value={k.record ? "every" : "failed"}
+          options={CHOICES}
+          disabled={k.saving || Boolean(k.locked)}
+          onChange={(v) => {
+            if ((v === "every") !== k.record) onAsk({ id, on: v === "every", k })
+          }}
+          className="w-[9.4rem]"
+        />
       )}
     </li>
   )

@@ -12,8 +12,9 @@ const BUILT_IN: Layer = {
   limit: 50,
   timeout_ms: null,
   color: null,
-  record: false,
+  record: true,
   keep_runs_for_days: 30,
+  keep_successful_runs_for_days: 7,
   sends_per_hour: 20,
   requests_per_minute: 30,
   transcribe_with: "auto",
@@ -25,7 +26,14 @@ const BUILT_IN: Layer = {
   update_check: true,
   default_profile: null,
 }
-const NUMBERS = new Set(["limit", "timeout_ms", "keep_runs_for_days", "sends_per_hour", "requests_per_minute"])
+const NUMBERS = new Set([
+  "limit",
+  "timeout_ms",
+  "keep_runs_for_days",
+  "keep_successful_runs_for_days",
+  "sends_per_hour",
+  "requests_per_minute",
+])
 const BOOLEANS = new Set(["record", "search_catch_up", "picture_search", "update_check"])
 const STORE_BUILT_IN: Layer = {
   "search_stemmers.latin": "english",
@@ -47,7 +55,7 @@ type MessengerState = { defaults: Layer; profiles: Record<string, Layer> }
 const messengers: Record<string, MessengerState> = {
   tg: {
     defaults: { sends_per_hour: 10 },
-    profiles: { personal: { limit: 20, record: true, proxy: "socks5://•••" }, work: { color: "always" } },
+    profiles: { personal: { limit: 20, proxy: "socks5://•••" }, work: { color: "always" } },
   },
   max: { defaults: {}, profiles: { personal: { limit: 30 } } },
   wa: { defaults: {}, profiles: {} },
@@ -82,7 +90,8 @@ export function recordOn(id: string, profile: string | undefined): boolean {
   const state = messengers[id]
   if (!state) return false
   const own = profile ? state.profiles[profile] : undefined
-  const value = own && "record" in own ? own.record : "record" in state.defaults ? state.defaults.record : false
+  const value =
+    own && "record" in own ? own.record : "record" in state.defaults ? state.defaults.record : BUILT_IN.record
   return value === true
 }
 

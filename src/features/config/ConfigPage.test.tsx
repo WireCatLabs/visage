@@ -66,7 +66,7 @@ describe("Config", () => {
       target: {
         value: edit(editor.value, (d) => {
           d.limit = "abc"
-          d.record = true
+          d.record = false
         }),
       },
     })
@@ -81,7 +81,7 @@ describe("Config", () => {
     await user.click(screen.getByRole("button", { name: "Save" }))
     await waitFor(() => expect(screen.getAllByText("Saved")).toHaveLength(2))
     await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeDisabled())
-    expect(JSON.parse(editor.value)).toMatchObject({ limit: 25, record: true })
+    expect(JSON.parse(editor.value)).toMatchObject({ limit: 25, record: false })
   }, 15000)
 
   it("asks before dropping unsaved JSON when switching profile", async () => {
