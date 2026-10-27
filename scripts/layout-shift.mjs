@@ -41,7 +41,7 @@ const PAGES = {
   "tools-manage": { query: "?onboarding=off&section=tools", clicks: ['button:has-text("Manage") >> nth=0'] },
   "tools-mcp": {
     query: "?onboarding=off&section=tools",
-    clicks: ['button:has-text("Manage") >> nth=0', 'button:has-text("MCP server")'],
+    clicks: ['button:has-text("Manage") >> nth=0', 'button:has-text("Connect an AI app")'],
   },
   agents: { query: "?onboarding=off&section=agents" },
   "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("Tools"), nav("Agents")] },

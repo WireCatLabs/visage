@@ -1,5 +1,6 @@
 import { act, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { AutoHeight } from "./AutoHeight"
 import { Collapse } from "./Collapse"
 import { focusInPlace, PANEL_MS } from "./motion"
 
@@ -74,5 +75,41 @@ describe("focusInPlace", () => {
     const again = target(-80)
     focusInPlace(again)
     expect(again.scrollIntoView).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" })
+  })
+})
+
+describe("AutoHeight", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("pins its height and moves to the new one with a transition, or at once under reduced motion", () => {
+    let notify = () => undefined as void
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(cb: () => void) {
+          notify = cb
+        }
+        observe() {}
+        disconnect() {}
+      },
+    )
+    let height = 200
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(() => height)
+    reduce(false)
+    const { container } = render(<AutoHeight>step</AutoHeight>)
+    const box = container.firstElementChild as HTMLElement
+    expect(box.style.height).toBe("200px")
+
+    height = 320
+    notify()
+    expect(box.style.height).toBe("320px")
+    expect(box.style.transition).toContain(`height ${PANEL_MS}ms`)
+
+    reduce(true)
+    height = 90
+    notify()
+    expect(box.style.height).toBe("90px")
+    expect(box.style.transition).toBe("")
+    vi.restoreAllMocks()
   })
 })

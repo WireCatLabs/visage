@@ -33,11 +33,9 @@ export function focusInPlace(el: HTMLElement | null, block: ScrollLogicalPositio
  * the room it had until the reader scrolls back up into it, so neither happens.
  */
 export function holdInPlace(el: HTMLElement, ms = PANEL_MS + 100) {
-  const scroller = scrollerOf(el)
-  const page = scroller?.firstElementChild
-  if (!scroller || !(page instanceof HTMLElement)) return
+  const scroller = keepRoom(el)
+  if (!scroller) return
   const top = el.getBoundingClientRect().top
-  reserve(scroller, page, scroller.scrollTop + scroller.clientHeight)
   const end = performance.now() + ms
   const tick = () => {
     if (!el.isConnected) return
@@ -46,6 +44,15 @@ export function holdInPlace(el: HTMLElement, ms = PANEL_MS + 100) {
     if (performance.now() < end) requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
+}
+
+/** Lets content inside `el`'s page shrink without the page scrolling: the room stays until the reader scrolls up. */
+export function keepRoom(el: Element): HTMLElement | null {
+  const scroller = scrollerOf(el)
+  const page = scroller?.firstElementChild
+  if (!scroller || !(page instanceof HTMLElement)) return null
+  reserve(scroller, page, scroller.scrollTop + scroller.clientHeight)
+  return scroller
 }
 
 const reserved = new WeakMap<HTMLElement, () => void>()
