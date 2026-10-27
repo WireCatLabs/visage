@@ -37,8 +37,10 @@ The catalog gets a `sync` block per tool, read by Rust and TypeScript:
 ```
 
 `--record` keeps the app's own successful runs in the tool's run log, so `runs list` answers "last synced" today; runs
-from a terminal join when cli-core #2119 (record every run) ships. drive reads `status` (`lastShape: "driveStatus"`),
-zm `meetings status` (`"started"`), the others `runs`.
+from a terminal join when cli-core #2119 (record every run) ships. Its tests show an app run (`WIRECAT_CALLER=desktop`)
+keeps a success only with the flag, which the app passes; not yet seen on a real successful sync (NEED-118). drive reads
+`status` (`lastShape: "driveStatus"`), every other tool `runs list`, including zm, whose `meetings status` time is the
+last start. With no time the line says "No sync recorded from this app yet", never "never synced".
 
 - **Rust (`sync.rs`)**: `sync_run(id, profile)` runs the catalog's words for a profile the owner chose
   (`run::stream_stoppable`, like sign-in), `sync_stop(id, profile)` sends SIGTERM to that process alone, then kills its
@@ -56,8 +58,10 @@ zm `meetings status` (`"started"`), the others `runs`.
 
 | Gap | Where it is fixed | State |
 | --- | --- | --- |
-| memo ignores Stop and has no time limit (BUG-17) | cli-memo: read the signal, stop between accounts, honour `--timeout` | PR in this task |
-| No structured progress in any sync (DEBT-4): text notes only | cli-core: a `progress` JSON line on stderr per page in `--json` mode, counts only | proposed; cli-core's release queue (#849) and the tg/max/wa bumps belong to other lanes |
+| memo ignores Stop and has no time limit (BUG-17) | cli-memo: read the signal, stop between batches, honour `--timeout` | done: cli-memo #487, released 0.118.0 |
+| No structured progress in `messages sync` (DEBT-4) | cli-core #2121: `{"event":"progress","step":"sync","chats","chats_done","fetched"}` on stderr | PR green, queued on #849; then tg/max/wa bumps (another lane). Desktop already reads it |
+| No progress in drive, zm or memo syncs | their own sync code (#2121 covers only `messages sync`) | not started |
+| An error message may name a chat (RISK-44) | Desktop: show only code and reason, point to the failed run on Logs | open |
 | No whole-profile "last synced" for messengers | cli-core #2119 records every run; until then only syncs the app started | waits on #2119 |
 | zm's status time is the last start | zm `meetings status` could add `finished_at` | proposed |
 | wa has no one-shot sync | product decision (NEED in the journal) | open |
