@@ -52,3 +52,4 @@
 - 2026-10-27 · .claude/worktrees/ux8-permission-levels and its branch feat/ux8-permission-levels — UX-8, remove once fast-forwarded into feat/desktop-mvp
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/himalaya-2.2.1 — Himalaya v2.2.1 config.sample.toml, config.rs, spec, read for BUG-12
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ux8 (screenshots, open.js, trap.mjs) and /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ux8-vite.log — UX-8 review material; remove after the owner has seen the screenshots
+- .claude/worktrees/one-mcp-entry (branch feat/one-mcp-entry) — TASK-26 Desktop one MCP row per tool; remove after merge — 2026-10-27
