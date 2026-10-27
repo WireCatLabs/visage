@@ -66,3 +66,4 @@
 - `.claude/worktrees/record-every-run` (branch `feat/record-every-run`) — TASK-31 Desktop phase 4, fast-forwarded into feat/desktop-mvp; remove the worktree and branch. 2026-10-27
 - `.claude/worktrees/ux11-motion` (ветка fix/ux11-motion) — worktree UX-11, всё влито в feat/desktop-mvp. 2026-10-27
 - `.claude/worktrees/desktop-sync` (ветка feat/desktop-sync) — worktree TASK-33, всё в feat/desktop-mvp. Также scratchpad `rec/` (пустые папки проверки --record). 2026-10-27
+- `/home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/blog-sync-stop` (ветка docs/blog-sync-stop в cli-private) — POST-109 уже в main cli-private (`fde60611`); удалить worktree и ветку. 2026-10-27
