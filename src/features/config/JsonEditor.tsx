@@ -66,14 +66,14 @@ export function JsonEditor({ label, value, onChange, onSave, marks, readOnly }: 
     }
   }
 
-  const box = "m-0 px-3 py-2.5 font-mono text-[0.85rem] leading-[1.6] whitespace-pre"
+  const box = "m-0 px-3 py-2.5 font-mono text-[0.9rem] leading-[1.6] whitespace-pre"
 
   return (
     <div className="grid h-[min(60vh,34rem)] min-h-[16rem] grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-app">
       <div
         ref={gutter}
         aria-hidden
-        className="overflow-hidden border-line border-r bg-app-2 py-2.5 font-mono text-[0.85rem] leading-[1.6] text-ink-dim tabular-nums select-none"
+        className="overflow-hidden border-line border-r bg-app-2 py-2.5 font-mono text-[0.9rem] leading-[1.6] text-ink-dim tabular-nums select-none"
       >
         {Array.from({ length: lines }, (_, i) => {
           const mark = marks.get(i + 1)

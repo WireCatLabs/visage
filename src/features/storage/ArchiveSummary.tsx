@@ -26,12 +26,12 @@ export function ArchiveSummary() {
           In storage
         </h2>
         {info === undefined && (
-          <p className="text-[0.85rem] text-ink-dim">
+          <p className="text-[0.9rem] text-ink-dim">
             <Skeleton chars={44} />
           </p>
         )}
         {info && (
-          <p className="reveal text-[0.85rem] text-ink-dim">
+          <p className="reveal text-[0.9rem] text-ink-dim">
             Counted by <span className="font-mono">{findTool(info.answeredBy)?.bin ?? info.answeredBy} store info</span>
             {infoAt !== null && (
               <>
@@ -103,7 +103,7 @@ function Contents({ info }: { info: StoreInfo }) {
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-[1.2rem] gap-y-3">
         {items.map((t) => (
           <div key={t.key}>
-            <dt className="text-[0.85rem] text-ink-dim">{t.label}</dt>
+            <dt className="text-[0.9rem] text-ink-dim">{t.label}</dt>
             <dd className="selectable font-mono text-[1.02rem] tabular-nums">{n(t.value)}</dd>
           </div>
         ))}
@@ -112,7 +112,7 @@ function Contents({ info }: { info: StoreInfo }) {
       {info.breakdown ? (
         <div className="flex flex-col gap-3">
           <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-1 border-0 p-0">
-            <legend className="float-left mr-2 text-[0.85rem] text-ink-dim">Break down by</legend>
+            <legend className="float-left mr-2 text-[0.9rem] text-ink-dim">Break down by</legend>
             {DIMENSIONS.map((d) => (
               <button
                 key={d.id}
@@ -145,7 +145,7 @@ function Contents({ info }: { info: StoreInfo }) {
                     <th scope="row" className="w-[40%] py-1.5 pr-4 text-left font-normal">
                       <span className="block truncate text-[0.95rem] text-ink">{r.label}</span>
                       {r.detail && (
-                        <span className="block truncate font-mono text-[0.8rem] text-ink-dim tabular-nums">
+                        <span className="block truncate font-mono text-[0.85rem] text-ink-dim tabular-nums">
                           {r.detail}
                         </span>
                       )}
@@ -159,7 +159,7 @@ function Contents({ info }: { info: StoreInfo }) {
                       </span>
                     </td>
                     <td className="w-[7.5rem] py-1.5 text-right font-mono text-[0.95rem] tabular-nums">
-                      {n(r.value)} <span className="text-[0.8rem] text-ink-dim">{UNIT[dim]}</span>
+                      {n(r.value)} <span className="text-[0.85rem] text-ink-dim">{UNIT[dim]}</span>
                     </td>
                   </tr>
                 ))}
@@ -183,7 +183,7 @@ function ContentsSkeleton() {
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-[1.2rem] gap-y-3">
         {TOTALS.map((t, i) => (
           <div key={t.key}>
-            <dt className="text-[0.85rem] text-ink-dim">{t.label}</dt>
+            <dt className="text-[0.9rem] text-ink-dim">{t.label}</dt>
             <dd className="font-mono text-[1.02rem]">
               <Skeleton chars={6} {...(i === 0 ? { label: "Reading storage" } : {})} />
             </dd>
@@ -192,7 +192,7 @@ function ContentsSkeleton() {
       </dl>
       <div className="flex flex-col gap-3">
         <fieldset disabled className="m-0 flex min-w-0 flex-wrap items-center gap-1 border-0 p-0">
-          <legend className="float-left mr-2 text-[0.85rem] text-ink-dim">Break down by</legend>
+          <legend className="float-left mr-2 text-[0.9rem] text-ink-dim">Break down by</legend>
           {DIMENSIONS.map((d) => (
             <button
               key={d.id}
@@ -215,7 +215,7 @@ function ContentsSkeleton() {
                   <span className="block text-[0.95rem]">
                     <Skeleton chars={9} />
                   </span>
-                  <span className="block font-mono text-[0.8rem]">
+                  <span className="block font-mono text-[0.85rem]">
                     <Skeleton chars={34} />
                   </span>
                 </th>

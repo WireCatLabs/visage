@@ -113,7 +113,7 @@ function DeleteDataChoice(props: {
         />
         <span>
           Also delete {name}'s data
-          <span className="block text-[0.85rem] text-ink-soft">
+          <span className="block text-[0.9rem] text-ink-soft">
             {none
               ? "It has no data on this computer."
               : "Its settings, sign-in sessions and caches. Deleted only if the uninstall succeeds."}
@@ -121,7 +121,7 @@ function DeleteDataChoice(props: {
         </span>
       </label>
       {data.sharedInUse && (
-        <p className="mt-2 ml-[1.6rem] text-[0.85rem] text-ink-soft">
+        <p className="mt-2 ml-[1.6rem] text-[0.9rem] text-ink-soft">
           Messages in the shared storage stay; other tools use it. Clear them on Storage.
         </p>
       )}
@@ -135,7 +135,7 @@ function DeleteDataChoice(props: {
           )
         ) : (
           !none && (
-            <ul className="flex flex-col gap-1 text-[0.85rem]" aria-label={`${name}'s data folders`}>
+            <ul className="flex flex-col gap-1 text-[0.9rem]" aria-label={`${name}'s data folders`}>
               {data.folders.map((f) => (
                 <li key={f.path} className="flex flex-wrap items-baseline gap-x-2">
                   <code className="selectable min-w-0 break-all font-mono text-ink">{f.path}</code>
@@ -172,11 +172,11 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
           <ExternalLinkButton href={tool.repo}>GitHub</ExternalLinkButton>
         </div>
         <div>
-          <h4 className="mb-2 text-[0.85rem] font-medium text-ink-dim">Install from a terminal</h4>
+          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">Install from a terminal</h4>
           <CopyField value={installCommand(tool)} label="Copy the install command" />
         </div>
         <div>
-          <h4 className="mb-2 text-[0.85rem] font-medium text-ink-dim">Installed at</h4>
+          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">Installed at</h4>
           {installs.length === 0 && <p className="text-[0.875rem] text-ink-soft">Not installed on this computer.</p>}
           <ul className="flex flex-col gap-1.5">
             {installs.map((i, n) => (
@@ -235,7 +235,7 @@ function ExtraCopies({ tool }: { tool: CatalogTool }) {
       <ul className="flex flex-col gap-2 pl-6">
         {unused.map((i) => (
           <li key={i.path} className="flex flex-col gap-1">
-            <span className="text-[0.85rem] text-ink-soft">
+            <span className="text-[0.9rem] text-ink-soft">
               <code className="selectable font-mono">{i.path}</code> · {i.version ?? "does not start"} · {i.manager}
             </span>
             <CopyField

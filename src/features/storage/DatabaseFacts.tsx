@@ -38,7 +38,7 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
       <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-[1.2rem] gap-y-2 text-[0.95rem]">
         {info.path && (
           <Fact label="File">
-            <span className="selectable block truncate font-mono text-[0.85rem]">{info.path}</span>
+            <span className="selectable block truncate font-mono text-[0.9rem]">{info.path}</span>
           </Fact>
         )}
         <Fact label="Size">
@@ -89,7 +89,7 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
         facts.migrations.length > 0 && (
           <Disclosure summary={`Migration history (${facts.migrations.length})`}>
             <div className="max-h-[16rem] max-w-[34rem] overflow-auto">
-              <table aria-label="Migration history" className="w-full text-[0.85rem]">
+              <table aria-label="Migration history" className="w-full text-[0.9rem]">
                 <thead className="sticky top-0 bg-app">
                   <tr className="text-left text-ink-dim">
                     <th scope="col" className="py-1 pr-4 font-medium">
@@ -137,7 +137,7 @@ export function DatabaseFactsSkeleton() {
       </div>
       <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-[1.2rem] gap-y-2 text-[0.95rem]">
         <Fact label="File">
-          <span className="block font-mono text-[0.85rem]">
+          <span className="block font-mono text-[0.9rem]">
             <Skeleton chars={34} />
           </span>
         </Fact>
@@ -184,7 +184,7 @@ export function DatabaseFactsSkeleton() {
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
-      <dt className="pt-[0.1rem] text-[0.85rem] text-ink-dim">{label}</dt>
+      <dt className="pt-[0.1rem] text-[0.9rem] text-ink-dim">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </>
   )
@@ -246,7 +246,7 @@ function Health() {
             ? "No problems found"
             : `${issues.length} ${issues.length === 1 ? "problem" : "problems"} found`}
         </span>
-        <span className="text-[0.85rem] text-ink-dim">{took}</span>
+        <span className="text-[0.9rem] text-ink-dim">{took}</span>
       </span>
       {issues.length > 0 && (
         <ul className="flex flex-col gap-2">

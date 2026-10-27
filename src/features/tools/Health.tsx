@@ -237,7 +237,7 @@ export function ManualSetup(props: { tool: CatalogTool; onCheck: () => void; che
   if (!signIn?.command) return null
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[0.85rem] leading-snug text-ink-soft">
+      <p className="text-[0.9rem] leading-snug text-ink-soft">
         Add an account from a terminal; this has no sign-in window yet.{" "}
         {signIn.guide && (
           <a
@@ -302,7 +302,7 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
         else open()
       }}
     >
-      <label className="text-[0.85rem] font-medium text-ink" htmlFor={id}>
+      <label className="text-[0.9rem] font-medium text-ink" htmlFor={id}>
         {label}
         <span className="sr-only">, {tool.name}</span>
       </label>
@@ -343,11 +343,11 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
         </Button>
       </div>
       {name !== "" && !valid ? (
-        <p id={`${id}-hint`} className="text-[0.85rem] text-bad">
+        <p id={`${id}-hint`} className="text-[0.9rem] text-bad">
           Use letters, digits, dots, dashes or underscores.
         </p>
       ) : (
-        <p id={`${id}-hint`} className="text-[0.85rem] leading-snug text-ink-soft">
+        <p id={`${id}-hint`} className="text-[0.9rem] leading-snug text-ink-soft">
           Any short name, such as personal or work: one name per account.{" "}
           {here ? "Sign in here shows the QR code in this window; the terminal runs " : "The terminal window runs "}
           <code className="font-mono whitespace-nowrap text-ink">{setupCommand(tool, valid ? name : "<name>")}</code>.
@@ -357,7 +357,7 @@ export function NewProfile(props: { tool: CatalogTool; onCheck: () => void; chec
       {error && (
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-[0.85rem] text-ink-soft">No terminal could be opened. Run this yourself:</p>
+            <p className="text-[0.9rem] text-ink-soft">No terminal could be opened. Run this yourself:</p>
             <ReportThis what="Opening a terminal to sign in" tool={tool.id} command={command} error={error} />
           </div>
           {command && <CopyField value={command} label="Copy the setup command" />}
@@ -397,7 +397,7 @@ function ConfigProblems({ findings, toolId }: { findings: Finding[]; toolId: str
   return (
     <section aria-label="Configuration problems" className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <h5 className="text-[0.85rem] font-medium text-ink-dim">Configuration problems</h5>
+        <h5 className="text-[0.9rem] font-medium text-ink-dim">Configuration problems</h5>
         <Button size="sm" variant="ghost" onClick={open} icon={<FolderOpen className="size-4" aria-hidden />}>
           Open settings folder
         </Button>
@@ -415,7 +415,7 @@ function ConfigProblems({ findings, toolId }: { findings: Finding[]; toolId: str
               {findingIcon(f)}
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span>{f.text}</span>
-                {at && <code className="selectable font-mono text-[0.8rem] break-all text-ink-soft">{at}</code>}
+                {at && <code className="selectable font-mono text-[0.85rem] break-all text-ink-soft">{at}</code>}
                 {f.fix && <CopyField value={f.fix} label="Copy the fix command" />}
               </div>
             </li>
@@ -446,7 +446,7 @@ function Result({ check, toolId }: { check: Check; toolId: string }) {
                   <>
                     {" "}
                     <span className="text-ink-dim">Fix:</span>{" "}
-                    <code className="selectable font-mono text-[0.85rem]">{f.fix}</code>
+                    <code className="selectable font-mono text-[0.9rem]">{f.fix}</code>
                   </>
                 )}
               </span>
@@ -455,7 +455,7 @@ function Result({ check, toolId }: { check: Check; toolId: string }) {
         </ul>
       )}
       <Disclosure summary="Technical details">
-        <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.8rem] text-ink-soft">
+        <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.85rem] text-ink-soft">
           <dt>Command</dt>
           <dd className="selectable font-mono text-ink">{result.command}</dd>
           <dt>Exit code</dt>
@@ -463,10 +463,10 @@ function Result({ check, toolId }: { check: Check; toolId: string }) {
           <dt>Took</dt>
           <dd className="font-mono text-ink">{(result.durationMs / 1000).toFixed(1)} s</dd>
         </dl>
-        <pre className="selectable max-h-56 overflow-auto rounded-[0.35rem] bg-app-2 p-2.5 font-mono text-[0.75rem] leading-relaxed text-ink-soft">
+        <pre className="selectable max-h-56 overflow-auto rounded-[0.35rem] bg-app-2 p-2.5 font-mono text-[0.85rem] leading-relaxed text-ink-soft">
           {JSON.stringify(result.report, null, 2) ?? result.stderr}
         </pre>
-        <p className="mt-1.5 text-[0.75rem] text-ink-dim">Account names, numbers, addresses and tokens are hidden.</p>
+        <p className="mt-1.5 text-[0.85rem] text-ink-dim">Account names, numbers, addresses and tokens are hidden.</p>
       </Disclosure>
     </div>
   )

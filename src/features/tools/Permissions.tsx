@@ -359,7 +359,7 @@ function Ceiling({ tool, profile, ceiling }: { tool: CatalogTool; profile: strin
           Open setup
         </Button>
       ) : (
-        command && <code className="selectable font-mono text-[0.8rem] text-ink">{command}</code>
+        command && <code className="selectable font-mono text-[0.85rem] text-ink">{command}</code>
       )}
     </div>
   )
@@ -379,9 +379,9 @@ function GroupName(props: { label: string; groupKey: string; detail: string | nu
           </span>
         )}
         <span className="truncate font-medium text-ink">{label}</span>
-        <span className="font-mono text-[0.8rem] text-ink-dim">{groupKey}</span>
+        <span className="font-mono text-[0.85rem] text-ink-dim">{groupKey}</span>
       </div>
-      {detail && <p className="text-[0.85rem] text-ink-soft">{detail}</p>}
+      {detail && <p className="text-[0.9rem] text-ink-soft">{detail}</p>}
     </div>
   )
 }
@@ -480,7 +480,7 @@ function GroupRow(props: {
                 <ul aria-label={`${s.group.label}: still allowed`} className="flex flex-col gap-1">
                   {still.map((c) => (
                     <li key={c.path.join(" ")}>
-                      <code className="selectable font-mono text-[0.85rem] text-ink">
+                      <code className="selectable font-mono text-[0.9rem] text-ink">
                         {tool.bin} {c.path.join(" ")}
                       </code>
                     </li>
@@ -498,7 +498,7 @@ function GroupRow(props: {
 function SubList({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <h5 className="text-[0.8rem] font-medium text-ink-dim">{title}</h5>
+      <h5 className="text-[0.85rem] font-medium text-ink-dim">{title}</h5>
       {children}
     </div>
   )
@@ -550,11 +550,11 @@ function Override(props: {
     <li className="flex flex-col gap-1">
       <div className={ROW_GRID}>
         <span className="min-w-0">
-          <code className="selectable font-mono text-[0.85rem] text-ink">{level.key}</code>
+          <code className="selectable font-mono text-[0.9rem] text-ink">{level.key}</code>
           {layerOf(level, defaultsView) === "defaults" && (
-            <span className="ml-2 text-[0.85rem] text-ink-soft">from the defaults</span>
+            <span className="ml-2 text-[0.9rem] text-ink-soft">from the defaults</span>
           )}
-          {lock && <span className="block text-[0.85rem] text-ink-soft">{lock}</span>}
+          {lock && <span className="block text-[0.9rem] text-ink-soft">{lock}</span>}
         </span>
         <KeySelect
           label={`${level.key} permission`}
@@ -582,10 +582,10 @@ function Blocked(props: {
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <code className="selectable min-w-0 font-mono text-[0.85rem] text-ink">
+        <code className="selectable min-w-0 font-mono text-[0.9rem] text-ink">
           {tool.bin} {command.path.join(" ")}
         </code>
-        {command.reason && <span className="min-w-0 flex-1 text-[0.85rem] text-ink-soft">{command.reason}</span>}
+        {command.reason && <span className="min-w-0 flex-1 text-[0.9rem] text-ink-soft">{command.reason}</span>}
         {key && allowed && (
           <Button size="sm" variant="ghost" disabled={row?.state === "saving"} onClick={() => onAllow(key)}>
             {own ? "Allow" : `Allow all of ${key}`}
@@ -601,7 +601,7 @@ function RowStatus({ row }: { row: Row | undefined }) {
   if (!row) return null
   if (row.state === "saving")
     return (
-      <p role="status" className="text-[0.85rem] text-ink-soft">
+      <p role="status" className="text-[0.9rem] text-ink-soft">
         Saving…
       </p>
     )
@@ -665,7 +665,7 @@ function ConfirmWiden(props: {
           Your first-run answer still keeps every tool read only, so this has no effect until then.
         </p>
       )}
-      <p className="mt-3 mb-1.5 text-[0.85rem]">WireCat runs:</p>
+      <p className="mt-3 mb-1.5 text-[0.9rem]">WireCat runs:</p>
       <CopyField
         value={commandLine(tool, profile, { key: change.key, level: change.level })}
         label="Copy the command"

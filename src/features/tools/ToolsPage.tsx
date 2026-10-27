@@ -97,7 +97,7 @@ export function ToolsPage() {
       <UpgradeWarning />
 
       {latestUnknown && (
-        <p className="text-[0.85rem] text-ink-dim">
+        <p className="text-[0.9rem] text-ink-dim">
           Could not ask npm for the latest versions, so updates are not shown.
         </p>
       )}

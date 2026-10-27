@@ -24,7 +24,7 @@ export function ErrorNotice({ children, detail, action, inline = false, classNam
     >
       <div className={cx("min-w-0 flex-1 basis-[16rem]", !inline && "py-1")}>
         <p className={cx("selectable", inline && "text-bad")}>{children}</p>
-        {detail && <div className="selectable mt-1 text-[0.85rem] text-ink-soft">{detail}</div>}
+        {detail && <div className="selectable mt-1 text-[0.9rem] text-ink-soft">{detail}</div>}
       </div>
       {action && <div className="flex shrink-0 gap-2">{action}</div>}
     </div>

@@ -104,13 +104,13 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
 
       <section aria-label="Steps" className="flex flex-col gap-[0.5rem]">
         <div>
-          <h4 className="text-[0.85rem] font-medium text-ink-dim">
+          <h4 className="text-[0.9rem] font-medium text-ink-dim">
             Steps{item ? ` · ${item.event_count ?? events.length}` : ""}
             {typeof run.events_dropped === "number" && run.events_dropped > 0
               ? `, ${run.events_dropped} more not kept`
               : ""}
           </h4>
-          <p className="text-[0.85rem] text-ink-dim">
+          <p className="text-[0.9rem] text-ink-dim">
             Each request the tool sent to {service} (→) and its answer (←), plus notable moments: a warning, an answer
             from what it already kept, a crash. A retry and the wait before it are marked.
           </p>
@@ -135,8 +135,8 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
 
       <section aria-label="Run record" className="flex flex-col gap-[0.5rem]">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-[0.85rem] font-medium text-ink-dim">Run record</h4>
-          <span className="flex items-center gap-1 text-[0.85rem] text-ink-dim">
+          <h4 className="text-[0.9rem] font-medium text-ink-dim">Run record</h4>
+          <span className="flex items-center gap-1 text-[0.9rem] text-ink-dim">
             Copy JSON
             <CopyValue value={json} label="Copy the run as JSON" />
           </span>
@@ -155,9 +155,9 @@ function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter
   const via = typeof run.via === "string" && run.via !== "cli" ? viaName(run.via) : null
   return (
     <section aria-label="Command line" className="flex flex-col gap-[0.4rem]">
-      <h4 className="text-[0.85rem] font-medium text-ink-dim">Command line</h4>
+      <h4 className="text-[0.9rem] font-medium text-ink-dim">Command line</h4>
       <CopyField value={line} label="Copy the command line" />
-      <p className="text-[0.85rem] text-ink-dim">
+      <p className="text-[0.9rem] text-ink-dim">
         {agent ? (
           <>
             Started by{" "}
@@ -201,7 +201,7 @@ function Facts({ run }: { run: Run }) {
     [run.runtime, run.platform, run.arch].filter(Boolean).join(" · ") || null,
   ].filter(Boolean)
   return (
-    <p className="font-mono text-[0.85rem] text-ink-soft tabular-nums">
+    <p className="font-mono text-[0.9rem] text-ink-soft tabular-nums">
       {facts.map((f, i) => (
         <Fragment key={String(f)}>
           {i > 0 && <span className="px-[0.45rem] text-ink-dim">/</span>}
@@ -238,7 +238,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
           <col className="w-[5rem]" />
         </colgroup>
         <thead>
-          <tr className="text-left text-[0.85rem] text-ink-dim">
+          <tr className="text-left text-[0.9rem] text-ink-dim">
             <th className="sr-only">Details</th>
             <th className="py-[0.4rem] font-medium">Time</th>
             <th className="font-medium">Step</th>
@@ -256,7 +256,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
               <Fragment key={i}>
                 <tr
                   onClick={() => setOpen(isOpen ? null : i)}
-                  className="cursor-pointer border-line border-t font-mono text-[0.85rem] hover:bg-app-2"
+                  className="cursor-pointer border-line border-t font-mono text-[0.9rem] hover:bg-app-2"
                 >
                   <td className="pl-[0.4rem]">
                     <button
@@ -331,7 +331,7 @@ function StepCells({ event }: { event: RunEvent }) {
             </span>
           )}
           <span className="truncate">{step.name}</span>
-          {step.transport && <span className="text-[0.8rem] text-ink-dim">{step.transport}</span>}
+          {step.transport && <span className="text-[0.85rem] text-ink-dim">{step.transport}</span>}
         </span>
       </td>
       <td className="truncate pr-[0.8rem] text-ink-soft">

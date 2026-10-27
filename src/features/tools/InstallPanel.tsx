@@ -166,7 +166,7 @@ function Log({ lines }: { lines: string[] }) {
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1)
       tabIndex={0}
       aria-label="Output log"
-      className="selectable mt-3 max-h-48 overflow-auto rounded-[0.4rem] border border-line bg-app p-3 font-mono text-[0.8rem] leading-relaxed text-ink-soft"
+      className="selectable mt-3 max-h-48 overflow-auto rounded-[0.4rem] border border-line bg-app p-3 font-mono text-[0.85rem] leading-relaxed text-ink-soft"
     >
       {lines.length ? lines.join("\n") : "Waiting for output…"}
     </pre>

@@ -15,12 +15,12 @@ export function RunFailure({ error, action }: { error: RunError; action?: ReactN
     >
       <div className="flex flex-col gap-[0.3rem]">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-[0.85rem] font-medium text-ink-dim">What went wrong</h4>
+          <h4 className="text-[0.9rem] font-medium text-ink-dim">What went wrong</h4>
           {action}
         </div>
         <p className="flex flex-wrap items-baseline gap-x-[0.6rem] gap-y-1">
           <span className="selectable font-mono text-[0.95rem] font-medium text-bad">{error.class}</span>
-          {error.code && <span className="selectable font-mono text-[0.85rem] text-ink-soft">{error.code}</span>}
+          {error.code && <span className="selectable font-mono text-[0.9rem] text-ink-soft">{error.code}</span>}
         </p>
         {error.message && <p className="selectable max-w-[75ch] text-[0.95rem] text-ink">{error.message}</p>}
       </div>
@@ -61,7 +61,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
   return (
     <>
       <dt className="text-ink-dim">{term}</dt>
-      <dd className="selectable min-w-0 font-mono text-[0.85rem] break-words text-ink tabular-nums">{children}</dd>
+      <dd className="selectable min-w-0 font-mono text-[0.9rem] break-words text-ink tabular-nums">{children}</dd>
     </>
   )
 }
@@ -76,7 +76,7 @@ function Stack({ frames }: { frames: string[] }) {
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 rounded-[0.3rem] text-[0.85rem] font-medium text-ink-dim hover:text-ink"
+        className="inline-flex items-center gap-1 rounded-[0.3rem] text-[0.9rem] font-medium text-ink-dim hover:text-ink"
       >
         <ChevronRight
           aria-hidden
@@ -85,7 +85,7 @@ function Stack({ frames }: { frames: string[] }) {
         Where in the tool · {frames.length} {frames.length === 1 ? "frame" : "frames"}
       </button>
       <Collapse open={open} id={id} className="pt-[0.35rem]">
-        <ol className="selectable overflow-x-auto rounded-[0.45rem] border border-line bg-app px-[0.8rem] py-[0.5rem] font-mono text-[0.8rem] text-ink-soft">
+        <ol className="selectable overflow-x-auto rounded-[0.45rem] border border-line bg-app px-[0.8rem] py-[0.5rem] font-mono text-[0.85rem] text-ink-soft">
           {frames.map((f, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: frames repeat in recursion and never reorder
             <li key={i} className="whitespace-pre">

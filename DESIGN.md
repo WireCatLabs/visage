@@ -66,7 +66,7 @@ typography:
     lineHeight: 1.625
   label:
     fontFamily: '"Onest Variable", "Onest", system-ui, sans-serif'
-    fontSize: "0.85rem"
+    fontSize: "0.9rem"
     fontWeight: 500
   button:
     fontFamily: '"Onest Variable", "Onest", system-ui, sans-serif'
@@ -79,7 +79,7 @@ typography:
     fontFeature: '"tnum"'
   mono-small:
     fontFamily: '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, Menlo, monospace'
-    fontSize: "0.8rem"
+    fontSize: "0.85rem"
     fontWeight: 400
     lineHeight: 1.625
 rounded:
@@ -299,7 +299,7 @@ The app follows the site's purple, wall, ink and `app-3` values exactly in light
 
 The window is a fixed shell: a sidebar on the `wall` (12rem, 13.5rem from the `xl` breakpoint at 1280px), and a content column with a 3.3rem top bar (window controls, drag region), a 3.9rem "Your computer" readiness strip, and a scrolling page. The body never scrolls; only the page region does. The default window is 1280×840 and the minimum is 960×640 ([src-tauri/tauri.conf.json](src-tauri/tauri.conf.json)).
 
-The root font size is fluid, `clamp(11.5px, 0.5rem + 0.35vw, 13.5px)` (about 12.5px in the default window; the owner asked for a denser interface) on `html`, and every size in the app is in rem, so the whole interface grows and shrinks with the window like native content. All spacing tokens above scale with it.
+The root font size is fluid, `clamp(12px, 0.5rem + 0.42vw, 15px)` (about 13.4px in the default window). The owner first asked for a denser interface, then found the smallest text too hard to read, so the root grew from 12.5px and the two smallest steps moved up: captions and labels 0.85rem → 0.9rem, mono small and pills 0.8rem → 0.85rem; nothing in the app is set below 0.85rem except the uppercase group heading in a Select (0.8rem) on `html`, and every size in the app is in rem, so the whole interface grows and shrinks with the window like native content. All spacing tokens above scale with it.
 
 A page is a vertical stack with a 1.5rem gap and a 2.1rem side gutter: title row (title left, a quiet secondary action right, bottom-aligned), then any notice banners, then the rack. The rack row is a five-column grid: lamp, icon, name and tagline (flexible), version, action. The fixed columns widen and the gap grows from 0.9rem to 1.2rem at `xl`. Rows are at least 4.5rem tall. The Storage rack uses the same frame with four columns (icon, name and folders, size, action).
 
@@ -348,7 +348,7 @@ Four steps joined by a 2px track. Done is a green dot with a check, active is a 
 
 ### Chips (Pills)
 
-- **Style:** small (0.8rem, medium weight), 0.3rem corners, no border.
+- **Style:** small (0.85rem, medium weight), 0.3rem corners, no border.
 - **Variants:** neutral (`app-3` / `ink-soft`, for "Soon" and "not signed in"), brand (`brand-soft` / `brand`, for "runs first" and "signed in"), warn (amber at 15% / `warn-ink`, for "not used").
 
 ### Cards / Containers

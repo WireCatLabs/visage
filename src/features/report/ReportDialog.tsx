@@ -238,18 +238,18 @@ function Field({
           <label htmlFor={id} className="text-[0.875rem] font-medium text-ink">
             {label}
           </label>
-          {optional && <span className="text-[0.85rem] text-ink-dim">optional</span>}
+          {optional && <span className="text-[0.9rem] text-ink-dim">optional</span>}
         </span>
         {aside}
       </div>
       {hint && (
-        <p id={`${id}-hint`} className="-mt-1 text-[0.85rem] leading-snug text-ink-dim">
+        <p id={`${id}-hint`} className="-mt-1 text-[0.9rem] leading-snug text-ink-dim">
           {hint}
         </p>
       )}
       {children({ id, "aria-invalid": Boolean(problem), "aria-describedby": describedBy || undefined })}
       {problem && (
-        <p id={`${id}-error`} className="flex items-center gap-1.5 text-[0.85rem] text-bad">
+        <p id={`${id}-error`} className="flex items-center gap-1.5 text-[0.9rem] text-bad">
           <CircleAlert className="size-3.5 shrink-0" aria-hidden />
           {problem.message}
         </p>
@@ -263,7 +263,7 @@ function Counter({ value, limit, id }: { value: string; limit: number; id: strin
   return (
     <span
       id={id}
-      className={cx("font-mono text-[0.78rem] tabular-nums", n >= limit - 10 ? "text-warn-ink" : "text-ink-dim")}
+      className={cx("font-mono text-[0.85rem] tabular-nums", n >= limit - 10 ? "text-warn-ink" : "text-ink-dim")}
     >
       <span className="sr-only">Characters used: </span>
       {n}/{limit}
@@ -276,7 +276,7 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
   const runs = (context?.attachments?.runs as { tool: string; runs: unknown[] }[] | undefined) ?? []
   const runCount = runs.reduce((n, r) => n + (Array.isArray(r.runs) ? r.runs.length : 0), 0)
   const pre =
-    "selectable max-h-56 overflow-auto whitespace-pre-wrap rounded-[0.3rem] border border-line bg-app p-2.5 font-mono text-[0.78rem] leading-relaxed text-ink"
+    "selectable max-h-56 overflow-auto whitespace-pre-wrap rounded-[0.3rem] border border-line bg-app p-2.5 font-mono text-[0.85rem] leading-relaxed text-ink"
 
   return (
     <section

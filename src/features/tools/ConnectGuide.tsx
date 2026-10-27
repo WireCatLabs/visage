@@ -320,7 +320,7 @@ function Rail(props: {
           <span
             aria-hidden
             className={cx(
-              "relative z-10 grid size-[1.4rem] shrink-0 place-items-center rounded-full text-[0.75rem] font-semibold tabular-nums transition-colors duration-300",
+              "relative z-10 grid size-[1.4rem] shrink-0 place-items-center rounded-full text-[0.85rem] font-semibold tabular-nums transition-colors duration-300",
               step.state === "done" && "bg-ok text-on-status",
               step.state === "current" && "bg-brand text-brand-ink",
               step.state === "todo" && "bg-app-3 text-ink-dim",
@@ -346,7 +346,7 @@ function Rail(props: {
               </span>
             </span>
             {step.state === "done" && summary[step.id] && (
-              <span className="flex min-w-0 items-baseline gap-2 text-[0.8rem] text-ink-dim">
+              <span className="flex min-w-0 items-baseline gap-2 text-[0.85rem] text-ink-dim">
                 <span className="truncate">{summary[step.id]}</span>
                 {step.id === "choose" && onChoose && (
                   <button
@@ -371,7 +371,7 @@ function Para({ children }: { children: ReactNode }) {
 }
 
 function Note({ children }: { children: ReactNode }) {
-  return <p className="max-w-[64ch] text-[0.84rem] text-ink-dim">{children}</p>
+  return <p className="max-w-[64ch] text-[0.9rem] text-ink-dim">{children}</p>
 }
 
 function Link({ href, children }: { href: string; children: ReactNode }) {
@@ -399,7 +399,7 @@ function ChooseStep({ tool, onChoose }: { tool: CatalogTool; onChoose(app: AppId
             className="flex flex-col items-start gap-0.5 rounded-[0.45rem] border border-line-strong bg-app px-3.5 py-3 text-left transition-colors duration-150 hover:border-brand hover:bg-brand-soft/40"
           >
             <span className="text-[0.98rem] font-semibold text-ink">{APPS[id].name}</span>
-            <span className="text-[0.82rem] text-ink-soft">{APPS[id].hint}</span>
+            <span className="text-[0.9rem] text-ink-soft">{APPS[id].hint}</span>
           </button>
         ))}
       </div>
@@ -408,7 +408,7 @@ function ChooseStep({ tool, onChoose }: { tool: CatalogTool; onChoose(app: AppId
 }
 
 const inputClass =
-  "h-8 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.8rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
+  "h-8 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.85rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
 
 function AddressStep(props: {
   tool: CatalogTool
@@ -501,7 +501,7 @@ function AddressStep(props: {
             127.0.0.1:{port || DEFAULT_PORT} on this computer.
           </Para>
           <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
-            <span className="text-[0.85rem] font-medium text-ink-dim">The tunnel's address</span>
+            <span className="text-[0.9rem] font-medium text-ink-dim">The tunnel's address</span>
             <input
               id={`${id}-url`}
               className={`${inputClass} w-full max-w-[32rem]`}
@@ -585,8 +585,8 @@ function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunn
             </span>
           </span>
           <span id={`${name}-${o.id}-hint`} className="flex flex-col gap-1">
-            <span className="text-[0.84rem] text-ink-soft">{o.hint}</span>
-            {o.warn && <span className="text-[0.84rem] text-warn-ink">{o.warn}</span>}
+            <span className="text-[0.9rem] text-ink-soft">{o.hint}</span>
+            {o.warn && <span className="text-[0.9rem] text-warn-ink">{o.warn}</span>}
           </span>
         </label>
       ))}
@@ -597,7 +597,7 @@ function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunn
 function PortField({ id, port, setPort }: { id: string; port: string; setPort(p: string): void }) {
   return (
     <label className="flex flex-col gap-1" htmlFor={id}>
-      <span className="text-[0.85rem] font-medium text-ink-dim">Port on this computer</span>
+      <span className="text-[0.9rem] font-medium text-ink-dim">Port on this computer</span>
       <input
         id={id}
         className={`${inputClass} w-28`}
@@ -680,7 +680,7 @@ function StartStep(props: {
 function Field({ label, value, copyLabel }: { label: string; value: string; copyLabel: string }) {
   return (
     <div className="min-w-0">
-      <span className="mb-1 block text-[0.8rem] font-medium text-ink-dim">{label}</span>
+      <span className="mb-1 block text-[0.85rem] font-medium text-ink-dim">{label}</span>
       <CopyField value={value} label={copyLabel} />
     </div>
   )
@@ -1133,7 +1133,7 @@ function NextSteps({ tool, name, onAgain }: { tool: CatalogTool; name: string; o
     <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
       <p className="text-[0.92rem] font-medium text-ink">What next</p>
       <div className="flex max-w-[34rem] flex-col gap-1">
-        <span className="text-[0.84rem] text-ink-soft">Ask {name} something, in a chat with it turned on:</span>
+        <span className="text-[0.9rem] text-ink-soft">Ask {name} something, in a chat with it turned on:</span>
         <CopyField value={testPrompt(tool)} label="Copy a prompt to try" />
       </div>
       <div className="flex flex-wrap items-center gap-2">

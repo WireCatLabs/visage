@@ -204,11 +204,11 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
         )}
       </Choices>
       {profiles?.length === 0 && (
-        <p className="text-[0.85rem] text-ink-dim">
+        <p className="text-[0.9rem] text-ink-dim">
           {error ?? `No ${toolName} profiles yet: set one up in Tools to change a profile's own settings.`}
         </p>
       )}
-      {current === null && <p className="text-[0.85rem] text-ink-dim">Choose a profile to see its settings.</p>}
+      {current === null && <p className="text-[0.9rem] text-ink-dim">Choose a profile to see its settings.</p>}
     </div>
   )
 }
@@ -396,7 +396,7 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
         )}
       </div>
       {(st.settings ? st.settings.configFile : shape.file) && (
-        <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.85rem] text-ink-dim">
+        <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.9rem] text-ink-dim">
           File: <span className="selectable font-mono">{st.settings?.configFile ?? <Skeleton chars={28} />}</span>
         </p>
       )}

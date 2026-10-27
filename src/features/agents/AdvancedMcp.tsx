@@ -17,7 +17,7 @@ export function AdvancedMcp({ agent }: { agent: Agent }) {
   return (
     <Disclosure summary="Advanced: MCP">
       <div className="flex flex-col gap-2 pl-[1.25rem]">
-        <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
+        <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
           For chat apps and agents on another computer. Agents on this computer use the tools directly through their
           skill.
         </p>
@@ -39,9 +39,9 @@ function Servers({ agent }: { agent: Agent }) {
   const { names, canRemove, source, unread } = servers.data
   if (unread)
     return (
-      <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
+      <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
         WireCat does not read {agent.name}'s MCP servers. See{" "}
-        <code className="selectable font-mono text-[0.8rem]">{unread}</code>.
+        <code className="selectable font-mono text-[0.85rem]">{unread}</code>.
       </p>
     )
   const rows = PROGRAMS.flatMap((tool) =>
@@ -50,7 +50,7 @@ function Servers({ agent }: { agent: Agent }) {
   return (
     <>
       {rows.length === 0 ? (
-        <p className="text-[0.85rem] text-ink-soft">{agent.name} has no WireCat MCP server registered.</p>
+        <p className="text-[0.9rem] text-ink-soft">{agent.name} has no WireCat MCP server registered.</p>
       ) : (
         <ul className="flex flex-col gap-1.5" aria-label={`WireCat MCP servers in ${agent.name}`}>
           {rows.map(({ tool, profile }) => (
@@ -66,7 +66,7 @@ function Servers({ agent }: { agent: Agent }) {
           ))}
         </ul>
       )}
-      <p className="text-[0.8rem] text-ink-dim">
+      <p className="text-[0.85rem] text-ink-dim">
         Read from <span className="selectable font-mono">{source}</span>
       </p>
     </>
@@ -87,7 +87,7 @@ function ServerRow(props: {
   const failure = useConnect((s) => s.failures[key])
   return (
     <li>
-      <div className="flex min-h-8 flex-wrap items-center gap-2 text-[0.85rem]">
+      <div className="flex min-h-8 flex-wrap items-center gap-2 text-[0.9rem]">
         <span className="selectable font-mono text-ink">{name}</span>
         <span className="text-ink-soft">{toolName}</span>
         {canRemove && (

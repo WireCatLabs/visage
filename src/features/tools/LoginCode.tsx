@@ -58,7 +58,7 @@ export function LoginCode({
       >
         <CopyField key={code} value={code} label="Copy the login code" />
       </div>
-      <span className="text-[0.8rem] text-ink-dim tabular-nums" aria-live="polite">
+      <span className="text-[0.85rem] text-ink-dim tabular-nums" aria-live="polite">
         {usedAfter === null ? (
           <>Each code works for one login. After an app logs in, a new one appears here.</>
         ) : (

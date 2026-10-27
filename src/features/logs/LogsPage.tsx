@@ -311,7 +311,7 @@ export function LogsPage() {
                   )}
                 </div>
                 {byConversation && sections.length < sectionsTotal && (
-                  <div className="flex items-center justify-center gap-3 text-[0.85rem] text-ink-dim">
+                  <div className="flex items-center justify-center gap-3 text-[0.9rem] text-ink-dim">
                     Showing {sections.length} of {sectionsTotal} conversations
                     <Button size="sm" onClick={() => setShown(Math.max(shown, sectionRuns) + STEP)}>
                       Show more
@@ -319,7 +319,7 @@ export function LogsPage() {
                   </div>
                 )}
                 {!groupBy && matched.length > shown && (
-                  <div className="flex items-center justify-center gap-3 text-[0.85rem] text-ink-dim">
+                  <div className="flex items-center justify-center gap-3 text-[0.9rem] text-ink-dim">
                     Showing {shown} of {matched.length}
                     <Button size="sm" onClick={() => setShown(shown + STEP)}>
                       Show {Math.min(STEP, matched.length - shown)} more
@@ -337,7 +337,7 @@ export function LogsPage() {
 
 function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => void }) {
   return (
-    <ul aria-label="Where the runs come from" className="flex flex-wrap gap-x-[1.4rem] gap-y-[0.45rem] text-[0.85rem]">
+    <ul aria-label="Where the runs come from" className="flex flex-wrap gap-x-[1.4rem] gap-y-[0.45rem] text-[0.9rem]">
       {list.map((s) => (
         <li key={s.id} className="flex min-w-0 items-center gap-[0.45rem]">
           <Lamp tone={sourceTone(s)} size="sm" label={sourceWords(s)} />
@@ -403,7 +403,7 @@ function Loading(props: { reading: string[]; total: number; facetsOpen: boolean;
         ))}
       </div>
       <div className="flex min-w-0 flex-col gap-[0.7rem]">
-        <p className="flex flex-wrap items-center gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
+        <p className="flex flex-wrap items-center gap-x-[0.6rem] text-[0.9rem] text-ink-soft">
           <span
             role="progressbar"
             aria-label="Tools read"
@@ -456,7 +456,7 @@ function Summary(props: {
 }) {
   const { matched, total, failed, since, reading, grouped, groupWord, bareHidden, onShowBare } = props
   return (
-    <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-[0.6rem] text-[0.85rem] text-ink-soft">
+    <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-[0.6rem] text-[0.9rem] text-ink-soft">
       <span>
         <strong className="font-mono font-semibold text-ink tabular-nums">{matched}</strong>{" "}
         {matched === 1 ? "run matches" : "runs match"}
@@ -506,7 +506,7 @@ function Freshness({ at, reading, asked }: { at: number | null; reading: number;
   }, [])
   const text =
     at === null ? "" : reading ? `Reading ${asked - reading} of ${asked} tools…` : `Updated ${ago(Date.now() - at)}`
-  return <span className="min-w-[10.5rem] text-right text-[0.85rem] text-ink-dim tabular-nums">{text}</span>
+  return <span className="min-w-[10.5rem] text-right text-[0.9rem] text-ink-dim tabular-nums">{text}</span>
 }
 
 function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => void }) {

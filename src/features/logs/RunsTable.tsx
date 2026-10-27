@@ -90,7 +90,7 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
       >
         <span className="truncate">{shown}</span>
         {agent.session && (
-          <span className="shrink-0 font-mono text-[0.8rem] text-ink-dim tabular-nums">
+          <span className="shrink-0 font-mono text-[0.85rem] text-ink-dim tabular-nums">
             {shortSession(agent.session)}
           </span>
         )}
@@ -144,7 +144,7 @@ function ConversationRow({ conversation: c, now }: { conversation: Conversation;
           {c.key ? <WhoIcon c={c} /> : <span className="size-[1rem] shrink-0" />}
           <span className="truncate font-medium">{conversationTitle(c)}</span>
           {details.length > 0 && <span className="truncate text-ink-dim">{details.join(" · ")}</span>}
-          <span className="ml-auto flex shrink-0 items-baseline gap-[1.1rem] text-[0.85rem] text-ink-soft">
+          <span className="ml-auto flex shrink-0 items-baseline gap-[1.1rem] text-[0.9rem] text-ink-soft">
             {c.key && (
               <span className="font-mono tabular-nums" title={new Date(c.first).toString()}>
                 from {formatWhen(c.first, now)}
@@ -206,7 +206,7 @@ export function RunsTable({
             </button>
           </td>
           <td
-            className="font-mono text-[0.85rem] text-ink-soft tabular-nums"
+            className="font-mono text-[0.9rem] text-ink-soft tabular-nums"
             title={new Date(run.started_at).toString()}
           >
             {formatWhen(run.started_at, now)}
@@ -217,7 +217,7 @@ export function RunsTable({
               <span className="truncate">{toolName(run.tool)}</span>
             </span>
           </td>
-          <td className="truncate font-mono text-[0.85rem] text-ink-soft">{run.profile ?? "—"}</td>
+          <td className="truncate font-mono text-[0.9rem] text-ink-soft">{run.profile ?? "—"}</td>
           <CommandCell
             value={commandOf(run)}
             unknown={typeof run.unknown_command === "string" ? run.unknown_command : null}
@@ -231,10 +231,10 @@ export function RunsTable({
               </span>
             </span>
           </td>
-          <td className="pr-[1rem] text-right font-mono text-[0.85rem] text-ink-soft tabular-nums">
+          <td className="pr-[1rem] text-right font-mono text-[0.9rem] text-ink-soft tabular-nums">
             {formatDuration(run.duration_ms)}
           </td>
-          <td className="truncate pr-[1.3rem] font-mono text-[0.85rem]">
+          <td className="truncate pr-[1.3rem] font-mono text-[0.9rem]">
             {run.error_code ?? <span className="text-ink-dim">—</span>}
           </td>
         </tr>
@@ -266,7 +266,7 @@ export function RunsTable({
           <col className="w-[9.6rem]" />
         </colgroup>
         <thead>
-          <tr className="border-line-strong border-b text-left text-[0.85rem] text-ink-dim">
+          <tr className="border-line-strong border-b text-left text-[0.9rem] text-ink-dim">
             <th className="sr-only">Details</th>
             <th aria-sort={newest ? "descending" : "ascending"} className="py-[0.55rem] font-medium">
               <button

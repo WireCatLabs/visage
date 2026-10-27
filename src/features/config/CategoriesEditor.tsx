@@ -192,7 +192,7 @@ export function CategoriesPlaceholder({ count }: { count: number }) {
             <p className="text-[0.95rem]">
               <Skeleton chars={24 + ((i * 7) % 16)} />
             </p>
-            <p className="mt-0.5 text-[0.85rem]">
+            <p className="mt-0.5 text-[0.9rem]">
               <Skeleton chars={36 + ((i * 11) % 20)} />
             </p>
           </div>
@@ -222,7 +222,7 @@ function CategoryRow(props: {
         <p className="selectable text-[0.95rem] text-ink">
           {c.meaning || <span className="text-ink-dim">no meaning</span>}
         </p>
-        {c.words && <p className="selectable mt-0.5 line-clamp-2 text-[0.85rem] text-ink-dim">{c.words}</p>}
+        {c.words && <p className="selectable mt-0.5 line-clamp-2 text-[0.9rem] text-ink-dim">{c.words}</p>}
         {status?.state === "failed" && (
           <ErrorNotice
             inline
@@ -233,7 +233,7 @@ function CategoryRow(props: {
           </ErrorNotice>
         )}
         {readOnly && (
-          <p className="mt-1 flex items-start gap-1.5 text-[0.85rem] text-ink-soft">
+          <p className="mt-1 flex items-start gap-1.5 text-[0.9rem] text-ink-soft">
             <Lock className="mt-[0.2rem] size-3.5 shrink-0" aria-hidden />
             Hidden because it may hold personal data. Change it in a terminal.
           </p>
@@ -241,7 +241,7 @@ function CategoryRow(props: {
       </div>
       <div className="flex items-center gap-1">
         {busy ? (
-          <span role="status" className="text-[0.85rem] text-ink-dim">
+          <span role="status" className="text-[0.9rem] text-ink-dim">
             Saving…
           </span>
         ) : (
@@ -346,20 +346,20 @@ function CategoryForm(props: {
           <span className="pt-[0.35rem] font-mono text-[0.95rem] text-ink">{category.name}</span>
         ) : (
           <label className="flex flex-col gap-1">
-            <span className="text-[0.85rem] font-medium text-ink-dim">Name</span>
+            <span className="text-[0.9rem] font-medium text-ink-dim">Name</span>
             <input
               value={name}
               disabled={off}
               onChange={(e) => setName(e.target.value)}
               placeholder="pets"
               spellCheck={false}
-              className={cx(field, "font-mono text-[0.85rem]")}
+              className={cx(field, "font-mono text-[0.9rem]")}
             />
           </label>
         )}
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-[0.85rem] font-medium text-ink-dim">What it is for</span>
+            <span className="text-[0.9rem] font-medium text-ink-dim">What it is for</span>
             <input
               value={meaning}
               disabled={off}
@@ -369,7 +369,7 @@ function CategoryForm(props: {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[0.85rem] font-medium text-ink-dim">Trigger words</span>
+            <span className="text-[0.9rem] font-medium text-ink-dim">Trigger words</span>
             <input
               value={words}
               disabled={off}
@@ -379,7 +379,7 @@ function CategoryForm(props: {
               aria-describedby={`${id}-words`}
               className={field}
             />
-            <span id={`${id}-words`} className="text-[0.85rem] text-ink-dim">
+            <span id={`${id}-words`} className="text-[0.9rem] text-ink-dim">
               Comma-separated. Cyrillic words count as Russian; mark Spanish ones with es:.
             </span>
           </label>

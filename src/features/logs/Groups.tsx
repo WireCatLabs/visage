@@ -15,7 +15,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
         <col className="w-[9rem]" />
       </colgroup>
       <thead>
-        <tr className="border-line-strong border-b text-left text-[0.85rem] text-ink-dim">
+        <tr className="border-line-strong border-b text-left text-[0.9rem] text-ink-dim">
           <th className="py-[0.55rem] pl-[1.3rem] font-medium">{FACET_LABELS[field] ?? field}</th>
           <th className="font-medium">
             <span className="sr-only">Share</span>
@@ -49,7 +49,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
             </td>
             <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] tabular-nums">{g.count}</td>
             <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] text-ink-soft tabular-nums">{g.failed}</td>
-            <td className="truncate pr-[1.3rem] font-mono text-[0.85rem] text-ink-soft tabular-nums">
+            <td className="truncate pr-[1.3rem] font-mono text-[0.9rem] text-ink-soft tabular-nums">
               {formatWhen(g.last, now)}
             </td>
           </tr>

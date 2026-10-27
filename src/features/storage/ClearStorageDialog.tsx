@@ -78,7 +78,7 @@ export function ClearStorageDialog({ open, onClose }: { open: boolean; onClose: 
           </p>
           <ul aria-label="Files deleted" className="mt-1 flex flex-col gap-0.5">
             {preview.files.map((f) => (
-              <li key={f} className="selectable truncate font-mono text-[0.8rem] text-ink">
+              <li key={f} className="selectable truncate font-mono text-[0.85rem] text-ink">
                 {f}
               </li>
             ))}
@@ -87,7 +87,7 @@ export function ClearStorageDialog({ open, onClose }: { open: boolean; onClose: 
             {n(tables.length)} tables with <span className="font-mono tabular-nums">{n(rows)}</span> rows, read by{" "}
             <span className="font-mono">{preview.bin} store reset --dry-run</span>:
           </p>
-          <table aria-label="Tables emptied" className="mt-1 w-full text-[0.85rem]">
+          <table aria-label="Tables emptied" className="mt-1 w-full text-[0.9rem]">
             <tbody className="block max-h-[9.5rem] overflow-y-auto rounded-[0.2rem] border border-line">
               {tables.map((t) => (
                 <tr
@@ -127,7 +127,7 @@ export function ClearStorageDialog({ open, onClose }: { open: boolean; onClose: 
             />
             <span>
               Back up first
-              <span className="block text-[0.85rem] text-ink-soft">
+              <span className="block text-[0.9rem] text-ink-soft">
                 A zip in the backups folder before anything is deleted. If the backup fails or you cancel it, nothing is
                 deleted.
               </span>

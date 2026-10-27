@@ -97,7 +97,7 @@ function Para({ children }: { children: ReactNode }) {
 }
 
 function Note({ children }: { children: ReactNode }) {
-  return <p className="max-w-[62ch] text-[0.85rem] text-ink-dim">{children}</p>
+  return <p className="max-w-[62ch] text-[0.9rem] text-ink-dim">{children}</p>
 }
 
 function Link({ href, children }: { href: string; children: ReactNode }) {
@@ -184,7 +184,7 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
   if (linux.method === "script")
     return (
       <>
-        <h4 className="pt-1 text-[0.85rem] font-medium text-ink-dim">Install with Tailscale's install script</h4>
+        <h4 className="pt-1 text-[0.9rem] font-medium text-ink-dim">Install with Tailscale's install script</h4>
         <Commands linux={linux} label="Copy the install command" />
         <Note>It asks for your computer password, because it installs a system service.</Note>
         {source}
@@ -200,7 +200,7 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
       {s.package && !downloaded && (
         <Note>A package installed by double-click does not update itself. The commands below do.</Note>
       )}
-      <h4 className="pt-1 text-[0.85rem] font-medium text-ink-dim">{heading}</h4>
+      <h4 className="pt-1 text-[0.9rem] font-medium text-ink-dim">{heading}</h4>
       <Commands linux={linux} label="Copy the commands" />
       {source}
     </>
@@ -278,7 +278,7 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
           <Button size="sm" variant="primary" onClick={download} disabled={busy}>
             {busy ? "Downloading…" : desktop ? "Download and open the installer" : `Download Tailscale (.${s.package})`}
           </Button>
-          <span className="text-[0.85rem] text-ink-dim">
+          <span className="text-[0.9rem] text-ink-dim">
             From pkgs.tailscale.com, checked against Tailscale's checksum.
           </span>
         </div>
@@ -472,7 +472,7 @@ export function StepHead({
       <span
         aria-hidden
         className={cx(
-          "grid size-6 shrink-0 place-items-center rounded-full text-[0.8rem] font-semibold tabular-nums",
+          "grid size-6 shrink-0 place-items-center rounded-full text-[0.85rem] font-semibold tabular-nums",
           finished ? "bg-ok text-app" : open ? "bg-brand text-brand-ink" : "bg-app-3 text-ink-dim",
         )}
       >
@@ -486,7 +486,7 @@ export function StepHead({
       {(open || checked) && (
         <span className="ml-auto flex items-center gap-2">
           {checked && !checking && (
-            <span className={cx("text-[0.85rem]", step.done ? "text-ok" : "text-ink-soft")} role="status">
+            <span className={cx("text-[0.9rem]", step.done ? "text-ok" : "text-ink-soft")} role="status">
               {step.done ? "Done" : "Not yet"}
             </span>
           )}

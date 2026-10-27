@@ -127,7 +127,7 @@ function Row({ area, busy, onDelete }: { area: StorageArea; busy: boolean; onDel
         {!empty && (
           <ul className="mt-1.5 flex flex-col gap-0.5">
             {area.folders.map((f) => (
-              <li key={f.path} className="flex min-w-0 items-center gap-2 text-[0.8rem]">
+              <li key={f.path} className="flex min-w-0 items-center gap-2 text-[0.85rem]">
                 <span className="w-[3.6rem] shrink-0 text-ink-soft">{kindLabel[f.kind]}</span>
                 <span className="selectable truncate font-mono text-ink-dim">{f.path}</span>
                 <span className="shrink-0 font-mono text-ink-dim tabular-nums">{formatBytes(f.bytes)}</span>
@@ -177,7 +177,7 @@ function RowSkeleton({ id, first }: { id: string; first: boolean }) {
         </p>
         <ul className="mt-1.5 flex flex-col gap-0.5">
           {(["config", "state"] as const).map((kind) => (
-            <li key={kind} className="flex h-6 min-w-0 items-center gap-2 text-[0.8rem]">
+            <li key={kind} className="flex h-6 min-w-0 items-center gap-2 text-[0.85rem]">
               <span className="w-[3.6rem] shrink-0 text-ink-soft">{kindLabel[kind]}</span>
               <span className="font-mono">
                 <Skeleton chars={28} />
@@ -214,9 +214,9 @@ function Entries({ area }: { area: StorageArea }) {
           {entries.map((e) => (
             <li
               key={e.key}
-              className="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_5.5rem_1.5rem] items-center gap-3 text-[0.85rem]"
+              className="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_5.5rem_1.5rem] items-center gap-3 text-[0.9rem]"
             >
-              <span className="selectable flex min-w-0 items-center gap-1.5 truncate font-mono text-[0.8rem] text-ink">
+              <span className="selectable flex min-w-0 items-center gap-1.5 truncate font-mono text-[0.85rem] text-ink">
                 {e.info?.secret && <KeyRound className="size-3.5 shrink-0 text-warn" aria-label="Credentials" />}
                 <span className="truncate">
                   {e.name}
@@ -224,7 +224,7 @@ function Entries({ area }: { area: StorageArea }) {
                 </span>
               </span>
               <span className={e.info ? "text-ink-soft" : "text-ink-dim"}>{e.info?.what ?? "Not described"}</span>
-              <span className="text-right font-mono text-[0.8rem] text-ink-dim tabular-nums">
+              <span className="text-right font-mono text-[0.85rem] text-ink-dim tabular-nums">
                 {formatBytes(e.bytes)}
               </span>
               <button
@@ -276,7 +276,7 @@ function ConfirmDelete(props: {
       <ul className="mt-3 flex flex-col gap-1">
         {areas.flatMap((a) =>
           a.folders.map((f) => (
-            <li key={f.path} className="selectable truncate font-mono text-[0.8rem] text-ink">
+            <li key={f.path} className="selectable truncate font-mono text-[0.85rem] text-ink">
               {f.path}
             </li>
           )),

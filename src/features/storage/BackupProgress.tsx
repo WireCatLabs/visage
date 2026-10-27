@@ -37,7 +37,7 @@ export function BackupProgress({ progress, onCancel }: { progress: Progress; onC
       </span>
       {/* Stopping the tool mid-seal leaves its plain copy of the whole store beside it, so sealing runs to the end. */}
       {unknown ? (
-        <span className="w-[4.6rem] shrink-0 text-right text-[0.8rem] text-ink-dim">Can't stop</span>
+        <span className="w-[4.6rem] shrink-0 text-right text-[0.85rem] text-ink-dim">Can't stop</span>
       ) : (
         <Button variant="ghost" size="sm" className="w-[4.6rem]" onClick={onCancel}>
           Cancel

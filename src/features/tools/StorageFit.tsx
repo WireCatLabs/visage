@@ -84,7 +84,7 @@ export function FitDetails({ id }: { id: string }) {
   const tone = fitSeverity(fit) ?? (fit.kind === "unknown" ? "idle" : "ok")
   return (
     <div>
-      <h4 className="mb-2 text-[0.85rem] font-medium text-ink-dim">Storage</h4>
+      <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">Storage</h4>
       <p className="flex items-start gap-2 text-[0.9rem] text-ink-soft">
         <Lamp size="sm" tone={tone} />
         <span className="-mt-[0.2rem] max-w-[60ch]">{detailOf(fit, owner, fits.schema, canUpdate)}</span>

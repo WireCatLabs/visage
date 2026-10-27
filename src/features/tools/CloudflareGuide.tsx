@@ -59,7 +59,7 @@ function Para({ children }: { children: ReactNode }) {
 }
 
 function Note({ children }: { children: ReactNode }) {
-  return <p className="max-w-[62ch] text-[0.85rem] text-ink-dim">{children}</p>
+  return <p className="max-w-[62ch] text-[0.9rem] text-ink-dim">{children}</p>
 }
 
 function Link({ href, children }: { href: string; children: ReactNode }) {
@@ -110,7 +110,7 @@ function InstallStep({ s, check }: { s: CloudflareStatus; check(): Promise<void>
             Stop
           </Button>
         ) : (
-          <span className="text-[0.85rem] text-ink-dim">Checked against GitHub's checksum.</span>
+          <span className="text-[0.9rem] text-ink-dim">Checked against GitHub's checksum.</span>
         )}
       </div>
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
@@ -209,10 +209,10 @@ function AddressStep({ s, check }: { s: CloudflareStatus; check(): Promise<void>
         your account; nothing else there changes.
       </Para>
       <label className="flex flex-col gap-1" htmlFor={id}>
-        <span className="text-[0.85rem] font-medium text-ink-dim">Address on your domain</span>
+        <span className="text-[0.9rem] font-medium text-ink-dim">Address on your domain</span>
         <input
           id={id}
-          className="h-8 w-full max-w-[24rem] rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.8rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
+          className="h-8 w-full max-w-[24rem] rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.85rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && name.trim() && !busy && create()}

@@ -91,7 +91,7 @@ export function SkillTable({ view, loading }: { view: AgentView; loading: boolea
                 ) : s.cell.kind === "unknown" ? (
                   <span className="text-ink-soft">
                     Update {s.tool.name}
-                    {s.newer && <span className="font-mono text-[0.85rem] tabular-nums"> to {s.newer}</span>} to see its
+                    {s.newer && <span className="font-mono text-[0.9rem] tabular-nums"> to {s.newer}</span>} to see its
                     skill
                   </span>
                 ) : s.cell.kind === "unsupported" ? (
@@ -102,8 +102,8 @@ export function SkillTable({ view, loading }: { view: AgentView; loading: boolea
                   <>
                     <Lamp size="sm" tone={look.tone} label={`${s.tool.name} skill for ${agent.name}: ${look.word}`} />
                     <span className={cx(s.cell.kind === "stale" && !s.busy && "text-warn-ink")}>{look.word}</span>
-                    {version && <span className="font-mono text-[0.85rem] text-ink-soft tabular-nums">{version}</span>}
-                    <span className="selectable font-mono text-[0.78rem] text-ink-dim">{TARGET_FOLDER[s.target]}</span>
+                    {version && <span className="font-mono text-[0.9rem] text-ink-soft tabular-nums">{version}</span>}
+                    <span className="selectable font-mono text-[0.85rem] text-ink-dim">{TARGET_FOLDER[s.target]}</span>
                   </>
                 )}
               </span>

@@ -35,7 +35,7 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
         </h2>
         <p className="max-w-[70ch] text-[0.95rem] text-ink-soft">
           Not found on this computer. Once it is installed it reads skills from{" "}
-          <span className="selectable font-mono text-[0.85rem]">
+          <span className="selectable font-mono text-[0.9rem]">
             {entry.agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
           </span>
           {entry.agent.reads.some((t) => t !== "hermes")

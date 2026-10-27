@@ -62,7 +62,7 @@ export function SkillPreview() {
         {copies.map((c) => (
           <div key={c.target} className="contents">
             <dt className="text-ink-dim">
-              In <span className="font-mono text-[0.8rem]">{TARGET_FOLDER[c.target]}</span>
+              In <span className="font-mono text-[0.85rem]">{TARGET_FOLDER[c.target]}</span>
             </dt>
             <dd className="selectable font-mono text-ink tabular-nums">{c.installed ?? "not installed"}</dd>
           </div>
@@ -94,7 +94,7 @@ export function SkillPreview() {
           </ErrorNotice>
         )}
         {text.state === "ready" && (
-          <pre className="selectable max-h-[50vh] overflow-auto p-4 font-mono text-[0.8rem] leading-relaxed whitespace-pre-wrap text-ink">
+          <pre className="selectable max-h-[50vh] overflow-auto p-4 font-mono text-[0.85rem] leading-relaxed whitespace-pre-wrap text-ink">
             {text.content}
           </pre>
         )}

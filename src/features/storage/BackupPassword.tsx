@@ -53,7 +53,7 @@ export function BackupPassword({ password, repeat, onPassword, onRepeat, disable
               {shown ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
             </button>
           </div>
-          <div id={`${id}-strength`} className="mt-1.5 flex items-center gap-2 text-[0.8rem] text-ink-soft">
+          <div id={`${id}-strength`} className="mt-1.5 flex items-center gap-2 text-[0.85rem] text-ink-soft">
             <span aria-hidden className="flex gap-1">
               {[1, 2, 3].map((n) => (
                 <span
@@ -87,13 +87,13 @@ export function BackupPassword({ password, repeat, onPassword, onRepeat, disable
           <p
             id={`${id}-problem`}
             role={loud ? "alert" : undefined}
-            className={cx("mt-1.5 min-h-[1.2rem] text-[0.8rem]", loud ? "text-bad" : "text-ink-soft")}
+            className={cx("mt-1.5 min-h-[1.2rem] text-[0.85rem]", loud ? "text-bad" : "text-ink-soft")}
           >
             {problem ?? "The passwords match."}
           </p>
         </div>
       </div>
-      <p className="flex max-w-[40rem] items-start gap-2 rounded-[0.3rem] border border-warn/50 bg-warn/10 px-3 py-2 text-[0.85rem] text-warn-ink">
+      <p className="flex max-w-[40rem] items-start gap-2 rounded-[0.3rem] border border-warn/50 bg-warn/10 px-3 py-2 text-[0.9rem] text-warn-ink">
         <TriangleAlert className="mt-[0.15rem] size-4 shrink-0" aria-hidden />
         If you lose it, the backup cannot be opened. WireCat does not keep it.
       </p>

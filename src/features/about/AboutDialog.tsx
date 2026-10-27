@@ -76,7 +76,7 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
             <CopyButton text={versionLine(readiness)} />
           </div>
           {installed.length > 0 && (
-            <p className="mt-2 border-line border-t pt-2 text-[0.85rem] text-ink-dim">
+            <p className="mt-2 border-line border-t pt-2 text-[0.9rem] text-ink-dim">
               {installed.map((t, i) => (
                 <Fragment key={t.id}>
                   {i > 0 && " · "}

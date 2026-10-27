@@ -22,7 +22,7 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
           {c.tool.name} · {c.profile}
         </span>
         {c.session && (
-          <span className="selectable font-mono text-[0.85rem] text-ink-soft" title={c.session}>
+          <span className="selectable font-mono text-[0.9rem] text-ink-soft" title={c.session}>
             {shortSession(c.session)}
           </span>
         )}

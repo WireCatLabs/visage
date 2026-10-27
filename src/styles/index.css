@@ -83,7 +83,7 @@
 
 /* The interface scales with the window, as a native app's content does at different display sizes. */
 html {
-  font-size: clamp(11.5px, 0.5rem + 0.35vw, 13.5px);
+  font-size: clamp(12px, 0.5rem + 0.42vw, 15px);
 }
 
 html,

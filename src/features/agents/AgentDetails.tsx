@@ -39,9 +39,9 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[0.85rem] text-ink-soft">
+        <p className="text-[0.9rem] text-ink-soft">
           {foundWords(agent)} · reads{" "}
-          <span className="selectable font-mono text-[0.8rem]">
+          <span className="selectable font-mono text-[0.85rem]">
             {agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
           </span>
         </p>
@@ -94,7 +94,7 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h4 className="mb-2 text-[0.85rem] font-medium text-ink-dim">{title}</h4>
+      <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">{title}</h4>
       {children}
     </section>
   )
@@ -117,7 +117,7 @@ function OtherFixes({ view }: { view: AgentView }) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[0.95rem] text-ink">{item.title}</p>
-              {item.detail && <p className="mt-0.5 max-w-[70ch] text-[0.85rem] text-ink-soft">{item.detail}</p>}
+              {item.detail && <p className="mt-0.5 max-w-[70ch] text-[0.9rem] text-ink-soft">{item.detail}</p>}
             </div>
             {item.fix?.kind === "tools" && (
               <Button size="sm" variant="ghost" onClick={() => go("tools")}>
@@ -141,7 +141,7 @@ function OtherFixes({ view }: { view: AgentView }) {
             <p className="text-[0.95rem] text-ink">
               {tool.name} profile <span className="font-medium">{profile}</span> is not signed in
             </p>
-            <p className="mt-0.5 max-w-[70ch] text-[0.85rem] text-ink-soft">
+            <p className="mt-0.5 max-w-[70ch] text-[0.9rem] text-ink-soft">
               {view.agent.name} cannot use {tool.name} through this profile until it is signed in again.
             </p>
           </div>
@@ -169,8 +169,8 @@ function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Sessio
     <ul className={cx(box, "divide-y divide-line")}>
       {sessions.slice(0, 3).map((s) => (
         <li key={s.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-[0.9rem]">
-          <span className="w-[8.5rem] font-mono text-[0.85rem] tabular-nums">{formatWhen(s.last, new Date())}</span>
-          <span className="selectable font-mono text-[0.85rem] text-ink-soft" title={s.session ?? undefined}>
+          <span className="w-[8.5rem] font-mono text-[0.9rem] tabular-nums">{formatWhen(s.last, new Date())}</span>
+          <span className="selectable font-mono text-[0.9rem] text-ink-soft" title={s.session ?? undefined}>
             {s.session ? shortSession(s.session) : "no session id"}
           </span>
           <span>
@@ -184,7 +184,7 @@ function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Sessio
         </li>
       ))}
       {sessions.length > 3 && (
-        <li className="px-4 py-2 text-[0.85rem] text-ink-soft">and {sessions.length - 3} older on the Logs page</li>
+        <li className="px-4 py-2 text-[0.9rem] text-ink-soft">and {sessions.length - 3} older on the Logs page</li>
       )}
     </ul>
   )

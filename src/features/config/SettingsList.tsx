@@ -96,7 +96,7 @@ function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
           </ErrorNotice>
         ) : (
           note && (
-            <p className="mt-1 flex items-start gap-1.5 text-[0.85rem] text-ink-soft">
+            <p className="mt-1 flex items-start gap-1.5 text-[0.9rem] text-ink-soft">
               {row.masked && !row.locked ? (
                 <EyeOff className="mt-[0.2rem] size-3.5 shrink-0" aria-hidden />
               ) : (
@@ -118,7 +118,7 @@ function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
       </div>
       <div className="flex justify-end">
         {saving ? (
-          <span role="status" className="text-[0.85rem] text-ink-dim">
+          <span role="status" className="text-[0.9rem] text-ink-dim">
             Saving…
           </span>
         ) : (
@@ -144,7 +144,7 @@ function Row({ row, disabled }: { row: SettingRow; disabled: boolean }) {
 const shown = (v: unknown) => (v === null ? "not set" : typeof v === "string" ? v : JSON.stringify(v))
 
 const field =
-  "h-8 w-full min-w-0 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.85rem] text-ink placeholder:font-sans placeholder:text-ink-dim focus-visible:border-brand disabled:opacity-45"
+  "h-8 w-full min-w-0 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.9rem] text-ink placeholder:font-sans placeholder:text-ink-dim focus-visible:border-brand disabled:opacity-45"
 
 function Control({
   id,
@@ -238,7 +238,7 @@ function ListControl(props: { id: string; items: string[]; disabled: boolean; on
       {items.map((item) => (
         <span
           key={item}
-          className="inline-flex h-6 items-center gap-1 rounded-[0.3rem] bg-app-3 pr-0.5 pl-2 font-mono text-[0.8rem] text-ink"
+          className="inline-flex h-6 items-center gap-1 rounded-[0.3rem] bg-app-3 pr-0.5 pl-2 font-mono text-[0.85rem] text-ink"
         >
           {item}
           <button

@@ -28,14 +28,14 @@ export function KeepRuns() {
 
   return (
     <section aria-label="Which runs each tool keeps" className="flex flex-wrap items-center gap-x-[0.9rem] gap-y-2">
-      <h2 className="text-[0.85rem] text-ink-dim">Runs each tool keeps</h2>
+      <h2 className="text-[0.9rem] text-ink-dim">Runs each tool keeps</h2>
       <ul className="flex flex-wrap items-center gap-[0.6rem]">
         {ids.map((id) => (
           <Chip key={id} id={id} k={keeping[id] as Keeping} first={id === ids[0]} onAsk={setAsk} />
         ))}
       </ul>
       {refused.map(([id, error]) => (
-        <p key={id} role="alert" className="flex w-full flex-wrap items-center gap-x-3 text-[0.85rem]">
+        <p key={id} role="alert" className="flex w-full flex-wrap items-center gap-x-3 text-[0.9rem]">
           <span className="selectable text-bad">
             {toolName(id)} refused the change: {error}
           </span>

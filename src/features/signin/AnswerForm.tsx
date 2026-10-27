@@ -87,7 +87,7 @@ export function AnswerForm({ need, sent, onAnswer }: Props) {
           </button>
         )}
       </div>
-      <p id={`${id}-hint`} className="min-h-[1.3rem] text-[0.85rem] text-ink-soft">
+      <p id={`${id}-hint`} className="min-h-[1.3rem] text-[0.9rem] text-ink-soft">
         {error ? (
           <span className="text-bad">{error}</span>
         ) : sent ? (

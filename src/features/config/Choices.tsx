@@ -4,7 +4,7 @@ import { cx } from "@/ui/cx"
 export function Choices({ label, children }: { label: string; children: ReactNode }) {
   return (
     <fieldset className="flex flex-wrap items-center gap-2 border-0 p-0">
-      <legend className="float-left mr-2 w-[4.2rem] text-[0.85rem] font-medium text-ink-dim">{label}</legend>
+      <legend className="float-left mr-2 w-[4.2rem] text-[0.9rem] font-medium text-ink-dim">{label}</legend>
       {children}
     </fieldset>
   )

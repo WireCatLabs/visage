@@ -86,7 +86,7 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
                 </>
               }
             >
-              <p className="mb-2 max-w-[70ch] text-[0.85rem] text-ink-soft">
+              <p className="mb-2 max-w-[70ch] text-[0.9rem] text-ink-soft">
                 Built from the data above so search is fast; rebuilding them loses nothing. Their rows are not counted,
                 which would read every index in full.
               </p>
@@ -115,7 +115,7 @@ export function TablesSkeleton() {
           <Button size="sm" disabled>
             Measure sizes
           </Button>
-          <span className="text-[0.85rem] text-ink-dim">
+          <span className="text-[0.9rem] text-ink-dim">
             Reads the whole file: seconds, or a few minutes when storage is large
           </span>
         </div>
@@ -156,7 +156,7 @@ function MeasureSizes({ measured }: { measured: boolean }) {
       <Button size="sm" onClick={measureSizes} disabled={measuring !== null}>
         {measuring !== null ? "Measuring…" : measured ? "Measure again" : "Measure sizes"}
       </Button>
-      <span className="text-[0.85rem] text-ink-dim" role="status">
+      <span className="text-[0.9rem] text-ink-dim" role="status">
         {measuring !== null ? (
           <>
             Reading every page of the file… <span className="font-mono tabular-nums">{formatDuration(elapsed)}</span>
@@ -186,7 +186,7 @@ function TableOf(props: {
     <div className="max-h-[26rem] overflow-auto rounded-[0.45rem] border border-line">
       <table aria-label={label} className="w-full text-[0.9rem]">
         <thead className="sticky top-0 bg-app-2">
-          <tr className="border-line border-b text-left text-[0.85rem] text-ink-dim">
+          <tr className="border-line border-b text-left text-[0.9rem] text-ink-dim">
             {COLUMNS.map((c) => (
               <th
                 key={c.key}
@@ -214,7 +214,7 @@ function TableOf(props: {
         <tbody>
           {tables.map((t) => (
             <tr key={t.name} className="border-line border-t first:border-t-0">
-              <th scope="row" className="selectable px-3 py-[0.35rem] text-left font-mono text-[0.85rem] font-normal">
+              <th scope="row" className="selectable px-3 py-[0.35rem] text-left font-mono text-[0.9rem] font-normal">
                 {t.name}
               </th>
               <td className="px-3 py-[0.35rem] text-ink-soft">{KIND_LABEL[t.kind] ?? t.kind}</td>

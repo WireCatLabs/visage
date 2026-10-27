@@ -132,7 +132,7 @@ export function ConnectDialog({ view }: { view: AgentView }) {
             that {agent.name} finds each tool. MCP is not part of this.
           </p>
           <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 text-[0.85rem] font-medium text-ink-dim">Tools</legend>
+            <legend className="mb-1 text-[0.9rem] font-medium text-ink-dim">Tools</legend>
             {view.skills.map((s) => {
               const why = unavailable(s)
               const id = `connect-${agent.id}-${s.tool.id}`
@@ -152,7 +152,7 @@ export function ConnectDialog({ view }: { view: AgentView }) {
                   />
                   <ToolIcon id={s.tool.id} className="size-[1.15rem] shrink-0 text-ink" />
                   <span className="font-semibold">{s.tool.name}</span>
-                  <span className="text-[0.85rem] text-ink-soft">{why ?? STATE_WORD[s.cell.kind] ?? ""}</span>
+                  <span className="text-[0.9rem] text-ink-soft">{why ?? STATE_WORD[s.cell.kind] ?? ""}</span>
                 </label>
               )
             })}
@@ -160,13 +160,13 @@ export function ConnectDialog({ view }: { view: AgentView }) {
           {chat && <ChatWarning agentName={agent.name} />}
           {chat && (
             <fieldset className="flex flex-col gap-1">
-              <legend className="mb-1 text-[0.85rem] font-medium text-ink-dim">Read only</legend>
-              <p className="mb-1 max-w-[70ch] text-[0.85rem] text-ink-soft">
+              <legend className="mb-1 text-[0.9rem] font-medium text-ink-dim">Read only</legend>
+              <p className="mb-1 max-w-[70ch] text-[0.9rem] text-ink-soft">
                 A profile set to read only lets {agent.name} read and search through it, but not send, change or delete
                 anything. You can change it later in the tool's Permissions on the Tools page.
               </p>
               {readOnlyChoices.length === 0 ? (
-                <p className="text-[0.85rem] text-ink-dim">
+                <p className="text-[0.9rem] text-ink-dim">
                   {chosen.length === 0 ? "Choose a tool to see its profiles." : "The chosen tools have no profiles."}
                 </p>
               ) : (
@@ -192,8 +192,8 @@ export function ConnectDialog({ view }: { view: AgentView }) {
           )}
           {commands.length > 0 && (
             <div>
-              <span className="text-[0.85rem] font-medium text-ink-dim">The app runs</span>
-              <code className="selectable mt-1 block max-h-[10rem] overflow-y-auto rounded-[0.4rem] border border-line bg-app-2 px-3 py-2 font-mono text-[0.85rem] break-all whitespace-pre-wrap text-ink">
+              <span className="text-[0.9rem] font-medium text-ink-dim">The app runs</span>
+              <code className="selectable mt-1 block max-h-[10rem] overflow-y-auto rounded-[0.4rem] border border-line bg-app-2 px-3 py-2 font-mono text-[0.9rem] break-all whitespace-pre-wrap text-ink">
                 {commands.join("\n")}
               </code>
             </div>
@@ -213,7 +213,7 @@ function ChatWarning({ agentName }: { agentName: string }) {
   const apps = chats.state === "ready" ? chats.data.channels.map(chatName) : []
   if (chats.state === "ready" && apps.length === 0)
     return (
-      <p className="max-w-[70ch] text-[0.85rem] text-ink-soft">
+      <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
         {agentName} answers in no chat app now. If you add one later, anyone that bot accepts can ask it to run the
         tools you connect.
       </p>
@@ -264,7 +264,7 @@ function Steps() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[0.95rem] text-ink">{step.label}</p>
-              {step.detail && <p className="mt-0.5 max-w-[70ch] text-[0.85rem] text-ink-soft">{step.detail}</p>}
+              {step.detail && <p className="mt-0.5 max-w-[70ch] text-[0.9rem] text-ink-soft">{step.detail}</p>}
             </div>
           </div>
           {step.command && (

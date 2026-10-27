@@ -84,7 +84,7 @@ export function LevelsHelp({ tool }: { tool: CatalogTool }) {
           {LEVELS.map((l) => (
             <div key={l}>
               <dt className="font-medium text-ink">
-                {LEVEL_LABEL[l]} <code className="ml-1 font-mono text-[0.8rem] text-ink-dim">{l}</code>
+                {LEVEL_LABEL[l]} <code className="ml-1 font-mono text-[0.85rem] text-ink-dim">{l}</code>
               </dt>
               <dd>{LEVEL_HELP[l]}</dd>
             </div>
@@ -106,7 +106,7 @@ export function LevelsHelp({ tool }: { tool: CatalogTool }) {
                   help && (
                     <div key={g.key}>
                       <dt className="font-medium text-ink">
-                        {g.label} <code className="ml-1 font-mono text-[0.8rem] text-ink-dim">{g.key}</code>
+                        {g.label} <code className="ml-1 font-mono text-[0.85rem] text-ink-dim">{g.key}</code>
                       </dt>
                       <dd>
                         <span className="text-ink">Reading:</span> {help.reads}

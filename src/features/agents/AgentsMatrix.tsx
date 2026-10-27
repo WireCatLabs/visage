@@ -81,7 +81,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
         <table aria-label="Skills for agents" className="w-full border-collapse text-left">
           <thead>
             <tr className="border-line border-b">
-              <th scope="col" className={cx(pad, "text-[0.85rem] font-medium text-ink-dim")}>
+              <th scope="col" className={cx(pad, "text-[0.9rem] font-medium text-ink-dim")}>
                 Tool
               </th>
               {targets.map((t) => (
@@ -92,7 +92,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
                     <span className="block text-[0.95rem] font-semibold text-ink">{columnName(t)}</span>
                   )}
                   {!compact && (
-                    <span className="selectable mt-0.5 block font-mono text-[0.8rem] text-ink-dim">
+                    <span className="selectable mt-0.5 block font-mono text-[0.85rem] text-ink-dim">
                       {TARGET_FOLDER[t]}
                     </span>
                   )}
@@ -161,13 +161,13 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
       )}
       {silent.length === 0 && firstChecking && (
         // Old tools are the usual case, so their note's line is kept until every skill has answered.
-        <p className={cx("leading-snug", compact ? "text-[0.85rem]" : "text-[0.9rem]")}>
+        <p className={cx("leading-snug", compact ? "text-[0.9rem]" : "text-[0.9rem]")}>
           <Skeleton chars={60} />
         </p>
       )}
       {silent.length > 0 && (
         // Last under the table, as it arrives last: inside a row it would push every row under it down.
-        <p className={cx("leading-snug text-ink-soft", compact ? "text-[0.85rem]" : "text-[0.9rem]")}>
+        <p className={cx("leading-snug text-ink-soft", compact ? "text-[0.9rem]" : "text-[0.9rem]")}>
           The installed {silent.map((r) => r.tool.name).join(" and ")} cannot report{" "}
           {silent.length === 1 ? "its skill" : "their skills"}, so {silent.length === 1 ? "it shows" : "they show"} as
           Unknown.{" "}
@@ -192,7 +192,7 @@ function ToolName({ tool, version }: { tool: CatalogTool; version: ReactNode }) 
       <ToolIcon id={tool.id} className="size-[1.5rem] shrink-0 text-ink" />
       <div className="min-w-0">
         <span className="block text-[1.02rem] font-semibold leading-tight">{tool.name}</span>
-        <span className="selectable font-mono text-[0.8rem] text-ink-dim tabular-nums">
+        <span className="selectable font-mono text-[0.85rem] text-ink-dim tabular-nums">
           {tool.bin} {version}
         </span>
       </div>

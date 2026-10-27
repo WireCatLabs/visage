@@ -94,7 +94,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
                   <span
                     aria-hidden
                     className={cx(
-                      "grid size-[1.2rem] shrink-0 place-items-center rounded-full font-mono text-[0.8rem] tabular-nums",
+                      "grid size-[1.2rem] shrink-0 place-items-center rounded-full font-mono text-[0.85rem] tabular-nums",
                       here
                         ? "bg-brand text-brand-ink"
                         : i < current
@@ -124,7 +124,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
         >
           Set up later
         </Button>
-        <p className="px-[0.75rem] text-[0.8rem] leading-snug text-ink-dim">Finish later from the sidebar.</p>
+        <p className="px-[0.75rem] text-[0.85rem] leading-snug text-ink-dim">Finish later from the sidebar.</p>
       </div>
     </aside>
   )

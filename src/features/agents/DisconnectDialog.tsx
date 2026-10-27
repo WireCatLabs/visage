@@ -74,7 +74,7 @@ export function DisconnectDialog({ view, sharers }: { view: AgentView; sharers: 
           The WireCat tools have no command that removes their skill yet, so WireCat does not delete it for you. To
           disconnect {agent.name}, delete {copies.length === 1 ? "this folder" : "these folders"} yourself:
         </p>
-        <ul className="flex flex-col gap-1 font-mono text-[0.85rem]">
+        <ul className="flex flex-col gap-1 font-mono text-[0.9rem]">
           {copies.map((c) => (
             <li key={`${c.tool}:${c.target}`} className="selectable">
               {c.folder}

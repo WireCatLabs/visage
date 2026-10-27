@@ -142,16 +142,16 @@ export function McpServerRow(props: {
       {row.state === "error" && <ErrorNotice inline>{row.message}</ErrorNotice>}
       {failure && <ErrorNotice inline>{failure}</ErrorNotice>}
       {data?.running && !data.startedHere && (
-        <p className="text-[0.85rem] text-ink-soft">It was started in a terminal, so stop it there.</p>
+        <p className="text-[0.9rem] text-ink-soft">It was started in a terminal, so stop it there.</p>
       )}
       {data?.outdated && (
-        <p className="text-[0.85rem] text-warn-ink">
+        <p className="text-[0.9rem] text-warn-ink">
           It runs an older version of {tool.bin}. Stop and start it to update.
         </p>
       )}
       {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} onClose={closeFunnel} />}
       {data?.running && route && data.connectorUrl?.startsWith(route.url) && (
-        <p className={cx("pl-[1.6rem] text-[0.85rem]", route.live ? "text-ink-soft" : "text-warn-ink")}>
+        <p className={cx("pl-[1.6rem] text-[0.9rem]", route.live ? "text-ink-soft" : "text-warn-ink")}>
           {route.live
             ? "Reachable from the internet through your Cloudflare tunnel, which WireCat runs. Stop takes it off the tunnel."
             : "Your Cloudflare tunnel is off, so browser apps cannot reach the server. Stop and start it to start the tunnel again."}
@@ -160,7 +160,7 @@ export function McpServerRow(props: {
       {!funnel?.live &&
         leftovers.map((old) => (
           <div key={old.url} className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
-            <p className="text-[0.85rem] text-warn-ink">
+            <p className="text-[0.9rem] text-warn-ink">
               An older Tailscale Funnel{old.profile ? ` for profile ${old.profile}` : ""} still sends{" "}
               <span className="selectable font-mono">{old.url}</span> to this computer. Starting the server replaces it.
             </p>
@@ -198,13 +198,13 @@ function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: B
   const ours = data.connectorUrl?.startsWith(funnel.url) ?? false
   if (data.running && funnel.live && ours)
     return (
-      <p className="pl-[1.6rem] text-[0.85rem] text-ink-soft">
+      <p className="pl-[1.6rem] text-[0.9rem] text-ink-soft">
         Reachable from the internet through Tailscale Funnel, which WireCat set up. Stop turns it off.
       </p>
     )
   if (data.running && !funnel.live && ours)
     return (
-      <p className="pl-[1.6rem] text-[0.85rem] text-warn-ink">
+      <p className="pl-[1.6rem] text-[0.9rem] text-warn-ink">
         Tailscale Funnel for this address is off, so browser apps cannot reach the server. Stop and start it to turn
         Funnel on again.
       </p>
@@ -212,7 +212,7 @@ function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: B
   if (!data.running && funnel.live)
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
-        <p className="text-[0.85rem] text-warn-ink">
+        <p className="text-[0.9rem] text-warn-ink">
           Tailscale Funnel still sends <span className="selectable font-mono">{funnel.url}</span> to this computer,
           though the server is off.
         </p>
@@ -229,19 +229,19 @@ function Running({ data }: { data: McpServerStatus }) {
     <div className="grid gap-3 pl-[1.6rem] md:grid-cols-2">
       {data.connectorUrl && (
         <div className="min-w-0">
-          <h5 className="mb-1.5 text-[0.85rem] font-medium text-ink-dim">Address for the browser app</h5>
+          <h5 className="mb-1.5 text-[0.9rem] font-medium text-ink-dim">Address for the browser app</h5>
           <CopyField value={data.connectorUrl} label="Copy the connector address" />
         </div>
       )}
       <div className="min-w-0">
-        <h5 className="mb-1.5 text-[0.85rem] font-medium text-ink-dim">
+        <h5 className="mb-1.5 text-[0.9rem] font-medium text-ink-dim">
           Login code
           {data.loginCode && <span className="font-normal"> · until {clock(data.loginCode.expiresAt)}</span>}
         </h5>
         {data.loginCode ? (
           <LoginCode server={{ ...data, loginCode: data.loginCode }} />
         ) : (
-          <p className="text-[0.85rem] text-ink-soft">Not shown yet. It appears once the server listens.</p>
+          <p className="text-[0.9rem] text-ink-soft">Not shown yet. It appears once the server listens.</p>
         )}
       </div>
     </div>
@@ -251,9 +251,9 @@ function Running({ data }: { data: McpServerStatus }) {
 function Clients({ data, onForget }: { data: McpServerStatus; onForget(): void }) {
   return (
     <div className="flex flex-col gap-1.5 pl-[1.6rem]">
-      <h5 className="text-[0.85rem] font-medium text-ink-dim">Logged-in apps</h5>
+      <h5 className="text-[0.9rem] font-medium text-ink-dim">Logged-in apps</h5>
       {data.clients.length === 0 ? (
-        <p className="text-[0.85rem] text-ink-soft">None yet.</p>
+        <p className="text-[0.9rem] text-ink-soft">None yet.</p>
       ) : (
         <>
           <ul className="flex flex-col gap-1 text-[0.875rem]">
@@ -275,7 +275,7 @@ function Clients({ data, onForget }: { data: McpServerStatus; onForget(): void }
               </li>
             ))}
           </ul>
-          <p className="max-w-[70ch] text-[0.8rem] text-ink-dim">
+          <p className="max-w-[70ch] text-[0.85rem] text-ink-dim">
             Any app can give itself any name. If you do not recognise one, forget all logins.
           </p>
           <div>

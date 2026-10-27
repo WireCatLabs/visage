@@ -33,7 +33,7 @@ type Props = {
 export function Facets({ counts, terms, total, groupBy, onToggle, onGroup }: Props) {
   return (
     <nav aria-label="Facets" className="flex flex-col gap-[1.1rem]">
-      <p className="text-[0.85rem] text-ink-dim">
+      <p className="text-[0.9rem] text-ink-dim">
         Counts over {total} {total === 1 ? "run" : "runs"} in range. Click to keep a value, Alt-click to hide it.
       </p>
       {FACETS.map((field) => (
@@ -103,7 +103,7 @@ function Facet(
       </div>
       <Collapse open={open} className="pt-[0.35rem]">
         <ul className="flex flex-col">
-          {counts.length === 0 && <li className="py-1 pl-[1.2rem] text-[0.85rem] text-ink-dim">No values</li>}
+          {counts.length === 0 && <li className="py-1 pl-[1.2rem] text-[0.9rem] text-ink-dim">No values</li>}
           {shown.map((c) => (
             <Value key={c.value} field={field} count={c} state={termState(terms, field, c.value)} onToggle={onToggle} />
           ))}
@@ -112,7 +112,7 @@ function Facet(
               <button
                 type="button"
                 onClick={() => setAll(true)}
-                className="mt-0.5 pl-[1.2rem] text-[0.85rem] font-medium text-brand hover:text-brand-hover"
+                className="mt-0.5 pl-[1.2rem] text-[0.9rem] font-medium text-brand hover:text-brand-hover"
               >
                 Show all {counts.length}
               </button>
@@ -123,7 +123,7 @@ function Facet(
               <button
                 type="button"
                 onClick={() => setAll(false)}
-                className="mt-0.5 pl-[1.2rem] text-[0.85rem] font-medium text-brand hover:text-brand-hover"
+                className="mt-0.5 pl-[1.2rem] text-[0.9rem] font-medium text-brand hover:text-brand-hover"
               >
                 Show fewer
               </button>
@@ -175,7 +175,7 @@ function Value(props: {
           {state === "exclude" && <Minus className="size-[0.7rem]" strokeWidth={3} />}
         </span>
         <ValueLabel field={field} value={count.value} />
-        <span className="ml-auto shrink-0 pl-2 text-[0.85rem] text-ink-dim tabular-nums group-hover/value:invisible">
+        <span className="ml-auto shrink-0 pl-2 text-[0.9rem] text-ink-dim tabular-nums group-hover/value:invisible">
           {count.count}
         </span>
       </button>
@@ -215,11 +215,11 @@ export function ValueLabel({ field, value }: { field: string; value: string }) {
   if (field === "client") return <span className="truncate">{value}</span>
   if (field === "cli_command" && isBareCommand(value))
     return (
-      <span className="truncate font-mono text-[0.85rem]" title={BARE_COMMAND_HINT}>
+      <span className="truncate font-mono text-[0.9rem]" title={BARE_COMMAND_HINT}>
         {value} <span className="font-sans text-ink-dim">(no command)</span>
       </span>
     )
-  return <span className="truncate font-mono text-[0.85rem]">{value}</span>
+  return <span className="truncate font-mono text-[0.9rem]">{value}</span>
 }
 
 export const valueTitle = (field: string, value: string) =>

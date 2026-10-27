@@ -16,7 +16,7 @@ type Props = {
 
 export function JsonTree({ value, fieldOf, onFilter, onGroup, label }: Props) {
   return (
-    <fieldset aria-label={label} className="selectable min-w-0 border-0 p-0 font-mono text-[0.85rem] leading-[1.7]">
+    <fieldset aria-label={label} className="selectable min-w-0 border-0 p-0 font-mono text-[0.9rem] leading-[1.7]">
       <Children value={value} path={[]} depth={0} fieldOf={fieldOf} onFilter={onFilter} onGroup={onGroup} />
     </fieldset>
   )

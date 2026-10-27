@@ -30,7 +30,7 @@ export function SignInDialog() {
           Signs <code className="font-mono text-ink">{s.profile}</code> in to {name} on this computer.
         </p>
         {s.notes.length > 0 && (
-          <p className="selectable rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2 text-[0.85rem] leading-snug text-ink">
+          <p className="selectable rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2 text-[0.9rem] leading-snug text-ink">
             {s.notes.join(" ")}
           </p>
         )}

@@ -115,7 +115,7 @@ function Progress({ run }: { run: SyncRun }) {
           />
         )}
       </div>
-      <p className="flex gap-2 text-[0.85rem] text-ink-soft tabular-nums">
+      <p className="flex gap-2 text-[0.9rem] text-ink-soft tabular-nums">
         <span className="truncate">
           {stage}
           {counted ? "" : "…"}
@@ -133,7 +133,9 @@ function Outcome({ run, what, account }: { run: SyncRun; what: SyncWhat; account
       <p className="reveal flex items-center gap-2 text-[0.9rem] font-medium text-ink">
         <CheckCircle2 className="size-4 shrink-0 text-ok" aria-hidden />
         <span className="truncate">{resultLine(what, run.summary)}</span>
-        {took && <span className="shrink-0 font-mono text-[0.8rem] font-normal text-ink-dim tabular-nums">{took}</span>}
+        {took && (
+          <span className="shrink-0 font-mono text-[0.85rem] font-normal text-ink-dim tabular-nums">{took}</span>
+        )}
       </p>
     )
   }

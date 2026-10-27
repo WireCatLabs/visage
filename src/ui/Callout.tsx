@@ -136,7 +136,7 @@ export function Callout({ anchor, side = "bottom", title, children, index, count
         </div>
         <div className="text-[0.95rem] leading-relaxed text-ink-soft">{children}</div>
         <div className="mt-2 flex items-center gap-2">
-          <span className="flex-1 font-mono text-[0.8rem] text-ink-dim tabular-nums">
+          <span className="flex-1 font-mono text-[0.85rem] text-ink-dim tabular-nums">
             {index + 1} of {count}
           </span>
           {index > 0 && (

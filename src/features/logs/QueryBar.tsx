@@ -165,12 +165,12 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
               )}
             >
               <span className="truncate font-mono text-[0.95rem] text-ink">{s.label}</span>
-              <span className="shrink-0 text-[0.85rem] text-ink-dim tabular-nums">{s.hint}</span>
+              <span className="shrink-0 text-[0.9rem] text-ink-dim tabular-nums">{s.hint}</span>
             </div>
           ))}
         </div>
       )}
-      <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.85rem]">
+      <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.9rem]">
         <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={problem ? "text-bad" : "text-ink-dim"}>
           {problem
             ? problem.message

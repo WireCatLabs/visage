@@ -268,7 +268,7 @@ function ClientIdForm() {
         onChange={(e) => setValue(e.target.value)}
         className="selectable h-10 w-full rounded-[0.35rem] border border-line-strong bg-app px-3 font-mono text-[1rem] text-ink"
       />
-      <p className="min-h-[1.3rem] text-[0.85rem] text-bad">{error}</p>
+      <p className="min-h-[1.3rem] text-[0.9rem] text-bad">{error}</p>
       <Button type="submit" variant="primary" disabled={saving || !value.trim()} className="self-start">
         {saving ? "Saving…" : "Save and sign in"}
       </Button>

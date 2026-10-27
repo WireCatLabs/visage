@@ -63,7 +63,7 @@ export function BackupPanel() {
           <h2 id="backups-title" className="text-[1.08rem] font-semibold">
             Backups
           </h2>
-          <p className="mt-0.5 text-[0.85rem] text-ink-dim">
+          <p className="mt-0.5 text-[0.9rem] text-ink-dim">
             A copy of the whole storage database, in{" "}
             <span className="selectable font-mono">{backups?.folder ?? "~/WireCat backups"}</span>. Without a password
             it is a plain zip: keep it somewhere private.
@@ -95,7 +95,7 @@ export function BackupPanel() {
           />
           <span>
             Protect with a password
-            <span className="block text-[0.85rem] text-ink-soft">
+            <span className="block text-[0.9rem] text-ink-soft">
               The tool compresses and encrypts the backup itself. Opening it later asks for the password.
             </span>
           </span>
@@ -158,14 +158,14 @@ export function BackupPanel() {
             {backups.files.map((f) => (
               <li
                 key={f.name}
-                className="grid grid-cols-[1rem_minmax(0,1fr)_6rem_11rem_1.5rem] items-center gap-3 text-[0.85rem]"
+                className="grid grid-cols-[1rem_minmax(0,1fr)_6rem_11rem_1.5rem] items-center gap-3 text-[0.9rem]"
               >
                 {f.encrypted ? (
                   <Lock className="size-3.5 text-ink-soft" role="img" aria-label="Encrypted with a password" />
                 ) : (
                   <span />
                 )}
-                <span className="selectable truncate font-mono text-[0.8rem] text-ink">{f.name}</span>
+                <span className="selectable truncate font-mono text-[0.85rem] text-ink">{f.name}</span>
                 <span className="text-right font-mono text-ink-dim tabular-nums">{formatBytes(f.bytes)}</span>
                 <span className="text-ink-dim tabular-nums">{day(f.modified)}</span>
                 <button
@@ -185,7 +185,7 @@ export function BackupPanel() {
           <div
             aria-label="How to restore"
             role="note"
-            className="mt-3 flex flex-col gap-0.5 text-[0.85rem] text-ink-soft"
+            className="mt-3 flex flex-col gap-0.5 text-[0.9rem] text-ink-soft"
           >
             {kinds.has(false) && (
               <p>
@@ -213,7 +213,7 @@ export function BackupPanel() {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-line border-t px-[1.3rem] py-[0.9rem]">
         <div className="max-w-[62ch]">
           <h3 className="text-[0.98rem] font-semibold">Clear storage</h3>
-          <p id="clear-why" className="mt-0.5 text-[0.85rem] text-ink-soft">
+          <p id="clear-why" className="mt-0.5 text-[0.9rem] text-ink-soft">
             {clearBlocked ??
               "Deletes every message, chat, email, document and meeting in storage. Settings and sign-ins stay."}
           </p>

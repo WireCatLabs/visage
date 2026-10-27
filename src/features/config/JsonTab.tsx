@@ -82,7 +82,7 @@ export function JsonTab() {
         ))}
         {st.steps.length > 0 && <Progress steps={st.steps} />}
       </div>
-      <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.85rem] text-ink-dim">
+      <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.9rem] text-ink-dim">
         Saving runs one <span className="font-mono">config set</span> or <span className="font-mono">config unset</span>{" "}
         per changed setting and stops at the first one the tool refuses. Masked values (•••) and locked settings cannot
         be changed here.
@@ -115,7 +115,7 @@ function Progress({ steps }: { steps: Step[] }) {
   return (
     <ol aria-label="Save progress" className="flex flex-col gap-1 px-[1.3rem] py-3">
       {steps.map((s) => (
-        <li key={`${s.op.kind}-${s.op.key}`} className="flex min-w-0 items-center gap-2.5 text-[0.85rem]">
+        <li key={`${s.op.kind}-${s.op.key}`} className="flex min-w-0 items-center gap-2.5 text-[0.9rem]">
           <StepIcon state={s.state} />
           <span className="w-[4.6rem] shrink-0 text-ink-soft">{STEP_LABEL[s.state]}</span>
           <span className="selectable truncate font-mono text-ink">

@@ -93,7 +93,7 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
           <span className={cx("block font-semibold leading-tight", entry.type !== "pending" && !on && "text-ink-dim")}>
             {entry.name}
           </span>
-          <span className="block truncate text-[0.85rem] text-ink-dim">
+          <span className="block truncate text-[0.9rem] text-ink-dim">
             {note ?? <Skeleton chars={10} {...(first ? { label: "Looking for agents" } : {})} />}
           </span>
         </span>
@@ -108,10 +108,10 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
       <Lamp size="sm" tone={rowTone(view)} />
       <span className="min-w-0 flex-1">
         <span className={cx("block font-semibold leading-tight", on && "text-brand")}>{view.agent.name}</span>
-        <span className="block truncate text-[0.85rem] text-ink-soft">{checking ? <Skeleton chars={12} /> : note}</span>
+        <span className="block truncate text-[0.9rem] text-ink-soft">{checking ? <Skeleton chars={12} /> : note}</span>
       </span>
       {view.todo.length > 0 && (
-        <span className="rounded-[0.3rem] bg-warn/15 px-[0.45rem] py-[0.1rem] text-[0.8rem] font-medium text-warn-ink tabular-nums">
+        <span className="rounded-[0.3rem] bg-warn/15 px-[0.45rem] py-[0.1rem] text-[0.85rem] font-medium text-warn-ink tabular-nums">
           {view.todo.length}
         </span>
       )}

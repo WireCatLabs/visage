@@ -285,7 +285,7 @@ export function Select<T extends string>({
             <div key={`group-${item.label}`} role="group" aria-label={item.label} className="not-first:mt-1">
               <div
                 aria-hidden
-                className="px-1.5 pt-1.5 pb-1 text-[0.72rem] font-medium tracking-[0.06em] text-ink-dim uppercase"
+                className="px-1.5 pt-1.5 pb-1 text-[0.8rem] font-medium tracking-[0.06em] text-ink-dim uppercase"
               >
                 {item.label}
               </div>
