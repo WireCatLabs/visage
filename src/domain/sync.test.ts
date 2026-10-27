@@ -23,17 +23,19 @@ describe("the words a finished sync ends with", () => {
 
 describe("a failed sync in plain words", () => {
   it("keeps progress on the time limit and points to another sync on a lock", () => {
-    expect(advice({ message: "x", code: "timeout", reason: null }, "personal").title).toBe("Time limit reached")
+    expect(advice({ message: "x", code: "timeout", reason: null, run: null }, "personal").title).toBe(
+      "Time limit reached",
+    )
     for (const reason of ["profile.locked", "sync.running", "device.in-use", "app.busy"]) {
-      expect(advice({ message: "x", code: "provider_unavailable", reason }, "personal").title).toBe(
+      expect(advice({ message: "x", code: "provider_unavailable", reason, run: null }, "personal").title).toBe(
         "Another sync is running",
       )
     }
   })
 
   it("sends a signed-out profile to sign in, and an unknown failure to a report", () => {
-    expect(advice({ message: "x", code: "authentication_error", reason: null }, "work").signIn).toBe(true)
-    const unknown = advice({ message: "boom", code: null, reason: null }, "work")
+    expect(advice({ message: "x", code: "authentication_error", reason: null, run: null }, "work").signIn).toBe(true)
+    const unknown = advice({ message: "boom", code: null, reason: null, run: null }, "work")
     expect([unknown.text, unknown.report]).toEqual(["boom", true])
   })
 })

@@ -23,6 +23,8 @@ export const SyncEventSchema = v.variant("event", [
     message: v.string(),
     code: v.nullable(v.string()),
     reason: v.nullable(v.string()),
+    /** The tool's failed run, to open on the Logs page; the tool's own message never reaches the window. */
+    run: v.nullable(v.string()),
   }),
 ])
 

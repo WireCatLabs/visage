@@ -1,6 +1,6 @@
 use crate::catalog::{self, Tool};
 use crate::run::{self, Line, RunError};
-use crate::{paths, redact};
+use crate::{paths, runs};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
@@ -64,10 +64,13 @@ pub enum SyncEvent {
     },
     Stopped,
     /// `code` and `reason` are the tool's own (`timeout`, `profile.locked`…); the interface says what to do.
+    /// `message` is always the app's own words: a tool's message can name a chat (RISK-44), so only its `code`,
+    /// `reason` and the id of its failed run leave Rust, and the window links that run on the Logs page.
     Failed {
         message: String,
         code: Option<String>,
         reason: Option<String>,
+        run: Option<String>,
     },
 }
 
@@ -127,7 +130,7 @@ pub fn run(tool: &Tool, args: &[String], stopped: &dyn Fn() -> bool, send: &dyn 
             stdout.push('\n');
         }
         Line::Err(l) => {
-            if let Some(e) = error_of(&l) {
+            if let Some(e) = error_of(&tool.name, &l) {
                 error = Some(e);
             } else if let Some(p) = progress_of(&l) {
                 send(p);
@@ -172,11 +175,24 @@ fn progress_of(line: &str) -> Option<SyncEvent> {
 }
 
 /// The error envelope a failing tool prints on stderr, with its message masked.
-fn error_of(line: &str) -> Option<SyncEvent> {
+fn error_of(name: &str, line: &str) -> Option<SyncEvent> {
     let value: Value = serde_json::from_str(line.trim()).ok()?;
     let e = value.get("error")?;
-    let text = |k: &str| e.get(k).and_then(Value::as_str).map(str::to_string);
-    Some(failed(redact::text(&text("message")?), text("code"), text("reason")))
+    let word = |k: &str| e.get(k).and_then(Value::as_str).filter(|w| is_word(w)).map(str::to_string);
+    let code = word("code");
+    let run = e.get("run_id").and_then(Value::as_str).filter(|r| runs::validate_run(r).is_ok()).map(str::to_string);
+    let message = match &code {
+        Some(c) => format!("{name} stopped with the error {c}."),
+        None => format!("{name} stopped with an error."),
+    };
+    Some(SyncEvent::Failed { message, code, reason: word("reason"), run })
+}
+
+/// A code or reason is an identifier (`provider_unavailable`, `profile.locked`); anything else is dropped.
+fn is_word(w: &str) -> bool {
+    !w.is_empty()
+        && w.len() <= 64
+        && w.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '.' | '-'))
 }
 
 fn finish(
@@ -203,7 +219,7 @@ fn finish(
 }
 
 fn failed(message: String, code: Option<String>, reason: Option<String>) -> SyncEvent {
-    SyncEvent::Failed { message, code, reason }
+    SyncEvent::Failed { message, code, reason, run: None }
 }
 
 fn count(v: &Value, key: &str) -> u64 {
@@ -375,12 +391,15 @@ mod tests {
     }
 
     #[test]
-    fn an_error_envelope_becomes_a_masked_failure() {
-        let line =
-            r#"{"error":{"code":"provider_unavailable","reason":"profile.locked","message":"held by me@example.com"}}"#;
-        let SyncEvent::Failed { message, code, reason } = error_of(line).unwrap() else { panic!() };
-        assert_eq!((code.as_deref(), reason.as_deref()), (Some("provider_unavailable"), Some("profile.locked")));
-        assert!(!message.contains("me@example.com"), "{message}");
+    fn an_error_keeps_its_code_reason_and_run_but_never_the_tools_words() {
+        let line = r#"{"error":{"code":"provider_error","reason":"profile.locked","message":"chat Family Secrets failed","run_id":"20261027T121457Z-messages-sync-db4f0a"}}"#;
+        let SyncEvent::Failed { message, code, reason, run } = error_of("Telegram", line).unwrap() else { panic!() };
+        assert_eq!((code.as_deref(), reason.as_deref()), (Some("provider_error"), Some("profile.locked")));
+        assert_eq!(run.as_deref(), Some("20261027T121457Z-messages-sync-db4f0a"));
+        assert!(!message.contains("Family"), "{message}");
+        let odd = r#"{"error":{"code":"Family Secrets","reason":"a b","run_id":"../x y","message":"m"}}"#;
+        let SyncEvent::Failed { code, reason, run, .. } = error_of("Telegram", odd).unwrap() else { panic!() };
+        assert_eq!((code, reason, run), (None, None, None));
     }
 
     #[test]

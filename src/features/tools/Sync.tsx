@@ -7,8 +7,9 @@ import type { LastSync } from "@/platform/sync-schemas"
 import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
-import { Disclosure } from "@/ui/Disclosure"
 import { Skeleton, StableText } from "@/ui/Skeleton"
+import { useLogs } from "../logs/store"
+import { useNav } from "../nav"
 import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
 import { useElapsed } from "../storage/useElapsed"
@@ -142,7 +143,7 @@ function Outcome({ run, what, account }: { run: SyncRun; what: SyncWhat; account
       </p>
     )
   }
-  const a = advice(run.failure ?? { message: "", code: null, reason: null }, account)
+  const a = advice(run.failure ?? { message: "", code: null, reason: null, run: null }, account)
   return (
     <p className="reveal flex items-center gap-2 text-[0.9rem] font-medium text-ink">
       <AlertTriangle className="size-4 shrink-0 text-warn" aria-hidden />
@@ -169,7 +170,7 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
   } else if (run.phase === "stopped") {
     body = <p>What came in is kept. The next sync continues from there.</p>
   } else {
-    const failure = run.failure ?? { message: "", code: null, reason: null }
+    const failure = run.failure ?? { message: "", code: null, reason: null, run: null }
     const a = advice(failure, profile ?? entry.name)
     body = (
       <div className="flex flex-col gap-2">
@@ -189,10 +190,12 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
           )}
           {a.report && <ReportThis what={`Syncing ${entry.name}`} tool={entry.id} error={failure.message} />}
         </div>
-        {!a.report && failure.message && (
-          <Disclosure summary="What the tool said">
-            <p className="selectable font-mono text-[0.8rem] break-words text-ink-soft">{failure.message}</p>
-          </Disclosure>
+        {(failure.code || failure.run) && (
+          <div>
+            <Button size="sm" variant="ghost" onClick={() => openRun(entry, failure.run)}>
+              Open the run on Logs
+            </Button>
+          </div>
         )}
       </div>
     )
@@ -208,6 +211,15 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
       {close}
     </div>
   )
+}
+
+/** The Logs page, at the failed run when the tool named it, else at this tool's failed syncs. */
+function openRun(entry: CatalogTool, run: string | null) {
+  const words = (entry.sync?.run ?? []).filter((w) => w !== "{profile}" && !w.startsWith("-"))
+  const logs = useLogs.getState()
+  logs.setQuery(run ? `run_id:${run}` : `command:"${words.join(" ")}" status:failed`)
+  logs.setRange("all")
+  useNav.getState().go("logs")
 }
 
 /** The Tools row's compact line: a running sync, its result, or when the only profile last synced. */
@@ -252,7 +264,7 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
         ? resultLine(what, info.run.summary)
         : info.run.phase === "stopped"
           ? "Sync stopped; what came in is kept"
-          : `Sync: ${advice(info.run.failure ?? { message: "", code: null, reason: null }, info.profile ?? entry.name).title}`
+          : `Sync: ${advice(info.run.failure ?? { message: "", code: null, reason: null, run: null }, info.profile ?? entry.name).title}`
     return (
       <span className="truncate">
         {who}

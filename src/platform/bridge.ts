@@ -183,7 +183,13 @@ function createTauri(): Platform {
         onEvent(
           parsed.success
             ? parsed.output
-            : { event: "failed", message: "The app could not read the sync's answer.", code: null, reason: null },
+            : {
+                event: "failed",
+                message: "The app could not read the sync's answer.",
+                code: null,
+                reason: null,
+                run: null,
+              },
         )
       }
       return invoke("sync_run", { id, profile, onEvent: channel })

@@ -361,7 +361,8 @@ takes the five seconds; from 0.118.0 it stops between batches of mail. One sync 
 refuses while one runs. A tool on a cli-core that prints `{"event":"progress","step":"sync","chats","chats_done","fetched"}` on stderr
 gets a bar that counts chats ("Chat 4 of 40 · 1,240 new messages"); the others (DEBT-4) get a stage read from their
 notes, from a fixed list, and an indeterminate bar. Only counts leave Rust: chat titles, chat keys in the notes and account names
-stay behind, and an error message goes through `redact.rs`. The Manage panel has one control per profile (Accounts), or
+stay behind. Of a failure only the tool's `code`, `reason` and failed run id leave (RISK-44: its message can name a
+chat); the window's words are the app's own, and "Open the run on Logs" opens that run. The Manage panel has one control per profile (Accounts), or
 one for a tool without profiles; the Tools row shows the running sync, its result, or the last sync of its only
 profile, with a Sync or Stop button beside the name. A result stays until dismissed and says what to do next.
 

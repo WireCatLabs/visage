@@ -673,6 +673,7 @@ async fn sync_run(
                 },
                 code: None,
                 reason: Some("app.busy".into()),
+                run: None,
             });
         }
         sync::run(tool, &args, &|| !running.is_running(&key), &send);

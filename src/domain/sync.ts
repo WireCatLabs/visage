@@ -42,7 +42,7 @@ export function doneNext(what: SyncWhat): string {
   return what === "meetings" ? "Your agents can read their transcripts now." : "Your agents can search them now."
 }
 
-export type SyncFailure = { message: string; code: string | null; reason: string | null }
+export type SyncFailure = { message: string; code: string | null; reason: string | null; run: string | null }
 export type Advice = { title: string; text: string; again: boolean; signIn: boolean; report: boolean }
 
 const BUSY = new Set(["profile.locked", "sync.running", "device.in-use", "app.busy"])
@@ -103,7 +103,8 @@ export function advice(f: SyncFailure, account: string): Advice {
       report: false,
     }
   }
-  return { title: "The sync failed", text: f.message, again: true, signIn: false, report: true }
+  const logs = f.code || f.run ? " Its run on the Logs page shows what happened." : ""
+  return { title: "The sync failed", text: `${f.message}${logs}`, again: true, signIn: false, report: true }
 }
 
 /** "0:42", "12:05", "1:02:09": elapsed time with a steady width per magnitude. */

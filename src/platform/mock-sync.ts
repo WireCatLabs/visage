@@ -78,6 +78,7 @@ export function syncMock(): Pick<Platform, "syncRun" | "syncStop" | "syncLast"> 
           message: "another sync or knowledge operation holds this profile's lock; retry later",
           code: "provider_unavailable",
           reason: "profile.locked",
+          run: "20261027T121457Z-sync-db4f0a",
         })
       }
       if (params.get("sync-timeout") === id) {
@@ -86,6 +87,7 @@ export function syncMock(): Pick<Platform, "syncRun" | "syncStop" | "syncLast"> 
           message: "the command took longer than 2h",
           code: "timeout",
           reason: "command.timed-out",
+          run: null,
         })
       }
       finished[key] = Date.now()

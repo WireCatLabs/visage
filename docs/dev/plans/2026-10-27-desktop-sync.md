@@ -61,7 +61,7 @@ last start. With no time the line says "No sync recorded from this app yet", nev
 | memo ignores Stop and has no time limit (BUG-17) | cli-memo: read the signal, stop between batches, honour `--timeout` | done: cli-memo #487, released 0.118.0 |
 | No structured progress in `messages sync` (DEBT-4) | cli-core #2121: `{"event":"progress","step":"sync","chats","chats_done","fetched"}` on stderr | PR green, queued on #849; then tg/max/wa bumps (another lane). Desktop already reads it |
 | No progress in drive, zm or memo syncs | their own sync code (#2121 covers only `messages sync`) | not started |
-| An error message may name a chat (RISK-44) | Desktop: show only code and reason, point to the failed run on Logs | open |
+| An error message may name a chat (RISK-44) | Desktop: show only code and reason, point to the failed run on Logs | done |
 | No whole-profile "last synced" for messengers | cli-core #2119 records every run; until then only syncs the app started | waits on #2119 |
 | zm's status time is the last start | zm `meetings status` could add `finished_at` | proposed |
 | wa has no one-shot sync | product decision (NEED in the journal) | open |

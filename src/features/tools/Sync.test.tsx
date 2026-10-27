@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { SyncEvent } from "@/platform/sync-schemas"
+import { useLogs } from "../logs/store"
+import { useNav } from "../nav"
 import { SyncControl } from "./Sync"
 import { useSync } from "./sync-store"
 
@@ -72,6 +74,23 @@ describe("syncing a profile from the Manage panel", () => {
     expect(platform.syncRun).toHaveBeenCalledTimes(1)
     const work = screen.getByRole("region", { name: "Sync Telegram work" })
     expect(within(work).getByRole("button", { name: "Sync now" })).toBeEnabled()
+  })
+
+  it("shows a failure as the tool's code and opens its failed run on Logs, never the tool's own words", async () => {
+    render(<SyncControl tool={tg} profile="personal" />)
+    await userEvent.click(await screen.findByRole("button", { name: "Sync now" }))
+    send({
+      event: "failed",
+      message: "Telegram stopped with the error provider_error.",
+      code: "provider_error",
+      reason: null,
+      run: "20261027T121457Z-messages-sync-db4f0a",
+    })
+    finish()
+    expect(await screen.findByText("The sync failed")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Open the run on Logs" }))
+    expect(useLogs.getState().query).toBe("run_id:20261027T121457Z-messages-sync-db4f0a")
+    expect(useNav.getState().active).toBe("logs")
   })
 
   it("syncs memo and Email under one lock, without a profile", () => {

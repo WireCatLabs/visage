@@ -79,7 +79,7 @@ export const useSync = create<State>()((set, get) => {
         return patch(key, {
           ...ended,
           phase: "failed",
-          failure: { message: e.message, code: e.code, reason: e.reason },
+          failure: { message: e.message, code: e.code, reason: e.reason, run: e.run },
         })
     }
   }
@@ -114,9 +114,12 @@ export const useSync = create<State>()((set, get) => {
                 message: "The sync ended without saying how.",
                 code: null,
                 reason: null,
+                run: null,
               })
           },
-          (e) => running() && apply(tool, profile, { event: "failed", message: message(e), code: null, reason: null }),
+          (e) =>
+            running() &&
+            apply(tool, profile, { event: "failed", message: message(e), code: null, reason: null, run: null }),
         )
     },
     stop(tool, profile) {
