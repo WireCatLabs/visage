@@ -33,6 +33,8 @@ src-tauri/src/
   tailscale.rs  Tailscale Funnel for an MCP server: its state, `tailscale login`, and Funnel on and off for ports the app set up.
   tailscale_install.rs Tailscale's official installer or package, downloaded into Downloads and handed to the system.
   tailscale_linux.rs Tailscale's install commands for this Linux, from /etc/os-release and lists of known releases.
+  cloudflare.rs  A Cloudflare tunnel on the owner's own domain: login, the tunnel and its DNS record, cloudflared run in the background.
+  cloudflare_install.rs cloudflared's own release from GitHub into the app's folder, checked against GitHub's checksum.
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.
@@ -231,7 +233,7 @@ each call. Zoom serves no HTTP MCP and Email is part of memo, so neither has the
 
 **The guide** (`ConnectGuide.tsx`) aims at a working call from the app, not at a running server. Six steps in a rail,
 on one surface that only Finish closes: choose the app (ChatGPT, Claude, another), the public address (Tailscale's own
-steps, done ones as ticks, or a tunnel the owner runs), start the server (Funnel, then `mcp server start`, with each
+steps, done ones as ticks, a Cloudflare tunnel on the owner's domain, or a tunnel the owner runs), start the server (Funnel, then `mcp server start`, with each
 part's progress; nothing runs before the owner presses Start the server), check the address, add it in the app, and
 test it. A failed start leaves Funnel on: turning it off and on again can drop the public name for minutes, and a retry
 uses the same address.
@@ -309,6 +311,34 @@ at the recorded local port; never `funnel reset`. The row says when a Funnel is 
 The computer's Tailscale name, the Unix user name (for the operator line, shown to copy only: a terminal would run its
 `sudo` at once) and the login and approval links leave Rust unmasked, an exception to rule 4 like the MCP login code;
 they are never logged or put in a report. The raw `tailscale status` never leaves Rust.
+
+## Cloudflare tunnel for the MCP server
+
+The second choice in the guide's address step, for when Tailscale cannot give an address (plan
+`docs/dev/plans/2026-10-27-cloudflare-fallback.md`). The choice's card says, before it is picked, that Cloudflare
+decrypts the traffic and can read what the tools send back (NEED-102). The shape is Funnel's: one name on the owner's
+domain, the three paths of each tool to its local port, everything else 404. `cloudflare.rs`:
+
+1. **Download.** `cloudflare_install.rs` takes the standalone cloudflared for this OS and CPU from the latest GitHub
+   release, checks the SHA-256 GitHub states for the file, and keeps it in `<app local data>/dev.wirecat.desktop/
+   cloudflared/`. No installer, no service (rule 6).
+2. **Account.** `cloudflared tunnel login` with a home folder of its own (login always writes `~/.cloudflared/
+   cert.pem` and, with one there, exits 0 without logging in) and a PATH with no browser opener, so cloudflared prints
+   the page and the app opens it, only on dash.cloudflare.com. The certificate goes into the OS keyring.
+3. **Address.** The owner types a name under the domain picked at login. `tunnel create` and `tunnel route dns`; a
+   name outside that domain comes back under it, which the app compares and explains. The tunnel's credentials go into
+   the keyring and the certificate is deleted. The certificate and credentials touch the disk only for the length of
+   these commands, owner-only, and are removed after.
+4. **Run.** `config.yml` with the ingress rules, then `cloudflared tunnel --no-autoupdate --config … --metrics
+   127.0.0.1:<free port> run <id>` with the credentials in `TUNNEL_CRED_CONTENTS`, in the background; the app waits
+   for `/ready`. A tool added or removed restarts it. Stop takes the tool's paths off and stops cloudflared with the
+   last one, by its recorded PID and only while that PID is still the app's cloudflared. An unknown tunnel ("Failed
+   to get tunnel", which cloudflared retries for ever) ends the wait at once.
+
+`tunnel.json` beside it records the name, tunnel id, routes, PID and metrics port, no secret. The owner's hostname
+leaves Rust unmasked, an exception to rule 4 like the Tailscale name: the owner needs it as it is; it is never logged.
+cloudflared's own output stays in Rust, except the last line of a failure. An error that names the hostname can still
+reach a bug report the owner sends from it (RISK-32).
 
 ## Growing the app
 

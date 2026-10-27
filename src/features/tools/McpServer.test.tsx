@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
+import type { CloudflareStatus } from "@/platform/cloudflare-schemas"
 import type { McpClient, McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { TailscaleStatus } from "@/platform/tailscale-schemas"
+import { PRIVACY } from "./CloudflareGuide"
 import { McpServer } from "./McpServer"
 import { formProblem } from "./McpServerDialogs"
 
@@ -304,6 +306,116 @@ describe("Connect an AI app", () => {
     expect(screen.getByText(/It arrives with the next update of tg/)).toBeVisible()
     expect(screen.queryByRole("button", { name: /^ChatGPT/ })).not.toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+})
+
+const CLOUDFLARE: CloudflareStatus = {
+  os: "linux",
+  supported: true,
+  installed: true,
+  version: "2026.10.5",
+  signedIn: false,
+  hostname: "wirecat.example.com",
+  running: false,
+}
+
+describe("Connect an AI app through a Cloudflare tunnel", () => {
+  it("says Cloudflare can read the messages before it is picked, and keeps Funnel the first choice", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    const status = vi.spyOn(platform, "cloudflareStatus").mockResolvedValue(CLOUDFLARE)
+    await guideAtAddress(user)
+
+    expect(await screen.findByRole("radio", { name: /Tailscale Funnel/ })).toBeChecked()
+    expect(screen.getByText(PRIVACY)).toBeVisible()
+    expect(status).not.toHaveBeenCalled()
+  })
+
+  it("starts the tunnel with the tool's paths, then the server with the tunnel's address", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    vi.spyOn(platform, "cloudflareStatus").mockResolvedValue(CLOUDFLARE)
+    const funnel = vi.spyOn(platform, "tailscaleFunnelOpen")
+    const open = vi.spyOn(platform, "cloudflareTunnelOpen").mockResolvedValue("https://wirecat.example.com/tg")
+    const start = vi
+      .spyOn(platform, "mcpServerStart")
+      .mockResolvedValue({ ...RUNNING, connectorUrl: "https://wirecat.example.com/tg/mcp" })
+    await guideAtAddress(user)
+    await user.click(await screen.findByRole("radio", { name: /Cloudflare tunnel/ }))
+
+    expect(await screen.findByText(/The address will be/)).toHaveTextContent("https://wirecat.example.com/tg/mcp")
+    await user.click(screen.getByRole("button", { name: "Start the server" }))
+
+    await waitFor(() => expect(start).toHaveBeenCalledExactlyOnceWith("tg", 8765, "https://wirecat.example.com/tg"))
+    expect(open).toHaveBeenCalledExactlyOnceWith("tg", 8765)
+    expect(funnel).not.toHaveBeenCalled()
+  })
+
+  it("asks for the account, then a name on the domain, before it offers to start", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
+    vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
+    const status = vi.spyOn(platform, "cloudflareStatus").mockResolvedValue({ ...CLOUDFLARE, hostname: null })
+    const login = vi.spyOn(platform, "cloudflareLogin").mockImplementation(async () => {
+      status.mockResolvedValue({ ...CLOUDFLARE, hostname: null, signedIn: true })
+    })
+    const create = vi.spyOn(platform, "cloudflareCreate").mockImplementation(async (name) => {
+      status.mockResolvedValue(CLOUDFLARE)
+      return name
+    })
+    await guideAtAddress(user)
+    await user.click(await screen.findByRole("radio", { name: /Cloudflare tunnel/ }))
+
+    await user.click(await screen.findByRole("button", { name: "Connect Cloudflare" }))
+    expect(login).toHaveBeenCalledOnce()
+    expect(screen.queryByRole("button", { name: "Start the server" })).not.toBeInTheDocument()
+    await user.type(await screen.findByLabelText("Address on your domain"), "wirecat.example.com")
+    await user.click(screen.getByRole("button", { name: "Make the address" }))
+
+    expect(create).toHaveBeenCalledExactlyOnceWith("wirecat.example.com")
+    expect(await screen.findByRole("button", { name: "Start the server" })).toBeVisible()
+  })
+
+  it("says the tunnel is not running and starts it again on the same port", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({
+      ...RUNNING,
+      clients: [],
+      connectorUrl: "https://wirecat.example.com/tg/mcp",
+    })
+    vi.spyOn(platform, "cloudflareRoutes").mockResolvedValue([
+      { tool: "tg", url: "https://wirecat.example.com/tg", port: 9001, live: false },
+    ])
+    const open = vi.spyOn(platform, "cloudflareTunnelOpen").mockResolvedValue("https://wirecat.example.com/tg")
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: /^ChatGPT/ }))
+
+    expect(await screen.findByText(/The Cloudflare tunnel is not running/)).toBeVisible()
+    await user.click(screen.getByRole("button", { name: "Start the tunnel" }))
+    expect(open).toHaveBeenCalledExactlyOnceWith("tg", 9001)
+  })
+
+  it("takes the tool off the tunnel when its server stops", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({
+      ...RUNNING,
+      connectorUrl: "https://wirecat.example.com/tg/mcp",
+    })
+    vi.spyOn(platform, "cloudflareRoutes").mockResolvedValue([
+      { tool: "tg", url: "https://wirecat.example.com/tg", port: 9001, live: true },
+    ])
+    vi.spyOn(platform, "mcpServerStop").mockResolvedValue()
+    const close = vi.spyOn(platform, "cloudflareTunnelClose").mockResolvedValue()
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await openDetails(user)
+    expect(await within(row()).findByText(/through your Cloudflare tunnel/)).toBeInTheDocument()
+    await user.click(within(row()).getByRole("button", { name: "Stop the MCP server for tg" }))
+
+    await waitFor(() => expect(close).toHaveBeenCalledExactlyOnceWith("tg"))
   })
 })
 

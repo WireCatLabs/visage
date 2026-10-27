@@ -15,6 +15,7 @@ import {
 } from "./agents-schemas"
 import { StoreCheckSchema, StoreCompatSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { BackupEventSchema, BackupsSchema, ResetDoneSchema, ResetPreviewSchema } from "./backup-schemas"
+import { CloudflareStatusSchema, TunnelRouteSchema } from "./cloudflare-schemas"
 import { McpServerStatusSchema, OAuthSettingsSchema, PublicCheckSchema } from "./mcp-server-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
@@ -147,6 +148,14 @@ function createTauri(): Platform {
       call(v.string(), "tailscale_funnel_open", { id, port, onEvent: pages(onPage) }),
     tailscaleFunnelClose: (id) => invoke("tailscale_funnel_close", { id }),
     tailscaleFunnels: () => call(v.array(FunnelStateSchema), "tailscale_funnels"),
+    cloudflareStatus: () => call(CloudflareStatusSchema, "cloudflare_status"),
+    cloudflareInstall: () => call(v.string(), "cloudflare_install"),
+    cloudflareLogin: (onPage) => invoke("cloudflare_login", { onEvent: pages(onPage) }),
+    cloudflareStop: () => invoke("cloudflare_stop"),
+    cloudflareCreate: (hostname) => call(v.string(), "cloudflare_create", { hostname }),
+    cloudflareTunnelOpen: (id, port) => call(v.string(), "cloudflare_tunnel_open", { id, port }),
+    cloudflareTunnelClose: (id) => invoke("cloudflare_tunnel_close", { id }),
+    cloudflareRoutes: () => call(v.array(TunnelRouteSchema), "cloudflare_routes"),
     taskClaims: (id, profile) => call(ClaimsSchema, "task_claims", { id, profile }),
     taskRelease: (id, profile, task) => invoke("task_release", { id, profile, task }),
     cancelInstall: (id) => invoke("cancel_install", { id }),

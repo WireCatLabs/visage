@@ -2,6 +2,7 @@ import { ownerId, tools } from "@/domain/catalog"
 import { agentsMock } from "./mock-agents"
 import { storeCheckMock, storeInfoMock, storeTablesMock } from "./mock-archive"
 import { backupMock } from "./mock-backup"
+import { cloudflareMock } from "./mock-cloudflare"
 import { newestReader, storeCompatMock } from "./mock-compat"
 import { delay } from "./mock-delay"
 import { mcpServerMock } from "./mock-mcp"
@@ -494,6 +495,7 @@ export function createMock(os: Platform["os"]): Platform {
     ...signInMock(),
     ...mcpServerMock(),
     ...tailscaleMock(),
+    ...cloudflareMock(),
     ...reportMock,
     ...runsMock,
     ...settingsMock,

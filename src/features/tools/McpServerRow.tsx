@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
+import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
+import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
@@ -49,13 +51,15 @@ export function McpServerRow(props: {
   row: RowState
   /** The Tailscale Funnel the app set up for this server, if any. */
   funnel: FunnelState | null
+  /** The tool's paths on the Cloudflare tunnel the app runs, if any. */
+  route: TunnelRoute | null
   /** Whole-port funnels from when a server spoke for one profile, still on. */
   leftovers: FunnelState[]
   reload(): void
   /** Opens the "Connect an AI app" guide, which starts the server. */
   onStart(): void
 }) {
-  const { tool, row, funnel, leftovers, reload, onStart } = props
+  const { tool, row, funnel, route, leftovers, reload, onStart } = props
   const [busy, setBusy] = useState<Busy>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [forgetting, setForgetting] = useState(false)
@@ -78,6 +82,7 @@ export function McpServerRow(props: {
     try {
       await platform.mcpServerStop(tool.id)
       if (funnel?.live) await platform.tailscaleFunnelClose(tool.id)
+      if (route) await platform.cloudflareTunnelClose(tool.id)
     } catch (e) {
       setFailure(message(e))
     }
@@ -145,6 +150,13 @@ export function McpServerRow(props: {
         </p>
       )}
       {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} onClose={closeFunnel} />}
+      {data?.running && route && data.connectorUrl?.startsWith(route.url) && (
+        <p className={cx("pl-[1.6rem] text-[0.85rem]", route.live ? "text-ink-soft" : "text-warn-ink")}>
+          {route.live
+            ? "Reachable from the internet through your Cloudflare tunnel, which WireCat runs. Stop takes it off the tunnel."
+            : "Your Cloudflare tunnel is off, so browser apps cannot reach the server. Stop and start it to start the tunnel again."}
+        </p>
+      )}
       {!funnel?.live &&
         leftovers.map((old) => (
           <div key={old.url} className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">

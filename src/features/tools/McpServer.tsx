@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
+import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
@@ -57,14 +58,13 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
   const [guiding, setGuiding] = useState<boolean | null>(() => (scenarioOf(tool.id) ? true : null))
   const calls = useRef(0)
   const [funnels, setFunnels] = useState<FunnelState[]>([])
+  const [route, setRoute] = useState<TunnelRoute | null>(null)
 
-  // Only funnels the app set up; a missing Tailscale simply has none.
+  // Only funnels and tunnel routes the app set up; a missing Tailscale or cloudflared simply has none.
   const loadFunnels = useCallback(async () => {
-    try {
-      setFunnels((await platform.tailscaleFunnels()).filter((f) => f.tool === tool.id))
-    } catch {
-      setFunnels([])
-    }
+    const [f, r] = await Promise.allSettled([platform.tailscaleFunnels(), platform.cloudflareRoutes()])
+    setFunnels(f.status === "fulfilled" ? f.value.filter((x) => x.tool === tool.id) : [])
+    setRoute(r.status === "fulfilled" ? (r.value.find((x) => x.tool === tool.id) ?? null) : null)
   }, [tool.id])
 
   useEffect(() => {
@@ -178,6 +178,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
               tool={tool}
               server={data}
               funnel={funnel}
+              route={route}
               reload={reload}
               settle={settle}
               onDone={() => setGuiding(false)}
@@ -194,6 +195,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
                   tool={tool}
                   row={row}
                   funnel={funnel}
+                  route={route}
                   leftovers={funnels.filter((f) => !f.shared && f.live)}
                   reload={reload}
                   onStart={() => setGuiding(true)}

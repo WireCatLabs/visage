@@ -6,7 +6,7 @@ import type { Platform } from "./types"
 // name that tries to look like a file; the Tools page opens it (`src/app/scenarios.ts`). `?mcp-fail=<tool>` makes Start
 // fail as when another server holds the port. `?mcp-old=<tool>` answers as a tool from before `mcp server`.
 // `?connect=<state>` opens tg's "Connect an AI app" guide (`connect-scenario.ts`); from `instructions` on, tg's server
-// runs. `connected`: an app logged in after the guide opened; `called`: it also called tg_read; `oldcli`: it logged in,
+// runs (`tunnel-off`: on the Cloudflare tunnel's address). `connected`: an app logged in after the guide opened; `called`: it also called tg_read; `oldcli`: it logged in,
 // but the tool is too old to report calls; `live`: it logs in after 6 s and calls after 12 s. `?activity=<tool>`: that
 // tool's server runs and ChatGPT called it 2 minutes ago, for the Tools page row. `?public=pending` (public DNS has
 // no name yet, for good), `publishing` (none for 8 s, then live), `unknown` (no DNS service answered), `wrong` (the
@@ -41,7 +41,17 @@ const client = (claimedName: string | null, lastLoginAt: string, more: Partial<M
   ...more,
 })
 
-const RUNNING = ["instructions", "waiting", "connected", "called", "oldcli", "unreached", "funnel-off", "live"]
+const RUNNING = [
+  "instructions",
+  "waiting",
+  "connected",
+  "called",
+  "oldcli",
+  "unreached",
+  "funnel-off",
+  "tunnel-off",
+  "live",
+]
 
 /** The app that logs in during a `?connect=` scenario, at the time of the status call, so it is after the guide opened. */
 function newcomer(state: string, appName: string, opened: number): McpClient | null {
@@ -107,8 +117,9 @@ export function mcpServerMock(): Pick<
   const connect = params.get("connect") ?? ""
   const opened = Date.now()
   const appName = params.get("connect-app") === "claude" ? "Claude" : "ChatGPT"
+  const host = connect === "tunnel-off" ? "wirecat.example.com" : "laptop.tail4a2c.ts.net"
   if (RUNNING.includes(connect))
-    servers.set("tg", running(8765, "https://laptop.tail4a2c.ts.net/tg", [client("Claude", ago(60 * 26))]))
+    servers.set("tg", running(8765, `https://${host}/tg`, [client("Claude", ago(60 * 26))]))
 
   return {
     async mcpServerStatus(id) {

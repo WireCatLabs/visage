@@ -2,6 +2,7 @@ import type { StoreCompat } from "@/domain/compat"
 import type { Agent, Chats, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { BackupEvent, Backups, ResetPreview } from "./backup-schemas"
+import type { CloudflareStatus, TunnelRoute } from "./cloudflare-schemas"
 import type { McpServerStatus, OAuthSettings, PublicCheck } from "./mcp-server-schemas"
 import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
@@ -120,6 +121,21 @@ export type Platform = {
   /** Turns off only the paths the app set up for this tool, an older whole-port funnel of it too. */
   tailscaleFunnelClose(id: string): Promise<void>
   tailscaleFunnels(): Promise<FunnelState[]>
+  /** Every step of the Cloudflare tunnel guide at once: cloudflared downloaded, account connected, address made. */
+  cloudflareStatus(): Promise<CloudflareStatus>
+  /** Downloads cloudflared's own release into the app's folder, checked against GitHub's checksum; answers its version. */
+  cloudflareInstall(): Promise<string>
+  /** `cloudflared tunnel login`: the owner logs in and picks the domain in the browser; `onPage` gets the page's link. */
+  cloudflareLogin(onPage: (url: string) => void): Promise<void>
+  /** Stops a waiting login or download. */
+  cloudflareStop(): Promise<void>
+  /** Makes the tunnel and its DNS record for this name on the owner's domain; answers the name as kept. */
+  cloudflareCreate(hostname: string): Promise<string>
+  /** Routes the tool's paths of the tunnel's name to its local port and runs cloudflared; answers `https://<name>/<tool>`. */
+  cloudflareTunnelOpen(id: string, port: number): Promise<string>
+  /** Takes the tool's paths off the tunnel; cloudflared stops when no tool is left. */
+  cloudflareTunnelClose(id: string): Promise<void>
+  cloudflareRoutes(): Promise<TunnelRoute[]>
   taskClaims(id: string, profile: string): Promise<Claims>
   /** Releases a claim as the owner, who may release any. */
   taskRelease(id: string, profile: string, task: string): Promise<void>

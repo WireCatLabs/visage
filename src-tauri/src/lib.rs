@@ -3,6 +3,8 @@ mod backup;
 mod cache;
 mod catalog;
 mod chats;
+mod cloudflare;
+mod cloudflare_install;
 mod compat;
 mod install;
 mod mcp;
@@ -413,6 +415,72 @@ async fn tailscale_funnels() -> Result<Vec<tailscale::FunnelState>, String> {
 }
 
 #[tauri::command]
+async fn cloudflare_status() -> Result<cloudflare::Status, String> {
+    blocking(cloudflare::status).await
+}
+
+/// Downloads cloudflared's own release into the app's folder; its version comes back.
+#[tauri::command]
+async fn cloudflare_install(running: State<'_, Arc<Running>>) -> Result<String, String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        if !running.start(cloudflare::INSTALL) {
+            return Err("The download is already running.".to_string());
+        }
+        let result = cloudflare::install(&|| !running.is_running(cloudflare::INSTALL));
+        running.finish(cloudflare::INSTALL);
+        result
+    })
+    .await?
+}
+
+#[tauri::command]
+async fn cloudflare_login(
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<cloudflare::PageEvent>,
+) -> Result<(), String> {
+    let running = Arc::clone(&running);
+    blocking(move || {
+        if !running.start(cloudflare::LOGIN) {
+            return Err("The Cloudflare login is already running.".to_string());
+        }
+        let result = cloudflare::login(&|| !running.is_running(cloudflare::LOGIN), &|e| {
+            let _ = on_event.send(e);
+        });
+        running.finish(cloudflare::LOGIN);
+        result
+    })
+    .await?
+}
+
+/// Stops a waiting login or download; whatever the person already did in the browser stays done.
+#[tauri::command]
+fn cloudflare_stop(running: State<'_, Arc<Running>>) {
+    running.cancel(cloudflare::LOGIN);
+    running.cancel(cloudflare::INSTALL);
+}
+
+#[tauri::command]
+async fn cloudflare_create(hostname: String) -> Result<String, String> {
+    blocking(move || cloudflare::create(&hostname)).await?
+}
+
+#[tauri::command]
+async fn cloudflare_tunnel_open(id: String, port: u16) -> Result<String, String> {
+    blocking(move || cloudflare::open(&id, port)).await?
+}
+
+#[tauri::command]
+async fn cloudflare_tunnel_close(id: String) -> Result<(), String> {
+    blocking(move || cloudflare::close(&id)).await?
+}
+
+#[tauri::command]
+async fn cloudflare_routes() -> Result<Vec<cloudflare::RouteState>, String> {
+    blocking(cloudflare::routes).await
+}
+
+#[tauri::command]
 async fn mcp_server_status(id: String) -> Result<mcp_server::ServerStatus, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || mcp_server::status(tool)).await?
@@ -638,6 +706,14 @@ pub fn run() {
             tailscale_funnel_open,
             tailscale_funnel_close,
             tailscale_funnels,
+            cloudflare_status,
+            cloudflare_install,
+            cloudflare_login,
+            cloudflare_stop,
+            cloudflare_create,
+            cloudflare_tunnel_open,
+            cloudflare_tunnel_close,
+            cloudflare_routes,
             task_claims,
             task_release,
             report_context,

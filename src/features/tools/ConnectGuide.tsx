@@ -2,6 +2,7 @@ import { Check } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
+import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
@@ -10,6 +11,8 @@ import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
+import { CloudflareGuide, PRIVACY, useCloudflare } from "./CloudflareGuide"
+import { cloudflareSteps } from "./cloudflare-steps"
 import { APPS, type AppId, type AppStep, connectorName, testPrompt } from "./connect-apps"
 import { scenarioOf } from "./connect-scenario"
 import {
@@ -39,9 +42,9 @@ const RECHECK_MS = 15_000
 /** How long the test waits before it suggests what may be wrong. */
 const QUIET_MS = 60_000
 
-type Tunnel = "tailscale" | "own"
-type Phase = "idle" | "funnel" | "server" | "failed"
-type Failure = { at: "funnel" | "server"; message: string }
+type Tunnel = "tailscale" | "cloudflare" | "own"
+type Phase = "idle" | "tunnel" | "server" | "failed"
+type Failure = { at: "tunnel" | "server"; message: string }
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
@@ -53,14 +56,16 @@ export function ConnectGuide(props: {
   tool: CatalogTool
   server: McpServerStatus | null
   funnel: FunnelState | null
+  /** The tool's paths on the Cloudflare tunnel the app runs, if any. */
+  route: TunnelRoute | null
   reload(): Promise<void>
   settle(s: McpServerStatus): void
   onDone(): void
 }) {
-  const { tool, server, funnel, reload, settle, onDone } = props
+  const { tool, server, funnel, route, reload, settle, onDone } = props
   const scenario = useRef(scenarioOf(tool.id)).current
   const [app, setApp] = useState<AppId | null>(scenario?.app ?? null)
-  const [tunnel, setTunnel] = useState<Tunnel>("tailscale")
+  const [tunnel, setTunnel] = useState<Tunnel>(scenario?.tunnel ?? "tailscale")
   const [confirmed, setConfirmed] = useState(scenario?.confirmed ?? false)
   const [added, setAdded] = useState(scenario?.added ?? false)
   const [reach, setReach] = useState<ReachState>({ state: "checking" })
@@ -79,6 +84,15 @@ export function ConnectGuide(props: {
   const current = currentStep(progress)
   const test = testState(server, since)
   const tailscale = useTailscale(current === "address" && tunnel === "tailscale")
+  const cloudflare = useCloudflare(current === "address" && tunnel === "cloudflare")
+
+  // A tool that used the Cloudflare tunnel before starts on it again; the record arrives after the first render.
+  const offered = useRef(false)
+  useEffect(() => {
+    if (offered.current || !route) return
+    offered.current = true
+    setTunnel("cloudflare")
+  }, [route])
 
   // An app that logs in while the owner still reads the instructions moves the guide on by itself.
   useEffect(() => {
@@ -100,10 +114,13 @@ export function ConnectGuide(props: {
     setApproval(null)
     let at: Failure["at"] = "server"
     try {
-      if (tunnel === "tailscale") {
-        setPhase("funnel")
-        at = "funnel"
-        const address = await platform.tailscaleFunnelOpen(tool.id, Number(port), setApproval)
+      if (tunnel === "tailscale" || tunnel === "cloudflare") {
+        setPhase("tunnel")
+        at = "tunnel"
+        const address =
+          tunnel === "tailscale"
+            ? await platform.tailscaleFunnelOpen(tool.id, Number(port), setApproval)
+            : await platform.cloudflareTunnelOpen(tool.id, Number(port))
         setPhase("server")
         at = "server"
         // A failed start leaves Funnel on: turning it off and on again can drop the public name for minutes
@@ -158,6 +175,7 @@ export function ConnectGuide(props: {
   }, [current])
 
   const funnelOff = tunnel === "tailscale" && serving(server) && funnel !== null && !funnel.live
+  const tunnelOff = serving(server) && route !== null && !route.live && server.connectorUrl.startsWith(route.url)
   const name = app ? APPS[app].name : "the app"
 
   const summary: Partial<Record<ConnectStepId, string | undefined>> = {
@@ -192,6 +210,7 @@ export function ConnectGuide(props: {
             tunnel={tunnel}
             setTunnel={setTunnel}
             tailscale={tailscale}
+            cloudflare={cloudflare}
             ownUrl={ownUrl}
             setOwnUrl={setOwnUrl}
             port={port}
@@ -222,6 +241,9 @@ export function ConnectGuide(props: {
         )}
         {funnelOff && (current === "reach" || current === "connect" || current === "test") && (
           <FunnelOff tool={tool} port={server?.port ?? Number(port)} name={name} reload={reload} />
+        )}
+        {tunnelOff && (current === "reach" || current === "connect" || current === "test") && (
+          <TunnelOff tool={tool} port={route.port} name={name} reload={reload} />
         )}
         {current === "connect" && app && serving(server) && (
           <ConnectStep tool={tool} app={app} server={server} onAdded={() => setAdded(true)} />
@@ -366,13 +388,14 @@ function AddressStep(props: {
   tunnel: Tunnel
   setTunnel(t: Tunnel): void
   tailscale: ReturnType<typeof useTailscale>
+  cloudflare: ReturnType<typeof useCloudflare>
   ownUrl: string
   setOwnUrl(u: string): void
   port: string
   setPort(p: string): void
   onConfirm(): void
 }) {
-  const { tool, appName, tunnel, setTunnel, tailscale, ownUrl, setOwnUrl, port, setPort, onConfirm } = props
+  const { tool, appName, tunnel, setTunnel, tailscale, cloudflare, ownUrl, setOwnUrl, port, setPort, onConfirm } = props
   const id = useId()
   const [problem, setProblem] = useState<string | null>(null)
   const status = tailscale.status
@@ -380,9 +403,11 @@ function AddressStep(props: {
   const ready = steps.length > 0 && steps.every((s) => s.done)
   const full = steps.find((s) => s.id === "connect" && !s.done && s.missing !== "Waits for the step before it.")
   const address = status ? addressOf(status, tool.id) : null
+  const cf = cloudflare.status
+  const cfReady = cf !== null && cloudflareSteps(cf).every((s) => s.done)
 
   const submit = () => {
-    const wrong = formProblem(tunnel === "own" ? ownUrl.trim() : "https://x.ts.net", port)
+    const wrong = formProblem(tunnel === "own" ? ownUrl.trim() : "https://x.example.com", port)
     if (wrong) return setProblem(wrong)
     setProblem(null)
     onConfirm()
@@ -418,7 +443,7 @@ function AddressStep(props: {
             Start the server
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setTunnel("tailscale")}>
-            Use Tailscale Funnel instead
+            Let WireCat set up the address instead
           </Button>
         </div>
       </>
@@ -428,12 +453,36 @@ function AddressStep(props: {
     <>
       <Para>
         {tool.name} runs on this computer and {appName} runs on its own servers, so it needs an address on the internet
-        that leads here. Tailscale Funnel gives this computer one that stays the same, and only the paths of this server
-        are open; every app still has to log in with a code from WireCat.
+        that leads here. It stays the same, and only the paths of this server are open; every app still has to log in
+        with a code from WireCat.
       </Para>
-      <TailscaleGuide tailscale={tailscale} />
-      {full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
-      {ready && (
+      <TunnelChoice tunnel={tunnel} setTunnel={setTunnel} />
+      {tunnel === "cloudflare" ? (
+        <>
+          <CloudflareGuide cloudflare={cloudflare} />
+          {cfReady && cf.hostname && (
+            <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
+              <p className="text-[0.92rem] text-ink">
+                The address will be{" "}
+                <span className="selectable font-mono">{`https://${cf.hostname}/${tool.id}/mcp`}</span>.
+              </p>
+              <Note>
+                Next, WireCat starts the Cloudflare tunnel for it and {tool.bin}'s server in the background. Both keep
+                running until you stop them; after a restart of the computer, start them here again.
+              </Note>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="primary" onClick={submit}>
+                  Start the server
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <TailscaleGuide tailscale={tailscale} />
+      )}
+      {tunnel === "tailscale" && full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
+      {tunnel === "tailscale" && ready && (
         <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
           <p className="text-[0.92rem] text-ink">
             The address will be{" "}
@@ -465,6 +514,61 @@ function AddressStep(props: {
         </div>
       </Disclosure>
     </>
+  )
+}
+
+/** Funnel first: it is free and cannot read the traffic. Cloudflare's cost is said before it is picked (NEED-102). */
+function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunnel): void }) {
+  const name = useId()
+  const options = [
+    {
+      id: "tailscale",
+      title: "Tailscale Funnel",
+      hint: "Recommended. Free, and the encryption ends on this computer, so Tailscale cannot read your messages.",
+      warn: null,
+    },
+    {
+      id: "cloudflare",
+      title: "Cloudflare tunnel (your own domain)",
+      hint: "For a Cloudflare account with your own domain on it.",
+      warn: PRIVACY,
+    },
+  ] as const
+  return (
+    <fieldset className="grid gap-2 sm:grid-cols-2">
+      <legend className="sr-only">How the address reaches this computer</legend>
+      {options.map((o) => (
+        <label
+          key={o.id}
+          htmlFor={`${name}-${o.id}`}
+          className={cx(
+            "flex cursor-pointer flex-col gap-1 rounded-[0.45rem] border px-3.5 py-3 transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand motion-reduce:transition-none",
+            tunnel === o.id ? "border-brand bg-brand-soft/40" : "border-line-strong hover:border-brand",
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <input
+              id={`${name}-${o.id}`}
+              type="radio"
+              name={name}
+              value={o.id}
+              aria-labelledby={`${name}-${o.id}-title`}
+              aria-describedby={`${name}-${o.id}-hint`}
+              checked={tunnel === o.id}
+              onChange={() => setTunnel(o.id)}
+              className="accent-brand"
+            />
+            <span id={`${name}-${o.id}-title`} className="text-[0.95rem] font-semibold text-ink">
+              {o.title}
+            </span>
+          </span>
+          <span id={`${name}-${o.id}-hint`} className="flex flex-col gap-1">
+            <span className="text-[0.84rem] text-ink-soft">{o.hint}</span>
+            {o.warn && <span className="text-[0.84rem] text-warn-ink">{o.warn}</span>}
+          </span>
+        </label>
+      ))}
+    </fieldset>
   )
 }
 
@@ -505,23 +609,24 @@ function StartStep(props: {
 }) {
   const { tool, tunnel, phase, failure, approval, onRetry, onBack } = props
   const failedAt = phase === "failed" ? failure?.at : undefined
-  const funnel = phase === "funnel" ? "busy" : failedAt === "funnel" ? "failed" : phase === "idle" ? "todo" : "done"
+  const open = phase === "tunnel" ? "busy" : failedAt === "tunnel" ? "failed" : phase === "idle" ? "todo" : "done"
   const server = phase === "server" ? "busy" : failedAt === "server" ? "failed" : "todo"
   return (
     <>
       <ul className="flex flex-col gap-2">
-        {tunnel === "tailscale" && (
-          <Progress state={funnel}>Turn on Tailscale Funnel for {tool.bin}'s address</Progress>
+        {tunnel === "tailscale" && <Progress state={open}>Turn on Tailscale Funnel for {tool.bin}'s address</Progress>}
+        {tunnel === "cloudflare" && (
+          <Progress state={open}>Start the Cloudflare tunnel with {tool.bin}'s paths</Progress>
         )}
         <Progress state={server}>Start {tool.bin}'s server and wait until it answers</Progress>
       </ul>
-      {phase === "funnel" && approval && (
+      {phase === "tunnel" && approval && (
         <p className="text-[0.92rem] text-ink">
           Tailscale asks you to approve Funnel for your network in the page that opened in your browser.{" "}
           <Link href={approval}>Open it again</Link>
         </p>
       )}
-      {phase === "funnel" && (
+      {phase === "tunnel" && tunnel === "tailscale" && (
         <div>
           <Button size="sm" variant="ghost" onClick={() => platform.tailscaleStop()}>
             Stop
@@ -587,6 +692,8 @@ function ReachStep(props: {
   const firstMissing = useRef<number | null>(null)
   const [now, setNow] = useState(Date.now())
   const host = new URL(server.connectorUrl).host
+  // Tailscale publishes a Funnel name itself, slowly; on a tunnel of the owner's the record already exists.
+  const funnel = host.endsWith(".ts.net")
 
   const check = useCallback(async () => {
     setChecking(true)
@@ -640,7 +747,9 @@ function ReachStep(props: {
           }
         >
           {reach.state === "publishing"
-            ? "Tailscale is publishing your address…"
+            ? funnel
+              ? "Tailscale is publishing your address…"
+              : "Waiting for the address to appear in public DNS…"
             : reach.state === "unknown"
               ? "Public DNS could not be asked from this computer"
               : reach.state === "checking"
@@ -665,14 +774,17 @@ function ReachStep(props: {
             />
           </div>
           <Note>
-            A new Funnel address can take up to 10 minutes to appear on the internet. WireCat checks every 15 seconds
-            and moves on by itself{minutes > 0 ? `; ${minutes} min so far` : ""}. Until then {name} would say it cannot
-            reach the address, so the next step waits.
+            {funnel
+              ? "A new Funnel address can take up to 10 minutes to appear on the internet."
+              : "A new DNS record usually appears within minutes."}{" "}
+            WireCat checks every 15 seconds and moves on by itself{minutes > 0 ? `; ${minutes} min so far` : ""}. Until
+            then {name} would say it cannot reach the address, so the next step waits.
           </Note>
           {share >= 1 && (
             <p className="text-[0.9rem] text-warn-ink">
-              It is taking longer than Tailscale says. Keep this open; turning Funnel off and on again starts the wait
-              over.
+              {funnel
+                ? "It is taking longer than Tailscale says. Keep this open; turning Funnel off and on again starts the wait over."
+                : `It is taking longer than usual. Check that ${host} is listed on Cloudflare's DNS page for your domain.`}
             </p>
           )}
         </div>
@@ -685,8 +797,10 @@ function ReachStep(props: {
       {reach.state === "wrong" && (
         <>
           <ErrorNotice inline>
-            The address answers, but not with {tool.bin}'s server (it said {reach.status}). Another Funnel or tunnel may
-            use it. Check Server details, or go back and use another port.
+            The address answers, but not with {tool.bin}'s server (it said {reach.status}).{" "}
+            {funnel
+              ? "Another Funnel or tunnel may use it. Check Server details, or go back and use another port."
+              : `Cloudflare may be checking visitors on your domain (Bot Fight Mode, or "I'm Under Attack" mode), which stops ${name} too; turn it off for the domain in Cloudflare's Security settings. Or another tunnel uses the name.`}
           </ErrorNotice>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={check} disabled={checking}>
@@ -702,8 +816,8 @@ function ReachStep(props: {
         <>
           <Para>
             No public DNS service answered from this computer (some networks block them), so WireCat cannot see whether
-            the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after Funnel
-            turned on and try again there.
+            the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after the tunnel
+            started and try again there.
           </Para>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="primary" onClick={onGoOn}>
@@ -799,8 +913,8 @@ function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
         <div className="flex flex-col gap-2.5">
           <Para>
             This message usually means the address is not on the internet yet: the app could not reach the server at
-            all. A new Funnel address can take up to 10 minutes to appear, and the step “Check the address” waits for
-            it. Wait, then add the server in the app again.
+            all. A new address can take up to 10 minutes to appear, and the step “Check the address” waits for it. Wait,
+            then add the server in the app again.
           </Para>
           <Note>
             If the address is published and the app still says it, and its form offers advanced OAuth settings, these
@@ -856,6 +970,38 @@ function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reloa
       <div>
         <Button size="sm" onClick={turnOn} disabled={busy}>
           {busy ? "Turning Funnel on…" : "Turn Funnel on"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** cloudflared stops with the computer; the tools' servers too, but a server started again finds its tunnel off. */
+function TunnelOff(props: { tool: CatalogTool; port: number; name: string; reload(): Promise<void> }) {
+  const { tool, port, name, reload } = props
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const turnOn = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await platform.cloudflareTunnelOpen(tool.id, port)
+      await reload()
+    } catch (e) {
+      setError(message(e))
+    }
+    setBusy(false)
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3.5 py-2.5">
+      <p className="text-[0.9rem] text-warn-ink">
+        The Cloudflare tunnel is not running, so {name} cannot reach this server. Start it again; the address stays the
+        same.
+      </p>
+      {error && <ErrorNotice inline>{error}</ErrorNotice>}
+      <div>
+        <Button size="sm" onClick={turnOn} disabled={busy}>
+          {busy ? "Starting the tunnel…" : "Start the tunnel"}
         </Button>
       </div>
     </div>

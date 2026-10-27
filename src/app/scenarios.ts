@@ -11,7 +11,7 @@ import { platform } from "@/platform/bridge"
 // and breaks its render. `?signin=<tool>` opens that tool's in-window sign-in for a profile named personal.
 // `?mcp=<tool>` and `?mcp-fail=<tool>` open that tool's details, where its MCP server section starts open.
 // `?connect=<state>` opens tg's details at that step of the guide (`src/features/tools/connect-scenario.ts`).
-// `?tailscale=<state>` opens tg's, with the "Connect an AI app" guide's Tailscale steps at that state (`src/platform/mock-tailscale.ts`).
+// `?tailscale=<state>` opens tg's, with the "Connect an AI app" guide's Tailscale steps at that state (`src/platform/mock-tailscale.ts`); `?cloudflare=<state>` the same with the Cloudflare tunnel (`mock-cloudflare.ts`).
 export async function runMockScenario() {
   if (platform.kind !== "mock") return
   const params = new URLSearchParams(window.location.search)
@@ -31,7 +31,7 @@ export async function runMockScenario() {
     params.get("mcp-old") ??
     params.get("funnel-old") ??
     params.get("code-used") ??
-    (params.has("tailscale") || params.has("connect") ? "tg" : null)
+    (params.has("tailscale") || params.has("connect") || params.has("cloudflare") ? "tg" : null)
   if (mcp) {
     useNav.getState().go("tools")
     await useTools.getState().refresh()

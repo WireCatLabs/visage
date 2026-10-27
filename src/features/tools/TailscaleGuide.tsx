@@ -450,7 +450,7 @@ function FunnelStep({ s }: { s: TailscaleStatus }) {
   )
 }
 
-function StepHead({
+export function StepHead({
   step,
   index,
   open,
@@ -458,7 +458,7 @@ function StepHead({
   checked,
   onCheck,
 }: {
-  step: Step
+  step: Pick<Step, "title" | "done">
   index: number
   open: boolean
   checking: boolean
