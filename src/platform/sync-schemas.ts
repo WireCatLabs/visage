@@ -10,6 +10,12 @@ export const SyncSummarySchema = v.object({
 
 export const SyncEventSchema = v.variant("event", [
   v.object({ event: v.literal("stage"), stage: v.string() }),
+  v.object({
+    event: v.literal("progress"),
+    chats: v.nullable(v.number()),
+    chatsDone: v.nullable(v.number()),
+    fetched: v.number(),
+  }),
   v.object({ event: v.literal("done"), summary: SyncSummarySchema }),
   v.object({ event: v.literal("stopped") }),
   v.object({

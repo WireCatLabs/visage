@@ -356,8 +356,9 @@ tool's limit ends the run first and keeps what came in (exit 9, shown as "Time l
 `sync_run(id, profile)` runs the words with `run::stream_stoppable`, like sign-in; `sync_stop` sends SIGTERM to that
 process alone and kills its group after five seconds. memo ignores the signal until its release with BUG-17 fixed, so
 its Stop takes the five seconds. One sync per package and profile, none while the package installs, and an install
-refuses while one runs. No tool prints structured progress yet (DEBT-4): `sync.rs` reads its notes into a stage from a
-fixed list and the bar is indeterminate. Only counts leave Rust: chat titles, chat keys in the notes and account names
+refuses while one runs. A tool on a cli-core that prints `{"event":"progress","step":"sync","chats","chats_done","fetched"}` on stderr
+gets a bar that counts chats ("Chat 4 of 40 · 1,240 new messages"); the others (DEBT-4) get a stage read from their
+notes, from a fixed list, and an indeterminate bar. Only counts leave Rust: chat titles, chat keys in the notes and account names
 stay behind, and an error message goes through `redact.rs`. The Manage panel has one control per profile (Accounts), or
 one for a tool without profiles; the Tools row shows the running sync, its result, or the last sync of its only
 profile, with a Sync or Stop button beside the name. A result stays until dismissed and says what to do next.

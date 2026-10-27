@@ -52,6 +52,13 @@ pub enum SyncEvent {
     Stage {
         stage: String,
     },
+    /// cli-core's `progress` line, from the release that prints one: counts only, never a chat.
+    #[serde(rename_all = "camelCase")]
+    Progress {
+        chats: Option<u64>,
+        chats_done: Option<u64>,
+        fetched: u64,
+    },
     Done {
         summary: Summary,
     },
@@ -122,6 +129,8 @@ pub fn run(tool: &Tool, args: &[String], stopped: &dyn Fn() -> bool, send: &dyn 
         Line::Err(l) => {
             if let Some(e) = error_of(&l) {
                 error = Some(e);
+            } else if let Some(p) = progress_of(&l) {
+                send(p);
             } else if let Some(stage) = stage_of(&l)
                 && last_stage != Some(stage)
             {
@@ -147,6 +156,19 @@ fn stage_of(line: &str) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+/// `{"event":"progress","step":"sync","chats","chats_done","fetched"}`; any other field is dropped.
+fn progress_of(line: &str) -> Option<SyncEvent> {
+    let v: Value = serde_json::from_str(line.trim()).ok()?;
+    if v.get("event")?.as_str()? != "progress" || v.get("step")?.as_str()? != "sync" {
+        return None;
+    }
+    Some(SyncEvent::Progress {
+        chats: v.get("chats").and_then(Value::as_u64),
+        chats_done: v.get("chats_done").and_then(Value::as_u64),
+        fetched: v.get("fetched").and_then(Value::as_u64)?,
+    })
 }
 
 /// The error envelope a failing tool prints on stderr, with its message masked.
@@ -337,6 +359,19 @@ mod tests {
         assert_eq!(stage_of("340 messages so far, back to 1234567"), Some("Fetching messages"));
         assert_eq!(stage_of("mail me@example.com: 20 emails' HTML text read again"), Some("Reading mail"));
         assert_eq!(stage_of("something about Family chat"), None);
+    }
+
+    #[test]
+    fn a_progress_line_keeps_its_counts_only() {
+        let line = r#"{"event":"progress","step":"sync","chats":40,"chats_done":3,"fetched":1240,"chat":"Family"}"#;
+        assert_eq!(
+            progress_of(line),
+            Some(SyncEvent::Progress { chats: Some(40), chats_done: Some(3), fetched: 1240 })
+        );
+        let text = serde_json::to_string(&progress_of(line).unwrap()).unwrap();
+        assert!(!text.contains("Family") && text.contains("chatsDone"), "{text}");
+        assert_eq!(progress_of(r#"{"event":"progress","step":"history","fetched":1}"#), None);
+        assert_eq!(progress_of("12 messages so far"), None);
     }
 
     #[test]

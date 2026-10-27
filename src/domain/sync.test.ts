@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { advice, clock, resultLine, resultNext } from "./sync"
+import { advice, clock, progressLine, resultLine, resultNext, share } from "./sync"
 
 const summary = { new: 1240, places: 3, failed: 0, left: 0, complete: true }
 
@@ -40,4 +40,15 @@ describe("a failed sync in plain words", () => {
 
 it("prints elapsed time like a clock", () => {
   expect([clock(4_000), clock(725_000), clock(3_729_000)]).toEqual(["0:04", "12:05", "1:02:09"])
+})
+
+it("counts chats on the bar when the tool prints its progress, and stays indeterminate when it does not", () => {
+  const p = { chats: 40, chatsDone: 3, fetched: 1240 }
+  expect([share(p), progressLine(p)]).toEqual([8, "Chat 4 of 40 · 1,240 new messages"])
+  expect(progressLine({ ...p, chatsDone: 40 })).toBe("Chat 40 of 40 · 1,240 new messages")
+  expect([share({ chats: null, chatsDone: null, fetched: 5 }), share(null), progressLine(null)]).toEqual([
+    null,
+    null,
+    null,
+  ])
 })

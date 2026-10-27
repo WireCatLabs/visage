@@ -114,3 +114,19 @@ export function clock(ms: number): string {
   const s = String(total % 60).padStart(2, "0")
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`
 }
+
+export type SyncProgress = { chats: number | null; chatsDone: number | null; fetched: number }
+
+/** The bar's share done, when the tool counts chats; null keeps it indeterminate. */
+export function share(p: SyncProgress | null): number | null {
+  if (!p?.chats || p.chatsDone === null) return null
+  return Math.min(100, Math.round((p.chatsDone / p.chats) * 100))
+}
+
+/** "Chat 4 of 40 · 1,240 new messages"; null when the tool says nothing countable. */
+export function progressLine(p: SyncProgress | null): string | null {
+  if (!p) return null
+  const fetched = `${n(p.fetched)} new ${p.fetched === 1 ? "message" : "messages"}`
+  if (!p.chats || p.chatsDone === null) return fetched
+  return `Chat ${n(Math.min(p.chats, p.chatsDone + 1))} of ${n(p.chats)} · ${fetched}`
+}

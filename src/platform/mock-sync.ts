@@ -53,11 +53,21 @@ export function syncMock(): Pick<Platform, "syncRun" | "syncStop" | "syncLast"> 
         return stopped
       }
       const hold = params.get("sync-hold") === id
+      // tg prints cli-core's progress lines; max, from an older cli-core, only its notes.
+      const counts = id === "tg"
+      let chatsDone = 0
+      let fetched = 0
+      if (counts) onEvent({ event: "progress", chats: 40, chatsDone, fetched })
       const stages = STAGES[id] ?? []
       for (let n = 0; hold || n < stages.length; n++) {
         const stage = stages[n % Math.max(1, stages.length)]
         if (stage) onEvent({ event: "stage", stage })
         if (await wait(1800)) break
+        if (counts) {
+          chatsDone = Math.min(39, chatsDone + 1 + (n % 3))
+          fetched += 140 + n * 37
+          onEvent({ event: "progress", chats: 40, chatsDone, fetched })
+        }
       }
       if (!stopped && stages.length === 0 && (await wait(4000))) stopped = true
       stops.delete(key)

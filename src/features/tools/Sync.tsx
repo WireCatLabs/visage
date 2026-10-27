@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleStop, LoaderCircle, RefreshCw, X } from "lucide-react"
 import { useEffect } from "react"
 import { type CatalogTool, signsInHere, syncNeedsProfile, syncsHere } from "@/domain/catalog"
-import { advice, clock, doneNext, resultLine, resultNext, type SyncWhat } from "@/domain/sync"
+import { advice, clock, doneNext, progressLine, resultLine, resultNext, type SyncWhat, share } from "@/domain/sync"
 import { platform } from "@/platform/bridge"
 import type { LastSync } from "@/platform/sync-schemas"
 import { AutoHeight } from "@/ui/AutoHeight"
@@ -85,20 +85,35 @@ export function SyncControl({ tool, profile }: { tool: CatalogTool; profile: str
 
 function Progress({ run }: { run: SyncRun }) {
   const elapsed = useElapsed(run.startedAt)
-  const stage = run.stopping ? "Stopping, keeping what came in" : (run.stage ?? "Starting")
+  const counted = progressLine(run.progress)
+  const stage = run.stopping ? "Stopping, keeping what came in" : (counted ?? run.stage ?? "Starting")
+  const pct = run.stopping ? null : share(run.progress)
   return (
     <div className="flex flex-col gap-1">
       <div
         role="progressbar"
         aria-label="Syncing"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct ?? undefined}
         aria-valuetext={stage}
         className="h-1.5 w-full max-w-[22rem] overflow-hidden rounded-full bg-app-3"
       >
-        <div className="bar-indeterminate h-full rounded-full bg-brand" />
+        {pct === null ? (
+          <div className="bar-indeterminate h-full rounded-full bg-brand" />
+        ) : (
+          <div
+            className="h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-300"
+            style={{ width: `${Math.max(3, pct)}%` }}
+          />
+        )}
       </div>
-      <p className="flex gap-2 text-[0.85rem] text-ink-soft">
-        <span className="truncate">{stage}…</span>
-        <span className="shrink-0 font-mono tabular-nums text-ink-dim">{clock(elapsed)}</span>
+      <p className="flex gap-2 text-[0.85rem] text-ink-soft tabular-nums">
+        <span className="truncate">
+          {stage}
+          {counted ? "" : "…"}
+        </span>
+        <span className="shrink-0 font-mono text-ink-dim">{clock(elapsed)}</span>
       </p>
     </div>
   )
@@ -220,7 +235,8 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
         <LoaderCircle className="size-3.5 shrink-0 motion-safe:animate-spin text-brand" aria-hidden />
         <span className="truncate">
           {who}
-          {info.run.stopping ? "Stopping" : (info.run.stage ?? "Syncing")}… {clock(elapsed)}
+          {info.run.stopping ? "Stopping…" : (progressLine(info.run.progress) ?? `${info.run.stage ?? "Syncing"}…`)}{" "}
+          {clock(elapsed)}
         </span>
       </span>
     )

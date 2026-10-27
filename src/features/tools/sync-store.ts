@@ -9,6 +9,8 @@ export type SyncRun = {
   startedAt: number
   endedAt: number | null
   stage: string | null
+  /** From a tool that prints cli-core's progress lines; null from one that does not, whose bar stays indeterminate. */
+  progress: { chats: number | null; chatsDone: number | null; fetched: number } | null
   stopping: boolean
   summary: SyncSummary | null
   failure: SyncFailure | null
@@ -66,6 +68,8 @@ export const useSync = create<State>()((set, get) => {
     switch (e.event) {
       case "stage":
         return patch(key, { stage: e.stage })
+      case "progress":
+        return patch(key, { progress: { chats: e.chats, chatsDone: e.chatsDone, fetched: e.fetched } })
       case "done":
         patch(key, { ...ended, phase: "done", summary: e.summary })
         return void get().loadLast(tool, profile)
@@ -92,6 +96,7 @@ export const useSync = create<State>()((set, get) => {
         startedAt: Date.now(),
         endedAt: null,
         stage: null,
+        progress: null,
         stopping: false,
         summary: null,
         failure: null,
