@@ -47,7 +47,8 @@ unreachable), `?report=queued` (stored, no issue yet); Agents: `?chats=none` (He
 9. **Nothing jumps, nothing vanishes.** A click never resets the scroll position or shifts content the user did not
    touch. Every change of state is animated (open, close, expand, step to step; instant under reduced motion), so the
    user sees where things came from and went. A multi-step flow stays on one surface, slides from step to step, and
-   after each action shows what happens next; a surface never closes on its own when the user's goal is not reached.
+   after each action shows what happens next; a surface never closes on its own. When the user's goal is reached, the
+   surface says so plainly ("ChatGPT can now read your Telegram") and suggests the next steps.
 
 Code style: Biome (`biome.json`, shared base in `config/wirecat/` — do not edit that folder, it is synced from
 `WireCatLabs/community`), rustfmt and clippy pedantic for Rust. Comments say why, not what. Conventional commits.
