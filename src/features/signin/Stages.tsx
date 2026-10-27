@@ -6,7 +6,9 @@ import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
+import { useOnboarding } from "../onboarding/store"
 import { ReportThis } from "../report/ReportThis"
+import { openConnect, openTool } from "../tools/go"
 import { AnswerForm } from "./AnswerForm"
 import { type OpenUrl, type Pairing, type Qr, receivingHistory, useSignIn } from "./store"
 
@@ -71,13 +73,16 @@ export function Stage({ name }: { name: string }) {
     return (
       <div className={STAGE}>
         <CheckCircle2 className="size-8 text-ok" aria-hidden />
-        <p className="font-medium text-ink">{alreadyLinked ? "This profile was already signed in." : "Signed in."}</p>
+        <p className="font-medium text-ink">
+          {alreadyLinked ? `${name} was already signed in as ${s.profile}.` : `${name} is signed in as ${s.profile}.`}
+        </p>
         {received && (
           <p className="text-[0.9rem] tabular-nums">
             Received {count(received.chats, "chat")}, {count(received.messages, "message")} and{" "}
             {count(received.people, "person", "people")} from the phone.
           </p>
         )}
+        <NextAfterSignIn />
       </div>
     )
   }
@@ -268,5 +273,41 @@ function ClientIdForm() {
         {saving ? "Saving…" : "Save and sign in"}
       </Button>
     </form>
+  )
+}
+
+/** Rule 9: after the goal, what is worth doing next. Not in the first-run setup, which has its own next step. */
+function NextAfterSignIn() {
+  const tool = useSignIn((s) => (s.tool ? findTool(s.tool) : undefined))
+  const close = useSignIn((s) => s.close)
+  const onboarding = useOnboarding((s) => s.open)
+  if (!tool || onboarding) return null
+  return (
+    <div className="mt-2 flex flex-col items-center gap-2">
+      {tool.mcpServer && <p className="text-[0.9rem]">Next, ChatGPT or Claude in the browser can use it too.</p>}
+      <div className="flex flex-wrap justify-center gap-2">
+        {tool.mcpServer && (
+          <Button
+            size="sm"
+            onClick={() => {
+              close()
+              openConnect(tool.id)
+            }}
+          >
+            Connect an AI app
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            close()
+            openTool(tool.id)
+          }}
+        >
+          Open {tool.name}
+        </Button>
+      </div>
+    </div>
   )
 }

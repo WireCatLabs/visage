@@ -39,3 +39,8 @@ export function forgetKept(scope: string) {
 }
 
 export const resetKept = () => useKeptStore.setState({ values: {} })
+
+/** Sets a kept value from outside the component, e.g. to open a section on a page that is not on screen yet. */
+export function keep(scope: string, key: string, value: unknown) {
+  useKeptStore.setState((s) => ({ values: { ...s.values, [`${scope}:${key}`]: value } }))
+}

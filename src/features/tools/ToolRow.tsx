@@ -3,6 +3,7 @@ import { useRef } from "react"
 import { type CatalogTool, findTool, ownerId } from "@/domain/catalog"
 import { fitSeverity } from "@/domain/compat"
 import { type ToolStatus, toolStatus } from "@/domain/status"
+import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
 import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
@@ -121,7 +122,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
         </div>
       </div>
       <Collapse id={panelId} open={expanded || showInstallPanel}>
-        {showInstallPanel ? <InstallPanel tool={tool} /> : <ToolDetails tool={tool} />}
+        <AutoHeight>{showInstallPanel ? <InstallPanel tool={tool} /> : <ToolDetails tool={tool} />}</AutoHeight>
       </Collapse>
     </li>
   )

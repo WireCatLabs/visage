@@ -10,6 +10,7 @@ import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { Lamp } from "@/ui/Lamp"
+import { focusInPlace, PANEL_MS } from "@/ui/motion"
 import { Skeleton } from "@/ui/Skeleton"
 import { ConnectGuide } from "./ConnectGuide"
 import { scenarioOf } from "./connect-scenario"
@@ -56,13 +57,26 @@ function summaryOf(row: RowState): string | null {
 export function McpServer({ tool }: { tool: CatalogTool }) {
   const headingId = useId()
   const [open, setOpen] = useKept(`mcp:${tool.id}`, "open", () => openedByScenario(tool.id))
+  // Sent here from another surface ("Connect an AI app" after a sign-in): shown once the tool's panel has opened.
+  const [reveal, setReveal] = useKept(`mcp:${tool.id}`, "reveal", false)
+  const toggle = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!reveal) return
+    const t = setTimeout(() => {
+      setReveal(false)
+      focusInPlace(toggle.current, "start")
+    }, PANEL_MS)
+    return () => clearTimeout(t)
+  }, [reveal, setReveal])
   const [row, setRow] = useState<RowState>({ state: "loading" })
   const [guiding, setGuiding] = useKept<boolean | null>(`mcp:${tool.id}`, "guiding", () =>
     scenarioOf(tool.id) ? true : null,
   )
   // A new run of the guide starts from its first step; a finished one is forgotten.
+  const [round, setRound] = useKept(`mcp:${tool.id}`, "round", 0)
   const guide = (on: boolean) => {
     forgetKept(`connect:${tool.id}`)
+    setRound((r) => r + 1)
     setGuiding(on)
   }
   const calls = useRef(0)
@@ -143,6 +157,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
     <section aria-labelledby={headingId} className="flex min-w-0 flex-col border-line border-t pt-4 lg:col-span-2">
       <h4 id={headingId}>
         <button
+          ref={toggle}
           type="button"
           aria-expanded={open}
           aria-controls={`${headingId}-body`}
@@ -180,6 +195,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
         )}
         {data && showGuide && (
           <ConnectGuide
+            key={round}
             tool={tool}
             server={data}
             funnel={funnel}
@@ -187,6 +203,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
             reload={reload}
             settle={settle}
             onDone={() => guide(false)}
+            onAgain={() => guide(true)}
           />
         )}
         {data?.available === true && !showGuide && <Connected data={data} onConnect={() => guide(true)} />}

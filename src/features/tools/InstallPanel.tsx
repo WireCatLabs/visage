@@ -115,6 +115,18 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
               Try again
             </Button>
           )}
+          {outcome?.event === "done" && session.operation === "install" && tool.profiles && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                dismiss(tool.id)
+                useTools.setState({ expanded: tool.id })
+              }}
+            >
+              Add an account
+            </Button>
+          )}
           {outcome && (
             <Button
               size="sm"

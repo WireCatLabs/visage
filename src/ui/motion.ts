@@ -11,20 +11,20 @@ export function scrollerOf(el: Element | null): HTMLElement | null {
   return null
 }
 
-/** Scrolls only when `el` is out of sight, and only as far as needed. */
-export function revealIfHidden(el: Element | null) {
+/** Scrolls only when `el` is out of sight: as little as needed, or to the top for a section the owner was sent to. */
+export function revealIfHidden(el: Element | null, block: ScrollLogicalPosition = "nearest") {
   if (!el) return
   const box = el.getBoundingClientRect()
   const view = scrollerOf(el)?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight }
   if (box.top >= view.top && box.bottom <= view.bottom) return
-  el.scrollIntoView?.({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" })
+  el.scrollIntoView?.({ block, behavior: reducedMotion() ? "auto" : "smooth" })
 }
 
 /** Focus for keyboard and screen readers that never moves the page by itself: `focus()` alone scrolls. */
-export function focusInPlace(el: HTMLElement | null) {
+export function focusInPlace(el: HTMLElement | null, block: ScrollLogicalPosition = "nearest") {
   if (!el) return
   el.focus({ preventScroll: true })
-  revealIfHidden(el)
+  revealIfHidden(el, block)
 }
 
 /**

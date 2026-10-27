@@ -5,6 +5,7 @@ import { findTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import { MOCK_CODES } from "@/platform/mock-qr"
 import type { SignInEvent } from "@/platform/signin-schemas"
+import { useOnboarding } from "../onboarding/store"
 import { recentErrors } from "../report/errors"
 import { useReport } from "../report/store"
 import { NewProfile } from "../tools/Health"
@@ -17,6 +18,7 @@ let send: (e: SignInEvent) => void = () => undefined
 let finish: () => void = () => undefined
 
 beforeEach(() => {
+  useOnboarding.setState({ open: false })
   useSignIn.setState(useSignIn.getInitialState(), true)
   vi.spyOn(platform, "signIn").mockImplementation((_id, _method, _profile, onEvent) => {
     send = (e) => act(() => onEvent(e))
@@ -79,7 +81,8 @@ describe("signing in to WhatsApp inside the window", () => {
     expect(within(dialog).getByText(/Receiving your chat history/)).toBeInTheDocument()
 
     send({ event: "done", alreadyLinked: false, received: { chats: 4, messages: 1400, people: 2 } })
-    expect(within(dialog).getByText("Signed in.")).toBeInTheDocument()
+    expect(within(dialog).getByText(/^WhatsApp is signed in as /)).toBeInTheDocument()
+    expect(within(dialog).getByRole("button", { name: "Open WhatsApp" })).toBeInTheDocument()
     expect(within(dialog).getByText(/Received 4 chats, 1,400 messages and 2 people/)).toBeInTheDocument()
     expect(onCheck).toHaveBeenCalledOnce()
     const done = within(dialog).getByRole("button", { name: "Done" })
@@ -159,7 +162,7 @@ describe("answering what the tool asks", () => {
     expect(JSON.stringify(useSignIn.getState())).not.toContain("not-a-real-password")
 
     send({ event: "done", alreadyLinked: false, received: null })
-    expect(within(dialog).getByText("Signed in.")).toBeInTheDocument()
+    expect(within(dialog).getByText(/is signed in as personal\./)).toBeInTheDocument()
   })
 
   it("offers Telegram's other way in, and starts it after the running one stops", async () => {

@@ -1,6 +1,6 @@
 import { Check } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
-import type { CatalogTool } from "@/domain/catalog"
+import { type CatalogTool, tools } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schemas"
@@ -14,6 +14,7 @@ import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
 import { focusInPlace } from "@/ui/motion"
+import { useNav } from "../nav"
 import { CloudflareGuide, PRIVACY, useCloudflare } from "./CloudflareGuide"
 import { cloudflareSteps } from "./cloudflare-steps"
 import { APPS, type AppId, type AppStep, connectorName, testPrompt } from "./connect-apps"
@@ -30,9 +31,11 @@ import {
   type TestState,
   testState,
 } from "./connect-steps"
+import { openConnect } from "./go"
 import { useKept } from "./kept"
 import { LoginCode } from "./LoginCode"
 import { formProblem } from "./McpServerDialogs"
+import { useTools } from "./store"
 import { TailscaleGuide, useTailscale } from "./TailscaleGuide"
 import { addressOf, stepsOf } from "./tailscale-steps"
 
@@ -65,8 +68,10 @@ export function ConnectGuide(props: {
   reload(): Promise<void>
   settle(s: McpServerStatus): void
   onDone(): void
+  /** Starts the guide again for another app. */
+  onAgain(): void
 }) {
-  const { tool, server, funnel, route, reload, settle, onDone } = props
+  const { tool, server, funnel, route, reload, settle, onDone, onAgain } = props
   const scenario = useRef(scenarioOf(tool.id)).current
   // Kept outside the component, so leaving the page mid-guide and coming back lands on the same step.
   const kept = `connect:${tool.id}`
@@ -207,7 +212,9 @@ export function ConnectGuide(props: {
           aria-live="polite"
         >
           <h5 ref={heading} tabIndex={-1} className="step-heading text-[1.05rem] font-semibold text-ink">
-            {current === "test" && test.state === "called" ? `${name} can use ${tool.name}` : STEP_TITLES[current]}
+            {current === "test" && test.state === "called"
+              ? `${name} can now use your ${tool.name}`
+              : STEP_TITLES[current]}
           </h5>
           {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
           {current === "address" && (
@@ -265,6 +272,7 @@ export function ConnectGuide(props: {
               quietFromStart={scenario?.quiet ?? false}
               onBack={() => setAdded(false)}
               onDone={onDone}
+              onAgain={onAgain}
             />
           )}
         </div>
@@ -1019,8 +1027,9 @@ function TestStep(props: {
   quietFromStart: boolean
   onBack(): void
   onDone(): void
+  onAgain(): void
 }) {
-  const { tool, app, server, test, since, quietFromStart, onBack, onDone } = props
+  const { tool, app, server, test, since, quietFromStart, onBack, onDone, onAgain } = props
   const name = APPS[app].name
   const [quiet, setQuiet] = useState(quietFromStart)
   useEffect(() => {
@@ -1080,10 +1089,13 @@ function TestStep(props: {
         </div>
       )}
       {test.state === "called" && (
-        <Para>
-          {name} reached {tool.bin} through the internet address, logged in and called a tool. From now on this panel
-          shows when it last did.
-        </Para>
+        <>
+          <Para>
+            {name} reached {tool.bin} through the internet address, logged in and called a tool. From now on this panel
+            shows when it last did.
+          </Para>
+          <NextSteps tool={tool} name={name} onAgain={onAgain} />
+        </>
       )}
       {!loggedIn && quiet && <Troubleshoot name={name} tool={tool} app={app} server={server} />}
       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1098,6 +1110,34 @@ function TestStep(props: {
         )}
       </div>
     </>
+  )
+}
+
+/** Rule 9: the goal is reached, so say what else is worth doing from here. */
+function NextSteps({ tool, name, onAgain }: { tool: CatalogTool; name: string; onAgain(): void }) {
+  const installs = useTools((s) => s.installs)
+  const others = tools.filter((t) => t.mcpServer && t.id !== tool.id && (installs[t.id]?.length ?? 0) > 0)
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
+      <p className="text-[0.92rem] font-medium text-ink">What next</p>
+      <div className="flex max-w-[34rem] flex-col gap-1">
+        <span className="text-[0.84rem] text-ink-soft">Ask {name} something, in a chat with it turned on:</span>
+        <CopyField value={testPrompt(tool)} label="Copy a prompt to try" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={onAgain}>
+          Connect another app
+        </Button>
+        {others.map((t) => (
+          <Button key={t.id} size="sm" variant="ghost" onClick={() => openConnect(t.id)}>
+            Connect {t.name} too
+          </Button>
+        ))}
+        <Button size="sm" variant="ghost" onClick={() => useNav.getState().go("logs")}>
+          See its calls in Logs
+        </Button>
+      </div>
+    </div>
   )
 }
 

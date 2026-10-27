@@ -203,8 +203,11 @@ describe("Connect an AI app", () => {
       clients: [{ ...joined, lastTool: "tg_read", lastToolAt: new Date().toISOString(), toolCallsToday: 1 }],
     })
     await vi.advanceTimersByTimeAsync(4100)
-    expect(await screen.findByRole("heading", { name: "ChatGPT can use Telegram" })).toBeVisible()
+    expect(await screen.findByRole("heading", { name: "ChatGPT can now use your Telegram" })).toBeVisible()
     expect(screen.getByText("tg_read")).toBeVisible()
+    expect(screen.getByRole("button", { name: "Connect another app" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "See its calls in Logs" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "Copy a prompt to try" })).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Finish" }))
     expect((await screen.findAllByText(/last call just now · tg_read · 1 today/))[0]).toBeVisible()
   })
