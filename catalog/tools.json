@@ -34,11 +34,11 @@
       },
       "mcpServer": {
         "port": 8765,
-        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
-        "stop": ["mcp", "server", "stop", "--json"],
-        "status": ["mcp", "server", "status", "--json"],
-        "revoke": ["mcp", "revoke", "--json"],
-        "config": ["mcp", "config", "--json"]
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--profiles", "all", "--json"],
+        "stop": ["mcp", "server", "stop", "--profiles", "all", "--json"],
+        "status": ["mcp", "server", "status", "--profiles", "all", "--json"],
+        "revoke": ["mcp", "revoke", "--profiles", "all", "--json"],
+        "config": ["mcp", "config", "--profiles", "all", "--json"]
       },
       "tasks": {
         "list": [
@@ -143,11 +143,11 @@
       },
       "mcpServer": {
         "port": 8766,
-        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
-        "stop": ["mcp", "server", "stop", "--json"],
-        "status": ["mcp", "server", "status", "--json"],
-        "revoke": ["mcp", "revoke", "--json"],
-        "config": ["mcp", "config", "--json"]
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--profiles", "all", "--json"],
+        "stop": ["mcp", "server", "stop", "--profiles", "all", "--json"],
+        "status": ["mcp", "server", "status", "--profiles", "all", "--json"],
+        "revoke": ["mcp", "revoke", "--profiles", "all", "--json"],
+        "config": ["mcp", "config", "--profiles", "all", "--json"]
       },
       "tasks": {
         "list": [
@@ -246,11 +246,11 @@
       },
       "mcpServer": {
         "port": 8768,
-        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
-        "stop": ["mcp", "server", "stop", "--json"],
-        "status": ["mcp", "server", "status", "--json"],
-        "revoke": ["mcp", "revoke", "--json"],
-        "config": ["mcp", "config", "--json"]
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--profiles", "all", "--json"],
+        "stop": ["mcp", "server", "stop", "--profiles", "all", "--json"],
+        "status": ["mcp", "server", "status", "--profiles", "all", "--json"],
+        "revoke": ["mcp", "revoke", "--profiles", "all", "--json"],
+        "config": ["mcp", "config", "--profiles", "all", "--json"]
       },
       "tasks": {
         "list": [
@@ -415,10 +415,10 @@
       "mcp": null,
       "mcpServer": {
         "port": 8769,
-        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
-        "stop": ["mcp", "server", "stop", "--json"],
-        "status": ["mcp", "server", "status", "--json"],
-        "revoke": ["mcp", "revoke", "--json"],
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--profiles", "all", "--json"],
+        "stop": ["mcp", "server", "stop", "--profiles", "all", "--json"],
+        "status": ["mcp", "server", "status", "--profiles", "all", "--json"],
+        "revoke": ["mcp", "revoke", "--profiles", "all", "--json"],
         "config": null
       },
       "tasks": null,
@@ -483,10 +483,10 @@
       "mcp": null,
       "mcpServer": {
         "port": 8767,
-        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
-        "stop": ["mcp", "server", "stop", "--json"],
-        "status": ["mcp", "server", "status", "--json"],
-        "revoke": ["mcp", "revoke", "--json"],
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--profiles", "all", "--json"],
+        "stop": ["mcp", "server", "stop", "--profiles", "all", "--json"],
+        "status": ["mcp", "server", "status", "--profiles", "all", "--json"],
+        "revoke": ["mcp", "revoke", "--profiles", "all", "--json"],
         "config": null
       },
       "tasks": null,
