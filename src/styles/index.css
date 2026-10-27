@@ -379,9 +379,9 @@ dialog[data-closing]::backdrop {
 }
 
 /* Rings are for keyboard users. After a click the browser can still match :focus-visible (a button clicked once a key
-   was pressed, focus moved by code), so `trackInputMode` hides them until the next navigation key. Unlayered, so it
-   also beats the Tailwind ring utilities on peers and wrappers. */
-:root[data-input="pointer"] :focus-visible,
+   was pressed, focus moved by code), so `trackInputMode` hides them until the next navigation key. A text field keeps
+   its ring: it is the only sign of where typing goes. Unlayered, so it beats the Tailwind ring utilities. */
+:root[data-input="pointer"] :focus-visible:not(textarea, input:not([type="checkbox"], [type="radio"])),
 :root[data-input="pointer"] :focus-visible ~ *,
 :root[data-input="pointer"] :has(:focus-visible) {
   outline: none;

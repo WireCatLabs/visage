@@ -141,8 +141,10 @@ export function useAgentsView() {
     loaded.state === "error" ? [{ key, error: loaded.error }] : [],
   )
   const signedOutCounts = Object.entries(connect.claims).reduce<Map<string, number>>((m, [key, loaded]) => {
-    const tool = key.split("/")[0] ?? ""
-    if (loaded.state === "ready" && loaded.data.signedOut) m.set(tool, (m.get(tool) ?? 0) + 1)
+    const [tool = "", profile] = key.split("/")
+    // The same cli-core wording also means "linked but never served" for store-backed tools; that is no sign-in to do.
+    const linked = connect.profiles[tool]?.some((p) => p.name === profile && p.signedIn === true)
+    if (loaded.state === "ready" && loaded.data.signedOut && !linked) m.set(tool, (m.get(tool) ?? 0) + 1)
     return m
   }, new Map())
   const signedOutTasks = [...signedOutCounts].map(([tool, profiles]) => ({ tool, profiles }))
