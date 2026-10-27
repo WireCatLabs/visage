@@ -44,6 +44,8 @@ export const FunnelStateSchema = v.object({
   url: v.string(),
   port: v.number(),
   live: v.boolean(),
+  /** Under the tool's path of the shared address; false for a whole-port funnel from before, shown only to close. */
+  shared: v.boolean(),
 })
 
 /** A Tailscale page the app opened in the browser; the address is a one-time login link: never log it. */

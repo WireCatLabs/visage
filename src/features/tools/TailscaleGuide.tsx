@@ -450,8 +450,8 @@ function FunnelStep({ s }: { s: TailscaleStatus }) {
   )
 }
 
-function ConnectStep({ s }: { s: TailscaleStatus }) {
-  const address = addressOf(s)
+function ConnectStep({ s, tool }: { s: TailscaleStatus; tool: string }) {
+  const address = addressOf(s, tool)
   return (
     <>
       <Para>
@@ -460,8 +460,9 @@ function ConnectStep({ s }: { s: TailscaleStatus }) {
         server, then starts the server with that address.
       </Para>
       <Note>
-        The address stays the same next time, so browser apps stay logged in. Funnel opens only this address, and the
-        server still asks every app for its login code. Stopping the server turns this Funnel off.
+        Every tool gets its own path on the same address, and the address stays the same next time, so browser apps stay
+        logged in. Funnel opens only this path and the two paths a browser app reads the login from, and the server
+        still asks every app for its login code. Stopping the server turns these paths off.
       </Note>
     </>
   )
@@ -517,7 +518,7 @@ function StepHead({
 }
 
 /** The four steps from nothing to a public address: each says what it is, why, and what the person will see. */
-export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof useTailscale> }) {
+export function TailscaleGuide({ tailscale, tool }: { tailscale: ReturnType<typeof useTailscale>; tool: string }) {
   const { status, error, checking, check } = tailscale
   const [checked, setChecked] = useState<StepId | null>(null)
 
@@ -534,7 +535,7 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
     install: <InstallStep s={status} />,
     login: <LoginStep s={status} check={check} />,
     funnel: <FunnelStep s={status} />,
-    connect: <ConnectStep s={status} />,
+    connect: <ConnectStep s={status} tool={tool} />,
   }
 
   return (

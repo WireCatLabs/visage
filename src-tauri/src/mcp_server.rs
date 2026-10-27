@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::time::Duration;
 
 /// The tool's HTTP MCP server, for browser apps behind the owner's tunnel: the tool's own `mcp server start|stop|status`
-/// and `mcp --revoke`. The login code, the address and the apps' names leave Rust unmasked, as the sign-in QR does: the
+/// and `mcp --revoke`, with no profile, so one server serves every profile and each call names one (TASK-26). The login code, the address and the apps' names leave Rust unmasked, as the sign-in QR does: the
 /// owner needs them as they are. None of it is logged or put in a report.
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -45,10 +45,15 @@ fn source(tool: &Tool) -> Result<&McpServerSource, String> {
     tool.mcp_server.as_ref().ok_or_else(|| format!("{} has no MCP server for browser apps yet", tool.name))
 }
 
-/// A tool from before `mcp server` reads `server` as an unknown command, or as one argument too many.
+/// A tool from before `mcp server` reads `server` as an unknown command, or as one argument too many; one from before
+/// the server of every profile asks for a profile.
 fn unsupported(json: Option<&Value>) -> bool {
     json.and_then(|v| v["error"]["message"].as_str()).is_some_and(|m| {
-        m.contains("unknown command 'server'") || m.starts_with("too many arguments") || m.contains("unknown option")
+        m.contains("unknown command 'server'")
+            || m.starts_with("too many arguments")
+            || m.contains("unknown option")
+            || m.starts_with("name a profile")
+            || m.starts_with("no profiles here yet")
     })
 }
 
@@ -59,9 +64,11 @@ fn too_old(tool: &Tool) -> String {
     )
 }
 
-/// The tunnel's address as cli-core's `publicUrlOf` takes it: https, or http on this computer; no login, path, query.
+/// The tunnel's address as cli-core's `publicUrlOf` takes it: https, or http on this computer; no login or query, and
+/// at most one plain path segment, the tool's share of an address several tools use (`https://name.ts.net/tg`).
 pub fn validate_url(url: &str) -> Result<(), String> {
-    let bad = || Err(format!("not a tunnel address: {url}. It looks like https://name.ts.net"));
+    let bad =
+        || Err(format!("not a tunnel address: {url}. It looks like https://name.ts.net or https://name.ts.net/tg"));
     if url.len() > 200 {
         return bad();
     }
@@ -72,7 +79,15 @@ pub fn validate_url(url: &str) -> Result<(), String> {
     } else {
         return bad();
     };
-    let authority = rest.strip_suffix('/').unwrap_or(rest);
+    let rest = rest.strip_suffix('/').unwrap_or(rest);
+    let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+    let path_ok = path.is_empty()
+        || (!path.starts_with(['.', '-'])
+            && path.len() <= 40
+            && path.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')));
+    if !path_ok {
+        return bad();
+    }
     let (host, port) = authority.rsplit_once(':').map_or((authority, None), |(h, p)| (h, Some(p)));
     let host_ok = !host.is_empty()
         && !host.starts_with(['-', '.'])
@@ -144,8 +159,8 @@ fn status_of(v: &Value) -> Option<ServerStatus> {
     })
 }
 
-fn args(spec: &[String], profile: Option<&str>, port: u16, url: &str) -> Result<Vec<String>, String> {
-    Ok(catalog::with_profile(spec, profile)?
+fn args(spec: &[String], port: u16, url: &str) -> Result<Vec<String>, String> {
+    Ok(catalog::with_profile(spec, None)?
         .into_iter()
         .map(|a| match a.as_str() {
             "{port}" => port.to_string(),
@@ -182,8 +197,8 @@ fn unavailable() -> ServerStatus {
 }
 
 /// Asked on every Manage panel, so a tool too old to answer is a state, not a failure.
-pub fn status(tool: &Tool, profile: Option<&str>) -> Result<ServerStatus, String> {
-    let args = catalog::with_profile(&source(tool)?.status, profile)?;
+pub fn status(tool: &Tool) -> Result<ServerStatus, String> {
+    let args = catalog::with_profile(&source(tool)?.status, None)?;
     let (out, json) = call(tool, &args, Duration::from_secs(30))?;
     if unsupported(json.as_ref()) {
         return Ok(unavailable());
@@ -197,27 +212,27 @@ pub fn status(tool: &Tool, profile: Option<&str>) -> Result<ServerStatus, String
 }
 
 /// The CLI waits up to about 30 seconds for the server to listen.
-pub fn start(tool: &Tool, profile: Option<&str>, port: u16, url: &str) -> Result<ServerStatus, String> {
+pub fn start(tool: &Tool, port: u16, url: &str) -> Result<ServerStatus, String> {
     validate_port(port)?;
     validate_url(url)?;
-    answer(tool, &args(&source(tool)?.start, profile, port, url)?, Duration::from_mins(1))?;
-    status(tool, profile)
+    answer(tool, &args(&source(tool)?.start, port, url)?, Duration::from_mins(1))?;
+    status(tool)
 }
 
 /// The tool itself refuses a server it did not start; its words say where to stop that one.
-pub fn stop(tool: &Tool, profile: Option<&str>) -> Result<(), String> {
-    answer(tool, &catalog::with_profile(&source(tool)?.stop, profile)?, Duration::from_mins(1)).map(|_| ())
+pub fn stop(tool: &Tool) -> Result<(), String> {
+    answer(tool, &catalog::with_profile(&source(tool)?.stop, None)?, Duration::from_mins(1)).map(|_| ())
 }
 
 /// `mcp --revoke`: every browser app must log in again.
-pub fn revoke(tool: &Tool, profile: Option<&str>) -> Result<(), String> {
-    answer(tool, &catalog::with_profile(&source(tool)?.revoke, profile)?, Duration::from_secs(30)).map(|_| ())
+pub fn revoke(tool: &Tool) -> Result<(), String> {
+    answer(tool, &catalog::with_profile(&source(tool)?.revoke, None)?, Duration::from_secs(30)).map(|_| ())
 }
 
 /// `mcp config`: the entry desktop apps (Claude Desktop, Cursor) paste, with full paths and no credentials.
-pub fn config(tool: &Tool, profile: Option<&str>) -> Result<String, String> {
+pub fn config(tool: &Tool) -> Result<String, String> {
     let spec = source(tool)?.config.as_ref().ok_or_else(|| format!("{} prints no desktop-app config", tool.name))?;
-    let v = answer(tool, &catalog::with_profile(spec, profile)?, Duration::from_secs(30))?;
+    let v = answer(tool, &catalog::with_profile(spec, None)?, Duration::from_secs(30))?;
     let entry = body(&v).get("config").filter(|c| c["mcpServers"].is_object()).ok_or("the tool printed no config")?;
     serde_json::to_string_pretty(entry).map_err(|e| e.to_string())
 }
@@ -229,12 +244,20 @@ mod tests {
 
     #[test]
     fn takes_only_a_tunnel_address() {
-        for ok in ["https://laptop.tail1234.ts.net", "https://a-b.trycloudflare.com/", "http://127.0.0.1:8765"] {
+        for ok in [
+            "https://laptop.tail1234.ts.net",
+            "https://a-b.trycloudflare.com/",
+            "http://127.0.0.1:8765",
+            "https://laptop.tail1234.ts.net/tg",
+            "https://laptop.tail1234.ts.net:8443/drive/",
+        ] {
             assert!(validate_url(ok).is_ok(), "{ok}");
         }
         for bad in [
             "http://laptop.ts.net",
-            "https://x.ts.net/mcp",
+            "https://x.ts.net/tg/mcp",
+            "https://x.ts.net/.well-known",
+            "https://x.ts.net/a b",
             "https://u:p@x.ts.net",
             "https://x.ts.net?a=1",
             "https://x.ts.net#f",
@@ -257,17 +280,15 @@ mod tests {
 
     #[test]
     fn fills_the_catalog_words_only() {
-        let spec: Vec<String> = ["{profile}", "mcp", "server", "start", "--port", "{port}", "--public-url", "{url}"]
+        let spec: Vec<String> = ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}"]
             .iter()
             .map(ToString::to_string)
             .collect();
         assert_eq!(
-            args(&spec, Some("work"), 9000, "https://x.ts.net").unwrap(),
-            ["work", "mcp", "server", "start", "--port", "9000", "--public-url", "https://x.ts.net"]
+            args(&spec, 9000, "https://x.ts.net/tg").unwrap(),
+            ["mcp", "server", "start", "--port", "9000", "--public-url", "https://x.ts.net/tg"]
         );
-        assert!(args(&spec, Some("--help"), 9000, "https://x.ts.net").is_err());
-        assert!(args(&spec, None, 9000, "https://x.ts.net").is_err());
-        assert!(start(catalog::tool("tg").unwrap(), Some("work"), 9000, "https://x.ts.net/mcp").is_err());
+        assert!(start(catalog::tool("tg").unwrap(), 9000, "https://x.ts.net/tg/mcp").is_err());
     }
 
     #[test]
@@ -321,6 +342,9 @@ mod tests {
         // tg 0.93.0, measured: `tg x mcp server status --json` before cli-core 0.445.
         let old = "too many arguments for 'mcp'. Expected 0 arguments but got 2: server, status.";
         assert!(unsupported(Some(&json!({"error": {"message": old}}))));
+        // tg 0.96.0 and drive 0.41.1, from before the server of every profile: `tg mcp server status --json`.
+        let unnamed = "name a profile: `tg <profile> …` — profiles here: personal (or set TG_PROFILE)";
+        assert!(unsupported(Some(&json!({"error": {"message": unnamed}}))));
         assert!(!unsupported(Some(&json!({"error": {"message": "port 8765 is in use"}}))));
     }
 
@@ -333,9 +357,9 @@ mod tests {
                 "{}",
                 tool.id
             );
-            let needs_profile = tool.profiles.is_some();
+            // One server for every profile: nothing here names one.
             for spec in [&src.start, &src.stop, &src.status, &src.revoke] {
-                assert_eq!(spec.contains(&"{profile}".to_string()), needs_profile, "{}", tool.id);
+                assert!(!spec.contains(&"{profile}".to_string()), "{}", tool.id);
                 assert_eq!(spec.last().map(String::as_str), Some("--json"), "{}", tool.id);
             }
         }

@@ -383,7 +383,6 @@ fn tailscale_stop(running: State<'_, Arc<Running>>) {
 #[tauri::command]
 async fn tailscale_funnel_open(
     id: String,
-    profile: Option<String>,
     port: u16,
     running: State<'_, Arc<Running>>,
     on_event: Channel<tailscale::PageEvent>,
@@ -393,10 +392,9 @@ async fn tailscale_funnel_open(
         if !running.start(tailscale::FUNNEL) {
             return Err("Tailscale Funnel is being set up for another server; wait for it to finish.".to_string());
         }
-        let result =
-            tailscale::funnel_open(&id, profile.as_deref(), port, &|| !running.is_running(tailscale::FUNNEL), &|e| {
-                let _ = on_event.send(e);
-            });
+        let result = tailscale::funnel_open(&id, port, &|| !running.is_running(tailscale::FUNNEL), &|e| {
+            let _ = on_event.send(e);
+        });
         running.finish(tailscale::FUNNEL);
         result
     })
@@ -404,8 +402,8 @@ async fn tailscale_funnel_open(
 }
 
 #[tauri::command]
-async fn tailscale_funnel_close(id: String, profile: Option<String>) -> Result<(), String> {
-    blocking(move || tailscale::funnel_close(&id, profile.as_deref())).await?
+async fn tailscale_funnel_close(id: String) -> Result<(), String> {
+    blocking(move || tailscale::funnel_close(&id)).await?
 }
 
 #[tauri::command]
@@ -414,38 +412,33 @@ async fn tailscale_funnels() -> Result<Vec<tailscale::FunnelState>, String> {
 }
 
 #[tauri::command]
-async fn mcp_server_status(id: String, profile: Option<String>) -> Result<mcp_server::ServerStatus, String> {
+async fn mcp_server_status(id: String) -> Result<mcp_server::ServerStatus, String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || mcp_server::status(tool, profile.as_deref())).await?
+    blocking(move || mcp_server::status(tool)).await?
 }
 
 #[tauri::command]
-async fn mcp_server_start(
-    id: String,
-    profile: Option<String>,
-    port: u16,
-    url: String,
-) -> Result<mcp_server::ServerStatus, String> {
+async fn mcp_server_start(id: String, port: u16, url: String) -> Result<mcp_server::ServerStatus, String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || mcp_server::start(tool, profile.as_deref(), port, &url)).await?
+    blocking(move || mcp_server::start(tool, port, &url)).await?
 }
 
 #[tauri::command]
-async fn mcp_server_stop(id: String, profile: Option<String>) -> Result<(), String> {
+async fn mcp_server_stop(id: String) -> Result<(), String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || mcp_server::stop(tool, profile.as_deref())).await?
+    blocking(move || mcp_server::stop(tool)).await?
 }
 
 #[tauri::command]
-async fn mcp_server_revoke(id: String, profile: Option<String>) -> Result<(), String> {
+async fn mcp_server_revoke(id: String) -> Result<(), String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || mcp_server::revoke(tool, profile.as_deref())).await?
+    blocking(move || mcp_server::revoke(tool)).await?
 }
 
 #[tauri::command]
-async fn mcp_server_config(id: String, profile: Option<String>) -> Result<String, String> {
+async fn mcp_server_config(id: String) -> Result<String, String> {
     let tool = catalog::tool(&id)?;
-    blocking(move || mcp_server::config(tool, profile.as_deref())).await?
+    blocking(move || mcp_server::config(tool)).await?
 }
 
 #[tauri::command]

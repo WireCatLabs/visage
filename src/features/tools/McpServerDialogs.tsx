@@ -11,11 +11,12 @@ import { stepsOf } from "./tailscale-steps"
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const DEFAULT_PORT = 8765
 
-/** Rust checks both again; this only keeps an obvious typo from a round trip. */
+/** Rust checks both again; this only keeps an obvious typo from a round trip. One plain path is the tool's share. */
 export function formProblem(url: string, port: string): string | null {
-  const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url)
-  if (!local && !/^https:\/\/[a-z0-9.-]+(:\d+)?\/?$/i.test(url))
-    return "Type the tunnel's https address alone, such as https://laptop.tail1234.ts.net"
+  const path = "(/[a-z0-9_][a-z0-9._-]{0,39})?/?"
+  const local = new RegExp(`^http://(localhost|127\\.0\\.0\\.1)(:\\d+)?${path}$`, "i").test(url)
+  if (!local && !new RegExp(`^https://[a-z0-9.-]+(:\\d+)?${path}$`, "i").test(url))
+    return "Type the tunnel's https address, such as https://laptop.tail1234.ts.net, or with a path of its own: …/tg"
   const n = Number(port)
   if (!Number.isInteger(n) || n < 1024 || n > 65535) return "Choose a port from 1024 to 65535"
   return null
@@ -29,12 +30,11 @@ type Phase = "funnel" | "server" | null
 
 export function StartServer(props: {
   tool: CatalogTool
-  profile: string | null
   open: boolean
   onClose(): void
   onStarted(s: McpServerStatus): void
 }) {
-  const { tool, profile, open, onClose, onStarted } = props
+  const { tool, open, onClose, onStarted } = props
   const id = useId()
   const [tunnel, setTunnel] = useState<Tunnel>("tailscale")
   const [url, setUrl] = useState("")
@@ -44,7 +44,7 @@ export function StartServer(props: {
   const [approval, setApproval] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const tailscale = useTailscale(open && tunnel === "tailscale")
-  const name = profile ? `${tool.bin} ${profile}` : tool.bin
+  const name = tool.bin
   const busy = phase !== null
   const ready = tailscale.status !== null && stepsOf(tailscale.status).every((s) => s.done)
 
@@ -57,7 +57,7 @@ export function StartServer(props: {
     if (problem) return setError(problem)
     setPhase("server")
     try {
-      onStarted(await platform.mcpServerStart(tool.id, profile, Number(port), url.trim().replace(/\/$/, "")))
+      onStarted(await platform.mcpServerStart(tool.id, Number(port), url.trim().replace(/\/$/, "")))
     } catch (e) {
       setError(message(e))
     }
@@ -72,13 +72,13 @@ export function StartServer(props: {
     setPhase("funnel")
     setApproval(null)
     try {
-      const address = await platform.tailscaleFunnelOpen(tool.id, profile, Number(port), setApproval)
+      const address = await platform.tailscaleFunnelOpen(tool.id, Number(port), setApproval)
       setUrl(address)
       setPhase("server")
       try {
-        onStarted(await platform.mcpServerStart(tool.id, profile, Number(port), address))
+        onStarted(await platform.mcpServerStart(tool.id, Number(port), address))
       } catch (e) {
-        await platform.tailscaleFunnelClose(tool.id, profile).catch(() => {})
+        await platform.tailscaleFunnelClose(tool.id).catch(() => {})
         throw e
       }
     } catch (e) {
@@ -148,16 +148,21 @@ export function StartServer(props: {
           />
         </fieldset>
         {tunnel === "tailscale" ? (
-          <TailscaleGuide tailscale={tailscale} />
+          <TailscaleGuide tailscale={tailscale} tool={tool.id} />
         ) : (
           <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
             <span className="text-[0.85rem] font-medium text-ink-dim">The tunnel's address</span>
+            <span className="text-[0.8rem] text-ink-dim">
+              Add a path such as /{tool.id} when several tools share the address; the tunnel then also routes
+              /.well-known/oauth-authorization-server/{tool.id} and /.well-known/oauth-protected-resource/{tool.id}{" "}
+              here.
+            </span>
             <input
               id={`${id}-url`}
               className={`${inputClass} w-full`}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://laptop.tail1234.ts.net"
+              placeholder={`https://laptop.tail1234.ts.net/${tool.id}`}
               autoComplete="off"
               spellCheck={false}
               data-autofocus
@@ -182,7 +187,8 @@ export function StartServer(props: {
           </span>
         </div>
         <p className="text-[0.85rem]">
-          A browser app that logs in can do what this profile's permissions allow, including sending.
+          A browser app that logs in reaches every {tool.name} profile and can do what each profile's permissions allow,
+          including sending.
         </p>
         <div className="min-h-[1.5rem]" aria-live="polite">
           {phase === "funnel" && approval && (
@@ -231,17 +237,11 @@ function TunnelChoice(props: {
   )
 }
 
-export function ForgetLogins(props: {
-  tool: CatalogTool
-  profile: string | null
-  open: boolean
-  onClose(): void
-  onDone(): void
-}) {
-  const { tool, profile, open, onClose, onDone } = props
+export function ForgetLogins(props: { tool: CatalogTool; open: boolean; onClose(): void; onDone(): void }) {
+  const { tool, open, onClose, onDone } = props
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const name = profile ? `${tool.bin} ${profile}` : tool.bin
+  const name = tool.bin
 
   useEffect(() => {
     if (open) setError(null)
@@ -250,7 +250,7 @@ export function ForgetLogins(props: {
   const forget = async () => {
     setBusy(true)
     try {
-      await platform.mcpServerRevoke(tool.id, profile)
+      await platform.mcpServerRevoke(tool.id)
       onDone()
     } catch (e) {
       setError(message(e))

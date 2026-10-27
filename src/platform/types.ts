@@ -91,16 +91,16 @@ export type Platform = {
   mcpAdd(id: string, profile: string, agent: string, allowWrites: boolean): Promise<void>
   /** The agent's own `mcp remove` of `<bin>-<profile>`, or of `<bin>` when `profile` is null. */
   mcpRemove(id: string, profile: string | null, agent: string): Promise<void>
-  /** The tool's HTTP MCP server for browser apps; `profile` is null only for a tool without profiles. */
-  mcpServerStatus(id: string, profile: string | null): Promise<McpServerStatus>
+  /** The tool's HTTP MCP server for browser apps: one per tool, serving every profile (each call names one). */
+  mcpServerStatus(id: string): Promise<McpServerStatus>
   /** Rust checks the port and the tunnel's address, then runs the tool's `mcp server start` and answers its status. */
-  mcpServerStart(id: string, profile: string | null, port: number, url: string): Promise<McpServerStatus>
+  mcpServerStart(id: string, port: number, url: string): Promise<McpServerStatus>
   /** The tool refuses a server it did not start. */
-  mcpServerStop(id: string, profile: string | null): Promise<void>
+  mcpServerStop(id: string): Promise<void>
   /** `mcp --revoke`: every browser app must log in again. */
-  mcpServerRevoke(id: string, profile: string | null): Promise<void>
+  mcpServerRevoke(id: string): Promise<void>
   /** The `mcpServers` entry a desktop app pastes, as JSON text. */
-  mcpServerConfig(id: string, profile: string | null): Promise<string>
+  mcpServerConfig(id: string): Promise<string>
   /** Every step of the Tailscale guide at once: installed, allowed to change settings, logged in, Funnel allowed. */
   tailscaleStatus(): Promise<TailscaleStatus>
   /** Downloads Tailscale's official installer into Downloads, then opens it or shows it in the file manager. */
@@ -111,10 +111,10 @@ export type Platform = {
   tailscaleLogin(onPage: (url: string) => void): Promise<void>
   /** Stops a waiting login or Funnel approval. */
   tailscaleStop(): Promise<void>
-  /** Funnel from a public port to the server's local port; answers the public address for `mcpServerStart`. */
-  tailscaleFunnelOpen(id: string, profile: string | null, port: number, onPage: (url: string) => void): Promise<string>
-  /** Turns off only a funnel the app set up for this server, and only while it still points here. */
-  tailscaleFunnelClose(id: string, profile: string | null): Promise<void>
+  /** Funnel from the tool's paths of the shared public address to its local port; answers `https://<host>/<tool>`. */
+  tailscaleFunnelOpen(id: string, port: number, onPage: (url: string) => void): Promise<string>
+  /** Turns off only the paths the app set up for this tool, an older whole-port funnel of it too. */
+  tailscaleFunnelClose(id: string): Promise<void>
   tailscaleFunnels(): Promise<FunnelState[]>
   taskClaims(id: string, profile: string): Promise<Claims>
   /** Releases a claim as the owner, who may release any. */

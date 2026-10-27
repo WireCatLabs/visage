@@ -2,7 +2,7 @@ import { delay } from "./mock-delay"
 import type { FunnelState, TailscaleLinux, TailscaleStatus } from "./tailscale-schemas"
 import type { Platform } from "./types"
 
-// `?tailscale=<state>` opens tg's MCP server Start dialog for the profile personal with the Tailscale guide at that
+// `?tailscale=<state>` opens tg's MCP server Start dialog with the Tailscale guide at that
 // state: `missing`, `nooperator` (Linux: only root may change Tailscale), `nodaemon` (installed, not running),
 // `loggedout`, `approval` (the tailnet's admin approves new devices), `stopped`, `nohttps`, `nofunnel`, `full` (all
 // three Funnel ports taken), `ready`. `?tailscale-os=macos|windows` changes the install step; Linux is Ubuntu, which
@@ -11,6 +11,7 @@ import type { Platform } from "./types"
 // Tailscale's update source. `?tailscale-nocurl=1`: curl is missing, so the Ubuntu, Debian and script commands start with
 // the line that installs it. These commands are the shape `tailscale_linux.rs` builds; its tests hold the real ones.
 // `?tailscale=leftover` with `?mcp=<tool>`: the server is off but the funnel the app set up still points at it.
+// `?funnel-old=<tool>`: a whole-port funnel from before the shared address, for profile personal, is still on.
 // `?tailscale-fail=funnel` makes turning Funnel on fail. Logging in finishes by itself after a few seconds.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
@@ -211,10 +212,11 @@ export function tailscaleMock(): Pick<
   let stopped = false
   const funnels: FunnelState[] = []
   const shown = params.get("mcp")
-  if (shown) {
-    const profile = shown === "memo" ? null : "personal"
-    funnels.push({ tool: shown, profile, url: `https://${HOST}`, port: 8765, live: true })
-  }
+  if (shown)
+    funnels.push({ tool: shown, profile: null, url: `https://${HOST}/${shown}`, port: 8765, live: true, shared: true })
+  const old = params.get("funnel-old")
+  if (old)
+    funnels.push({ tool: old, profile: "personal", url: `https://${HOST}:8443`, port: 8770, live: true, shared: false })
 
   return {
     async tailscaleStatus() {
@@ -247,21 +249,21 @@ export function tailscaleMock(): Pick<
     async tailscaleStop() {
       stopped = true
     },
-    async tailscaleFunnelOpen(id, profile, port) {
+    async tailscaleFunnelOpen(id, port) {
       await delay(1200)
       if (params.get("tailscale-fail") === "funnel")
         throw new Error("Tailscale did not turn Funnel on: serve config denied")
       const https = state.freePorts[0]
       if (https === undefined)
         throw new Error("Tailscale Funnel allows 3 public addresses per computer, and all are in use.")
-      const url = https === 443 ? `https://${HOST}` : `https://${HOST}:${https}`
-      const others = funnels.filter((f) => f.tool !== id || f.profile !== profile)
-      funnels.splice(0, funnels.length, ...others, { tool: id, profile, url, port, live: true })
+      const url = `${https === 443 ? `https://${HOST}` : `https://${HOST}:${https}`}/${id}`
+      const others = funnels.filter((f) => f.tool !== id)
+      funnels.splice(0, funnels.length, ...others, { tool: id, profile: null, url, port, live: true, shared: true })
       return url
     },
-    async tailscaleFunnelClose(id, profile) {
+    async tailscaleFunnelClose(id) {
       await delay(400)
-      for (const f of funnels) if (f.tool === id && f.profile === profile) f.live = false
+      for (const f of funnels) if (f.tool === id) f.live = false
     },
     async tailscaleFunnels() {
       await delay(300)

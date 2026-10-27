@@ -7,9 +7,11 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Duration;
 
-// Tailscale Funnel in front of a tool's MCP server (step 4 of `docs/dev/plans/2026-10-26-mcp-full-commands.md`).
-// Desktop reads Tailscale's state, starts its login, and turns Funnel on and off only for the public ports it set up
-// itself, recorded in `tailscale-funnels.json`. It never runs `sudo`, `tailscale up` or `funnel reset`.
+// Tailscale Funnel in front of the tools' MCP servers (step 4 of `docs/dev/plans/2026-10-26-mcp-full-commands.md`).
+// The tools share one public address, a path each (`/tg`), so Funnel's three public ports are not a limit (TASK-26).
+// Desktop reads Tailscale's state, starts its login, and turns Funnel on and off only for the paths it set up
+// itself, recorded in `tailscale-funnels.json`. It never runs `sudo`, `tailscale up`, `funnel reset` or turns a
+// whole port off.
 
 /// Only pages on these hosts are opened from the CLI's output: its login and the tailnet's Funnel approval.
 const PAGE_HOSTS: [&str; 2] = ["login.tailscale.com", "console.tailscale.com"];
@@ -210,31 +212,57 @@ fn used_ports(serve: &Value) -> BTreeSet<u16> {
     used
 }
 
-/// The public port still sends the internet to this local port, through Funnel.
-fn is_live(serve: &Value, host: &str, https: u16, port: u16) -> bool {
-    let hp = format!("{host}:{https}");
-    let proxy = serve["Web"][&hp]["Handlers"]["/"]["Proxy"].as_str().unwrap_or("");
-    let target = proxy.trim_end_matches('/').trim_start_matches("http://");
+/// The paths a tool takes on the shared address: its own, and the two places RFC 8414 and RFC 9728 put the login
+/// metadata of an issuer under a path. Each goes to the same path on the server, which knows them all.
+fn mounts(tool: &str) -> [String; 3] {
+    [
+        format!("/{tool}"),
+        format!("/.well-known/oauth-authorization-server/{tool}"),
+        format!("/.well-known/oauth-protected-resource/{tool}"),
+    ]
+}
+
+/// This path of the public port sends the internet to `local` (a port and path on this computer), through Funnel.
+fn routes(serve: &Value, hp: &str, path: &str, local: &str) -> bool {
+    let proxy = serve["Web"][hp]["Handlers"][path]["Proxy"].as_str().unwrap_or("");
+    let target = proxy.trim_start_matches("http://");
+    let target = if target.len() > 1 { target.trim_end_matches('/') } else { target };
+    target == format!("127.0.0.1:{local}") || target == format!("localhost:{local}")
+}
+
+/// A server is live while every path the record names still reaches its port: the tool's three, or `/` for a server
+/// from before the shared address.
+fn is_live(serve: &Value, r: &Owned) -> bool {
+    let hp = format!("{}:{}", r.host, r.https);
     serve["AllowFunnel"][&hp].as_bool() == Some(true)
-        && (target == format!("127.0.0.1:{port}") || target == format!("localhost:{port}"))
+        && if r.shared {
+            mounts(&r.tool).iter().all(|p| routes(serve, &hp, p, &format!("{}{p}", r.port)))
+        } else {
+            routes(serve, &hp, "/", &r.port.to_string())
+        }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Owned {
     pub tool: String,
+    /// Only on a record from before the shared address, when a server spoke for one profile.
     pub profile: Option<String>,
     pub host: String,
     pub https: u16,
     pub port: u16,
+    /// Mounted under the tool's path on a shared port; a record without it holds the whole port.
+    #[serde(default)]
+    pub shared: bool,
 }
 
 impl Owned {
-    fn is(&self, tool: &str, profile: Option<&str>) -> bool {
-        self.tool == tool && self.profile.as_deref() == profile
-    }
     fn url(&self) -> String {
-        url_of(&self.host, self.https)
+        if self.shared {
+            format!("{}/{}", url_of(&self.host, self.https), self.tool)
+        } else {
+            url_of(&self.host, self.https)
+        }
     }
 }
 
@@ -259,18 +287,21 @@ fn save(records: &[Owned]) -> Result<(), String> {
     std::fs::write(&file, body).map_err(|e| format!("Could not save {}: {e}", paths::tilde(&file.to_string_lossy())))
 }
 
+/// Ports the tools already share: another tool's paths can join them, since each takes only its own.
+fn shared_ports(records: &[Owned], serve: &Value, host: &str) -> BTreeSet<u16> {
+    records.iter().filter(|r| r.shared && r.host == host && is_live(serve, r)).map(|r| r.https).collect()
+}
+
 /// The same public port as last time keeps the address, and the browser apps' logins with it (the address is the
-/// login's issuer). Otherwise a free one, preferring a port no other server of ours used.
-fn choose(records: &[Owned], tool: &str, profile: Option<&str>, used: &BTreeSet<u16>, allowed: &[u16]) -> Option<u16> {
-    let free = |p: &u16| !used.contains(p);
-    if let Some(mine) = records.iter().find(|r| r.is(tool, profile))
-        && allowed.contains(&mine.https)
-        && free(&mine.https)
+/// login's issuer); then the port the other tools share, so all have one address; then a free one.
+fn choose(records: &[Owned], tool: &str, shared: &BTreeSet<u16>, used: &BTreeSet<u16>, allowed: &[u16]) -> Option<u16> {
+    let usable = |p: &u16| allowed.contains(p) && (!used.contains(p) || shared.contains(p));
+    if let Some(mine) = records.iter().find(|r| r.tool == tool && r.shared)
+        && usable(&mine.https)
     {
         return Some(mine.https);
     }
-    let others: BTreeSet<u16> = records.iter().filter(|r| !r.is(tool, profile)).map(|r| r.https).collect();
-    allowed.iter().copied().filter(free).find(|p| !others.contains(p)).or_else(|| allowed.iter().copied().find(free))
+    shared.iter().copied().find(|p| usable(p)).or_else(|| allowed.iter().copied().find(|p| !used.contains(p)))
 }
 
 /// A page to open from the CLI's output: https on Tailscale's own login hosts, nothing else.
@@ -322,7 +353,12 @@ pub fn status() -> Status {
         match json_of(&out) {
             Some(serve) => {
                 let used = used_ports(&serve);
-                s.free_ports = node.ports.into_iter().filter(|p| !used.contains(p)).collect();
+                let shared = s.host.as_deref().map(|h| shared_ports(&load(), &serve, h)).unwrap_or_default();
+                // The port the tools share comes first: it is the one the next tool joins.
+                let mut ports: Vec<u16> =
+                    node.ports.into_iter().filter(|p| !used.contains(p) || shared.contains(p)).collect();
+                ports.sort_by_key(|p| !shared.contains(p));
+                s.free_ports = ports;
             }
             None if denied(&out.stderr) => s.operator = Some(false),
             None => {}
@@ -417,18 +453,15 @@ fn serve_config(cli: &Cli) -> Result<Value, String> {
     json_of(&out).ok_or_else(|| failure("Could not read Tailscale's Funnel settings", &out))
 }
 
-/// Turns Funnel on from a public port to the tool's local port and returns the public address for `mcp server start`.
+/// Turns Funnel on for the tool's paths of the shared public address, to the tool's local port, and returns the
+/// public address for `mcp server start`: `https://<host>/<tool>`.
 pub fn funnel_open(
     tool: &str,
-    profile: Option<&str>,
     port: u16,
     stopped: &dyn Fn() -> bool,
     send: &dyn Fn(PageEvent),
 ) -> Result<String, String> {
     catalog::tool(tool)?;
-    if let Some(p) = profile {
-        catalog::validate_profile(p)?;
-    }
     mcp_server::validate_port(port)?;
     let _one = FUNNELS.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let cli = cli().ok_or("Tailscale is not installed.")?;
@@ -440,68 +473,94 @@ pub fn funnel_open(
     let host = node.host.ok_or("Tailscale gave this computer no name. Turn on MagicDNS in the admin console.")?;
     let mut serve = serve_config(&cli)?;
     let mut records = load();
-    if let Some(mine) = records.iter().find(|r| r.is(tool, profile) && r.host == host)
-        && is_live(&serve, &host, mine.https, mine.port)
+    // A Funnel from before the shared address opened this tool to the internet for one profile; it goes now.
+    for old in records.iter().filter(|r| r.tool == tool && !r.shared && is_live(&serve, r)) {
+        unmount(&cli, old)?;
+    }
+    if let Some(mine) = records.iter().find(|r| r.tool == tool && r.shared && r.host == host)
+        && is_live(&serve, mine)
     {
         if mine.port == port {
             return Ok(mine.url());
         }
         // Still ours, pointing at the port this server used before: move it rather than leave it public and untracked.
-        off(&cli, mine.https)?;
-        serve = serve_config(&cli)?;
+        unmount(&cli, mine)?;
     }
+    serve = serve_config(&cli)?;
     let allowed = if node.ports.is_empty() { FUNNEL_PORTS.to_vec() } else { node.ports };
-    let https = choose(&records, tool, profile, &used_ports(&serve), &allowed).ok_or_else(|| {
+    let shared = shared_ports(&records, &serve, &host);
+    let https = choose(&records, tool, &shared, &used_ports(&serve), &allowed).ok_or_else(|| {
         format!(
-            "Tailscale Funnel allows {} public addresses per computer (ports {}), and all are in use. Stop another server first.",
+            "Tailscale Funnel allows {} public addresses per computer (ports {}), and all are in use by other servers. \
+             Turn one of them off first.",
             allowed.len(),
             allowed.iter().map(u16::to_string).collect::<Vec<_>>().join(", ")
         )
     })?;
-    let (https_flag, target) = (format!("--https={https}"), format!("http://127.0.0.1:{port}"));
-    // No `--yes`: stdin is closed, so a question about the owner's own settings fails instead of overwriting them.
-    let out = wait_for_browser(&cli, &["funnel", "--bg", &https_flag, &target], stopped, send)?;
-    if out.code != Some(0) {
-        return Err(failure("Tailscale did not turn Funnel on", &out));
+    let mine = Owned { tool: tool.into(), profile: None, host, https, port, shared: true };
+    let https_flag = format!("--https={https}");
+    for (i, path) in mounts(tool).iter().enumerate() {
+        let target = format!("http://127.0.0.1:{port}{path}");
+        let words = ["funnel", "--bg", &https_flag, "--set-path", path, &target];
+        // No `--yes`: stdin is closed, so a question about the owner's own settings fails instead of overwriting them.
+        // Only the first can ask for the tailnet's approval in the browser.
+        let out = if i == 0 { wait_for_browser(&cli, &words, stopped, send)? } else { exec(&cli, &words)? };
+        if out.code != Some(0) {
+            let _ = unmount(&cli, &mine);
+            return Err(failure("Tailscale did not turn Funnel on", &out));
+        }
     }
-    if !is_live(&serve_config(&cli)?, &host, https, port) {
-        // The port was free a moment ago, so whatever is on it now came from this call.
-        let _ = off(&cli, https);
+    if !is_live(&serve_config(&cli)?, &mine) {
+        let _ = unmount(&cli, &mine);
         return Err("Tailscale answered, but Funnel does not point at this server. Check the admin console.".into());
     }
-    records.retain(|r| !r.is(tool, profile));
-    let mine = Owned { tool: tool.into(), profile: profile.map(Into::into), host, https, port };
+    records.retain(|r| r.tool != tool);
     let url = mine.url();
     records.push(mine);
     save(&records)?;
     Ok(url)
 }
 
-fn off(cli: &Cli, https: u16) -> Result<(), String> {
-    let out = exec(cli, &["funnel", &format!("--https={https}"), "off"])?;
-    if out.code == Some(0) { Ok(()) } else { Err(failure("Tailscale did not turn Funnel off", &out)) }
+/// Turns off one path at a time, and only a path that still reaches the recorded port: other tools share the port,
+/// and anything the owner changed since is theirs.
+fn unmount(cli: &Cli, r: &Owned) -> Result<(), String> {
+    let serve = serve_config(cli)?;
+    let hp = format!("{}:{}", r.host, r.https);
+    let paths = if r.shared { mounts(&r.tool).to_vec() } else { vec!["/".to_string()] };
+    for path in paths {
+        let local = if r.shared { format!("{}{path}", r.port) } else { r.port.to_string() };
+        if !routes(&serve, &hp, &path, &local) {
+            continue;
+        }
+        let out = exec(cli, &["funnel", &format!("--https={}", r.https), "--set-path", &path, "off"])?;
+        if out.code != Some(0) {
+            return Err(failure("Tailscale did not turn Funnel off", &out));
+        }
+    }
+    Ok(())
 }
 
-/// Turns off only the port the app turned on, and only while it still points at the port the app recorded: anything
-/// the owner changed since is theirs. The record stays, so the next start reuses the address.
-pub fn funnel_close(tool: &str, profile: Option<&str>) -> Result<(), String> {
+/// Turns off only the paths the app turned on for this tool, an older whole-port Funnel of it included. The record
+/// stays, so the next start reuses the address.
+pub fn funnel_close(tool: &str) -> Result<(), String> {
     let _one = FUNNELS.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    let Some(mine) = load().into_iter().find(|r| r.is(tool, profile)) else { return Ok(()) };
     let Some(cli) = cli() else { return Ok(()) };
-    if !is_live(&serve_config(&cli)?, &mine.host, mine.https, mine.port) {
-        return Ok(());
+    for r in load().iter().filter(|r| r.tool == tool) {
+        unmount(&cli, r)?;
     }
-    off(&cli, mine.https)
+    Ok(())
 }
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FunnelState {
     pub tool: String,
+    /// The profile of a Funnel from before the shared address; such a one is shown only to be turned off.
     pub profile: Option<String>,
     pub url: String,
     pub port: u16,
     pub live: bool,
+    pub shared: bool,
 }
 
 /// The funnels the app set up, each with whether it is still on.
@@ -511,9 +570,10 @@ pub fn funnels() -> Vec<FunnelState> {
     records
         .into_iter()
         .map(|r| FunnelState {
-            live: serve.as_ref().is_some_and(|s| is_live(s, &r.host, r.https, r.port)),
+            live: serve.as_ref().is_some_and(|s| is_live(s, &r)),
             url: r.url(),
             port: r.port,
+            shared: r.shared,
             tool: r.tool,
             profile: r.profile,
         })
@@ -562,31 +622,49 @@ mod tests {
         assert!(used_ports(&json!({})).is_empty());
     }
 
+    fn owned(tool: &str, https: u16, shared: bool) -> Owned {
+        Owned { tool: tool.into(), profile: None, host: "h.ts.net".into(), https, port: 8765, shared }
+    }
+
+    fn mounted(tool: &str, port: u16) -> Value {
+        Value::Object(
+            mounts(tool).iter().map(|p| (p.clone(), json!({"Proxy": format!("http://127.0.0.1:{port}{p}")}))).collect(),
+        )
+    }
+
     #[test]
-    fn live_only_when_funnel_points_at_our_port() {
+    fn live_only_while_every_path_reaches_our_port() {
+        let mut handlers = mounted("tg", 8765);
+        handlers["/"] = json!({"Proxy": "http://127.0.0.1:3000"});
         let serve = json!({
-            "Web": {"h.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8765"}}},
-                    "h.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8766"}}}},
-            "AllowFunnel": {"h.ts.net:8443": true}
+            "Web": {"h.ts.net:443": {"Handlers": handlers},
+                    "h.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8765"}}}},
+            "AllowFunnel": {"h.ts.net:443": true, "h.ts.net:8443": true}
         });
-        assert!(is_live(&serve, "h.ts.net", 8443, 8765));
-        assert!(!is_live(&serve, "h.ts.net", 8443, 9000));
-        assert!(!is_live(&serve, "h.ts.net", 443, 8766), "served in the tailnet only, not through Funnel");
-    }
-
-    fn owned(tool: &str, https: u16) -> Owned {
-        Owned { tool: tool.into(), profile: Some("work".into()), host: "h.ts.net".into(), https, port: 8765 }
+        assert!(is_live(&serve, &owned("tg", 443, true)));
+        assert!(!is_live(&serve, &Owned { port: 9000, ..owned("tg", 443, true) }));
+        assert!(!is_live(&serve, &owned("max", 443, true)), "max has no paths there");
+        assert!(is_live(&serve, &owned("tg", 8443, false)), "a whole-port Funnel from before the shared address");
+        let mut partial = serve.clone();
+        partial["Web"]["h.ts.net:443"]["Handlers"]
+            .as_object_mut()
+            .unwrap()
+            .remove("/.well-known/oauth-authorization-server/tg");
+        assert!(!is_live(&partial, &owned("tg", 443, true)), "without its metadata a browser app cannot log in");
+        let tailnet_only = json!({"Web": {"h.ts.net:443": {"Handlers": mounted("tg", 8765)}}});
+        assert!(!is_live(&tailnet_only, &owned("tg", 443, true)), "served in the tailnet only, not through Funnel");
     }
 
     #[test]
-    fn keeps_the_last_address_and_avoids_other_servers() {
+    fn keeps_the_last_address_then_joins_the_shared_one() {
         let all = [443, 8443, 10000];
-        let records = [owned("tg", 8443), owned("wa", 443)];
-        assert_eq!(choose(&records, "tg", Some("work"), &BTreeSet::new(), &all), Some(8443));
-        assert_eq!(choose(&records, "max", Some("work"), &BTreeSet::new(), &all), Some(10000));
-        assert_eq!(choose(&records, "max", Some("work"), &BTreeSet::from([10000]), &all), Some(443));
-        assert_eq!(choose(&records, "tg", Some("work"), &BTreeSet::from([8443]), &all), Some(10000));
-        assert_eq!(choose(&[], "tg", None, &BTreeSet::from(all), &all), None);
+        let none = BTreeSet::new();
+        let records = [owned("tg", 8443, true), owned("wa", 443, true)];
+        assert_eq!(choose(&records, "tg", &none, &none, &all), Some(8443), "its own address keeps its logins");
+        assert_eq!(choose(&records, "max", &BTreeSet::from([443]), &BTreeSet::from([443]), &all), Some(443));
+        assert_eq!(choose(&[], "max", &none, &BTreeSet::from([443]), &all), Some(8443), "443 is someone else's");
+        assert_eq!(choose(&records, "tg", &none, &BTreeSet::from([8443]), &all), Some(443));
+        assert_eq!(choose(&[], "tg", &none, &BTreeSet::from(all), &all), None);
     }
 
     #[test]
@@ -594,6 +672,8 @@ mod tests {
         assert_eq!(url_of("h.ts.net", 443), "https://h.ts.net");
         assert_eq!(url_of("h.ts.net", 8443), "https://h.ts.net:8443");
         assert!(mcp_server::validate_url(&url_of("h.ts.net", 10000)).is_ok());
+        assert_eq!(owned("tg", 8443, true).url(), "https://h.ts.net:8443/tg");
+        assert!(mcp_server::validate_url(&owned("tg", 443, true).url()).is_ok());
     }
 
     #[test]

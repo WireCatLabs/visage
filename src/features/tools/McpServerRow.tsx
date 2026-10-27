@@ -44,19 +44,20 @@ function stateText(s: McpServerStatus, tool: CatalogTool) {
 
 export function McpServerRow(props: {
   tool: CatalogTool
-  profile: string | null
   row: RowState
   /** The Tailscale Funnel the app set up for this server, if any. */
   funnel: FunnelState | null
+  /** Whole-port funnels from when a server spoke for one profile, still on. */
+  leftovers: FunnelState[]
   reload(): void
   settle(data: McpServerStatus): void
 }) {
-  const { tool, profile, row, funnel, reload, settle } = props
+  const { tool, row, funnel, leftovers, reload, settle } = props
   const [busy, setBusy] = useState<Busy>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  const [starting, setStarting] = useState(() => openedByScenario(tool.id, profile))
+  const [starting, setStarting] = useState(() => openedByScenario(tool.id))
   const [forgetting, setForgetting] = useState(false)
-  const name = profile ?? tool.name
+  const name = tool.bin
   const data = row.state === "ready" ? row.data : null
   const lamp = lampOf(row, busy)
 
@@ -73,8 +74,8 @@ export function McpServerRow(props: {
     setBusy("stopping")
     setFailure(null)
     try {
-      await platform.mcpServerStop(tool.id, profile)
-      if (funnel?.live) await platform.tailscaleFunnelClose(tool.id, profile)
+      await platform.mcpServerStop(tool.id)
+      if (funnel?.live) await platform.tailscaleFunnelClose(tool.id)
     } catch (e) {
       setFailure(message(e))
     }
@@ -86,7 +87,7 @@ export function McpServerRow(props: {
     setBusy("closing")
     setFailure(null)
     try {
-      await platform.tailscaleFunnelClose(tool.id, profile)
+      await platform.tailscaleFunnelClose(tool.id)
     } catch (e) {
       setFailure(message(e))
     }
@@ -98,7 +99,7 @@ export function McpServerRow(props: {
     setBusy("copying")
     setFailure(null)
     try {
-      await navigator.clipboard.writeText(await platform.mcpServerConfig(tool.id, profile))
+      await navigator.clipboard.writeText(await platform.mcpServerConfig(tool.id))
     } catch (e) {
       setFailure(message(e))
     }
@@ -142,6 +143,18 @@ export function McpServerRow(props: {
         </p>
       )}
       {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} onClose={closeFunnel} />}
+      {!funnel?.live &&
+        leftovers.map((old) => (
+          <div key={old.url} className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
+            <p className="text-[0.85rem] text-warn-ink">
+              An older Tailscale Funnel{old.profile ? ` for profile ${old.profile}` : ""} still sends{" "}
+              <span className="selectable font-mono">{old.url}</span> to this computer. Starting the server replaces it.
+            </p>
+            <Button size="sm" onClick={closeFunnel} disabled={busy !== null}>
+              {busy === "closing" ? "Turning off…" : "Turn it off"}
+            </Button>
+          </div>
+        ))}
       {data?.running && <Running data={data} />}
       {data?.available && (data.clients.length > 0 || data.running) && (
         <Clients data={data} onForget={() => setForgetting(true)} />
@@ -155,7 +168,6 @@ export function McpServerRow(props: {
       )}
       <StartServer
         tool={tool}
-        profile={profile}
         open={starting}
         onClose={() => setStarting(false)}
         onStarted={(s) => {
@@ -165,7 +177,6 @@ export function McpServerRow(props: {
       />
       <ForgetLogins
         tool={tool}
-        profile={profile}
         open={forgetting}
         onClose={() => setForgetting(false)}
         onDone={() => {
@@ -177,11 +188,11 @@ export function McpServerRow(props: {
   )
 }
 
-/** Browser build only: `?tailscale=<state>` opens tg's Start dialog for the profile personal, at that guide state. */
-function openedByScenario(id: string, profile: string | null) {
+/** Browser build only: `?tailscale=<state>` opens tg's Start dialog at that guide state. */
+function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const state = new URLSearchParams(window.location.search).get("tailscale")
-  return state !== null && state !== "leftover" && id === "tg" && profile === "personal"
+  return state !== null && state !== "leftover" && id === "tg"
 }
 
 function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: Busy; onClose(): void }) {

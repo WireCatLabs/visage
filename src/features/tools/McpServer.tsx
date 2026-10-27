@@ -1,48 +1,40 @@
 import { ChevronRight } from "lucide-react"
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { cx } from "@/ui/cx"
 import { Skeleton } from "@/ui/Skeleton"
-import { useProfiles } from "./Health"
 import { McpServerRow, type RowState } from "./McpServerRow"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
-const keyOf = (profile: string | null) => profile ?? ""
 
 /** Browser build only: `?mcp=<tool>` opens this section without a click, for review captures. */
 function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const params = new URLSearchParams(window.location.search)
   if (params.has("tailscale") && id === "tg") return true
-  return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old")].includes(id)
+  return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old"), params.get("funnel-old")].includes(id)
 }
 
-function summaryOf(targets: (string | null)[], states: Record<string, RowState>): string | null {
-  const known = targets.map((t) => states[keyOf(t)])
-  if (known.some((s) => !s || s.state === "loading")) return null
-  if (known.every((s) => s?.state === "error")) return "Could not read it"
-  if (known.every((s) => s?.state === "ready" && !s.data.available)) return "Arrives with the next update"
-  const on = targets.filter((t) => {
-    const s = states[keyOf(t)]
-    return s?.state === "ready" && s.data.running
-  })
-  if (on.length === 0) return "Off"
-  return on[0] === null ? "Running" : `Running for ${on.join(", ")}`
+function summaryOf(row: RowState): string | null {
+  if (row.state === "loading") return null
+  if (row.state === "error") return "Could not read it"
+  if (!row.data.available) return "Arrives with the next update"
+  return row.data.running ? "Running" : "Off"
 }
 
 /**
- * The tool's HTTP MCP server, for ChatGPT and Claude in the browser behind the owner's tunnel. Agents on this computer
- * use the tools directly, so the section starts closed. One row per profile: nothing is chosen for the owner.
+ * The tool's HTTP MCP server, for ChatGPT and Claude in the browser behind the owner's tunnel. One server serves every
+ * profile: the browser app names the profile in each call, and asks the owner when it is not clear. Agents on this
+ * computer use the tools directly, so the section starts closed.
  */
 export function McpServer({ tool }: { tool: CatalogTool }) {
   const headingId = useId()
   const [open, setOpen] = useState(() => openedByScenario(tool.id))
-  const { profiles, error: profilesError } = useProfiles(tool.id)
-  const [states, setStates] = useState<Record<string, RowState>>({})
-  const calls = useRef<Record<string, number>>({})
+  const [row, setRow] = useState<RowState>({ state: "loading" })
+  const calls = useRef(0)
   const [funnels, setFunnels] = useState<FunnelState[]>([])
 
   // Only funnels the app set up; a missing Tailscale simply has none.
@@ -58,37 +50,27 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
     if (open) loadFunnels()
   }, [open, loadFunnels])
 
-  const targets = useMemo<(string | null)[] | undefined>(
-    () => (profiles === undefined ? undefined : profiles === null ? [null] : profiles.map((p) => p.name)),
-    [profiles],
-  )
-
-  const load = useCallback(
-    async (profile: string | null) => {
-      const k = keyOf(profile)
-      const call = (calls.current[k] ?? 0) + 1
-      calls.current[k] = call
-      setStates((s) => ({ ...s, [k]: s[k]?.state === "ready" ? s[k] : { state: "loading" } }))
-      try {
-        const data = await platform.mcpServerStatus(tool.id, profile)
-        if (calls.current[k] === call) setStates((s) => ({ ...s, [k]: { state: "ready", data } }))
-      } catch (e) {
-        if (calls.current[k] === call) setStates((s) => ({ ...s, [k]: { state: "error", message: message(e) } }))
-      }
-    },
-    [tool.id],
-  )
+  const load = useCallback(async () => {
+    const call = ++calls.current
+    setRow((r) => (r.state === "ready" ? r : { state: "loading" }))
+    try {
+      const data = await platform.mcpServerStatus(tool.id)
+      if (calls.current === call) setRow({ state: "ready", data })
+    } catch (e) {
+      if (calls.current === call) setRow({ state: "error", message: message(e) })
+    }
+  }, [tool.id])
 
   useEffect(() => {
-    for (const t of targets ?? []) load(t)
-  }, [targets, load])
+    load()
+  }, [load])
 
-  const settle = (profile: string | null, data: McpServerStatus) => {
-    calls.current[keyOf(profile)] = (calls.current[keyOf(profile)] ?? 0) + 1
-    setStates((s) => ({ ...s, [keyOf(profile)]: { state: "ready", data } }))
+  const settle = (data: McpServerStatus) => {
+    calls.current++
+    setRow({ state: "ready", data })
   }
 
-  const summary = targets ? summaryOf(targets, states) : profilesError ? "Could not read the profiles" : null
+  const summary = summaryOf(row)
 
   return (
     <section
@@ -125,40 +107,27 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
           <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
             Lets ChatGPT or Claude in the browser reach {tool.name} through a tunnel: Tailscale Funnel, which WireCat
             sets up for you, or one you run. Agents on this computer do not need it. A browser app logs in once with the
-            code shown here, and then acts with the profile's permissions.
+            code shown here and reaches every profile, each with its own permissions; it names the profile in each call.
           </p>
-          {targets === undefined ? (
-            profilesError ? (
-              <p className="text-[0.9rem] text-bad">Could not read the profiles: {profilesError}</p>
-            ) : (
-              <Skeleton className="h-[3rem] w-full" label="Reading the profiles" />
-            )
-          ) : targets.length === 0 ? (
-            <p className="text-[0.9rem] text-ink-soft">Add a profile first: the server serves one profile.</p>
-          ) : (
-            <ul
-              className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
-              aria-label={`${tool.name} MCP servers`}
-            >
-              {targets.map((profile) => (
-                <McpServerRow
-                  key={keyOf(profile)}
-                  tool={tool}
-                  profile={profile}
-                  row={states[keyOf(profile)] ?? { state: "loading" }}
-                  funnel={funnels.find((f) => f.profile === profile) ?? null}
-                  reload={() => {
-                    load(profile)
-                    loadFunnels()
-                  }}
-                  settle={(data) => {
-                    settle(profile, data)
-                    loadFunnels()
-                  }}
-                />
-              ))}
-            </ul>
-          )}
+          <ul
+            className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
+            aria-label={`${tool.name} MCP server`}
+          >
+            <McpServerRow
+              tool={tool}
+              row={row}
+              funnel={funnels.find((f) => f.shared) ?? null}
+              leftovers={funnels.filter((f) => !f.shared && f.live)}
+              reload={() => {
+                load()
+                loadFunnels()
+              }}
+              settle={(data) => {
+                settle(data)
+                loadFunnels()
+              }}
+            />
+          </ul>
         </div>
       )}
     </section>

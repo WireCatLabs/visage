@@ -250,3 +250,8 @@ don't bloat ui and settings". And: "I don't want to overengineer at this stage".
 - Size: the cli-core module (start `<bin> <profile> mcp` children on demand, add `profile`, forward) is small-medium,
   ~400–600 lines with tests; tg, max, wa get it by updating cli-core; drive and zm wire their own `mcp`; memo has no
   profiles. The path-prefix login change in cli-core is small but untested.
+
+**Measured while building (TASK-26):** a login under a path needs three Funnel paths per tool, not one: `/tg`, and the
+two places RFC 8414 §3 and RFC 9728 §3 put the metadata of an issuer under a path,
+`/.well-known/oauth-authorization-server/tg` and `/.well-known/oauth-protected-resource/tg`. Each is mounted with the
+path kept (`--set-path /p http://127.0.0.1:<port>/p`); Desktop sets and removes all three, by path, never a whole port.

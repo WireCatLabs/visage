@@ -2,7 +2,7 @@ import type { McpServerStatus } from "./mcp-server-schemas"
 import { delay } from "./mock-delay"
 import type { Platform } from "./types"
 
-// `?mcp=<tool>` starts with that tool's `personal` server running, a login code and two apps logged in, one with a
+// `?mcp=<tool>` starts with that tool's server running, a login code and two apps logged in, one with a
 // name that tries to look like a file; the Tools page opens it (`src/app/scenarios.ts`). `?mcp-fail=<tool>` makes Start
 // fail as when another server holds the port. `?mcp-old=<tool>` answers as a tool from before `mcp server`.
 
@@ -40,13 +40,12 @@ export function mcpServerMock(): Pick<
   "mcpServerStatus" | "mcpServerStart" | "mcpServerStop" | "mcpServerRevoke" | "mcpServerConfig"
 > {
   const servers = new Map<string, McpServerStatus>()
-  const key = (id: string, profile: string | null) => `${id}:${profile ?? ""}`
   const shown = params.get("mcp")
   if (shown && params.get("tailscale") !== "leftover") {
     const ago = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000).toISOString()
     servers.set(
-      key(shown, shown === "memo" ? null : "personal"),
-      running(8765, "https://laptop.tail4a2c.ts.net", [
+      shown,
+      running(8765, `https://laptop.tail4a2c.ts.net/${shown}`, [
         { claimedName: "Claude", lastLoginAt: ago(35) },
         { claimedName: "ChatGPT connector.pdf", lastLoginAt: ago(60 * 26) },
       ]),
@@ -54,38 +53,32 @@ export function mcpServerMock(): Pick<
   }
 
   return {
-    async mcpServerStatus(id, profile) {
+    async mcpServerStatus(id) {
       await delay(300)
       if (params.get("mcp-old") === id) return { ...stopped(), available: false }
-      return servers.get(key(id, profile)) ?? stopped()
+      return servers.get(id) ?? stopped()
     },
-    async mcpServerStart(id, profile, port, url) {
+    async mcpServerStart(id, port, url) {
       await delay(1500)
       if (params.get("mcp-fail") === id)
         throw new Error(`mcp --http stopped before it listened:\nport ${port} is in use — pass another with --port`)
-      const next = running(port, url, servers.get(key(id, profile))?.clients ?? [])
-      servers.set(key(id, profile), { ...next, startedAt: new Date().toISOString() })
+      const next = running(port, url, servers.get(id)?.clients ?? [])
+      servers.set(id, { ...next, startedAt: new Date().toISOString() })
       return next
     },
-    async mcpServerStop(id, profile) {
+    async mcpServerStop(id) {
       await delay(700)
-      const was = servers.get(key(id, profile))
-      servers.set(key(id, profile), { ...stopped(), clients: was?.clients ?? [] })
+      servers.set(id, { ...stopped(), clients: servers.get(id)?.clients ?? [] })
     },
-    async mcpServerRevoke(id, profile) {
+    async mcpServerRevoke(id) {
       await delay(400)
-      const was = servers.get(key(id, profile))
-      if (was) servers.set(key(id, profile), { ...was, clients: [] })
+      const was = servers.get(id)
+      if (was) servers.set(id, { ...was, clients: [] })
     },
-    async mcpServerConfig(id, profile) {
+    async mcpServerConfig(id) {
       await delay(300)
-      const name = profile ? `${id}-${profile}` : id
-      const args = [
-        `/home/you/.local/share/pnpm/global/5/node_modules/.bin/${id}`,
-        ...(profile ? [profile] : []),
-        "mcp",
-      ]
-      return JSON.stringify({ mcpServers: { [name]: { type: "stdio", command: "/usr/bin/node", args } } }, null, 2)
+      const args = [`/home/you/.local/share/pnpm/global/5/node_modules/.bin/${id}`, "mcp"]
+      return JSON.stringify({ mcpServers: { [id]: { type: "stdio", command: "/usr/bin/node", args } } }, null, 2)
     },
   }
 }

@@ -43,7 +43,7 @@ function funnel(s: TailscaleStatus): string | null {
 
 function connect(s: TailscaleStatus): string | null {
   return s.freePorts.length === 0
-    ? "All of Funnel's public addresses on this computer are in use. Stop another server, or remove a Funnel you set up yourself."
+    ? "All of Funnel's public addresses on this computer are in use by other servers. Remove a Funnel you set up yourself."
     : null
 }
 
@@ -63,9 +63,12 @@ export function stepsOf(s: TailscaleStatus): Step[] {
   })
 }
 
-/** The address Funnel will most likely get: Rust picks the port, reusing this server's last one when it is free. */
-export function addressOf(s: TailscaleStatus): string | null {
+/**
+ * The address Funnel will most likely get: the tool's path on the port the tools share, which Rust lists first, or on
+ * a free one. Rust reuses this tool's last port when it can.
+ */
+export function addressOf(s: TailscaleStatus, tool: string): string | null {
   const port = s.freePorts[0]
   if (!s.host || port === undefined) return null
-  return port === 443 ? `https://${s.host}` : `https://${s.host}:${port}`
+  return `${port === 443 ? `https://${s.host}` : `https://${s.host}:${port}`}/${tool}`
 }

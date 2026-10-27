@@ -22,8 +22,8 @@ const done = (s: TailscaleStatus) => stepsOf(s).map((step) => step.done)
 describe("Tailscale steps", () => {
   it("are all done on a ready computer, with the first free Funnel port in the address", () => {
     expect(done(READY)).toEqual([true, true, true, true])
-    expect(addressOf(READY)).toBe("https://h.ts.net:8443")
-    expect(addressOf({ ...READY, freePorts: [443] })).toBe("https://h.ts.net")
+    expect(addressOf(READY, "tg")).toBe("https://h.ts.net:8443/tg")
+    expect(addressOf({ ...READY, freePorts: [443] }, "drive")).toBe("https://h.ts.net/drive")
   })
 
   it("stop at the first missing step, and every later one waits for it", () => {
