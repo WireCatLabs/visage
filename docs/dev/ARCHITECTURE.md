@@ -20,7 +20,9 @@ src-tauri/src/
   system.rs     OS, Node.js, npm, npm's global folder and whether it is writable.
   tools.rs      finding executables, versions, profiles, doctor runs.
   install.rs    install, update and uninstall with progress events, verification, failure reasons.
-  runs.rs       run logs, read through each tool's own `runs list` / `runs show`.
+  runs.rs       run logs, read through each tool's own `runs list` / `runs show`; shown unmasked, an exception
+                to rule 4: the tool already hid secrets and phone numbers, and the ids and paths are the owner's
+                to read (NEED-115). report.rs filters them again before anything is sent.
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
   archive.rs    what the shared archive holds, from a tool's `store info`; the database is never opened.
