@@ -14,6 +14,8 @@ import { scenarioOf } from "./connect-scenario"
 import { activityOf, appLabel, busiest } from "./connect-steps"
 import { McpServerRow, type RowState } from "./McpServerRow"
 
+const CODE_POLL_MS = 3000
+
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /** Browser build only: these scenarios open the section without a click, for review captures. */
@@ -21,7 +23,13 @@ function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const params = new URLSearchParams(window.location.search)
   if (scenarioOf(id)) return true
-  return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old"), params.get("funnel-old")].includes(id)
+  return [
+    params.get("mcp"),
+    params.get("mcp-fail"),
+    params.get("mcp-old"),
+    params.get("funnel-old"),
+    params.get("code-used"),
+  ].includes(id)
 }
 
 function summaryOf(row: RowState): string | null {
@@ -77,6 +85,25 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Each code works for one login, so the one on screen goes stale when an app logs in. Each read runs the tool once:
+  // only while the code is in view and the window is in front, and once more on coming back to it.
+  const codeShown = open && row.state === "ready" && row.data.loginCode !== null
+  useEffect(() => {
+    if (!codeShown) return
+    const looking = () => document.visibilityState === "visible" && document.hasFocus()
+    const check = () => {
+      if (looking()) load()
+    }
+    const t = setInterval(check, CODE_POLL_MS)
+    window.addEventListener("focus", check)
+    document.addEventListener("visibilitychange", check)
+    return () => {
+      clearInterval(t)
+      window.removeEventListener("focus", check)
+      document.removeEventListener("visibilitychange", check)
+    }
+  }, [codeShown, load])
 
   const settle = useCallback(
     (data: McpServerStatus) => {

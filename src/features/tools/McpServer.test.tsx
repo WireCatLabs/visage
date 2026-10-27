@@ -308,6 +308,74 @@ describe("Connect an AI app", () => {
 })
 
 describe("server details", () => {
+  it("shows the new login code within seconds after an app used it, names the app, and copies the new one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(document, "hasFocus").mockReturnValue(true)
+    const status = vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(RUNNING)
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await openDetails(user)
+    expect(await screen.findByText("ABCD-EF23")).toBeVisible()
+    expect(screen.getByText(/Each code works for one login/)).toBeVisible()
+
+    status.mockResolvedValue({
+      ...RUNNING,
+      loginCode: { code: "QRST-UV45", expiresAt: new Date(Date.now() + 600_000).toISOString() },
+      clients: [client("ChatGPT", new Date().toISOString()), ...RUNNING.clients],
+    })
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(await screen.findByText("QRST-UV45")).toBeVisible()
+    expect(screen.getByText("New code — the last one was used by “ChatGPT”.")).toBeVisible()
+    const copied = vi.spyOn(navigator.clipboard, "writeText")
+    await user.click(screen.getByRole("button", { name: "Copy the login code" }))
+    expect(copied).toHaveBeenCalledWith("QRST-UV45")
+  })
+
+  it("does not say a code was used when it only ran out", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(document, "hasFocus").mockReturnValue(true)
+    const status = vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({
+      ...RUNNING,
+      loginCode: { code: "ABCD-EF23", expiresAt: new Date(Date.now() + 1000).toISOString() },
+    })
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await openDetails(user)
+    expect(await screen.findByText("ABCD-EF23")).toBeVisible()
+    status.mockResolvedValue({
+      ...RUNNING,
+      loginCode: { code: "QRST-UV45", expiresAt: new Date(Date.now() + 600_000).toISOString() },
+    })
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(await screen.findByText("QRST-UV45")).toBeVisible()
+    expect(screen.queryByText(/New code/)).not.toBeInTheDocument()
+  })
+
+  it("stops reading the code while the window is in the background or the section is closed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const focus = vi.spyOn(document, "hasFocus").mockReturnValue(false)
+    const status = vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(RUNNING)
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await screen.findByRole("button", { name: "Connect another app" })
+    const before = status.mock.calls.length
+    await vi.advanceTimersByTimeAsync(9100)
+    expect(status.mock.calls.length).toBe(before)
+
+    focus.mockReturnValue(true)
+    window.dispatchEvent(new Event("focus"))
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(status.mock.calls.length).toBeGreaterThan(before + 1)
+
+    await user.click(heading())
+    const closed = status.mock.calls.length
+    await vi.advanceTimersByTimeAsync(9100)
+    expect(status.mock.calls.length).toBe(closed)
+  })
+
   it("does not offer Stop for a server started in a terminal", async () => {
     const user = userEvent.setup()
     vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({ ...RUNNING, startedHere: false })

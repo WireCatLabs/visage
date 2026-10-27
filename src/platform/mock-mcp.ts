@@ -11,6 +11,8 @@ import type { Platform } from "./types"
 // tool's server runs and ChatGPT called it 2 minutes ago, for the Tools page row. `?public=pending` (public DNS has
 // no name yet, for good), `publishing` (none for 8 s, then live), `unknown` (no DNS service answered), `wrong` (the
 // address answers 502), `unreached` (published, but this computer cannot open it): the guide's address check.
+// `?code-used=<tool>`: like `?mcp=<tool>`, and after 4 s an app called ChatGPT logs in with the code, so the tool
+// shows a new one.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const CODE_MS = 10 * 60 * 1000
@@ -78,7 +80,8 @@ export function mcpServerMock(): Pick<
   | "mcpServerPublic"
 > {
   const servers = new Map<string, McpServerStatus>()
-  const shown = params.get("mcp")
+  const used = params.get("code-used")
+  const shown = params.get("mcp") ?? used
   if (shown && params.get("tailscale") !== "leftover") {
     servers.set(
       shown,
@@ -112,6 +115,14 @@ export function mcpServerMock(): Pick<
       await delay(300)
       if (params.get("mcp-old") === id) return { ...stopped(), available: false }
       const now = servers.get(id) ?? stopped()
+      if (id === used && now.running && Date.now() - opened > 4000) {
+        const at = new Date(opened + 4000).toISOString()
+        return {
+          ...now,
+          loginCode: { ...(now.loginCode ?? { expiresAt: at }), code: "R2WN-8TJD" },
+          clients: [client("ChatGPT", at), ...now.clients],
+        }
+      }
       const joined = id === "tg" && now.running ? newcomer(connect, appName, opened) : null
       return joined ? { ...now, clients: [joined, ...now.clients] } : now
     },

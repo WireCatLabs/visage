@@ -9,6 +9,7 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { activityOf } from "./connect-steps"
+import { LoginCode } from "./LoginCode"
 import { ForgetLogins } from "./McpServerDialogs"
 
 export type RowState =
@@ -226,7 +227,7 @@ function Running({ data }: { data: McpServerStatus }) {
           {data.loginCode && <span className="font-normal"> · until {clock(data.loginCode.expiresAt)}</span>}
         </h5>
         {data.loginCode ? (
-          <CopyField value={data.loginCode.code} label="Copy the login code" />
+          <LoginCode server={{ ...data, loginCode: data.loginCode }} />
         ) : (
           <p className="text-[0.85rem] text-ink-soft">Not shown yet. It appears once the server listens.</p>
         )}

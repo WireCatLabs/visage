@@ -24,6 +24,7 @@ import {
   type TestState,
   testState,
 } from "./connect-steps"
+import { LoginCode } from "./LoginCode"
 import { formProblem } from "./McpServerDialogs"
 import { TailscaleGuide, useTailscale } from "./TailscaleGuide"
 import { addressOf, stepsOf } from "./tailscale-steps"
@@ -564,12 +565,7 @@ function Copy({ step, tool, server }: { step: AppStep; tool: CatalogTool; server
   if (step.copy === "name") return <CopyField value={connectorName(tool)} label="Copy the name" />
   if (step.copy === "code")
     return server.loginCode ? (
-      <div className="flex flex-col gap-1">
-        <CopyField value={server.loginCode.code} label="Copy the login code" />
-        <span className="text-[0.8rem] text-ink-dim tabular-nums">
-          Works until {clock(server.loginCode.expiresAt)}; a new one appears here then.
-        </span>
-      </div>
+      <LoginCode server={{ ...server, loginCode: server.loginCode }} />
     ) : (
       <Note>The code appears here in a moment.</Note>
     )

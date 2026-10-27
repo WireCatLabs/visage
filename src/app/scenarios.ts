@@ -30,6 +30,7 @@ export async function runMockScenario() {
     params.get("mcp-fail") ??
     params.get("mcp-old") ??
     params.get("funnel-old") ??
+    params.get("code-used") ??
     (params.has("tailscale") || params.has("connect") ? "tg" : null)
   if (mcp) {
     useNav.getState().go("tools")
