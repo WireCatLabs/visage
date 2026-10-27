@@ -53,7 +53,7 @@
         "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
       "sync": {
-        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "2h", "--record", "--json"],
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "120m", "--record", "--json"],
         "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
         "lastShape": "runs",
         "what": "messages",
@@ -162,7 +162,7 @@
         "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
       "sync": {
-        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "2h", "--record", "--json"],
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "120m", "--record", "--json"],
         "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
         "lastShape": "runs",
         "what": "messages",

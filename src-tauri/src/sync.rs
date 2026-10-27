@@ -320,7 +320,7 @@ mod tests {
         let tg = catalog::tool("tg").unwrap();
         assert_eq!(
             args(tg, Some("work")).unwrap(),
-            ["work", "messages", "sync", "--all", "--timeout", "2h", "--record", "--json"]
+            ["work", "messages", "sync", "--all", "--timeout", "120m", "--record", "--json"]
         );
         assert!(args(tg, None).is_err());
         for bad in ["", "--help", "a;rm -rf ~", "../x y"] {

@@ -352,7 +352,7 @@ Plan: `docs/dev/plans/2026-10-27-desktop-sync.md`. The catalog's `sync` block ho
 mail` (one lock for both, so one running key). WhatsApp has none to start: it syncs while `wa <profile> serve` runs,
 and its `note` says so. Every sync gets `--record`, so the tool's own `runs list` holds the run and answers "last
 synced"; drive answers from `status` (`last_sync`, set only when nothing is pending, and `pending`). The messengers also
-get `--timeout 2h`: without it cli-core gives every command 30 seconds. The app's own limit is three hours, so the
+get `--timeout 120m` (max 0.82 refuses hours): without it cli-core gives every command 30 seconds. The app's own limit is three hours, so the
 tool's limit ends the run first and keeps what came in (exit 9, shown as "Time limit reached").
 
 `sync_run(id, profile)` runs the words with `run::stream_stoppable`, like sign-in; `sync_stop` sends SIGTERM to that
