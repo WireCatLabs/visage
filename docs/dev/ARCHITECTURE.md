@@ -354,8 +354,8 @@ get `--timeout 2h`: without it cli-core gives every command 30 seconds. The app'
 tool's limit ends the run first and keeps what came in (exit 9, shown as "Time limit reached").
 
 `sync_run(id, profile)` runs the words with `run::stream_stoppable`, like sign-in; `sync_stop` sends SIGTERM to that
-process alone and kills its group after five seconds. memo ignores the signal until its release with BUG-17 fixed, so
-its Stop takes the five seconds. One sync per package and profile, none while the package installs, and an install
+process alone and kills its group after five seconds. memo before 0.118.0 ignores the signal (BUG-17), so its Stop
+takes the five seconds; from 0.118.0 it stops between batches of mail. One sync per package and profile, none while the package installs, and an install
 refuses while one runs. A tool on a cli-core that prints `{"event":"progress","step":"sync","chats","chats_done","fetched"}` on stderr
 gets a bar that counts chats ("Chat 4 of 40 · 1,240 new messages"); the others (DEBT-4) get a stage read from their
 notes, from a fixed list, and an indeterminate bar. Only counts leave Rust: chat titles, chat keys in the notes and account names
