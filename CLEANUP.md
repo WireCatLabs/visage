@@ -53,3 +53,6 @@
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/himalaya-2.2.1 — Himalaya v2.2.1 config.sample.toml, config.rs, spec, read for BUG-12
 - 2026-10-27 · /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ux8 (screenshots, open.js, trap.mjs) and /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/ux8-vite.log — UX-8 review material; remove after the owner has seen the screenshots
 - .claude/worktrees/one-mcp-entry (branch feat/one-mcp-entry) — TASK-26 Desktop one MCP row per tool; remove after merge — 2026-10-27
+- `/home/leemour/Projects/AI/cli-core-wt-mcp-activity` — worktree of cli-core #2091 (merged, released 0.454.0). 2026-10-27
+- `/home/leemour/Projects/AI/tg-cli-wt-core-0454` — worktree of tg-cli #765; remove after it merges. 2026-10-27
+- `.claude/worktrees/connect-ai` (branch `feat/connect-ai-app`) — TASK-28 worktree, fast-forwarded into feat/desktop-mvp. 2026-10-27
