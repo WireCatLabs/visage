@@ -2,10 +2,10 @@ import { useEffect, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpClient } from "@/platform/mcp-server-schemas"
-import { busiest } from "./connect-steps"
+import { busiest, latestLogin } from "./connect-steps"
 
 /**
- * The browser app that called the tool last, for its row. Each read runs the tool once, so it is read when the row
+ * The browser app that called the tool last (or, from a tool too old to report calls, logged in last), for its row. Each read runs the tool once, so it is read when the row
  * appears and when its Manage panel closes, where the guide may just have connected an app; not on a timer.
  */
 export function useMcpActivity(tool: CatalogTool, installed: boolean, expanded: boolean): McpClient | null {
@@ -18,7 +18,7 @@ export function useMcpActivity(tool: CatalogTool, installed: boolean, expanded: 
     let live = true
     platform
       .mcpServerStatus(tool.id)
-      .then((s) => live && setClient(busiest(s)))
+      .then((s) => live && setClient(busiest(s) ?? latestLogin(s)))
       .catch(() => live && setClient(null))
     return () => {
       live = false

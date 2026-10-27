@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { McpClient, McpServerStatus, PublicCheck } from "@/platform/mcp-server-schemas"
-import { activityOf, ago, busiest, currentStep, reachOf, testState } from "./connect-steps"
+import { activityOf, ago, busiest, currentStep, latestLogin, reachOf, testState } from "./connect-steps"
 
 const client = (more: Partial<McpClient> = {}): McpClient => ({
   claimedName: "ChatGPT",
@@ -113,5 +113,13 @@ describe("activity", () => {
     const b = client({ claimedName: "B", lastTool: "y", lastToolAt: "2026-10-27T11:30:00Z" })
     expect(busiest(server({ clients: [a, client(), b] }))?.claimedName).toBe("B")
     expect(busiest(server({ running: false, clients: [a] }))).toBeNull()
+  })
+
+  it("falls back to the app that logged in last when none reports calls", () => {
+    const old = client({ claimedName: "Old", lastLoginAt: "2026-10-26T10:00:00Z" })
+    const recent = client({ claimedName: "Recent", lastLoginAt: "2026-10-27T10:00:00Z" })
+    expect(busiest(server({ clients: [old, recent] }))).toBeNull()
+    expect(latestLogin(server({ clients: [old, recent] }))?.claimedName).toBe("Recent")
+    expect(latestLogin(server({ running: false, clients: [recent] }))).toBeNull()
   })
 })

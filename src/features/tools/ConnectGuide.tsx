@@ -71,7 +71,9 @@ export function ConnectGuide(props: {
   const [port, setPort] = useState(String(tool.mcpServer?.port ?? DEFAULT_PORT))
   const since = useRef(Date.now()).current
 
-  const reached = (reach.state === "live" || goOn) && serving(server)
+  // A tunnel on this computer only (http://127.0.0.1) has no public name to look up.
+  const local = serving(server) && server.connectorUrl.startsWith("http://")
+  const reached = (reach.state === "live" || goOn || local) && serving(server)
   const progress = { app, addressReady: confirmed, server, reached, added }
   const current = currentStep(progress)
   const test = testState(server, since)
@@ -703,9 +705,9 @@ function ReachStep(props: {
       {reach.state === "unknown" && (
         <>
           <Para>
-            Your network blocks the public DNS services WireCat asks (Google, Cloudflare and NextDNS), so it cannot see
-            whether the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after
-            Funnel turned on and try again there.
+            No public DNS service answered from this computer (some networks block them), so WireCat cannot see whether
+            the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after Funnel
+            turned on and try again there.
           </Para>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="primary" onClick={onGoOn}>
@@ -720,9 +722,12 @@ function ReachStep(props: {
       {error && (
         <>
           <ErrorNotice inline>{error}</ErrorNotice>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={check} disabled={checking}>
-              Check again
+              {checking ? "Checking…" : "Check again"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onGoOn}>
+              Go on without the check
             </Button>
           </div>
         </>
@@ -796,9 +801,14 @@ function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
     <div onClickCapture={load}>
       <Disclosure summary={`If ${app === "other" ? "the app" : name} says it couldn't discover OAuth settings`}>
         <div className="flex flex-col gap-2.5">
+          <Para>
+            This message usually means the address is not on the internet yet: the app could not reach the server at
+            all. A new Funnel address can take up to 10 minutes to appear, and the step “Check the address” waits for
+            it. Wait, then add the server in the app again.
+          </Para>
           <Note>
-            The app should read these from the server by itself. If its form has advanced OAuth settings, type them
-            there, read from the running server:
+            If the address is published and the app still says it, and its form offers advanced OAuth settings, these
+            are the values, read from the running server:
           </Note>
           {error && <ErrorNotice inline>{error}</ErrorNotice>}
           {settings && (
@@ -844,7 +854,7 @@ function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reloa
     <div className="flex flex-col gap-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3.5 py-2.5">
       <p className="text-[0.9rem] text-warn-ink">
         Tailscale Funnel is off for this server, so {name} cannot reach it. Turn it on again; the address stays the
-        same.
+        same, though it can take up to 10 minutes to be reachable again.
       </p>
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
       <div>
@@ -957,7 +967,8 @@ function Troubleshoot(props: { name: string; tool: CatalogTool; app: AppId; serv
       <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[0.88rem] text-ink-soft">
         <li>
           <span className="text-ink">It couldn't reach or connect to the server:</span> check the address is exactly{" "}
-          <span className="selectable font-mono text-ink">{server.connectorUrl}</span>, with /mcp at the end.
+          <span className="selectable font-mono text-ink">{server.connectorUrl}</span>, with /mcp at the end. A new
+          address can also take up to 10 minutes to appear on the internet; try again in the app after that.
         </li>
         <li>
           <span className="text-ink">The login page says the code is wrong or expired:</span> each code works for 10

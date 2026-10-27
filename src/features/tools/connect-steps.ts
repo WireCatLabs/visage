@@ -99,6 +99,12 @@ export function activityOf(c: McpClient, now = Date.now()): string {
   return `logged in ${ago(c.lastLoginAt, now)}`
 }
 
+/** The app that logged in last, for a row whose tool does not report calls yet. */
+export function latestLogin(s: McpServerStatus | null): McpClient | null {
+  if (!s?.running) return null
+  return [...s.clients].sort((a, b) => b.lastLoginAt.localeCompare(a.lastLoginAt))[0] ?? null
+}
+
 /** The app that used the server last, for the tool's row on the Tools page. */
 export function busiest(s: McpServerStatus | null): McpClient | null {
   if (!s?.running) return null

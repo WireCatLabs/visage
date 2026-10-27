@@ -290,7 +290,7 @@ describe("Connect an AI app", () => {
     await user.click(heading())
     await user.click(await screen.findByRole("button", { name: /^Claude/ }))
 
-    expect(await screen.findByText(/Your network blocks the public DNS services/)).toBeVisible()
+    expect(await screen.findByText(/No public DNS service answered from this computer/)).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Go on without the check" }))
     expect(await screen.findByRole("heading", { name: "Add it in the app" })).toBeVisible()
   })
