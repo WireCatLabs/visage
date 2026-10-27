@@ -23,6 +23,7 @@ import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
+import { reducedMotion } from "@/ui/motion"
 import { Select } from "@/ui/Select"
 import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
@@ -84,7 +85,7 @@ export function LogsPage() {
     if (held === 0) seen.current = new Set(all.map(runKey))
   }, [all, held])
   const showHeld = () => {
-    tableRef.current?.closest("main")?.scrollTo({ top: 0 })
+    tableRef.current?.closest("main")?.scrollTo({ top: 0, behavior: reducedMotion() ? "auto" : "smooth" })
     setReleased((n) => n + 1)
   }
 

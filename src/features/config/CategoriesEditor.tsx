@@ -4,6 +4,7 @@ import type { SettingRow } from "@/platform/settings-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
+import { focusInPlace } from "@/ui/motion"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { isReadOnly, type Op } from "./diff"
@@ -20,7 +21,7 @@ async function save(op: Op): Promise<string | null> {
   return status?.state === "failed" ? status.message : null
 }
 
-const focusSoon = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.focus())
+const focusSoon = (id: string) => requestAnimationFrame(() => focusInPlace(document.getElementById(id)))
 
 export function CategoriesEditor(props: {
   rows: readonly SettingRow[]
@@ -313,7 +314,7 @@ function CategoryForm(props: {
   const [busy, setBusy] = useState(false)
   const form = useRef<HTMLFormElement>(null)
   useEffect(() => {
-    form.current?.querySelector("input")?.focus()
+    focusInPlace(form.current?.querySelector("input") ?? null)
   }, [])
 
   const submit = async (e: FormEvent) => {

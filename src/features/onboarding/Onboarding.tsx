@@ -4,6 +4,7 @@ import { samePackage } from "@/domain/catalog"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
+import { reducedMotion } from "@/ui/motion"
 import { AgentsMatrix } from "../agents/AgentsMatrix"
 import { useSystem } from "../system/store"
 import { useTools } from "../tools/store"
@@ -156,8 +157,8 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
   useEffect(() => {
     if (shown.current === step) return
     shown.current = step
-    scroller.current?.scrollTo?.({ top: 0 })
-    heading.current?.focus()
+    scroller.current?.scrollTo?.({ top: 0, behavior: reducedMotion() ? "auto" : "smooth" })
+    heading.current?.focus({ preventScroll: true })
   }, [step])
 
   const i = indexOf(step)
@@ -196,20 +197,23 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
           step === "welcome" ? "justify-center pb-[4rem]" : "pb-0",
         )}
       >
-        <div className="flex flex-col gap-[0.8rem]">
-          <h1
-            ref={heading}
-            id={headingId}
-            tabIndex={-1}
-            className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]"
-            style={{ outline: "none" }}
-          >
-            {page.title}
-          </h1>
-          <p className="max-w-[60ch] text-[1.05rem] leading-relaxed text-ink-soft">{page.lead}</p>
-        </div>
+        {/* Each step slides in where the last one was; the footer below stays put. */}
+        <div key={step} className="step-in flex flex-col gap-[1.5rem]">
+          <div className="flex flex-col gap-[0.8rem]">
+            <h1
+              ref={heading}
+              id={headingId}
+              tabIndex={-1}
+              className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]"
+              style={{ outline: "none" }}
+            >
+              {page.title}
+            </h1>
+            <p className="max-w-[60ch] text-[1.05rem] leading-relaxed text-ink-soft">{page.lead}</p>
+          </div>
 
-        <Body />
+          <Body />
+        </div>
 
         {step === "welcome" ? (
           <div>

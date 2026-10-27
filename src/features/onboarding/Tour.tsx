@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useState } from "react"
 import { create } from "zustand"
 import { Callout } from "@/ui/Callout"
+import { reducedMotion } from "@/ui/motion"
 
 type Stop = { anchor: string; side?: "bottom" | "right"; title: string; text: string }
 
@@ -60,8 +61,6 @@ export const useTour = create<TourState>((set, get) => ({
     set({ open: false, returnTo: null })
   },
 }))
-
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 
 export function Tour() {
   const open = useTour((s) => s.open)

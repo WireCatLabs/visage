@@ -47,7 +47,7 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
   const { view } = entry
   const checking = view.skills.some((s) => s.cell.kind === "checking")
   return (
-    <div className="flex flex-col gap-5" key={view.agent.id}>
+    <div className="reveal flex flex-col gap-5" key={view.agent.id}>
       <div className="flex min-h-[3.4rem] flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-[1.3rem] font-semibold leading-tight">
