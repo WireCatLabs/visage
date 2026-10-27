@@ -1,10 +1,13 @@
 import { LoaderCircle } from "lucide-react"
+import { useRef } from "react"
 import { type CatalogTool, findTool, ownerId } from "@/domain/catalog"
 import { fitSeverity } from "@/domain/compat"
 import { type ToolStatus, toolStatus } from "@/domain/status"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
 import { Lamp, type LampTone } from "@/ui/Lamp"
+import { holdInPlace } from "@/ui/motion"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useSystem } from "../system/store"
@@ -43,7 +46,12 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const expanded = useTools((s) => s.expanded === tool.id)
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
   const fit = useFits()?.all[ownerId(tool.id)]
-  const { install, toggle, cancel } = useTools.getState()
+  const { install, cancel } = useTools.getState()
+  const header = useRef<HTMLDivElement>(null)
+  const toggle = (id: string) => {
+    if (header.current) holdInPlace(header.current)
+    useTools.getState().toggle(id)
+  }
 
   const status = toolStatus(installs, latest, session)
   const installed = status.kind === "ready" || status.kind === "outdated"
@@ -58,7 +66,10 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
 
   return (
     <li data-tour="tool" className="border-line border-b last:border-b-0">
-      <div className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]">
+      <div
+        ref={header}
+        className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]"
+      >
         <Lamp
           tone={severity ?? lampTone[status.kind]}
           label={storageLabel ? `${lampLabel(status)}. ${storageLabel}` : lampLabel(status)}
@@ -109,17 +120,9 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           />
         </div>
       </div>
-      <div
-        id={panelId}
-        className={cx(
-          "grid transition-[grid-template-rows] duration-300 ease-out-quart",
-          expanded || showInstallPanel ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          {showInstallPanel ? <InstallPanel tool={tool} /> : expanded ? <ToolDetails tool={tool} /> : null}
-        </div>
-      </div>
+      <Collapse id={panelId} open={expanded || showInstallPanel}>
+        {showInstallPanel ? <InstallPanel tool={tool} /> : <ToolDetails tool={tool} />}
+      </Collapse>
     </li>
   )
 }

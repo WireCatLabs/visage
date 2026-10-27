@@ -24,7 +24,10 @@ const rows = (ids: string[]) =>
   )
 
 const row = (name: string) => screen.getAllByRole("listitem").find((li) => within(li).queryByText(name)) as HTMLElement
-const panelOpen = (name: string) => within(row(name)).queryByRole("button", { name: "Done" }) !== null
+const panelOpen = (name: string) => {
+  const panel = row(name).querySelector<HTMLElement>('[data-state="open"]')
+  return panel !== null && within(panel).queryByRole("button", { name: "Done" }) !== null
+}
 
 beforeEach(() => useTools.setState(useTools.getInitialState(), true))
 
