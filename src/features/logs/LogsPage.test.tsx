@@ -176,7 +176,7 @@ describe("Logs", () => {
 
     const session = screen.getByRole("rowgroup", { name: "Claude Code, session 5c0e9d41" })
     const header = within(session).getAllByRole("row")[0] as HTMLElement
-    expect(header).toHaveTextContent(/claude-code · MCP on this computer · session 5c0e9d41/)
+    expect(header).toHaveTextContent(/Claude Code\s*MCP on this computer · session 5c0e9d41/)
     expect(header).toHaveTextContent(/3 runs\s*1 failed/)
     const order = within(session)
       .getAllByRole("button", { name: /^Show run / })

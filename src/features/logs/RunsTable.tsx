@@ -1,4 +1,13 @@
-import { ArrowDown, ArrowUp, BotMessageSquare, ChevronRight, Globe, SquareTerminal, UserRound } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  BotMessageSquare,
+  ChevronRight,
+  Globe,
+  Monitor,
+  SquareTerminal,
+  UserRound,
+} from "lucide-react"
 import { Fragment } from "react"
 import {
   agentName,
@@ -114,12 +123,15 @@ function WhoIcon({ c }: { c: Conversation }) {
         ? BotMessageSquare
         : c.agent
           ? SquareTerminal
-          : UserRound
+          : c.via === "desktop"
+            ? Monitor
+            : UserRound
   return <Icon className="size-[1rem] shrink-0 text-ink-soft" strokeWidth={1.7} aria-hidden />
 }
 
 function ConversationRow({ conversation: c, now }: { conversation: Conversation; now: Date }) {
-  const client = c.client && c.agent !== "mcp-client" ? c.client.name : null
+  // Claude Code calls itself "claude-code" over MCP; repeating it next to its name says nothing.
+  const client = c.client && c.agent !== "mcp-client" && c.client.name !== c.agent ? c.client.name : null
   const details = [
     client,
     c.via && (c.agent || c.client) ? viaName(c.via) : null,
