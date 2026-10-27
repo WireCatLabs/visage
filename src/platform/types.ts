@@ -2,7 +2,7 @@ import type { StoreCompat } from "@/domain/compat"
 import type { Agent, Chats, Claims, McpHealth, Registrations, SkillReport, SkillText, Target } from "./agents-schemas"
 import type { StoreCheck, StoreInfo, TableList } from "./archive-schemas"
 import type { BackupEvent, Backups, ResetPreview } from "./backup-schemas"
-import type { McpServerStatus, OAuthSettings } from "./mcp-server-schemas"
+import type { McpServerStatus, OAuthSettings, PublicCheck } from "./mcp-server-schemas"
 import type { Permissions } from "./permissions-schemas"
 import type { ReportContext, ReportDraft, ReportSent } from "./report-schemas"
 import type { RunDetail, RunsPage } from "./runs-schemas"
@@ -103,6 +103,8 @@ export type Platform = {
   mcpServerConfig(id: string): Promise<string>
   /** The running server's login endpoints, to type by hand where a browser app does not find them. */
   mcpServerOAuth(id: string): Promise<OAuthSettings>
+  /** Whether the internet reaches the running server: public DNS, then its metadata from the public address. */
+  mcpServerPublic(id: string): Promise<PublicCheck>
   /** Every step of the Tailscale guide at once: installed, allowed to change settings, logged in, Funnel allowed. */
   tailscaleStatus(): Promise<TailscaleStatus>
   /** Downloads Tailscale's official installer into Downloads, then opens it or shows it in the file manager. */

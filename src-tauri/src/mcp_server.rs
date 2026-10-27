@@ -301,6 +301,16 @@ pub fn oauth(tool: &Tool) -> Result<OAuthSettings, String> {
     oauth_settings(&v, &origin).ok_or_else(|| "The server's login settings do not match its address.".to_string())
 }
 
+/// Whether the internet reaches the running server's address, through public DNS and the public address.
+pub fn public(tool: &Tool) -> Result<crate::public_address::PublicCheck, String> {
+    let s = status(tool)?;
+    let url = s
+        .connector_url
+        .filter(|_| s.running)
+        .ok_or_else(|| format!("The MCP server for {} is not running.", tool.name))?;
+    crate::public_address::check(&url)
+}
+
 /// `mcp config`: the entry desktop apps (Claude Desktop, Cursor) paste, with full paths and no credentials.
 pub fn config(tool: &Tool) -> Result<String, String> {
     let spec = source(tool)?.config.as_ref().ok_or_else(|| format!("{} prints no desktop-app config", tool.name))?;

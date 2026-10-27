@@ -1,23 +1,26 @@
-import type { McpClient, McpServerStatus } from "@/platform/mcp-server-schemas"
+import type { McpClient, McpServerStatus, PublicCheck } from "@/platform/mcp-server-schemas"
 import type { AppId } from "./connect-apps"
 
-export type ConnectStepId = "choose" | "address" | "start" | "connect" | "test"
+export type ConnectStepId = "choose" | "address" | "start" | "reach" | "connect" | "test"
 
 export const STEP_TITLES: Record<ConnectStepId, string> = {
   choose: "Choose the app",
   address: "Public address",
   start: "Start the server",
+  reach: "Check the address",
   connect: "Add it in the app",
   test: "Test it",
 }
 
-const ORDER: ConnectStepId[] = ["choose", "address", "start", "connect", "test"]
+const ORDER: ConnectStepId[] = ["choose", "address", "start", "reach", "connect", "test"]
 
 export type Progress = {
   app: AppId | null
   /** Tailscale's own steps are all done, or the owner typed the address of a tunnel they run. */
   addressReady: boolean
   server: McpServerStatus | null
+  /** Public DNS has the name (or no DNS service answered and the owner chose to go on). */
+  reached: boolean
   /** The owner said they added the server in the app, or an app already logged in. */
   added: boolean
 }
@@ -30,14 +33,19 @@ export function currentStep(p: Progress): ConnectStepId {
   if (p.app === null) return "choose"
   if (!serving(p.server) && !p.addressReady) return "address"
   if (!serving(p.server)) return "start"
+  if (!p.reached) return "reach"
   if (!p.added) return "connect"
   return "test"
 }
 
 export type StepState = "done" | "current" | "todo"
 
-export function stepStates(current: ConnectStepId): { id: ConnectStepId; title: string; state: StepState }[] {
-  const at = ORDER.indexOf(current)
+/** `finished`: the last step is done too, so every step is a tick. */
+export function stepStates(
+  current: ConnectStepId,
+  finished = false,
+): { id: ConnectStepId; title: string; state: StepState }[] {
+  const at = finished ? ORDER.length : ORDER.indexOf(current)
   return ORDER.map((id, i) => ({
     id,
     title: STEP_TITLES[id],
@@ -96,4 +104,23 @@ export function busiest(s: McpServerStatus | null): McpClient | null {
   if (!s?.running) return null
   const used = s.clients.filter((c) => c.lastToolAt !== null)
   return used.sort((a, b) => (b.lastToolAt ?? "").localeCompare(a.lastToolAt ?? ""))[0] ?? null
+}
+
+export type ReachState =
+  | { state: "checking" }
+  /** Tailscale has not published the name yet: wait, it can take up to 10 minutes. */
+  | { state: "publishing" }
+  | { state: "live"; tested: boolean }
+  /** Something else answers on the address. */
+  | { state: "wrong"; status: number }
+  /** No public DNS service answered from this computer, so nothing can be said. */
+  | { state: "unknown" }
+
+/** Live once public DNS has the name; the fetch from here is a bonus, since a computer often cannot reach itself. */
+export function reachOf(check: PublicCheck | null): ReachState {
+  if (!check) return { state: "checking" }
+  if (check.dns === "missing") return { state: "publishing" }
+  if (check.dns === "unknown") return { state: "unknown" }
+  if (check.answer.kind === "wrong") return { state: "wrong", status: check.answer.status }
+  return { state: "live", tested: check.answer.kind === "ok" }
 }

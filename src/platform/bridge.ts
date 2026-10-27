@@ -15,7 +15,7 @@ import {
 } from "./agents-schemas"
 import { StoreCheckSchema, StoreCompatSchema, StoreInfoSchema, TableListSchema } from "./archive-schemas"
 import { BackupEventSchema, BackupsSchema, ResetDoneSchema, ResetPreviewSchema } from "./backup-schemas"
-import { McpServerStatusSchema, OAuthSettingsSchema } from "./mcp-server-schemas"
+import { McpServerStatusSchema, OAuthSettingsSchema, PublicCheckSchema } from "./mcp-server-schemas"
 import { createMock } from "./mock"
 import { PermissionsSchema } from "./permissions-schemas"
 import { ReportContextSchema, ReportSentSchema } from "./report-schemas"
@@ -137,6 +137,7 @@ function createTauri(): Platform {
     mcpServerRevoke: (id) => invoke("mcp_server_revoke", { id }),
     mcpServerConfig: (id) => call(v.string(), "mcp_server_config", { id }),
     mcpServerOAuth: (id) => call(OAuthSettingsSchema, "mcp_server_oauth", { id }),
+    mcpServerPublic: (id) => call(PublicCheckSchema, "mcp_server_public", { id }),
     tailscaleStatus: () => call(TailscaleStatusSchema, "tailscale_status"),
     tailscaleDownload: (kind) => call(TailscaleDownloadSchema, "tailscale_download", { kind }),
     tailscaleTerminal: (what) => invoke("tailscale_terminal", { what }),

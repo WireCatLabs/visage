@@ -39,3 +39,21 @@ export const OAuthSettingsSchema = v.object({
 })
 
 export type OAuthSettings = v.InferOutput<typeof OAuthSettingsSchema>
+
+/**
+ * Whether the internet reaches the server's address: the name through public DNS-over-HTTPS (`missing` is NXDOMAIN,
+ * Tailscale has not published it yet; `unknown`, no resolver answered), then the server's metadata from the public
+ * address. `unreached` is common from the owner's own computer, which often cannot open its own public address.
+ */
+export const PublicCheckSchema = v.object({
+  host: v.string(),
+  dns: v.picklist(["live", "missing", "unknown"]),
+  answer: v.variant("kind", [
+    v.object({ kind: v.literal("notTried") }),
+    v.object({ kind: v.literal("ok") }),
+    v.object({ kind: v.literal("wrong"), status: v.number() }),
+    v.object({ kind: v.literal("unreached"), reason: v.string() }),
+  ]),
+})
+
+export type PublicCheck = v.InferOutput<typeof PublicCheckSchema>

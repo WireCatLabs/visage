@@ -37,6 +37,11 @@ const CONSENT: AppStep = {
   copy: "code",
 }
 
+/** An old connector to the same computer (another address, another tunnel) keeps failing and gets picked first. */
+const OLD: AppStep = {
+  text: "If an earlier WireCat connection to this computer is listed, with another address or through another tunnel, remove it first.",
+}
+
 export const APPS: Record<AppId, AiApp> = {
   chatgpt: {
     id: "chatgpt",
@@ -47,6 +52,7 @@ export const APPS: Record<AppId, AiApp> = {
         text: "Open ChatGPT in the browser and go to “Plugins”.",
         link: { label: "Open Plugins", href: "https://chatgpt.com/plugins" },
       },
+      OLD,
       { text: "Press the “+” button, then “Add custom MCP server”." },
       { text: "Give it a name.", copy: "name" },
       { text: "Under “Connection”, paste this address.", copy: "url" },
@@ -71,6 +77,7 @@ export const APPS: Record<AppId, AiApp> = {
         text: "Open claude.ai and go to “Customize”, then “Connectors”.",
         link: { label: "Open Connectors", href: "https://claude.ai/customize/connectors" },
       },
+      OLD,
       { text: "Press “+ Add”, then “Add custom connector”." },
       { text: "Give it a name.", copy: "name" },
       { text: "Paste this address as the MCP server URL, then press “Continue”.", copy: "url" },

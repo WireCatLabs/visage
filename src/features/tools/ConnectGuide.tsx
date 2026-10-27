@@ -16,6 +16,8 @@ import {
   appLabel,
   type ConnectStepId,
   currentStep,
+  type ReachState,
+  reachOf,
   STEP_TITLES,
   serving,
   stepStates,
@@ -29,6 +31,10 @@ import { addressOf, stepsOf } from "./tailscale-steps"
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const DEFAULT_PORT = 8765
 const POLL_MS = 4000
+const STEP_COUNT = 6
+/** Tailscale's own figure for a new Funnel name to appear in public DNS. */
+const PUBLISH_MS = 10 * 60_000
+const RECHECK_MS = 15_000
 /** How long the test waits before it suggests what may be wrong. */
 const QUIET_MS = 60_000
 
@@ -56,6 +62,8 @@ export function ConnectGuide(props: {
   const [tunnel, setTunnel] = useState<Tunnel>("tailscale")
   const [confirmed, setConfirmed] = useState(scenario?.confirmed ?? false)
   const [added, setAdded] = useState(scenario?.added ?? false)
+  const [reach, setReach] = useState<ReachState>({ state: "checking" })
+  const [goOn, setGoOn] = useState(false)
   const [phase, setPhase] = useState<Phase>("idle")
   const [failure, setFailure] = useState<Failure | null>(null)
   const [approval, setApproval] = useState<string | null>(null)
@@ -63,7 +71,8 @@ export function ConnectGuide(props: {
   const [port, setPort] = useState(String(tool.mcpServer?.port ?? DEFAULT_PORT))
   const since = useRef(Date.now()).current
 
-  const progress = { app, addressReady: confirmed, server, added }
+  const reached = (reach.state === "live" || goOn) && serving(server)
+  const progress = { app, addressReady: confirmed, server, reached, added }
   const current = currentStep(progress)
   const test = testState(server, since)
   const tailscale = useTailscale(current === "address" && tunnel === "tailscale")
@@ -94,12 +103,9 @@ export function ConnectGuide(props: {
         const address = await platform.tailscaleFunnelOpen(tool.id, Number(port), setApproval)
         setPhase("server")
         at = "server"
-        try {
-          settle(await platform.mcpServerStart(tool.id, Number(port), address))
-        } catch (e) {
-          await platform.tailscaleFunnelClose(tool.id).catch(() => {})
-          throw e
-        }
+        // A failed start leaves Funnel on: turning it off and on again can drop the public name for minutes
+        // (BUG-15), and a retry uses the same address. Server details offers to turn it off.
+        settle(await platform.mcpServerStart(tool.id, Number(port), address))
       } else {
         setPhase("server")
         settle(await platform.mcpServerStart(tool.id, Number(port), ownUrl.trim().replace(/\/$/, "")))
@@ -155,12 +161,18 @@ export function ConnectGuide(props: {
     choose: app ? APPS[app].name : undefined,
     address: serving(server) ? new URL(server.connectorUrl).host : undefined,
     start: serving(server) && server.port ? `Running on port ${server.port}` : undefined,
+    reach: reach.state === "live" ? "Published" : goOn ? "Not checked" : undefined,
     connect: added ? "Added" : undefined,
   }
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6">
-      <Rail current={current} summary={summary} onChoose={current !== "choose" ? () => setApp(null) : undefined} />
+      <Rail
+        current={current}
+        finished={current === "test" && test.state === "called"}
+        summary={summary}
+        onChoose={current !== "choose" ? () => setApp(null) : undefined}
+      />
       <div
         key={current}
         className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
@@ -199,7 +211,17 @@ export function ConnectGuide(props: {
             onBack={back}
           />
         )}
-        {funnelOff && (current === "connect" || current === "test") && (
+        {current === "reach" && serving(server) && (
+          <ReachStep
+            tool={tool}
+            app={app}
+            server={server}
+            reach={reach}
+            setReach={setReach}
+            onGoOn={() => setGoOn(true)}
+          />
+        )}
+        {funnelOff && (current === "reach" || current === "connect" || current === "test") && (
           <FunnelOff tool={tool} port={server?.port ?? Number(port)} name={name} reload={reload} />
         )}
         {current === "connect" && app && serving(server) && (
@@ -224,19 +246,20 @@ export function ConnectGuide(props: {
 
 function Rail(props: {
   current: ConnectStepId
+  finished: boolean
   summary: Partial<Record<ConnectStepId, string | undefined>>
   onChoose?: (() => void) | undefined
 }) {
-  const { current, summary, onChoose } = props
+  const { current, finished, summary, onChoose } = props
   return (
     <ol className="flex flex-col gap-0.5" aria-label="Steps">
-      {stepStates(current).map((step, i) => (
+      {stepStates(current, finished).map((step, i) => (
         <li
           key={step.id}
           aria-current={step.state === "current" ? "step" : undefined}
           className="relative flex gap-3 pb-3 last:pb-0"
         >
-          {i < 4 && (
+          {i < STEP_COUNT - 1 && (
             <span
               aria-hidden
               className={cx(
@@ -555,6 +578,163 @@ function Copy({ step, tool, server }: { step: AppStep; tool: CatalogTool; server
   return null
 }
 
+function ReachStep(props: {
+  tool: CatalogTool
+  app: AppId | null
+  server: McpServerStatus & { connectorUrl: string }
+  reach: ReachState
+  setReach(r: ReachState): void
+  onGoOn(): void
+}) {
+  const { tool, app, server, reach, setReach, onGoOn } = props
+  const name = app ? APPS[app].name : "the app"
+  const [error, setError] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  const firstMissing = useRef<number | null>(null)
+  const [now, setNow] = useState(Date.now())
+  const host = new URL(server.connectorUrl).host
+
+  const check = useCallback(async () => {
+    setChecking(true)
+    setError(null)
+    try {
+      const next = reachOf(await platform.mcpServerPublic(tool.id))
+      if (next.state === "publishing") firstMissing.current ??= Date.now()
+      setReach(next)
+    } catch (e) {
+      setError(message(e))
+    }
+    setChecking(false)
+  }, [tool.id, setReach])
+
+  useEffect(() => {
+    check()
+  }, [check])
+
+  // While Tailscale publishes the name, look again on its own and show how long it has been.
+  useEffect(() => {
+    if (reach.state !== "publishing") return
+    const again = setInterval(check, RECHECK_MS)
+    const clock = setInterval(() => setNow(Date.now()), 1000)
+    return () => {
+      clearInterval(again)
+      clearInterval(clock)
+    }
+  }, [reach.state, check])
+
+  const waited = firstMissing.current === null ? 0 : now - firstMissing.current
+  const share = Math.min(waited / PUBLISH_MS, 1)
+  const minutes = Math.floor(waited / 60_000)
+
+  return (
+    <>
+      <Para>
+        {name} reaches {tool.bin} from its own servers, so WireCat asks public DNS for{" "}
+        <span className="selectable font-mono text-ink">{host}</span> the way {name} will, then opens the address from
+        the internet's side.
+      </Para>
+      <ul className="flex flex-col gap-2">
+        <Progress
+          state={
+            reach.state === "checking" || (checking && reach.state !== "publishing")
+              ? "busy"
+              : reach.state === "publishing"
+                ? "busy"
+                : reach.state === "unknown"
+                  ? "failed"
+                  : "done"
+          }
+        >
+          {reach.state === "publishing"
+            ? "Tailscale is publishing your address…"
+            : reach.state === "unknown"
+              ? "Public DNS could not be asked from this computer"
+              : reach.state === "checking"
+                ? "Asking public DNS…"
+                : "The address is published"}
+        </Progress>
+      </ul>
+      {reach.state === "publishing" && (
+        <div className="flex max-w-[34rem] flex-col gap-1.5">
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-app-3"
+            role="progressbar"
+            aria-label="Waiting for Tailscale to publish the address"
+            aria-valuemin={0}
+            aria-valuemax={10}
+            aria-valuenow={minutes}
+            aria-valuetext={`${minutes} of up to 10 minutes`}
+          >
+            <div
+              className="h-full rounded-full bg-brand transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.max(share * 100, 2)}%` }}
+            />
+          </div>
+          <Note>
+            A new Funnel address can take up to 10 minutes to appear on the internet. WireCat checks every 15 seconds
+            and moves on by itself{minutes > 0 ? `; ${minutes} min so far` : ""}. Until then {name} would say it cannot
+            reach the address, so the next step waits.
+          </Note>
+          {share >= 1 && (
+            <p className="text-[0.9rem] text-warn-ink">
+              It is taking longer than Tailscale says. Keep this open; turning Funnel off and on again starts the wait
+              over.
+            </p>
+          )}
+        </div>
+      )}
+      {reach.state === "live" && !reach.tested && (
+        <Note>
+          This computer cannot open its own public address, which is usual, so the last part is tested by {name}.
+        </Note>
+      )}
+      {reach.state === "wrong" && (
+        <>
+          <ErrorNotice inline>
+            The address answers, but not with {tool.bin}'s server (it said {reach.status}). Another Funnel or tunnel may
+            use it. Check Server details, or go back and use another port.
+          </ErrorNotice>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={check} disabled={checking}>
+              {checking ? "Checking…" : "Check again"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onGoOn}>
+              Go on anyway
+            </Button>
+          </div>
+        </>
+      )}
+      {reach.state === "unknown" && (
+        <>
+          <Para>
+            Your network blocks the public DNS services WireCat asks (Google, Cloudflare and NextDNS), so it cannot see
+            whether the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after
+            Funnel turned on and try again there.
+          </Para>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="primary" onClick={onGoOn}>
+              Go on without the check
+            </Button>
+            <Button size="sm" variant="ghost" onClick={check} disabled={checking}>
+              {checking ? "Checking…" : "Check again"}
+            </Button>
+          </div>
+        </>
+      )}
+      {error && (
+        <>
+          <ErrorNotice inline>{error}</ErrorNotice>
+          <div>
+            <Button size="sm" onClick={check} disabled={checking}>
+              Check again
+            </Button>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 function ConnectStep(props: { tool: CatalogTool; app: AppId; server: McpServerStatus; onAdded(): void }) {
   const { tool, app, server, onAdded } = props
   const spec = APPS[app]
@@ -718,6 +898,9 @@ function TestStep(props: {
             {test.state === "called" ? (
               <>
                 First call arrived: <span className="selectable font-mono">{test.client.lastTool}</span>
+                {test.client.lastToolAt && (
+                  <span className="text-ink-dim tabular-nums"> at {clock(test.client.lastToolAt)}</span>
+                )}
               </>
             ) : (
               "Waiting for the first call…"

@@ -1,12 +1,16 @@
 import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpClient, McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { TailscaleStatus } from "@/platform/tailscale-schemas"
 import { McpServer } from "./McpServer"
 import { formProblem } from "./McpServerDialogs"
+
+beforeEach(() => {
+  vi.spyOn(platform, "mcpServerPublic").mockResolvedValue({ host: "x.ts.net", dns: "live", answer: { kind: "ok" } })
+})
 
 afterEach(() => {
   vi.useRealTimers()
@@ -130,7 +134,7 @@ describe("Connect an AI app", () => {
     expect(await screen.findByText(/Register automatically/)).toBeVisible()
   })
 
-  it("says why a start failed, takes the Funnel down again, and offers to try again", async () => {
+  it("says why a start failed, leaves Funnel on so a retry does not toggle it, and offers to try again", async () => {
     const user = userEvent.setup()
     vi.spyOn(platform, "mcpServerStatus").mockResolvedValue(OFF)
     vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
@@ -142,7 +146,7 @@ describe("Connect an AI app", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("port 8765 is in use")
     expect(screen.getByText(/Another program uses this port/)).toBeVisible()
-    expect(close).toHaveBeenCalledExactlyOnceWith("tg")
+    expect(close).not.toHaveBeenCalled()
     await user.click(screen.getByRole("button", { name: "Try again" }))
     await waitFor(() => expect(start).toHaveBeenCalledTimes(2))
   })
@@ -252,6 +256,43 @@ describe("Connect an AI app", () => {
     expect(await screen.findByText(/Tailscale Funnel is off for this server/)).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Turn Funnel on" }))
     expect(open).toHaveBeenCalledExactlyOnceWith("tg", 9001, expect.any(Function))
+  })
+
+  it("waits on the address check while Tailscale publishes the name, then moves on by itself", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({ ...RUNNING, clients: [] })
+    const pub = vi
+      .spyOn(platform, "mcpServerPublic")
+      .mockResolvedValue({ host: "x.ts.net", dns: "missing", answer: { kind: "notTried" } })
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: /^ChatGPT/ }))
+
+    expect(await screen.findByText("Tailscale is publishing your address…")).toBeVisible()
+    expect(screen.getByRole("progressbar")).toBeVisible()
+    expect(screen.queryByRole("button", { name: "I added it, test the connection" })).not.toBeInTheDocument()
+
+    pub.mockResolvedValue({ host: "x.ts.net", dns: "live", answer: { kind: "unreached", reason: "refused" } })
+    await vi.advanceTimersByTimeAsync(15_100)
+    expect(await screen.findByRole("heading", { name: "Add it in the app" })).toHaveFocus()
+  })
+
+  it("lets the owner go on, warned, when no public DNS service answers", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({ ...RUNNING, clients: [] })
+    vi.spyOn(platform, "mcpServerPublic").mockResolvedValue({
+      host: "x.ts.net",
+      dns: "unknown",
+      answer: { kind: "notTried" },
+    })
+    render(<McpServer tool={tool("tg")} />)
+    await user.click(heading())
+    await user.click(await screen.findByRole("button", { name: /^Claude/ }))
+
+    expect(await screen.findByText(/Your network blocks the public DNS services/)).toBeVisible()
+    await user.click(screen.getByRole("button", { name: "Go on without the check" }))
+    expect(await screen.findByRole("heading", { name: "Add it in the app" })).toBeVisible()
   })
 
   it("says calmly that a tool too old for it gets it with an update, and offers nothing to press", async () => {

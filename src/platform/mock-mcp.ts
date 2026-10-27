@@ -8,7 +8,9 @@ import type { Platform } from "./types"
 // `?connect=<state>` opens tg's "Connect an AI app" guide (`connect-scenario.ts`); from `instructions` on, tg's server
 // runs. `connected`: an app logged in after the guide opened; `called`: it also called tg_read; `oldcli`: it logged in,
 // but the tool is too old to report calls; `live`: it logs in after 6 s and calls after 12 s. `?activity=<tool>`: that
-// tool's server runs and ChatGPT called it 2 minutes ago, for the Tools page row.
+// tool's server runs and ChatGPT called it 2 minutes ago, for the Tools page row. `?public=pending` (public DNS has
+// no name yet, for good), `publishing` (none for 8 s, then live), `unknown` (no DNS service answered), `wrong` (the
+// address answers 502), `unreached` (published, but this computer cannot open it): the guide's address check.
 
 const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)
 const CODE_MS = 10 * 60 * 1000
@@ -67,7 +69,13 @@ const running = (port: number, url: string, clients: McpServerStatus["clients"])
 
 export function mcpServerMock(): Pick<
   Platform,
-  "mcpServerStatus" | "mcpServerStart" | "mcpServerStop" | "mcpServerRevoke" | "mcpServerConfig" | "mcpServerOAuth"
+  | "mcpServerStatus"
+  | "mcpServerStart"
+  | "mcpServerStop"
+  | "mcpServerRevoke"
+  | "mcpServerConfig"
+  | "mcpServerOAuth"
+  | "mcpServerPublic"
 > {
   const servers = new Map<string, McpServerStatus>()
   const shown = params.get("mcp")
@@ -135,6 +143,20 @@ export function mcpServerMock(): Pick<
         tokenEndpoint: `${issuer}/token`,
         registrationEndpoint: `${issuer}/register`,
       }
+    },
+    async mcpServerPublic(id) {
+      await delay(900)
+      const url = servers.get(id)?.connectorUrl
+      if (!url) throw new Error("The MCP server is not running.")
+      const host = new URL(url).hostname
+      const pub = params.get("public")
+      if (pub === "pending" || (pub === "publishing" && Date.now() - opened < 8000))
+        return { host, dns: "missing", answer: { kind: "notTried" } }
+      if (pub === "unknown") return { host, dns: "unknown", answer: { kind: "notTried" } }
+      if (pub === "wrong") return { host, dns: "live", answer: { kind: "wrong", status: 502 } }
+      if (pub === "unreached")
+        return { host, dns: "live", answer: { kind: "unreached", reason: "Connection refused (os error 111)" } }
+      return { host, dns: "live", answer: { kind: "ok" } }
     },
     async mcpServerConfig(id) {
       await delay(300)

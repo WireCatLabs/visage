@@ -137,9 +137,8 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
         <div id={`${headingId}-body`} className="reveal flex min-w-0 flex-col gap-4">
           <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">
             Let ChatGPT or Claude in the browser use {tool.name}, within each profile's permissions. WireCat gives this
-            computer an internet address, starts {tool.bin}'s server for browser apps, shows what to click in the app,
-            and checks that the app gets through. Nothing starts until you press Start the server. Agents on this
-            computer do not need any of it.
+            computer an internet address, starts {tool.bin}'s server, shows what to click in the app and checks that the
+            app gets through. Nothing starts until you press Start the server.
           </p>
           {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
           {data && !data.available && (

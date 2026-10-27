@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { McpClient, McpServerStatus } from "@/platform/mcp-server-schemas"
-import { activityOf, ago, busiest, currentStep, testState } from "./connect-steps"
+import type { McpClient, McpServerStatus, PublicCheck } from "@/platform/mcp-server-schemas"
+import { activityOf, ago, busiest, currentStep, reachOf, testState } from "./connect-steps"
 
 const client = (more: Partial<McpClient> = {}): McpClient => ({
   claimedName: "ChatGPT",
@@ -29,15 +29,36 @@ const server = (more: Partial<McpServerStatus> = {}): McpServerStatus => ({
 const at = (iso: string) => Date.parse(iso)
 
 describe("the guide's step", () => {
-  it("goes choose, address, start, connect, test, and a running server skips address and start", () => {
+  it("goes choose, address, start, reach, connect, test; a running server skips address and start", () => {
     const off = server({ running: false, listening: false, connectorUrl: null })
-    expect(currentStep({ app: null, addressReady: false, server: off, added: false })).toBe("choose")
-    expect(currentStep({ app: "chatgpt", addressReady: false, server: off, added: false })).toBe("address")
-    expect(currentStep({ app: "chatgpt", addressReady: true, server: off, added: false })).toBe("start")
-    expect(currentStep({ app: "claude", addressReady: false, server: server(), added: false })).toBe("connect")
-    expect(currentStep({ app: "claude", addressReady: false, server: server(), added: true })).toBe("test")
-    const starting = server({ listening: false })
-    expect(currentStep({ app: "claude", addressReady: true, server: starting, added: false })).toBe("start")
+    const p = { app: null, addressReady: false, server: off, reached: false, added: false }
+    expect(currentStep(p)).toBe("choose")
+    expect(currentStep({ ...p, app: "chatgpt" })).toBe("address")
+    expect(currentStep({ ...p, app: "chatgpt", addressReady: true })).toBe("start")
+    expect(currentStep({ ...p, app: "claude", server: server() })).toBe("reach")
+    expect(currentStep({ ...p, app: "claude", server: server(), reached: true })).toBe("connect")
+    expect(currentStep({ ...p, app: "claude", server: server(), reached: true, added: true })).toBe("test")
+    expect(currentStep({ ...p, app: "claude", addressReady: true, server: server({ listening: false }) })).toBe("start")
+  })
+})
+
+describe("the address check", () => {
+  const check = (dns: PublicCheck["dns"], answer: PublicCheck["answer"] = { kind: "notTried" }): PublicCheck => ({
+    host: "h.ts.net",
+    dns,
+    answer,
+  })
+
+  it("waits while public DNS has no name, and is live once it has, tested from here or not", () => {
+    expect(reachOf(null)).toEqual({ state: "checking" })
+    expect(reachOf(check("missing"))).toEqual({ state: "publishing" })
+    expect(reachOf(check("live", { kind: "ok" }))).toEqual({ state: "live", tested: true })
+    expect(reachOf(check("live", { kind: "unreached", reason: "refused" }))).toEqual({ state: "live", tested: false })
+  })
+
+  it("says when something else answers, or when no DNS service could be asked", () => {
+    expect(reachOf(check("live", { kind: "wrong", status: 502 }))).toEqual({ state: "wrong", status: 502 })
+    expect(reachOf(check("unknown"))).toEqual({ state: "unknown" })
   })
 })
 

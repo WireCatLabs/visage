@@ -229,10 +229,21 @@ ChatGPT and Claude in the browser reach a tool through its HTTP MCP server behin
 default because agents on this computer use the tools directly. One server serves every profile; the app names one in
 each call. Zoom serves no HTTP MCP and Email is part of memo, so neither has the section.
 
-**The guide** (`ConnectGuide.tsx`) aims at a working call from the app, not at a running server. Five steps in a rail,
+**The guide** (`ConnectGuide.tsx`) aims at a working call from the app, not at a running server. Six steps in a rail,
 on one surface that only Finish closes: choose the app (ChatGPT, Claude, another), the public address (Tailscale's own
 steps, done ones as ticks, or a tunnel the owner runs), start the server (Funnel, then `mcp server start`, with each
-part's progress; nothing runs before the owner presses Start the server), add it in the app, and test it. The step logic
+part's progress; nothing runs before the owner presses Start the server), check the address, add it in the app, and
+test it. A failed start leaves Funnel on: turning it off and on again can drop the public name for minutes, and a retry
+uses the same address.
+
+**Check the address** (`public_address.rs`, `mcp_server_public`): the app reaches the server from its own servers, and
+this computer cannot ask its own DNS, because MagicDNS answers the Tailscale name with the 100.x tailnet address. So Rust
+asks public DNS-over-HTTPS (dns.google, then Cloudflare, then NextDNS), and with an address fetches the resource's
+metadata from that public IP, the name kept for TLS. A missing name (NXDOMAIN) means Tailscale has not published it yet,
+which takes up to 10 minutes: the step checks every 15 s with a progress bar and does not let the owner go on. A
+published name is enough to go on, since a computer often cannot open its own public address; something else answering
+(another status) is an error with "Go on anyway"; no DNS service answering (some networks block them all) lets the owner
+go on with a warning. The step logic
 is plain TypeScript (`connect-steps.ts`); what to click in each app is one table, `connect-apps.ts`, with the vendors'
 pages it was read from, and takes the address and login code from `status`, so a different address shape changes no
 instruction. The test reads `status` every 4 s while it is on screen: an app counts once it logs in, or reaches the

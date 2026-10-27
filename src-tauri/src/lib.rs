@@ -13,6 +13,7 @@ mod page_loads;
 mod paths;
 mod permissions;
 mod profile;
+mod public_address;
 mod redact;
 mod report;
 mod run;
@@ -442,6 +443,12 @@ async fn mcp_server_oauth(id: String) -> Result<mcp_server::OAuthSettings, Strin
 }
 
 #[tauri::command]
+async fn mcp_server_public(id: String) -> Result<public_address::PublicCheck, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::public(tool)).await?
+}
+
+#[tauri::command]
 async fn mcp_server_config(id: String) -> Result<String, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || mcp_server::config(tool)).await?
@@ -622,6 +629,7 @@ pub fn run() {
             mcp_server_revoke,
             mcp_server_config,
             mcp_server_oauth,
+            mcp_server_public,
             tailscale_status,
             tailscale_download,
             tailscale_terminal,
