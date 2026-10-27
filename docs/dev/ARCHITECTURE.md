@@ -260,6 +260,8 @@ it regains focus. All of it is `tailscale.rs` running the `tailscale` CLI found 
    pkgs.tailscale.com/stable/#linux (Fedora 41+ in the dnf 5 form of Tailscale's `installer.sh`) only from releases on
    its lists, so os-release text never reaches the terminal. They add Tailscale's package source, so system updates
    keep it current; when Tailscale is installed and that source file is missing, the done step offers the commands.
+   Where the lines start with `curl` (apt, `install.sh`) and `curl` is not on PATH, the first line installs it with the
+   apt-get, dnf or zypper found on PATH.
    NixOS gets its configuration line; any other system gets `install.sh` and links. Every step links its section of
    wirecat.dev/en/docs/desktop/tailscale-funnel. On Linux the step also needs this user as
    Tailscale's operator (`tailscale debug prefs`, a hint only; a refused write says the same).

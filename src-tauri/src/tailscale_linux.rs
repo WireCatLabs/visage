@@ -214,12 +214,32 @@ const SOURCES: [&str; 4] = [
     "/etc/apt/sources.list.d/tailscale.sources",
 ];
 
+/// Package managers that can install `curl`, in the order they are tried, with their install line.
+const CURL_FROM: [(&str, &str); 3] = [
+    ("apt-get", "sudo apt-get install -y curl"),
+    ("dnf", "sudo dnf install -y curl"),
+    ("zypper", "sudo zypper install -y curl"),
+];
+
+/// A clean desktop may lack `curl`, which the apt lines and the install script start with; the line that installs it
+/// goes first. `has` answers whether a program is on PATH.
+fn with_curl(mut l: Linux, has: impl Fn(&str) -> bool) -> Linux {
+    let needs = l.commands.iter().any(|c| c.starts_with("curl "));
+    if needs
+        && !has("curl")
+        && let Some((_, line)) = CURL_FROM.iter().find(|(manager, _)| has(manager))
+    {
+        l.commands.insert(0, (*line).to_string());
+    }
+    l
+}
+
 pub fn read() -> Linux {
     let mut l = linux(&std::fs::read_to_string("/etc/os-release").unwrap_or_default());
     if l.method == Method::Repo {
         l.updates = Some(SOURCES.iter().any(|p| Path::new(p).exists()));
     }
-    l
+    with_curl(l, |bin| crate::paths::find(bin).is_some())
 }
 
 /// The line the guide opens in a terminal: this system's commands joined, never the NixOS configuration line.
@@ -339,5 +359,20 @@ mod tests {
         assert_eq!(linux(evil_version).method, Method::Script);
         let name = linux("ID=arch\nPRETTY_NAME=\"Arch\u{1b}[31m\"\n").name;
         assert!(!name.contains('\u{1b}'));
+    }
+
+    #[test]
+    fn installs_curl_first_where_the_commands_need_it_and_it_is_missing() {
+        let apt_only = |bin: &str| bin == "apt-get";
+        let l = with_curl(linux(UBUNTU_2404), apt_only);
+        assert_eq!(l.commands[0], "sudo apt-get install -y curl");
+        assert_eq!(l.commands.len(), 5);
+        assert_eq!(with_curl(linux(UBUNTU_2404), |_| true).commands, linux(UBUNTU_2404).commands);
+        let script = with_curl(linux(ALPINE), |bin| bin == "zypper");
+        assert_eq!(script.commands, vec!["sudo zypper install -y curl".to_string(), INSTALL_LINE.to_string()]);
+        assert_eq!(with_curl(linux(ALPINE), |_| false).commands, vec![INSTALL_LINE.to_string()]);
+        for os in [FEDORA_42, LEAP_156, ARCH, NIXOS] {
+            assert_eq!(with_curl(linux(os), |b| b != "curl").commands, linux(os).commands, "{os}");
+        }
     }
 }

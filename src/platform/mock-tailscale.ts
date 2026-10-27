@@ -8,7 +8,8 @@ import type { Platform } from "./types"
 // three Funnel ports taken), `ready`. `?tailscale-os=macos|windows` changes the install step; Linux is Ubuntu, which
 // offers a .deb. `?tailscale-distro=<id>` picks another Linux: `debian`, `fedora` (.rpm, dnf 5), `rhel`, `opensuse`,
 // `arch`, `nixos`, `other` (no commands: Tailscale's script). `?tailscale=nosource` is installed from a package without
-// Tailscale's update source. These commands are the shape `tailscale_linux.rs` builds; its tests hold the real ones.
+// Tailscale's update source. `?tailscale-nocurl=1`: curl is missing, so the Ubuntu, Debian and script commands start with
+// the line that installs it. These commands are the shape `tailscale_linux.rs` builds; its tests hold the real ones.
 // `?tailscale=leftover` with `?mcp=<tool>`: the server is off but the funnel the app set up still points at it.
 // `?tailscale-fail=funnel` makes turning Funnel on fail. Logging in finishes by itself after a few seconds.
 
@@ -124,6 +125,14 @@ const DISTROS = {
   ],
 } satisfies Record<string, [TailscaleStatus["package"], TailscaleLinux]>
 
+const withCurl = (commands: string[]) =>
+  params.get("tailscale-nocurl") && commands.some((c) => c.startsWith("curl "))
+    ? [
+        commands.some((c) => c.includes("apt-get")) ? "sudo apt-get install -y curl" : "sudo dnf install -y curl",
+        ...commands,
+      ]
+    : commands
+
 function initial(): TailscaleStatus {
   const scenario = params.get("tailscale")
   const os = (["macos", "windows"] as const).find((o) => o === params.get("tailscale-os")) ?? "linux"
@@ -135,7 +144,14 @@ function initial(): TailscaleStatus {
     os,
     installed: true,
     package: os === "macos" ? "pkg" : os === "windows" ? "exe" : linuxPackage,
-    linux: os === "linux" ? { ...linux, updates: linux.method === "repo" ? scenario !== "nosource" : null } : null,
+    linux:
+      os === "linux"
+        ? {
+            ...linux,
+            commands: withCurl(linux.commands),
+            updates: linux.method === "repo" ? scenario !== "nosource" : null,
+          }
+        : null,
     operator: os === "linux" ? true : null,
     user: "alex",
     daemon: true,
