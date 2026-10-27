@@ -67,3 +67,4 @@
 - `.claude/worktrees/ux11-motion` (ветка fix/ux11-motion) — worktree UX-11, всё влито в feat/desktop-mvp. 2026-10-27
 - `.claude/worktrees/desktop-sync` (ветка feat/desktop-sync) — worktree TASK-33, всё в feat/desktop-mvp. Также scratchpad `rec/` (пустые папки проверки --record). 2026-10-27
 - `/home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/blog-sync-stop` (ветка docs/blog-sync-stop в cli-private) — POST-109 уже в main cli-private (`fde60611`); удалить worktree и ветку. 2026-10-27
+- /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/pack — TASK-31 scratch package builds, 2026-10-27
