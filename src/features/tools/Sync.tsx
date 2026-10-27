@@ -76,7 +76,9 @@ export function SyncControl({ tool, profile }: { tool: CatalogTool; profile: str
           </Button>
         )}
       </div>
-      <AutoHeight>{run && !running ? <Next run={run} tool={tool} profile={profile} what={what} /> : null}</AutoHeight>
+      <AutoHeight swap={running ? "running" : (run?.phase ?? "idle")}>
+        {run && !running ? <Next run={run} tool={tool} profile={profile} what={what} /> : null}
+      </AutoHeight>
     </section>
   )
 }
