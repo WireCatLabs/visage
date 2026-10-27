@@ -762,3 +762,8 @@ NEED-89 (релиз memo с BUG-12): ведущий запустил `bin/releas
 
 - **BUG-13 · Публикация скилла в ClawHub падает в релизах:** memo 0.114.0 (npm опубликован, тег есть) — «Version 1.0.0 already exists»; у max и zoom последние release-прогоны тоже failure. Похоже, версия скилла не растёт между релизами. В cli-memo открыт PR #473 другой сессии (slug wirecat-memo) — не трогаю, сообщаю.
 NEED-87: Слава — «glama in a bit».
+
+- **TASK-26 · старт сборки (раздел 10 плана, NEED-91 A).** Порядок: проверка входа под путём → модуль в cli-core → tg/max/drive/zoom/memo → Desktop.
+- **FIND-51 · Tailscale Funnel и пути (проверено 2026-10-27, tailscale 1.102.5, свой эхо-сервер на 127.0.0.1:18911, пути сняты после):** `--set-path /x http://127.0.0.1:P` срезает префикс (`/x/mcp` приходит как `/mcp`); `--set-path /x http://127.0.0.1:P/x` сохраняет путь (`/x/mcp` приходит как `/x/mcp`); заголовка X-Forwarded-Prefix нет. Снаружи (WebFetch с серверов Anthropic) путь доступен. Curl с этой же машины на публичный адрес Funnel не проходит (TLS обрыв) — для «снаружи» нужен внешний клиент.
+- **RISK-29 · Вход под путём требует 2–3 пути Funnel на инструмент, а не один.** Для issuer `https://host/tg` спецификация MCP (2025-11-25, «Authorization Server Metadata Discovery») и RFC 8414 §3 велят искать метаданные в корне: `/.well-known/oauth-authorization-server/tg`. Путь `/tg` туда не достаёт; запасной вариант под `/tg` — только OpenID Connect discovery, который требует jwks_uri и id_token (подделывать не будем). Значит, гайд Tailscale ставит `/tg`, `/.well-known/oauth-authorization-server/tg` и `/.well-known/oauth-protected-resource/tg`. Как поведут себя claude.ai и ChatGPT с issuer под путём — не проверено.
+NEED-88 → **A** (2026-10-27): проверять curl и добавлять строку установки.
