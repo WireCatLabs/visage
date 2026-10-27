@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { platform } from "@/platform/bridge"
 import type { CloudflareStatus } from "@/platform/cloudflare-schemas"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { type CloudflareStepId, cloudflareSteps } from "./cloudflare-steps"
@@ -264,7 +265,7 @@ export function CloudflareGuide({ cloudflare }: { cloudflare: ReturnType<typeof 
       {steps.map((step, i) => {
         const open = step.id === current
         return (
-          <li key={step.id} className="flex flex-col gap-2.5 px-4 py-3" aria-current={open ? "step" : undefined}>
+          <li key={step.id} className="flex flex-col px-4 py-3" aria-current={open ? "step" : undefined}>
             <StepHead
               step={step}
               index={i}
@@ -276,14 +277,12 @@ export function CloudflareGuide({ cloudflare }: { cloudflare: ReturnType<typeof 
                 setChecked(step.id)
               }}
             />
-            {open && (
-              <div className="flex flex-col gap-2.5 pl-9 text-[0.9rem]">
-                {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
-                {body[step.id]}
-              </div>
-            )}
+            <Collapse open={open} className="flex flex-col gap-2.5 pt-2.5 pl-9 text-[0.9rem]">
+              {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
+              {body[step.id]}
+            </Collapse>
             {step.id === "address" && step.done && status.hostname && (
-              <div className="flex flex-col gap-2 pl-9 text-[0.9rem]">
+              <div className="flex flex-col gap-2 pt-2.5 pl-9 text-[0.9rem]">
                 <p>
                   <span className="selectable font-mono text-ink">{status.hostname}</span> is yours on Cloudflare.
                 </p>

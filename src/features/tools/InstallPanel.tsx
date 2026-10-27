@@ -4,6 +4,7 @@ import { type CatalogTool, ownerId, packageNames, samePackage } from "@/domain/c
 import { formatBytes } from "@/domain/format"
 import { type DataDeletion, type InstallSession, STEPS } from "@/domain/status"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Stepper, type StepState } from "@/ui/Stepper"
 import { ReportThis } from "../report/ReportThis"
@@ -139,7 +140,9 @@ export function InstallPanel({ tool }: { tool: CatalogTool }) {
         </div>
       </div>
 
-      {showLog && <Log lines={session.log} />}
+      <Collapse open={showLog}>
+        <Log lines={session.log} />
+      </Collapse>
     </div>
   )
 }

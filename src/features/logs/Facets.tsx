@@ -12,6 +12,7 @@ import {
   type Term,
   termState,
 } from "@/domain/runs"
+import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { ToolIcon } from "../tools/ToolIcon"
@@ -99,8 +100,8 @@ function Facet(
           <Group className="size-[0.9rem]" aria-hidden />
         </button>
       </div>
-      {open && (
-        <ul className="mt-[0.35rem] flex flex-col">
+      <Collapse open={open} className="pt-[0.35rem]">
+        <ul className="flex flex-col">
           {counts.length === 0 && <li className="py-1 pl-[1.2rem] text-[0.85rem] text-ink-dim">No values</li>}
           {shown.map((c) => (
             <Value key={c.value} field={field} count={c} state={termState(terms, field, c.value)} onToggle={onToggle} />
@@ -128,7 +129,7 @@ function Facet(
             </li>
           )}
         </ul>
-      )}
+      </Collapse>
     </section>
   )
 }

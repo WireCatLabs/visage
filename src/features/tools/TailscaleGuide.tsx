@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { platform } from "@/platform/bridge"
 import type { TailscaleDownload, TailscaleLinux, TailscaleStatus } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
@@ -527,7 +528,7 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
       {steps.map((step, i) => {
         const open = step.id === current
         return (
-          <li key={step.id} className="flex flex-col gap-2.5 px-4 py-3" aria-current={open ? "step" : undefined}>
+          <li key={step.id} className="flex flex-col px-4 py-3" aria-current={open ? "step" : undefined}>
             <StepHead
               step={step}
               index={i}
@@ -539,17 +540,17 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
                 setChecked(step.id)
               }}
             />
-            {open && (
-              <div className="flex flex-col gap-2.5 pl-9 text-[0.9rem]">
-                {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
-                {step.id !== "connect" && body[step.id]}
-                <Note>
-                  <Link href={guideUrl(step.id, status)}>Full guide</Link> for this step on wirecat.dev.
-                </Note>
-              </div>
-            )}
+            <Collapse open={open} className="flex flex-col gap-2.5 pt-2.5 pl-9 text-[0.9rem]">
+              {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
+              {step.id !== "connect" && body[step.id]}
+              <Note>
+                <Link href={guideUrl(step.id, status)}>Full guide</Link> for this step on wirecat.dev.
+              </Note>
+            </Collapse>
             {step.id === "install" && step.done && status.package === "deb" && status.linux?.updates === false && (
-              <UpdateSource linux={status.linux} />
+              <div className="pt-2.5">
+                <UpdateSource linux={status.linux} />
+              </div>
             )}
           </li>
         )

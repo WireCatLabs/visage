@@ -5,6 +5,7 @@ import { formatBytes } from "@/domain/format"
 import { platform } from "@/platform/bridge"
 import type { Readiness } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { CopyField } from "@/ui/CopyField"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Stepper, type StepState } from "@/ui/Stepper"
@@ -115,11 +116,9 @@ function NeedsNode({ r }: { r: Readiness }) {
         </div>
       )}
 
-      {manual && !running && (
-        <div id={manualId} className="flex flex-col gap-2 border-line border-t pt-4">
-          <Manual admin={admin} />
-        </div>
-      )}
+      <Collapse open={manual && !running} id={manualId} className="flex flex-col gap-2 border-line border-t pt-4">
+        <Manual admin={admin} />
+      </Collapse>
     </section>
   )
 }

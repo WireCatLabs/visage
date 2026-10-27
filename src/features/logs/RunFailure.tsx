@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react"
 import { type ReactNode, useId, useState } from "react"
 import type { RunError } from "@/domain/runs"
+import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
 
 /** What the tool recorded about how the run failed, before anything else in the run. */
@@ -83,11 +84,8 @@ function Stack({ frames }: { frames: string[] }) {
         />
         Where in the tool · {frames.length} {frames.length === 1 ? "frame" : "frames"}
       </button>
-      {open && (
-        <ol
-          id={id}
-          className="selectable mt-[0.35rem] overflow-x-auto rounded-[0.45rem] border border-line bg-app px-[0.8rem] py-[0.5rem] font-mono text-[0.8rem] text-ink-soft"
-        >
+      <Collapse open={open} id={id} className="pt-[0.35rem]">
+        <ol className="selectable overflow-x-auto rounded-[0.45rem] border border-line bg-app px-[0.8rem] py-[0.5rem] font-mono text-[0.8rem] text-ink-soft">
           {frames.map((f, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: frames repeat in recursion and never reorder
             <li key={i} className="whitespace-pre">
@@ -95,7 +93,7 @@ function Stack({ frames }: { frames: string[] }) {
             </li>
           ))}
         </ol>
-      )}
+      </Collapse>
     </div>
   )
 }

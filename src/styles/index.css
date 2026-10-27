@@ -303,3 +303,39 @@ main {
     overflow-y: scroll;
   }
 }
+
+/* Dialogs rise in and fade out (src/ui/Dialog.tsx), so the owner sees where they came from and went. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.985);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.99);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+dialog[open] {
+  animation: dialog-in 200ms var(--ease-out-quart);
+}
+dialog[open]::backdrop {
+  animation: backdrop-in 200ms var(--ease-out-quart);
+}
+dialog[data-closing] {
+  animation: dialog-out 150ms var(--ease-out-quart) forwards;
+}
+dialog[data-closing]::backdrop {
+  animation: backdrop-out 150ms var(--ease-out-quart) forwards;
+}
