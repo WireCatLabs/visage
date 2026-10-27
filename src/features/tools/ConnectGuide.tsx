@@ -178,11 +178,7 @@ export function ConnectGuide(props: {
         className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
         aria-live="polite"
       >
-        <h5
-          ref={heading}
-          tabIndex={-1}
-          className="text-[1.05rem] font-semibold text-ink outline-none focus-visible:outline-2"
-        >
+        <h5 ref={heading} tabIndex={-1} className="step-heading text-[1.05rem] font-semibold text-ink">
           {current === "test" && test.state === "called" ? `${name} can use ${tool.name}` : STEP_TITLES[current]}
         </h5>
         {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}

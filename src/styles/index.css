@@ -145,6 +145,11 @@ body {
   outline-offset: 2px;
 }
 
+/* A guide's step heading takes focus so a screen reader starts there; it is not a control, so no ring. */
+.step-heading:focus-visible {
+  outline: none;
+}
+
 @layer base {
   button:not(:disabled),
   a[href],
