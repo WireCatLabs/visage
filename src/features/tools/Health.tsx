@@ -121,8 +121,16 @@ function ProfileList(props: {
       {profiles === undefined ? (
         <ul className="divide-y divide-line overflow-hidden rounded-[0.45rem] border border-line bg-app">
           {[0, 1].map((n) => (
-            <li key={n} className="flex h-8 box-content items-center px-3 py-2">
+            // A profile row with its sync line is taller, so the placeholder takes that height.
+            <li
+              key={n}
+              className={cx(
+                "flex box-content flex-col justify-center gap-[1.4rem] px-3 py-2",
+                syncNeedsProfile(tool) ? "h-[4.625rem]" : "h-8",
+              )}
+            >
               <Skeleton className="h-4 w-28" label={n === 0 ? "Loading profiles" : ""} />
+              {syncNeedsProfile(tool) && <Skeleton className="h-4 w-44" />}
             </li>
           ))}
         </ul>

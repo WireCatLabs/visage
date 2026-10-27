@@ -15,11 +15,15 @@ import { useElapsed } from "../storage/useElapsed"
 import { ago } from "./connect-steps"
 import { blockedBy, type SyncRun, syncKey, useSync } from "./sync-store"
 
-/** "Last synced 12 min ago", "Not synced yet"; drive adds what is still to come. */
+/**
+ * "Last synced 12 min ago". With no time the tool still may have synced: a run log keeps a success only when asked
+ * (`--record`, which the app passes), and drive sets its time only once nothing is left to fetch.
+ */
 export function lastLine(last: LastSync, what: SyncWhat): string {
-  const left = last.left && last.left > 0 ? ` · ${last.left.toLocaleString("en-US")} ${what} still to come` : ""
   if (!last.known) return "Last sync unknown: the tool does not say"
-  return `${last.at ? `Last synced ${ago(last.at)}` : "Not synced yet"}${left}`
+  const left = last.left && last.left > 0 ? `${last.left.toLocaleString("en-US")} ${what} still to come` : null
+  if (last.at) return `Last synced ${ago(last.at)}${left ? ` · ${left}` : ""}`
+  return left ? `Not finished: ${left}` : "No sync recorded from this app yet"
 }
 
 /** One profile's sync in the Manage panel: the button, when it last ran, its progress and its result. */
@@ -220,8 +224,9 @@ export function useRowSync(entry: CatalogTool, installed: boolean) {
   const active = mine.find(([, r]) => r.phase === "running") ?? mine.at(-1)
   const profileOf = (k: string) => k.slice(entry.id.length + 1) || null
   if (active) return { profile: profileOf(active[0]), run: active[1], last: null, canStart: false }
-  if (single === undefined) return null
-  const last = lastAll[syncKey(entry.id, single)] ?? null
+  const last = single === undefined ? undefined : lastAll[syncKey(entry.id, single)]
+  // Until the time is read the tagline stays, so the row never shows a placeholder in its place.
+  if (single === undefined || !last) return null
   return { profile: single, run: null, last, canStart: true }
 }
 
@@ -256,13 +261,11 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
     )
   }
   return info.last ? (
-    <span className="truncate tabular-nums">
+    <span className="reveal truncate tabular-nums">
       {who}
       {lastLine(info.last, what)}
     </span>
-  ) : (
-    <Skeleton chars={20} />
-  )
+  ) : null
 }
 
 /** The row's own Sync or Stop, beside the name, for a tool with one profile or none. */
