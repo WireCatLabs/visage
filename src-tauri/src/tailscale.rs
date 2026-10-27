@@ -668,6 +668,27 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "turns Tailscale Funnel on and off on this computer; run alone, with nothing else of yours on Funnel"]
+    fn two_tools_share_one_address_and_close_alone() {
+        // The records file must not be the owner's: `XDG_DATA_HOME=$(mktemp -d) cargo test … -- --ignored --exact`.
+        let data = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).expect("XDG_DATA_HOME set to a scratch folder");
+        assert!(data.starts_with(std::env::temp_dir()) || data.starts_with("/var/tmp"), "{data:?}");
+        let (none, quiet) = (|| false, |_: PageEvent| {});
+        let tg = funnel_open("tg", 18914, &none, &quiet).unwrap();
+        let memo = funnel_open("memo", 18915, &none, &quiet).unwrap();
+        assert!(tg.ends_with("/tg") && memo.ends_with("/memo"), "{tg} {memo}");
+        assert_eq!(tg.trim_end_matches("/tg"), memo.trim_end_matches("/memo"), "one address for both");
+        let live = funnels();
+        assert!(live.iter().all(|f| f.live && f.shared), "{live:?}");
+        funnel_close("tg").unwrap();
+        let after = funnels();
+        assert!(after.iter().any(|f| f.tool == "memo" && f.live), "memo keeps its paths: {after:?}");
+        assert!(after.iter().any(|f| f.tool == "tg" && !f.live), "{after:?}");
+        funnel_close("memo").unwrap();
+        assert!(funnels().iter().all(|f| !f.live));
+    }
+
+    #[test]
     fn the_address_has_a_port_unless_443() {
         assert_eq!(url_of("h.ts.net", 443), "https://h.ts.net");
         assert_eq!(url_of("h.ts.net", 8443), "https://h.ts.net:8443");
