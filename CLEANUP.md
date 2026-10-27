@@ -56,3 +56,4 @@
 - `/home/leemour/Projects/AI/cli-core-wt-mcp-activity` — worktree of cli-core #2091 (merged, released 0.454.0). 2026-10-27
 - `/home/leemour/Projects/AI/tg-cli-wt-core-0454` — worktree of tg-cli #765; remove after it merges. 2026-10-27
 - `.claude/worktrees/connect-ai` (branch `feat/connect-ai-app`) — TASK-28 worktree, fast-forwarded into feat/desktop-mvp. 2026-10-27
+- /home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/monetization — cli-private worktree for POST-108 and MONETIZATION.md, 2026-10-27
