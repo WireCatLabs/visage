@@ -16,6 +16,7 @@ The repository is `wirecat-desktop` (the local folder may still be called `visag
 | Put WireCat in the Linux app launcher | `bin/install-desktop-entry` (`--remove` takes it out) |
 | Everything CI runs | `pnpm check` |
 | Screenshot the browser build | `node scripts/capture.mjs out.png "?state=fresh" [--dark] [--width 1280]` |
+| Rule 9 check: a tool's panel never moves the clicked row | `pnpm build && pnpm preview --port 1478 --strictPort`, then `node scripts/scroll-hold.mjs --port 1478` |
 
 Mock scenarios for the browser build: `?state=fresh`, `?state=nonode`, `?install=<tool>`, `?hold=<tool>`,
 `?fail=<tool>`, `?fail=storage` (the Storage page cannot read its folders), `?crash=<section>` (that page breaks while
