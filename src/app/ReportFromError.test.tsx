@@ -88,6 +88,7 @@ describe("Reporting from an error", () => {
     expect(within(dialog).getByLabelText("About")).toHaveTextContent("WireCat Desktop")
     expect(within(dialog).getByLabelText("What were you doing?")).toHaveValue("1. Opened Storage\n2. Showing this page")
     expect((within(dialog).getByLabelText("What happened?") as HTMLTextAreaElement).value).toMatch(/at Broken/)
+    await user.click(within(dialog).getByRole("button", { name: "See what is attached" }))
     expect(within(dialog).getByText(/1 recent error from this window/)).toBeInTheDocument()
     expect(sendReport).not.toHaveBeenCalled()
 

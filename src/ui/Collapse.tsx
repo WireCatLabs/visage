@@ -43,6 +43,7 @@ export function Collapse({ open, children, id, className }: Props) {
     <div
       id={id}
       inert={!open || undefined}
+      aria-hidden={!open || undefined}
       data-state={open ? "open" : "closed"}
       className={cx(
         "grid transition-[grid-template-rows] duration-300 ease-out-quart motion-reduce:transition-none",

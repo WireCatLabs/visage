@@ -146,8 +146,8 @@ describe("Agents", () => {
     await user.click(within(connect).getByRole("button", { name: "Cancel" }))
     expect(check).not.toHaveBeenCalled()
 
-    const advanced = within(pane()).getByText("Advanced: MCP")
-    expect(advanced.closest("details")).not.toHaveAttribute("open")
+    const advanced = within(pane()).getByRole("button", { name: "Advanced: MCP" })
+    expect(advanced).toHaveAttribute("aria-expanded", "false")
     await user.click(advanced)
     expect(within(pane()).getByText(/Agents on this computer use the tools directly/)).toBeVisible()
     const servers = await within(pane()).findByRole("list", { name: "WireCat MCP servers in Claude Code" }, wait)

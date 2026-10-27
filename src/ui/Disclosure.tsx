@@ -1,16 +1,32 @@
 import { ChevronRight } from "lucide-react"
-import type { ReactNode } from "react"
+import { type ReactNode, useId, useState } from "react"
+import { Collapse } from "./Collapse"
+import { cx } from "./cx"
 import { Skeleton } from "./Skeleton"
 
+/** A quiet "more" link that folds its content open in place; a button, because `<details>` cannot animate in WebKit. */
 export function Disclosure({ summary, children }: { summary: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
   return (
-    <details className="group">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded text-[0.875rem] font-medium text-brand hover:text-brand-hover [&::-webkit-details-marker]:hidden">
-        <ChevronRight className="size-4 transition-transform duration-150 group-open:rotate-90" aria-hidden />
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 rounded text-left text-[0.875rem] font-medium text-brand hover:text-brand-hover"
+      >
+        <ChevronRight
+          className={cx("size-4 shrink-0 transition-transform duration-150", open && "rotate-90")}
+          aria-hidden
+        />
         {summary}
-      </summary>
-      <div className="mt-2">{children}</div>
-    </details>
+      </button>
+      <Collapse open={open} id={id} className="pt-2">
+        {children}
+      </Collapse>
+    </div>
   )
 }
 

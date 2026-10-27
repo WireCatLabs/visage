@@ -7,6 +7,7 @@ import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schem
 import type { FunnelState } from "@/platform/tailscale-schemas"
 import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
+import { Collapse } from "@/ui/Collapse"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
@@ -420,42 +421,6 @@ function AddressStep(props: {
     onConfirm()
   }
 
-  if (tunnel === "own")
-    return (
-      <>
-        <Para>
-          Type the https address of your tunnel (cloudflared, ngrok, or a Tailscale Funnel you run) and point it at
-          127.0.0.1:{port || DEFAULT_PORT} on this computer.
-        </Para>
-        <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
-          <span className="text-[0.85rem] font-medium text-ink-dim">The tunnel's address</span>
-          <input
-            id={`${id}-url`}
-            className={`${inputClass} w-full max-w-[32rem]`}
-            value={ownUrl}
-            onChange={(e) => setOwnUrl(e.target.value)}
-            placeholder={`https://laptop.tail1234.ts.net/${tool.id}`}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-        <Note>
-          With a path such as /{tool.id}, the tunnel must also route /.well-known/oauth-authorization-server/{tool.id}{" "}
-          and /.well-known/oauth-protected-resource/{tool.id} here.
-        </Note>
-        <PortField id={`${id}-port`} port={port} setPort={setPort} />
-        {problem && <ErrorNotice inline>{problem}</ErrorNotice>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="primary" onClick={submit}>
-            Start the server
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setTunnel("tailscale")}>
-            Let WireCat set up the address instead
-          </Button>
-        </div>
-      </>
-    )
-
   return (
     <>
       <Para>
@@ -464,8 +429,9 @@ function AddressStep(props: {
         with a code from WireCat.
       </Para>
       <TunnelChoice tunnel={tunnel} setTunnel={setTunnel} />
-      {tunnel === "cloudflare" ? (
-        <>
+      {/* The choice opens its own part in place; the others fold away, so nothing above it moves. */}
+      <div>
+        <Collapse open={tunnel === "cloudflare"} className="flex flex-col gap-3.5">
           <CloudflareGuide cloudflare={cloudflare} />
           {cfReady && cf.hostname && (
             <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
@@ -484,47 +450,70 @@ function AddressStep(props: {
               </div>
             </div>
           )}
-        </>
-      ) : (
-        <TailscaleGuide tailscale={tailscale} />
-      )}
-      {tunnel === "tailscale" && full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
-      {tunnel === "tailscale" && ready && (
-        <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
-          <p className="text-[0.92rem] text-ink">
-            The address will be{" "}
-            <span className="selectable font-mono">
-              {address ? `${address}/mcp` : "on this computer's Tailscale name"}
-            </span>
-            .
-          </p>
+        </Collapse>
+        <Collapse open={tunnel === "tailscale"} className="flex flex-col gap-3.5">
+          <TailscaleGuide tailscale={tailscale} />
+          {full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
+          {ready && (
+            <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
+              <p className="text-[0.92rem] text-ink">
+                The address will be{" "}
+                <span className="selectable font-mono">
+                  {address ? `${address}/mcp` : "on this computer's Tailscale name"}
+                </span>
+                .
+              </p>
+              <Note>
+                Next, WireCat turns on Tailscale Funnel for it and starts {tool.bin}'s server in the background. It
+                keeps running until you stop it, and the address stays the same next time.
+              </Note>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="primary" onClick={submit}>
+                  Start the server
+                </Button>
+              </div>
+            </div>
+          )}
+        </Collapse>
+        <Collapse open={tunnel === "own"} className="flex flex-col gap-3.5">
+          <Para>
+            Type the https address of your tunnel (cloudflared, ngrok, or a Tailscale Funnel you run) and point it at
+            127.0.0.1:{port || DEFAULT_PORT} on this computer.
+          </Para>
+          <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
+            <span className="text-[0.85rem] font-medium text-ink-dim">The tunnel's address</span>
+            <input
+              id={`${id}-url`}
+              className={`${inputClass} w-full max-w-[32rem]`}
+              value={ownUrl}
+              onChange={(e) => setOwnUrl(e.target.value)}
+              placeholder={`https://laptop.tail1234.ts.net/${tool.id}`}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
           <Note>
-            Next, WireCat turns on Tailscale Funnel for it and starts {tool.bin}'s server in the background. It keeps
-            running until you stop it, and the address stays the same next time.
+            With a path such as /{tool.id}, the tunnel must also route /.well-known/oauth-authorization-server/{tool.id}{" "}
+            and /.well-known/oauth-protected-resource/{tool.id} here.
           </Note>
-          <div className="flex flex-wrap items-center gap-2">
+          <PortField id={`${id}-own-port`} port={port} setPort={setPort} />
+          <div>
             <Button size="sm" variant="primary" onClick={submit}>
               Start the server
             </Button>
           </div>
-        </div>
-      )}
+        </Collapse>
+      </div>
       {problem && <ErrorNotice inline>{problem}</ErrorNotice>}
-      <Disclosure summary="Use a tunnel I run myself, or another port">
-        <div className="flex flex-col gap-2.5">
+      {tunnel !== "own" && (
+        <Disclosure summary="Use another port">
           <PortField id={`${id}-port`} port={port} setPort={setPort} />
-          <div>
-            <Button size="sm" onClick={() => setTunnel("own")}>
-              Type my tunnel's address
-            </Button>
-          </div>
-        </div>
-      </Disclosure>
+        </Disclosure>
+      )}
     </>
   )
 }
 
-/** Funnel first: it is free and cannot read the traffic. Cloudflare's cost is said before it is picked (NEED-102). */
 function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunnel): void }) {
   const name = useId()
   const options = [
@@ -540,9 +529,15 @@ function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunn
       hint: "For a Cloudflare account with your own domain on it.",
       warn: PRIVACY,
     },
+    {
+      id: "own",
+      title: "A tunnel I run myself",
+      hint: "cloudflared, ngrok or a Funnel you set up: you type its address.",
+      warn: null,
+    },
   ] as const
   return (
-    <fieldset className="grid gap-2 sm:grid-cols-2">
+    <fieldset className="grid gap-2 sm:grid-cols-3">
       <legend className="sr-only">How the address reaches this computer</legend>
       {options.map((o) => (
         <label
@@ -645,7 +640,7 @@ function StartStep(props: {
           <ErrorNotice inline>{failure.message}</ErrorNotice>
           <Note>
             {/in use|EADDRINUSE/i.test(failure.message)
-              ? "Another program uses this port. Go back, open “Use a tunnel I run myself, or another port”, choose another port and start again."
+              ? "Another program uses this port. Go back, open “Use another port”, choose another port and start again."
               : "Nothing was left running. Try again, or go back and change the address or port."}
           </Note>
           <div className="flex flex-wrap gap-2">

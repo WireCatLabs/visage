@@ -73,7 +73,7 @@ const READY: TailscaleStatus = {
 const heading = () => screen.getByRole("button", { name: /^Connect an AI app/ })
 const row = () => screen.getByRole("list", { name: /MCP server$/ })
 const openDetails = async (user: ReturnType<typeof userEvent.setup>) =>
-  user.click(screen.getByText("Server details", { selector: "summary *, summary" }))
+  user.click(screen.getByRole("button", { name: "Server details" }))
 
 async function guideAtAddress(user: ReturnType<typeof userEvent.setup>, app = "ChatGPT") {
   render(<McpServer tool={tool("tg")} />)
@@ -140,10 +140,9 @@ describe("Connect an AI app", () => {
     vi.spyOn(platform, "tailscaleStatus").mockResolvedValue(READY)
     const start = vi.spyOn(platform, "mcpServerStart").mockResolvedValue(RUNNING)
     await guideAtAddress(user, "Claude")
-    await user.click(await screen.findByText("Use a tunnel I run myself, or another port"))
+    await user.click(await screen.findByRole("radio", { name: "A tunnel I run myself" }))
     await user.clear(screen.getByLabelText("Port on this computer"))
     await user.type(screen.getByLabelText("Port on this computer"), "9001")
-    await user.click(screen.getByRole("button", { name: "Type my tunnel's address" }))
     await user.type(screen.getByLabelText("The tunnel's address"), "https://x.ts.net/tg/")
     await user.click(screen.getByRole("button", { name: "Start the server" }))
 

@@ -21,7 +21,10 @@ describe("Storage", () => {
     await user.click(within(archive).getByRole("button", { name: "Chat type" }))
     expect(within(archive).getByRole("table", { name: "By chat type" })).toHaveTextContent("Telegram · Groups")
 
-    const tg = await screen.findByRole("list", { name: "What Telegram keeps" }, { timeout: 4000 })
+    for (const more of await screen.findAllByRole("button", { name: /What is in here/ }, { timeout: 4000 })) {
+      await user.click(more)
+    }
+    const tg = await screen.findByRole("list", { name: "What Telegram keeps" })
     expect(within(tg).getByText(/Credentials: size only/)).toBeInTheDocument()
   }, 15000)
 
