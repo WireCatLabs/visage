@@ -42,6 +42,7 @@ src-tauri/src/
   terminal.rs   opening a tool's interactive setup in the user's terminal.
   signin.rs     signing in inside the window: the tool's own `session start`, its stdin open for the answers.
   signin_steps.rs the tool's sign-in lines read into steps: QR code, pairing code, page to open, question, progress.
+  sync.rs       the tool's own sync per profile, stopped by its PID; counts and stages out, when it last synced.
   report.rs     bug reports: what this computer adds, masked, and sending to the WireCat API (docs/dev/report-api.md).
 ```
 
@@ -341,6 +342,25 @@ domain, the three paths of each tool to its local port, everything else 404. `cl
 leaves Rust unmasked, an exception to rule 4 like the Tailscale name: the owner needs it as it is; it is never logged.
 cloudflared's own output stays in Rust, except the last line of a failure. An error that names the hostname can still
 reach a bug report the owner sends from it (RISK-32).
+
+## Syncing from the app
+
+Plan: `docs/dev/plans/2026-10-27-desktop-sync.md`. The catalog's `sync` block holds each tool's own words: tg and max
+`<profile> messages sync --all`, zm `<profile> meetings sync`, drive `<profile> sync`, memo `sync` and Email `sync --only
+mail` (one lock for both, so one running key). WhatsApp has none to start: it syncs while `wa <profile> serve` runs,
+and its `note` says so. Every sync gets `--record`, so the tool's own `runs list` holds the run and answers "last
+synced"; drive answers from `status` (`last_sync`, set only when nothing is pending, and `pending`). The messengers also
+get `--timeout 2h`: without it cli-core gives every command 30 seconds. The app's own limit is three hours, so the
+tool's limit ends the run first and keeps what came in (exit 9, shown as "Time limit reached").
+
+`sync_run(id, profile)` runs the words with `run::stream_stoppable`, like sign-in; `sync_stop` sends SIGTERM to that
+process alone and kills its group after five seconds. memo ignores the signal until its release with BUG-17 fixed, so
+its Stop takes the five seconds. One sync per package and profile, none while the package installs, and an install
+refuses while one runs. No tool prints structured progress yet (DEBT-4): `sync.rs` reads its notes into a stage from a
+fixed list and the bar is indeterminate. Only counts leave Rust: chat titles, chat keys in the notes and account names
+stay behind, and an error message goes through `redact.rs`. The Manage panel has one control per profile (Accounts), or
+one for a tool without profiles; the Tools row shows the running sync, its result, or the last sync of its only
+profile, with a Sync or Stop button beside the name. A result stays until dismissed and says what to do next.
 
 ## Growing the app
 

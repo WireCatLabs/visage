@@ -25,6 +25,7 @@ mod signin;
 mod signin_steps;
 mod skills;
 mod storage;
+mod sync;
 mod system;
 mod tailscale;
 mod tailscale_install;
@@ -646,6 +647,57 @@ fn sign_in_stop(id: String, running: State<'_, Arc<Running>>) -> Result<(), Stri
     Ok(())
 }
 
+/// Runs the tool's own sync for the profile the owner chose; stages and the result arrive on the channel.
+#[tauri::command]
+async fn sync_run(
+    id: String,
+    profile: Option<String>,
+    running: State<'_, Arc<Running>>,
+    on_event: Channel<sync::SyncEvent>,
+) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    let args = sync::args(tool, profile.as_deref())?;
+    let running = Arc::clone(&running);
+    blocking(move || {
+        let send = |e: sync::SyncEvent| {
+            let _ = on_event.send(e);
+        };
+        let key = sync::key(tool, profile.as_deref());
+        let busy = running.is_running(&catalog::owner(tool).id);
+        if busy || !running.start(&key) {
+            return send(sync::SyncEvent::Failed {
+                message: if busy {
+                    format!("{} is being installed or updated. Sync when it is done.", tool.name)
+                } else {
+                    "This sync is already running.".into()
+                },
+                code: None,
+                reason: Some("app.busy".into()),
+            });
+        }
+        sync::run(tool, &args, &|| !running.is_running(&key), &send);
+        running.finish(&key);
+    })
+    .await
+}
+
+/// Asks that profile's running sync to stop: SIGTERM to its process, then its group after a few seconds.
+#[tauri::command]
+fn sync_stop(id: String, profile: Option<String>, running: State<'_, Arc<Running>>) -> Result<(), String> {
+    let tool = catalog::tool(&id)?;
+    if let Some(p) = &profile {
+        catalog::validate_profile(p)?;
+    }
+    running.cancel(&sync::key(tool, profile.as_deref()));
+    Ok(())
+}
+
+#[tauri::command]
+async fn sync_last(id: String, profile: Option<String>) -> Result<sync::LastSync, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || sync::last(tool, profile.as_deref())).await?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // The login shell's PATH takes about half a second; read it while the window opens, not on the first page.
@@ -727,7 +779,10 @@ pub fn run() {
             open_setup,
             sign_in,
             sign_in_answer,
-            sign_in_stop
+            sign_in_stop,
+            sync_run,
+            sync_stop,
+            sync_last
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,7 +1,9 @@
+import { findTool, syncNeedsProfile } from "@/domain/catalog"
 import { useNav } from "@/features/nav"
 import { STEPS, useOnboarding } from "@/features/onboarding/store"
 import { useSignIn } from "@/features/signin/store"
 import { useTools } from "@/features/tools/store"
+import { useSync } from "@/features/tools/sync-store"
 import { platform } from "@/platform/bridge"
 
 // Browser-only: starts the install named in `?install=<tool>` so a review can capture the progress state.
@@ -11,6 +13,7 @@ import { platform } from "@/platform/bridge"
 // and breaks its render. `?signin=<tool>` opens that tool's in-window sign-in for a profile named personal.
 // `?mcp=<tool>` and `?mcp-fail=<tool>` open that tool's details, where its MCP server section starts open.
 // `?connect=<state>` opens tg's details at that step of the guide (`src/features/tools/connect-scenario.ts`).
+// `?sync=<tool>` opens that tool's details and starts its sync for personal (`src/platform/mock-sync.ts`).
 // `?tailscale=<state>` opens tg's, with the "Connect an AI app" guide's Tailscale steps at that state (`src/platform/mock-tailscale.ts`); `?cloudflare=<state>` the same with the Cloudflare tunnel (`mock-cloudflare.ts`).
 export async function runMockScenario() {
   if (platform.kind !== "mock") return
@@ -36,6 +39,16 @@ export async function runMockScenario() {
     useNav.getState().go("tools")
     await useTools.getState().refresh()
     useTools.getState().toggle(mcp)
+  }
+  const sync = ["sync", "sync-hold", "sync-fail", "sync-timeout"]
+    .map((k) => params.get(k))
+    .find((v) => v && v !== "never")
+  const syncing = sync ? findTool(sync) : undefined
+  if (syncing) {
+    useNav.getState().go("tools")
+    await useTools.getState().refresh()
+    useTools.getState().toggle(syncing.id)
+    useSync.getState().start(syncing.id, syncNeedsProfile(syncing) ? "personal" : null)
   }
   const id = params.get("install")
   if (!id) return

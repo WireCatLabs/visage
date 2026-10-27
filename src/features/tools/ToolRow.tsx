@@ -15,6 +15,7 @@ import { useSystem } from "../system/store"
 import { activityOf } from "./connect-steps"
 import { InstallPanel } from "./InstallPanel"
 import { fitLabel, fitLine, useLatestKnown } from "./StorageFit"
+import { RowSyncButton, RowSyncLine, useRowSync } from "./Sync"
 import { useTools } from "./store"
 import { ToolDetails } from "./ToolDetails"
 import { ToolIcon } from "./ToolIcon"
@@ -64,12 +65,13 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const panelId = `tool-panel-${tool.id}`
   const showInstallPanel = Boolean(session) && !session?.closed?.includes(tool.id)
   const app = useMcpActivity(tool, installed, expanded)
+  const sync = useRowSync(tool, installed)
 
   return (
     <li data-tour="tool" className="border-line border-b last:border-b-0">
       <div
         ref={header}
-        className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]"
+        className="grid min-h-[4.5rem] grid-cols-[1.2rem_1.8rem_minmax(0,1fr)_2.25rem_6.6rem_8.6rem] items-center gap-x-[0.9rem] xl:grid-cols-[1.6rem_2.2rem_minmax(0,1fr)_2.25rem_7.8rem_9.6rem] xl:gap-x-[1.2rem] px-[1.3rem]"
       >
         <Lamp
           tone={severity ?? lampTone[status.kind]}
@@ -96,6 +98,10 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
             >
               {storageLine}
             </p>
+          ) : sync && (sync.run || !app) ? (
+            <p className="mt-1 flex text-[0.95rem] text-ink-soft">
+              <RowSyncLine entry={tool} info={sync} />
+            </p>
           ) : app ? (
             <p className="mt-1 flex items-center gap-2 text-[0.95rem] text-ink-soft tabular-nums">
               <span aria-hidden className="size-[0.45rem] shrink-0 rounded-full bg-ok" />
@@ -107,6 +113,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
             <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
           )}
         </button>
+        {sync ? <RowSyncButton entry={tool} info={sync} /> : <span />}
         <Version status={status} installed={installs?.[0]?.version ?? null} />
         <div data-tour="tool-action" className="flex justify-end">
           <Action

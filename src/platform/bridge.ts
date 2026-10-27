@@ -35,6 +35,7 @@ import {
 } from "./schemas"
 import { SettingsSchema } from "./settings-schemas"
 import { SignInEventSchema } from "./signin-schemas"
+import { LastSyncSchema, SyncEventSchema } from "./sync-schemas"
 import { FunnelStateSchema, PageEventSchema, TailscaleDownloadSchema, TailscaleStatusSchema } from "./tailscale-schemas"
 import type { Platform } from "./types"
 
@@ -175,6 +176,20 @@ function createTauri(): Platform {
     },
     signInAnswer: (id, value) => invoke("sign_in_answer", { id, value }),
     signInStop: (id) => invoke("sign_in_stop", { id }),
+    syncRun: (id, profile, onEvent) => {
+      const channel = new Channel<unknown>()
+      channel.onmessage = (raw) => {
+        const parsed = v.safeParse(SyncEventSchema, raw)
+        onEvent(
+          parsed.success
+            ? parsed.output
+            : { event: "failed", message: "The app could not read the sync's answer.", code: null, reason: null },
+        )
+      }
+      return invoke("sync_run", { id, profile, onEvent: channel })
+    },
+    syncStop: (id, profile) => invoke("sync_stop", { id, profile }),
+    syncLast: (id, profile) => call(LastSyncSchema, "sync_last", { id, profile }),
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
     reportContext: () => call(ReportContextSchema, "report_context"),

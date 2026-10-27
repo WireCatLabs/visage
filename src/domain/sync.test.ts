@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest"
+import { advice, clock, resultLine, resultNext } from "./sync"
+
+const summary = { new: 1240, places: 3, failed: 0, left: 0, complete: true }
+
+describe("the words a finished sync ends with", () => {
+  it("counts what came in and where", () => {
+    expect(resultLine("messages", summary)).toBe("Synced 1,240 new messages in 3 chats")
+    expect(resultLine("messages", { ...summary, new: 1, places: 1 })).toBe("Synced 1 new message in 1 chat")
+    expect(resultLine("files", { ...summary, new: 200, places: 0 })).toBe("Synced 200 files")
+    expect(resultLine("mail", { ...summary, new: 0 })).toBe("Up to date: no new emails")
+  })
+
+  it("says what is left and that syncing again continues", () => {
+    expect(resultNext("messages", summary)).toBeNull()
+    expect(resultNext("files", { ...summary, left: 140, complete: false })).toBe(
+      "140 files still to come: sync again to continue.",
+    )
+    expect(resultNext("messages", { ...summary, failed: 1, complete: false })).toMatch(/^1 chat could not be read/)
+    expect(resultNext("messages", { ...summary, complete: false })).toMatch(/more history/)
+  })
+})
+
+describe("a failed sync in plain words", () => {
+  it("keeps progress on the time limit and points to another sync on a lock", () => {
+    expect(advice({ message: "x", code: "timeout", reason: null }, "personal").title).toBe("Time limit reached")
+    for (const reason of ["profile.locked", "sync.running", "device.in-use", "app.busy"]) {
+      expect(advice({ message: "x", code: "provider_unavailable", reason }, "personal").title).toBe(
+        "Another sync is running",
+      )
+    }
+  })
+
+  it("sends a signed-out profile to sign in, and an unknown failure to a report", () => {
+    expect(advice({ message: "x", code: "authentication_error", reason: null }, "work").signIn).toBe(true)
+    const unknown = advice({ message: "boom", code: null, reason: null }, "work")
+    expect([unknown.text, unknown.report]).toEqual(["boom", true])
+  })
+})
+
+it("prints elapsed time like a clock", () => {
+  expect([clock(4_000), clock(725_000), clock(3_729_000)]).toEqual(["0:04", "12:05", "1:02:09"])
+})

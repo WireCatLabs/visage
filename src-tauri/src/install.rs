@@ -57,6 +57,9 @@ impl Running {
     pub fn cancel(&self, id: &str) {
         self.finish(id);
     }
+    pub fn any_starting_with(&self, prefix: &str) -> bool {
+        self.0.lock().unwrap().iter().any(|k| k.starts_with(prefix))
+    }
 }
 
 struct Failure(Reason, String, Option<String>);
@@ -75,10 +78,11 @@ pub fn uninstall(tool: &Tool, running: &Running, events: &Channel<InstallEvent>)
 type Steps = fn(&Tool, &Running, &Channel<InstallEvent>) -> Result<InstallEvent, Failure>;
 
 fn guarded(tool: &Tool, running: &Running, events: &Channel<InstallEvent>, steps: Steps) {
-    if !running.start(&tool.id) {
+    // npm replaces the program under a running sync, which then fails halfway.
+    if running.any_starting_with(&crate::sync::package_prefix(&tool.id)) || !running.start(&tool.id) {
         let _ = events.send(InstallEvent::Failed {
             reason: Reason::Failed,
-            message: "Another operation on this tool is running.".into(),
+            message: "Another operation on this tool is running, such as a sync. Stop it first.".into(),
             hint: None,
         });
         return;

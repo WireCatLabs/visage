@@ -21,6 +21,7 @@ import type {
 } from "./schemas"
 import type { Settings } from "./settings-schemas"
 import type { SignInEvent } from "./signin-schemas"
+import type { LastSync, SyncEvent } from "./sync-schemas"
 import type { FunnelState, TailscaleDownload, TailscaleStatus } from "./tailscale-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
@@ -150,6 +151,15 @@ export type Platform = {
   signInAnswer(id: string, value: string): Promise<void>
   /** Asks the tool to stop, then ends it after a few seconds; `signIn` then answers `stopped`, or `done` with what came. */
   signInStop(id: string): Promise<void>
+  /**
+   * Runs the tool's own sync (`sync.run` in the catalog) for the profile the owner chose, or none for a tool without
+   * profiles. Stages and the result arrive as events; only counts, never chat or account names.
+   */
+  syncRun(id: string, profile: string | null, onEvent: (e: SyncEvent) => void): Promise<void>
+  /** Asks that sync to stop; `syncRun` then answers `stopped`. What came is kept by the tool. */
+  syncStop(id: string, profile: string | null): Promise<void>
+  /** When the profile's last successful sync ended, from the tool's own `runs list` or `status`. */
+  syncLast(id: string, profile: string | null): Promise<LastSync>
   /** What a bug report carries about this computer, masked, including recent failed runs (private). */
   reportContext(): Promise<ReportContext>
   sendReport(draft: ReportDraft, context: ReportContext): Promise<ReportSent>

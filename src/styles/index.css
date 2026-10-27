@@ -219,6 +219,29 @@ body {
   }
 }
 
+/* A bar for work whose share done the tool does not say: a third of the track slides across. */
+@keyframes slide-across {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.bar-indeterminate {
+  width: 33%;
+  animation: slide-across 1.4s var(--ease-out-quart) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-indeterminate {
+    width: 100%;
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: -200% 0;

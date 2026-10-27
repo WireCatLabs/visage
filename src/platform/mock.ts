@@ -11,6 +11,7 @@ import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
 import { settingsMock } from "./mock-settings"
 import { linkedProfiles, signInMock } from "./mock-signin"
+import { syncMock } from "./mock-sync"
 import { tailscaleMock } from "./mock-tailscale"
 import type {
   Diagnosis,
@@ -493,6 +494,7 @@ export function createMock(os: Platform["os"]): Platform {
     },
     async openSetup() {},
     ...signInMock(),
+    ...syncMock(),
     ...mcpServerMock(),
     ...tailscaleMock(),
     ...cloudflareMock(),

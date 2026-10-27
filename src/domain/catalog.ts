@@ -53,6 +53,16 @@ const ToolSchema = v.object({
   ),
   /** Open tasks with their claim holders, and releasing a claim as the owner. */
   tasks: v.nullable(v.object({ list: v.array(v.string()), release: v.array(v.string()) })),
+  /** The tool's own sync; `run` is null when there is none to start and `note` says how it syncs instead. */
+  sync: v.nullable(
+    v.object({
+      run: v.nullable(v.array(v.string())),
+      last: v.nullable(v.array(v.string())),
+      lastShape: v.picklist(["runs", "driveStatus"]),
+      what: v.picklist(["messages", "files", "meetings", "notes and mail", "mail"]),
+      note: v.nullable(v.string()),
+    }),
+  ),
   storeInfo: v.nullable(v.array(v.string())),
   storeTables: v.nullable(v.array(v.string())),
   storeTableSizes: v.nullable(v.array(v.string())),
@@ -138,6 +148,10 @@ export const usesProfiles = (t: CatalogTool) => t.profiles !== null
 
 /** Whether the app can sign this tool in inside its own window (`sign_in`), with no terminal. */
 export const signsInHere = (t: CatalogTool) => (t.signIn?.methods?.length ?? 0) > 0
+
+/** Whether the app can start this tool's sync; a profile is then needed when its words name one. */
+export const syncsHere = (t: CatalogTool) => (t.sync?.run?.length ?? 0) > 0
+export const syncNeedsProfile = (t: CatalogTool) => t.sync?.run?.includes("{profile}") ?? false
 
 export const signInMethods = (t: CatalogTool) => t.signIn?.methods ?? []
 

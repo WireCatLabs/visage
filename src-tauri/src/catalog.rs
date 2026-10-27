@@ -31,6 +31,8 @@ pub struct Tool {
     /// The HTTP MCP server for browser apps, run in the background by the tool itself; zoom serves none.
     pub mcp_server: Option<McpServerSource>,
     pub tasks: Option<TasksSource>,
+    /// The tool's own sync and where it says when the last one ended; `run` is `None` when it has none to start.
+    pub sync: Option<crate::sync::SyncSource>,
     /// Another tool's id when this one is a part of its package: same `bin`, `package` and `storage`.
     pub part_of: Option<String>,
     pub name: String,

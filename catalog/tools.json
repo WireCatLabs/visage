@@ -52,6 +52,13 @@
         ],
         "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
+      "sync": {
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "2h", "--record", "--json"],
+        "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "messages",
+        "note": null
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
@@ -154,6 +161,13 @@
         ],
         "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
+      "sync": {
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "2h", "--record", "--json"],
+        "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "messages",
+        "note": null
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
@@ -250,6 +264,13 @@
         ],
         "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
       },
+      "sync": {
+        "run": null,
+        "last": null,
+        "lastShape": "runs",
+        "what": "messages",
+        "note": "WhatsApp sends new messages while `wa {profile} serve` runs; there is no sync to start."
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": ["store", "tables", "list", "--json"],
       "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
@@ -319,6 +340,13 @@
       "mcp": null,
       "mcpServer": null,
       "tasks": null,
+      "sync": {
+        "run": ["{profile}", "meetings", "sync", "--record", "--json"],
+        "last": ["runs", "list", "command:\"meetings sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "meetings",
+        "note": null
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
       "storeTableSizes": null,
@@ -394,6 +422,13 @@
         "config": null
       },
       "tasks": null,
+      "sync": {
+        "run": ["{profile}", "sync", "--record", "--json"],
+        "last": ["{profile}", "status", "--json"],
+        "lastShape": "driveStatus",
+        "what": "files",
+        "note": null
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
       "storeTableSizes": null,
@@ -455,6 +490,13 @@
         "config": null
       },
       "tasks": null,
+      "sync": {
+        "run": ["sync", "--record", "--json"],
+        "last": ["runs", "list", "command:sync status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "notes and mail",
+        "note": null
+      },
       "storeInfo": ["store", "info", "--json"],
       "storeTables": null,
       "storeTableSizes": null,
@@ -492,6 +534,13 @@
       "mcp": null,
       "mcpServer": null,
       "tasks": null,
+      "sync": {
+        "run": ["sync", "--only", "mail", "--record", "--json"],
+        "last": ["runs", "list", "command:sync status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "mail",
+        "note": null
+      },
       "storeInfo": null,
       "storeTables": null,
       "storeTableSizes": null,

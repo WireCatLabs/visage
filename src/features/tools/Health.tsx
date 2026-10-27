@@ -15,6 +15,7 @@ import {
   isValidProfile,
   setupCommand,
   signsInHere,
+  syncNeedsProfile,
   usesProfiles,
 } from "@/domain/catalog"
 import { type ConfigPlace, type Finding, summarize } from "@/domain/doctor"
@@ -29,6 +30,7 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
+import { SyncControl } from "./Sync"
 
 type Check = { profile: string | null; state: "running" } | { profile: string | null; state: "done"; result: Diagnosis }
 
@@ -83,6 +85,9 @@ export function Health({ tool }: { tool: CatalogTool }) {
         />
       )}
 
+      {tool.sync && !syncNeedsProfile(tool) && tool.sync.run && <SyncControl tool={tool} profile={null} />}
+      {tool.sync?.note && <p className="text-[0.875rem] text-ink-soft">{tool.sync.note.replace(" {profile}", "")}</p>}
+
       {checkError && (
         <ErrorNotice inline action={<ReportThis what={`Checking ${tool.name}`} tool={tool.id} error={checkError} />}>
           {checkError}
@@ -124,28 +129,31 @@ function ProfileList(props: {
       ) : profiles && profiles.length > 0 ? (
         <ul className="divide-y divide-line overflow-hidden rounded-[0.45rem] border border-line bg-app">
           {profiles.map((p) => (
-            <li key={p.name} className="flex items-center gap-3 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-              {p.signedIn === true && <Pill tone="brand">signed in</Pill>}
-              {p.signedIn === false && <Pill>not signed in</Pill>}
-              {onCheck && (
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => onCheck(p.name)}>
-                  {busy && activeProfile === p.name ? "Checking…" : "Check"}
-                </Button>
-              )}
-              {tool.setup && p.signedIn !== true && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    signsInHere(tool)
-                      ? useSignIn.getState().start(tool.id, p.name, onReload)
-                      : platform.openSetup(tool.id, p.name)
-                  }
-                >
-                  {p.signedIn === false ? "Sign in" : "Set up"}
-                </Button>
-              )}
+            <li key={p.name} className="flex flex-col gap-1.5 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+                {p.signedIn === true && <Pill tone="brand">signed in</Pill>}
+                {p.signedIn === false && <Pill>not signed in</Pill>}
+                {onCheck && (
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => onCheck(p.name)}>
+                    {busy && activeProfile === p.name ? "Checking…" : "Check"}
+                  </Button>
+                )}
+                {tool.setup && p.signedIn !== true && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      signsInHere(tool)
+                        ? useSignIn.getState().start(tool.id, p.name, onReload)
+                        : platform.openSetup(tool.id, p.name)
+                    }
+                  >
+                    {p.signedIn === false ? "Sign in" : "Set up"}
+                  </Button>
+                )}
+              </div>
+              {syncNeedsProfile(tool) && p.signedIn !== false && <SyncControl tool={tool} profile={p.name} />}
             </li>
           ))}
         </ul>
