@@ -8,7 +8,7 @@ import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
-import { addressOf, type Step, type StepId, stepsOf } from "./tailscale-steps"
+import { type Step, type StepId, stepsOf } from "./tailscale-steps"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -450,24 +450,6 @@ function FunnelStep({ s }: { s: TailscaleStatus }) {
   )
 }
 
-function ConnectStep({ s, tool }: { s: TailscaleStatus; tool: string }) {
-  const address = addressOf(s, tool)
-  return (
-    <>
-      <Para>
-        Press Start below. WireCat turns Funnel on from{" "}
-        {address ? <span className="selectable font-mono text-ink">{address}</span> : "a public address"} to this
-        server, then starts the server with that address.
-      </Para>
-      <Note>
-        Every tool gets its own path on the same address, and the address stays the same next time, so browser apps stay
-        logged in. Funnel opens only this path and the two paths a browser app reads the login from, and the server
-        still asks every app for its login code. Stopping the server turns these paths off.
-      </Note>
-    </>
-  )
-}
-
 function StepHead({
   step,
   index,
@@ -483,8 +465,7 @@ function StepHead({
   checked: boolean
   onCheck(): void
 }) {
-  // The last step is the Start button itself: it is ready, never already done.
-  const finished = step.done && step.id !== "connect"
+  const finished = step.done
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span
@@ -501,7 +482,7 @@ function StepHead({
         {step.title}
         <span className="sr-only">{finished ? ", done" : open ? ", current step" : ", not done yet"}</span>
       </h3>
-      {(open || checked) && step.id !== "connect" && (
+      {(open || checked) && (
         <span className="ml-auto flex items-center gap-2">
           {checked && !checking && (
             <span className={cx("text-[0.85rem]", step.done ? "text-ok" : "text-ink-soft")} role="status">
@@ -518,7 +499,7 @@ function StepHead({
 }
 
 /** The four steps from nothing to a public address: each says what it is, why, and what the person will see. */
-export function TailscaleGuide({ tailscale, tool }: { tailscale: ReturnType<typeof useTailscale>; tool: string }) {
+export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof useTailscale> }) {
   const { status, error, checking, check } = tailscale
   const [checked, setChecked] = useState<StepId | null>(null)
 
@@ -529,13 +510,13 @@ export function TailscaleGuide({ tailscale, tool }: { tailscale: ReturnType<type
       <Skeleton className="h-[14rem] w-full" label="Reading Tailscale's state" />
     )
 
-  const steps = stepsOf(status)
-  const current = steps.find((s) => !s.done)?.id ?? "connect"
-  const body: Record<StepId, ReactNode> = {
+  // Its last step, a free public port, is not a task for the owner: the guide's own Start step says when none is left.
+  const steps = stepsOf(status).filter((s) => s.id !== "connect")
+  const current = steps.find((s) => !s.done)?.id ?? null
+  const body: Record<Exclude<StepId, "connect">, ReactNode> = {
     install: <InstallStep s={status} />,
     login: <LoginStep s={status} check={check} />,
     funnel: <FunnelStep s={status} />,
-    connect: <ConnectStep s={status} tool={tool} />,
   }
 
   return (
@@ -560,11 +541,8 @@ export function TailscaleGuide({ tailscale, tool }: { tailscale: ReturnType<type
             />
             {open && (
               <div className="flex flex-col gap-2.5 pl-9 text-[0.9rem]">
-                {step.missing && step.id !== "connect" && checked === step.id && (
-                  <p className="text-warn-ink">{step.missing}</p>
-                )}
-                {step.id === "connect" && step.missing && <p className="text-warn-ink">{step.missing}</p>}
-                {body[step.id]}
+                {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
+                {step.id !== "connect" && body[step.id]}
                 <Note>
                   <Link href={guideUrl(step.id, status)}>Full guide</Link> for this step on wirecat.dev.
                 </Note>

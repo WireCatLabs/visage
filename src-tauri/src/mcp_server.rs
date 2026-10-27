@@ -39,6 +39,23 @@ pub struct Client {
     /// What the app called itself when it registered. Anyone may register, so the interface says "calls itself".
     pub claimed_name: Option<String>,
     pub last_login_at: String,
+    /// From cli-core 0.454: the app's last MCP request of any kind, so it reached the server after logging in.
+    pub last_request_at: Option<String>,
+    /// Its last `tools/call`: the tool's name and when. Never its arguments; the tool does not keep them.
+    pub last_tool: Option<String>,
+    pub last_tool_at: Option<String>,
+    /// None from a tool too old to report activity, so the interface can say to check the answer in the app.
+    pub tool_calls_today: Option<u32>,
+}
+
+/// The issuer's metadata, for typing into a browser app that cannot find it itself (BUG-15).
+#[derive(Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthSettings {
+    pub issuer: String,
+    pub authorization_endpoint: String,
+    pub token_endpoint: String,
+    pub registration_endpoint: Option<String>,
 }
 
 fn source(tool: &Tool) -> Result<&McpServerSource, String> {
@@ -121,6 +138,11 @@ fn readable_name(s: &str) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
+/// Any app may call any name; cli-core keeps only names of this shape, and so does the interface.
+fn tool_name(s: &str) -> bool {
+    (1..=64).contains(&s.len()) && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'))
+}
+
 fn code(v: &Value) -> Option<LoginCode> {
     let code = v["code"].as_str()?;
     let shape = code.len() == 9
@@ -139,9 +161,14 @@ fn status_of(v: &Value) -> Option<ServerStatus> {
         .into_iter()
         .flatten()
         .filter_map(|c| {
+            let time = |key: &str| c[key].as_str().filter(|s| plain(s) && s.len() <= 40).map(str::to_string);
             Some(Client {
                 claimed_name: c["claimed_name"].as_str().and_then(readable_name),
-                last_login_at: c["last_login_at"].as_str().filter(|s| plain(s))?.to_string(),
+                last_login_at: time("last_login_at")?,
+                last_request_at: time("last_request_at"),
+                last_tool: c["last_tool"].as_str().filter(|s| tool_name(s)).map(str::to_string),
+                last_tool_at: time("last_tool_at"),
+                tool_calls_today: c["tool_calls_today"].as_u64().and_then(|n| u32::try_from(n).ok()),
             })
         })
         .collect();
@@ -227,6 +254,51 @@ pub fn stop(tool: &Tool) -> Result<(), String> {
 /// `mcp --revoke`: every browser app must log in again.
 pub fn revoke(tool: &Tool) -> Result<(), String> {
     answer(tool, &catalog::with_profile(&source(tool)?.revoke, None)?, Duration::from_secs(30)).map(|_| ())
+}
+
+/// Every address must be on the connector's own origin: the server builds them from its public address.
+fn oauth_settings(v: &Value, origin: &str) -> Option<OAuthSettings> {
+    let on_origin = |key: &str| {
+        v[key]
+            .as_str()
+            .filter(|u| plain(u) && (*u == origin || u.starts_with(&format!("{origin}/"))))
+            .map(str::to_string)
+    };
+    Some(OAuthSettings {
+        issuer: on_origin("issuer")?,
+        authorization_endpoint: on_origin("authorization_endpoint")?,
+        token_endpoint: on_origin("token_endpoint")?,
+        registration_endpoint: on_origin("registration_endpoint"),
+    })
+}
+
+fn origin_of(url: &str) -> Option<&str> {
+    let scheme = url.find("://")? + 3;
+    Some(url[scheme..].find('/').map_or(url, |slash| &url[..scheme + slash]))
+}
+
+/// Read from the running server on this computer, not through the tunnel: a computer often cannot reach its own
+/// Funnel address. The document's addresses are the public ones all the same, built from `--public-url`.
+pub fn oauth(tool: &Tool) -> Result<OAuthSettings, String> {
+    let s = status(tool)?;
+    let (Some(port), Some(url)) = (s.port.filter(|_| s.listening), s.connector_url) else {
+        return Err(format!("The MCP server for {} is not running.", tool.name));
+    };
+    let origin = origin_of(&url).ok_or("the server's address has no origin")?.to_string();
+    let agent: ureq::Agent =
+        ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(5))).max_redirects(0).build().into();
+    let read = |e: ureq::Error| format!("Could not read the server's login settings: {e}");
+    let body = agent
+        .get(&format!("http://127.0.0.1:{port}/.well-known/oauth-authorization-server"))
+        .call()
+        .map_err(read)?
+        .body_mut()
+        .with_config()
+        .limit(64 * 1024)
+        .read_to_string()
+        .map_err(read)?;
+    let v: Value = serde_json::from_str(&body).map_err(|e| format!("The server's login settings are not JSON: {e}"))?;
+    oauth_settings(&v, &origin).ok_or_else(|| "The server's login settings do not match its address.".to_string())
 }
 
 /// `mcp config`: the entry desktop apps (Claude Desktop, Cursor) paste, with full paths and no credentials.
@@ -316,6 +388,44 @@ mod tests {
         assert_eq!(s.clients.len(), 2);
         assert_eq!(s.clients[0].claimed_name.as_deref(), Some("Claudegnp.exe"));
         assert_eq!(s.clients[1].claimed_name, None);
+    }
+
+    #[test]
+    fn reads_what_each_app_last_called_and_drops_a_name_that_is_not_a_tool() {
+        let v = json!({"item": {"running": true, "clients": [
+            {"claimed_name": "ChatGPT", "last_login_at": "2026-10-27T10:00:00Z", "last_request_at": "2026-10-27T10:02:00Z",
+             "last_tool": "tg_read", "last_tool_at": "2026-10-27T10:02:00Z", "tool_calls_today": 3},
+            {"claimed_name": "x", "last_login_at": "2026-10-27T10:00:00Z", "last_tool": "<img src=x>", "tool_calls_today": -1},
+            {"claimed_name": "old cli-core", "last_login_at": "2026-10-27T10:00:00Z"}
+        ]}});
+        let s = status_of(&v).unwrap();
+        assert_eq!(s.clients[0].last_tool.as_deref(), Some("tg_read"));
+        assert_eq!(s.clients[0].last_request_at.as_deref(), Some("2026-10-27T10:02:00Z"));
+        assert_eq!(s.clients[0].tool_calls_today, Some(3));
+        assert_eq!((s.clients[1].last_tool.as_deref(), s.clients[1].tool_calls_today), (None, None));
+        assert_eq!(s.clients[2].tool_calls_today, None);
+        assert_eq!((s.clients[2].last_request_at.as_deref(), s.clients[2].last_tool_at.as_deref()), (None, None));
+    }
+
+    #[test]
+    fn takes_login_settings_only_on_the_connectors_origin() {
+        let origin = origin_of("https://x.ts.net/tg/mcp").unwrap();
+        assert_eq!(origin, "https://x.ts.net");
+        let v = json!({
+            "issuer": "https://x.ts.net/tg",
+            "authorization_endpoint": "https://x.ts.net/tg/authorize",
+            "token_endpoint": "https://x.ts.net/tg/token",
+            "registration_endpoint": "https://x.ts.net/tg/register"
+        });
+        let s = oauth_settings(&v, origin).unwrap();
+        assert_eq!(s.issuer, "https://x.ts.net/tg");
+        assert_eq!(s.registration_endpoint.as_deref(), Some("https://x.ts.net/tg/register"));
+        let elsewhere = json!({"issuer": "https://x.ts.net/tg", "authorization_endpoint": "https://evil.example/authorize",
+            "token_endpoint": "https://x.ts.net/tg/token"});
+        assert_eq!(oauth_settings(&elsewhere, origin), None);
+        let lookalike = json!({"issuer": "https://x.ts.net.evil.example", "authorization_endpoint": "https://x.ts.net/a",
+            "token_endpoint": "https://x.ts.net/t"});
+        assert_eq!(oauth_settings(&lookalike, origin), None);
     }
 
     #[test]

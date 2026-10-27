@@ -436,6 +436,12 @@ async fn mcp_server_revoke(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn mcp_server_oauth(id: String) -> Result<mcp_server::OAuthSettings, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || mcp_server::oauth(tool)).await?
+}
+
+#[tauri::command]
 async fn mcp_server_config(id: String) -> Result<String, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || mcp_server::config(tool)).await?
@@ -615,6 +621,7 @@ pub fn run() {
             mcp_server_stop,
             mcp_server_revoke,
             mcp_server_config,
+            mcp_server_oauth,
             tailscale_status,
             tailscale_download,
             tailscale_terminal,

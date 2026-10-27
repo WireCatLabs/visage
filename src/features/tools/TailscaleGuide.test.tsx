@@ -32,7 +32,7 @@ const MISSING: TailscaleStatus = {
 }
 
 const show = (status: TailscaleStatus) =>
-  render(<TailscaleGuide tailscale={{ status, error: null, checking: false, check: async () => {} }} tool="tg" />)
+  render(<TailscaleGuide tailscale={{ status, error: null, checking: false, check: async () => {} }} />)
 
 describe("Tailscale guide on Linux", () => {
   it("offers the package first, then Tailscale's commands for this release, which keep it updated", async () => {

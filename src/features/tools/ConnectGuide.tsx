@@ -1,0 +1,795 @@
+import { Check } from "lucide-react"
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
+import type { CatalogTool } from "@/domain/catalog"
+import { platform } from "@/platform/bridge"
+import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schemas"
+import type { FunnelState } from "@/platform/tailscale-schemas"
+import { Button } from "@/ui/Button"
+import { CopyField } from "@/ui/CopyField"
+import { cx } from "@/ui/cx"
+import { Disclosure } from "@/ui/Disclosure"
+import { ErrorNotice } from "@/ui/ErrorNotice"
+import { Lamp } from "@/ui/Lamp"
+import { APPS, type AppId, type AppStep, connectorName, testPrompt } from "./connect-apps"
+import { scenarioOf } from "./connect-scenario"
+import {
+  appLabel,
+  type ConnectStepId,
+  currentStep,
+  STEP_TITLES,
+  serving,
+  stepStates,
+  type TestState,
+  testState,
+} from "./connect-steps"
+import { formProblem } from "./McpServerDialogs"
+import { TailscaleGuide, useTailscale } from "./TailscaleGuide"
+import { addressOf, stepsOf } from "./tailscale-steps"
+
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const DEFAULT_PORT = 8765
+const POLL_MS = 4000
+/** How long the test waits before it suggests what may be wrong. */
+const QUIET_MS = 60_000
+
+type Tunnel = "tailscale" | "own"
+type Phase = "idle" | "funnel" | "server" | "failed"
+type Failure = { at: "funnel" | "server"; message: string }
+
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+
+/**
+ * From "I want ChatGPT to use my Telegram" to the first call arriving, on one surface that stays until the owner
+ * closes it. Each step says what happens before anything runs; a step already done is a tick in the rail.
+ */
+export function ConnectGuide(props: {
+  tool: CatalogTool
+  server: McpServerStatus | null
+  funnel: FunnelState | null
+  reload(): Promise<void>
+  settle(s: McpServerStatus): void
+  onDone(): void
+}) {
+  const { tool, server, funnel, reload, settle, onDone } = props
+  const scenario = useRef(scenarioOf(tool.id)).current
+  const [app, setApp] = useState<AppId | null>(scenario?.app ?? null)
+  const [tunnel, setTunnel] = useState<Tunnel>("tailscale")
+  const [confirmed, setConfirmed] = useState(scenario?.confirmed ?? false)
+  const [added, setAdded] = useState(scenario?.added ?? false)
+  const [phase, setPhase] = useState<Phase>("idle")
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const [approval, setApproval] = useState<string | null>(null)
+  const [ownUrl, setOwnUrl] = useState("")
+  const [port, setPort] = useState(String(tool.mcpServer?.port ?? DEFAULT_PORT))
+  const since = useRef(Date.now()).current
+
+  const progress = { app, addressReady: confirmed, server, added }
+  const current = currentStep(progress)
+  const test = testState(server, since)
+  const tailscale = useTailscale(current === "address" && tunnel === "tailscale")
+
+  // An app that logs in while the owner still reads the instructions moves the guide on by itself.
+  useEffect(() => {
+    if (current === "connect" && test.state !== "waiting") setAdded(true)
+  }, [current, test.state])
+
+  const watching = (current === "connect" || current === "test") && test.state !== "called"
+  useEffect(() => {
+    if (!watching) return
+    const t = setInterval(reload, POLL_MS)
+    return () => clearInterval(t)
+  }, [watching, reload])
+
+  // Strict mode runs effects twice; the server must start once per press.
+  const attempt = useRef(scenario?.confirmed ? 1 : 0)
+  const started = useRef(0)
+  const start = useCallback(async () => {
+    setFailure(null)
+    setApproval(null)
+    let at: Failure["at"] = "server"
+    try {
+      if (tunnel === "tailscale") {
+        setPhase("funnel")
+        at = "funnel"
+        const address = await platform.tailscaleFunnelOpen(tool.id, Number(port), setApproval)
+        setPhase("server")
+        at = "server"
+        try {
+          settle(await platform.mcpServerStart(tool.id, Number(port), address))
+        } catch (e) {
+          await platform.tailscaleFunnelClose(tool.id).catch(() => {})
+          throw e
+        }
+      } else {
+        setPhase("server")
+        settle(await platform.mcpServerStart(tool.id, Number(port), ownUrl.trim().replace(/\/$/, "")))
+      }
+      setPhase("idle")
+    } catch (e) {
+      if (message(e) === "Stopped.") {
+        setPhase("idle")
+        setConfirmed(false)
+        return
+      }
+      setFailure({ at, message: message(e) })
+      setPhase("failed")
+    }
+  }, [tunnel, tool.id, port, ownUrl, settle])
+
+  useEffect(() => {
+    if (current !== "start" || started.current === attempt.current) return
+    started.current = attempt.current
+    start()
+  }, [current, start])
+
+  const confirm = () => {
+    attempt.current++
+    setConfirmed(true)
+  }
+
+  const retry = () => {
+    started.current = ++attempt.current
+    start()
+  }
+
+  const back = () => {
+    setConfirmed(false)
+    setPhase("idle")
+    setFailure(null)
+  }
+
+  // Focus follows the step, so a keyboard or screen reader user lands on what changed. Not on the first render: the
+  // owner's own click put focus where it is.
+  const heading = useRef<HTMLHeadingElement>(null)
+  const shown = useRef(current)
+  useEffect(() => {
+    if (shown.current === current) return
+    shown.current = current
+    heading.current?.focus()
+  }, [current])
+
+  const funnelOff = tunnel === "tailscale" && serving(server) && funnel !== null && !funnel.live
+  const name = app ? APPS[app].name : "the app"
+
+  const summary: Partial<Record<ConnectStepId, string | undefined>> = {
+    choose: app ? APPS[app].name : undefined,
+    address: serving(server) ? new URL(server.connectorUrl).host : undefined,
+    start: serving(server) && server.port ? `Running on port ${server.port}` : undefined,
+    connect: added ? "Added" : undefined,
+  }
+
+  return (
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6">
+      <Rail current={current} summary={summary} onChoose={current !== "choose" ? () => setApp(null) : undefined} />
+      <div
+        key={current}
+        className="step-in flex min-w-0 flex-col gap-3.5 rounded-[0.45rem] border border-line bg-app px-5 py-4"
+        aria-live="polite"
+      >
+        <h5
+          ref={heading}
+          tabIndex={-1}
+          className="text-[1.05rem] font-semibold text-ink outline-none focus-visible:outline-2"
+        >
+          {current === "test" && test.state === "called" ? `${name} can use ${tool.name}` : STEP_TITLES[current]}
+        </h5>
+        {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
+        {current === "address" && (
+          <AddressStep
+            tool={tool}
+            appName={name}
+            tunnel={tunnel}
+            setTunnel={setTunnel}
+            tailscale={tailscale}
+            ownUrl={ownUrl}
+            setOwnUrl={setOwnUrl}
+            port={port}
+            setPort={setPort}
+            onConfirm={confirm}
+          />
+        )}
+        {current === "start" && (
+          <StartStep
+            tool={tool}
+            tunnel={tunnel}
+            phase={phase}
+            failure={failure}
+            approval={approval}
+            onRetry={retry}
+            onBack={back}
+          />
+        )}
+        {funnelOff && (current === "connect" || current === "test") && (
+          <FunnelOff tool={tool} port={server?.port ?? Number(port)} name={name} reload={reload} />
+        )}
+        {current === "connect" && app && serving(server) && (
+          <ConnectStep tool={tool} app={app} server={server} onAdded={() => setAdded(true)} />
+        )}
+        {current === "test" && app && serving(server) && (
+          <TestStep
+            tool={tool}
+            app={app}
+            server={server}
+            test={test}
+            since={since}
+            quietFromStart={scenario?.quiet ?? false}
+            onBack={() => setAdded(false)}
+            onDone={onDone}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Rail(props: {
+  current: ConnectStepId
+  summary: Partial<Record<ConnectStepId, string | undefined>>
+  onChoose?: (() => void) | undefined
+}) {
+  const { current, summary, onChoose } = props
+  return (
+    <ol className="flex flex-col gap-0.5" aria-label="Steps">
+      {stepStates(current).map((step, i) => (
+        <li
+          key={step.id}
+          aria-current={step.state === "current" ? "step" : undefined}
+          className="relative flex gap-3 pb-3 last:pb-0"
+        >
+          {i < 4 && (
+            <span
+              aria-hidden
+              className={cx(
+                "absolute top-7 bottom-0 left-[0.7rem] w-[2px] -translate-x-1/2 transition-colors duration-500",
+                step.state === "done" ? "bg-ok/60" : "bg-line-strong",
+              )}
+            />
+          )}
+          <span
+            aria-hidden
+            className={cx(
+              "relative z-10 grid size-[1.4rem] shrink-0 place-items-center rounded-full text-[0.75rem] font-semibold tabular-nums transition-colors duration-300",
+              step.state === "done" && "bg-ok text-on-status",
+              step.state === "current" && "bg-brand text-brand-ink",
+              step.state === "todo" && "bg-app-3 text-ink-dim",
+            )}
+          >
+            {step.state === "done" ? <Check className="size-3" strokeWidth={3} /> : i + 1}
+          </span>
+          <span className="flex min-w-0 flex-col pt-px">
+            <span
+              className={cx(
+                "text-[0.92rem]",
+                step.state === "current"
+                  ? "font-semibold text-ink"
+                  : step.state === "done"
+                    ? "text-ink"
+                    : "text-ink-dim",
+              )}
+            >
+              <span className="sr-only">Step {i + 1}: </span>
+              {step.title}
+              <span className="sr-only">
+                {step.state === "done" ? ", done" : step.state === "current" ? ", current step" : ""}
+              </span>
+            </span>
+            {step.state === "done" && summary[step.id] && (
+              <span className="flex min-w-0 items-baseline gap-2 text-[0.8rem] text-ink-dim">
+                <span className="truncate">{summary[step.id]}</span>
+                {step.id === "choose" && onChoose && (
+                  <button
+                    type="button"
+                    className="shrink-0 text-brand underline hover:text-brand-hover"
+                    onClick={onChoose}
+                  >
+                    Change
+                  </button>
+                )}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function Para({ children }: { children: ReactNode }) {
+  return <p className="max-w-[64ch] text-[0.92rem] text-ink-soft">{children}</p>
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="max-w-[64ch] text-[0.84rem] text-ink-dim">{children}</p>
+}
+
+function Link({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="text-brand underline hover:text-brand-hover"
+      onClick={() => platform.openUrl(href)}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ChooseStep({ tool, onChoose }: { tool: CatalogTool; onChoose(app: AppId): void }) {
+  return (
+    <>
+      <Para>Which app should use {tool.name}? The steps after this one are written for it.</Para>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(["chatgpt", "claude", "other"] as const).map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChoose(id)}
+            className="flex flex-col items-start gap-0.5 rounded-[0.45rem] border border-line-strong bg-app px-3.5 py-3 text-left transition-colors duration-150 hover:border-brand hover:bg-brand-soft/40"
+          >
+            <span className="text-[0.98rem] font-semibold text-ink">{APPS[id].name}</span>
+            <span className="text-[0.82rem] text-ink-soft">{APPS[id].hint}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+const inputClass =
+  "h-8 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.8rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
+
+function AddressStep(props: {
+  tool: CatalogTool
+  appName: string
+  tunnel: Tunnel
+  setTunnel(t: Tunnel): void
+  tailscale: ReturnType<typeof useTailscale>
+  ownUrl: string
+  setOwnUrl(u: string): void
+  port: string
+  setPort(p: string): void
+  onConfirm(): void
+}) {
+  const { tool, appName, tunnel, setTunnel, tailscale, ownUrl, setOwnUrl, port, setPort, onConfirm } = props
+  const id = useId()
+  const [problem, setProblem] = useState<string | null>(null)
+  const status = tailscale.status
+  const steps = status ? stepsOf(status) : []
+  const ready = steps.length > 0 && steps.every((s) => s.done)
+  const full = steps.find((s) => s.id === "connect" && !s.done && s.missing !== "Waits for the step before it.")
+  const address = status ? addressOf(status, tool.id) : null
+
+  const submit = () => {
+    const wrong = formProblem(tunnel === "own" ? ownUrl.trim() : "https://x.ts.net", port)
+    if (wrong) return setProblem(wrong)
+    setProblem(null)
+    onConfirm()
+  }
+
+  if (tunnel === "own")
+    return (
+      <>
+        <Para>
+          Type the https address of your tunnel (cloudflared, ngrok, or a Tailscale Funnel you run) and point it at
+          127.0.0.1:{port || DEFAULT_PORT} on this computer.
+        </Para>
+        <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
+          <span className="text-[0.85rem] font-medium text-ink-dim">The tunnel's address</span>
+          <input
+            id={`${id}-url`}
+            className={`${inputClass} w-full max-w-[32rem]`}
+            value={ownUrl}
+            onChange={(e) => setOwnUrl(e.target.value)}
+            placeholder={`https://laptop.tail1234.ts.net/${tool.id}`}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <Note>
+          With a path such as /{tool.id}, the tunnel must also route /.well-known/oauth-authorization-server/{tool.id}{" "}
+          and /.well-known/oauth-protected-resource/{tool.id} here.
+        </Note>
+        <PortField id={`${id}-port`} port={port} setPort={setPort} />
+        {problem && <ErrorNotice inline>{problem}</ErrorNotice>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="primary" onClick={submit}>
+            Start the server
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setTunnel("tailscale")}>
+            Use Tailscale Funnel instead
+          </Button>
+        </div>
+      </>
+    )
+
+  return (
+    <>
+      <Para>
+        {tool.name} runs on this computer and {appName} runs on its own servers, so it needs an address on the internet
+        that leads here. Tailscale Funnel gives this computer one that stays the same, and only the paths of this server
+        are open; every app still has to log in with a code from WireCat.
+      </Para>
+      <TailscaleGuide tailscale={tailscale} />
+      {full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
+      {ready && (
+        <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
+          <p className="text-[0.92rem] text-ink">
+            The address will be{" "}
+            <span className="selectable font-mono">
+              {address ? `${address}/mcp` : "on this computer's Tailscale name"}
+            </span>
+            .
+          </p>
+          <Note>
+            Next, WireCat turns on Tailscale Funnel for it and starts {tool.bin}'s server in the background. It keeps
+            running until you stop it, and the address stays the same next time.
+          </Note>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="primary" onClick={submit}>
+              Start the server
+            </Button>
+          </div>
+        </div>
+      )}
+      {problem && <ErrorNotice inline>{problem}</ErrorNotice>}
+      <Disclosure summary="Use a tunnel I run myself, or another port">
+        <div className="flex flex-col gap-2.5">
+          <PortField id={`${id}-port`} port={port} setPort={setPort} />
+          <div>
+            <Button size="sm" onClick={() => setTunnel("own")}>
+              Type my tunnel's address
+            </Button>
+          </div>
+        </div>
+      </Disclosure>
+    </>
+  )
+}
+
+function PortField({ id, port, setPort }: { id: string; port: string; setPort(p: string): void }) {
+  return (
+    <label className="flex flex-col gap-1" htmlFor={id}>
+      <span className="text-[0.85rem] font-medium text-ink-dim">Port on this computer</span>
+      <input
+        id={id}
+        className={`${inputClass} w-28`}
+        value={port}
+        onChange={(e) => setPort(e.target.value)}
+        inputMode="numeric"
+      />
+    </label>
+  )
+}
+
+function Progress({ state, children }: { state: "busy" | "done" | "todo" | "failed"; children: ReactNode }) {
+  const tone = { busy: "busy", done: "ok", todo: "idle", failed: "bad" } as const
+  const label = { busy: "In progress", done: "Done", todo: "Not started", failed: "Failed" }[state]
+  return (
+    <li className="flex items-center gap-2.5">
+      <Lamp tone={tone[state]} size="sm" label={label} />
+      <span className={cx("text-[0.92rem]", state === "todo" ? "text-ink-dim" : "text-ink")}>{children}</span>
+    </li>
+  )
+}
+
+function StartStep(props: {
+  tool: CatalogTool
+  tunnel: Tunnel
+  phase: Phase
+  failure: Failure | null
+  approval: string | null
+  onRetry(): void
+  onBack(): void
+}) {
+  const { tool, tunnel, phase, failure, approval, onRetry, onBack } = props
+  const failedAt = phase === "failed" ? failure?.at : undefined
+  const funnel = phase === "funnel" ? "busy" : failedAt === "funnel" ? "failed" : phase === "idle" ? "todo" : "done"
+  const server = phase === "server" ? "busy" : failedAt === "server" ? "failed" : "todo"
+  return (
+    <>
+      <ul className="flex flex-col gap-2">
+        {tunnel === "tailscale" && (
+          <Progress state={funnel}>Turn on Tailscale Funnel for {tool.bin}'s address</Progress>
+        )}
+        <Progress state={server}>Start {tool.bin}'s server and wait until it answers</Progress>
+      </ul>
+      {phase === "funnel" && approval && (
+        <p className="text-[0.92rem] text-ink">
+          Tailscale asks you to approve Funnel for your network in the page that opened in your browser.{" "}
+          <Link href={approval}>Open it again</Link>
+        </p>
+      )}
+      {phase === "funnel" && (
+        <div>
+          <Button size="sm" variant="ghost" onClick={() => platform.tailscaleStop()}>
+            Stop
+          </Button>
+        </div>
+      )}
+      {failure && phase === "failed" && (
+        <>
+          <ErrorNotice inline>{failure.message}</ErrorNotice>
+          <Note>
+            {/in use|EADDRINUSE/i.test(failure.message)
+              ? "Another program uses this port. Go back, open “Use a tunnel I run myself, or another port”, choose another port and start again."
+              : "Nothing was left running. Try again, or go back and change the address or port."}
+          </Note>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onBack}>
+              Back to the address
+            </Button>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+function Field({ label, value, copyLabel }: { label: string; value: string; copyLabel: string }) {
+  return (
+    <div className="min-w-0">
+      <span className="mb-1 block text-[0.8rem] font-medium text-ink-dim">{label}</span>
+      <CopyField value={value} label={copyLabel} />
+    </div>
+  )
+}
+
+function Copy({ step, tool, server }: { step: AppStep; tool: CatalogTool; server: McpServerStatus }) {
+  if (step.copy === "url" && server.connectorUrl)
+    return <CopyField value={server.connectorUrl} label="Copy the server address" />
+  if (step.copy === "name") return <CopyField value={connectorName(tool)} label="Copy the name" />
+  if (step.copy === "code")
+    return server.loginCode ? (
+      <div className="flex flex-col gap-1">
+        <CopyField value={server.loginCode.code} label="Copy the login code" />
+        <span className="text-[0.8rem] text-ink-dim tabular-nums">
+          Works until {clock(server.loginCode.expiresAt)}; a new one appears here then.
+        </span>
+      </div>
+    ) : (
+      <Note>The code appears here in a moment.</Note>
+    )
+  return null
+}
+
+function ConnectStep(props: { tool: CatalogTool; app: AppId; server: McpServerStatus; onAdded(): void }) {
+  const { tool, app, server, onAdded } = props
+  const spec = APPS[app]
+  return (
+    <>
+      <Para>
+        {tool.bin}'s server is running. Do this in {spec.name}; WireCat watches for it to log in.
+      </Para>
+      <ol className="flex flex-col gap-3">
+        {spec.steps.map((step, i) => (
+          <li key={step.text} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 gap-y-1.5">
+            <span className="pt-px text-[0.9rem] font-semibold text-ink-dim tabular-nums">{i + 1}.</span>
+            <span className="text-[0.92rem] text-ink">
+              {step.text}
+              {step.link && (
+                <>
+                  {" "}
+                  <Link href={step.link.href}>{step.link.label}</Link>
+                </>
+              )}
+            </span>
+            {step.copy && (
+              <div className="col-start-2 max-w-[34rem]">
+                <Copy step={step} tool={tool} server={server} />
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+      <Note>
+        {spec.limits}
+        {spec.help && (
+          <>
+            {" "}
+            <Link href={spec.help.href}>{spec.help.label}</Link>.
+          </>
+        )}
+      </Note>
+      <DiscoveryHelp tool={tool} app={app} />
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button size="sm" variant="primary" onClick={onAdded}>
+          I added it, test the connection
+        </Button>
+      </div>
+    </>
+  )
+}
+
+/** BUG-15: an app that does not find the login settings under a path can be given them by hand. */
+function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
+  const [settings, setSettings] = useState<OAuthSettings | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const name = APPS[app].name
+  const load = async () => {
+    if (settings) return
+    try {
+      setSettings(await platform.mcpServerOAuth(tool.id))
+    } catch (e) {
+      setError(message(e))
+    }
+  }
+  return (
+    <div onClickCapture={load}>
+      <Disclosure summary={`If ${app === "other" ? "the app" : name} says it couldn't discover OAuth settings`}>
+        <div className="flex flex-col gap-2.5">
+          <Note>
+            The app should read these from the server by itself. If its form has advanced OAuth settings, type them
+            there, read from the running server:
+          </Note>
+          {error && <ErrorNotice inline>{error}</ErrorNotice>}
+          {settings && (
+            <div className="grid gap-2.5 md:grid-cols-2">
+              <Field
+                label="Authorization URL"
+                value={settings.authorizationEndpoint}
+                copyLabel="Copy the authorization URL"
+              />
+              <Field label="Token URL" value={settings.tokenEndpoint} copyLabel="Copy the token URL" />
+              {settings.registrationEndpoint && (
+                <Field
+                  label="Registration URL"
+                  value={settings.registrationEndpoint}
+                  copyLabel="Copy the registration URL"
+                />
+              )}
+              <Field label="Issuer" value={settings.issuer} copyLabel="Copy the issuer" />
+            </div>
+          )}
+        </div>
+      </Disclosure>
+    </div>
+  )
+}
+
+function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reload(): Promise<void> }) {
+  const { tool, port, name, reload } = props
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const turnOn = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await platform.tailscaleFunnelOpen(tool.id, port, () => {})
+      await reload()
+    } catch (e) {
+      setError(message(e))
+    }
+    setBusy(false)
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3.5 py-2.5">
+      <p className="text-[0.9rem] text-warn-ink">
+        Tailscale Funnel is off for this server, so {name} cannot reach it. Turn it on again; the address stays the
+        same.
+      </p>
+      {error && <ErrorNotice inline>{error}</ErrorNotice>}
+      <div>
+        <Button size="sm" onClick={turnOn} disabled={busy}>
+          {busy ? "Turning Funnel on…" : "Turn Funnel on"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function TestStep(props: {
+  tool: CatalogTool
+  app: AppId
+  server: McpServerStatus
+  test: TestState
+  since: number
+  quietFromStart: boolean
+  onBack(): void
+  onDone(): void
+}) {
+  const { tool, app, server, test, since, quietFromStart, onBack, onDone } = props
+  const name = APPS[app].name
+  const [quiet, setQuiet] = useState(quietFromStart)
+  useEffect(() => {
+    if (test.state !== "waiting" || quiet) return
+    const t = setTimeout(() => setQuiet(true), Math.max(QUIET_MS - (Date.now() - since), 0))
+    return () => clearTimeout(t)
+  }, [test.state, quiet, since])
+
+  const loggedIn = test.state !== "waiting"
+  const counts = test.state === "called" || (test.state === "connected" && test.counts)
+  return (
+    <>
+      <ul className="flex flex-col gap-2.5">
+        <Progress state={loggedIn ? "done" : "busy"}>
+          {loggedIn ? (
+            <>
+              {appLabel(test.client)} logged in <span className="text-ink-dim">(the name the app gave itself)</span>
+            </>
+          ) : (
+            `Waiting for ${name} to log in…`
+          )}
+        </Progress>
+        {counts || !loggedIn ? (
+          <Progress state={test.state === "called" ? "done" : loggedIn ? "busy" : "todo"}>
+            {test.state === "called" ? (
+              <>
+                First call arrived: <span className="selectable font-mono">{test.client.lastTool}</span>
+              </>
+            ) : (
+              "Waiting for the first call…"
+            )}
+          </Progress>
+        ) : null}
+      </ul>
+      {!loggedIn && (
+        <Para>
+          Finish the login in {name}: it opens a WireCat page that asks for the login code from the step before.
+        </Para>
+      )}
+      {loggedIn && test.state !== "called" && (
+        <div className="flex flex-col gap-2">
+          <Para>
+            Now ask {name} something that needs {tool.name}, in a new chat with it turned on:
+          </Para>
+          <div className="max-w-[34rem]">
+            <CopyField value={testPrompt(tool)} label="Copy the test prompt" />
+          </div>
+          {!counts && (
+            <Note>
+              This version of {tool.bin} does not report calls, so check the answer in {name}. Update {tool.name} on the
+              Tools page to see calls here.
+            </Note>
+          )}
+        </div>
+      )}
+      {test.state === "called" && (
+        <Para>
+          {name} reached {tool.bin} through the internet address, logged in and called a tool. From now on this panel
+          shows when it last did.
+        </Para>
+      )}
+      {!loggedIn && quiet && <Troubleshoot name={name} tool={tool} app={app} server={server} />}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {test.state === "called" || (loggedIn && !counts) ? (
+          <Button size="sm" variant="primary" onClick={onDone}>
+            Finish
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={onBack}>
+            Back to the steps in {name}
+          </Button>
+        )}
+      </div>
+    </>
+  )
+}
+
+function Troubleshoot(props: { name: string; tool: CatalogTool; app: AppId; server: McpServerStatus }) {
+  const { name, tool, app, server } = props
+  return (
+    <div className="flex flex-col gap-2 rounded-[0.45rem] bg-app-2 px-4 py-3">
+      <p className="text-[0.92rem] font-medium text-ink">
+        Nothing has logged in yet. What {name} says decides the fix:
+      </p>
+      <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[0.88rem] text-ink-soft">
+        <li>
+          <span className="text-ink">It couldn't reach or connect to the server:</span> check the address is exactly{" "}
+          <span className="selectable font-mono text-ink">{server.connectorUrl}</span>, with /mcp at the end.
+        </li>
+        <li>
+          <span className="text-ink">The login page says the code is wrong or expired:</span> each code works for 10
+          minutes. Type the one in the step before as it is now.
+        </li>
+        <li>
+          <span className="text-ink">No WireCat login page opened:</span> choose OAuth as the authentication in {name},
+          and remove and add the server again.
+        </li>
+      </ul>
+      <DiscoveryHelp tool={tool} app={app} />
+    </div>
+  )
+}

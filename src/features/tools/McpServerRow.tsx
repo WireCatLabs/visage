@@ -8,7 +8,8 @@ import { CopyField } from "@/ui/CopyField"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
-import { ForgetLogins, StartServer } from "./McpServerDialogs"
+import { activityOf } from "./connect-steps"
+import { ForgetLogins } from "./McpServerDialogs"
 
 export type RowState =
   | { state: "loading" }
@@ -50,12 +51,12 @@ export function McpServerRow(props: {
   /** Whole-port funnels from when a server spoke for one profile, still on. */
   leftovers: FunnelState[]
   reload(): void
-  settle(data: McpServerStatus): void
+  /** Opens the "Connect an AI app" guide, which starts the server. */
+  onStart(): void
 }) {
-  const { tool, row, funnel, leftovers, reload, settle } = props
+  const { tool, row, funnel, leftovers, reload, onStart } = props
   const [busy, setBusy] = useState<Busy>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  const [starting, setStarting] = useState(() => openedByScenario(tool.id))
   const [forgetting, setForgetting] = useState(false)
   const name = tool.bin
   const data = row.state === "ready" ? row.data : null
@@ -116,7 +117,7 @@ export function McpServerRow(props: {
         </span>
         <span className="ml-auto flex gap-2">
           {data?.available && !data.running && (
-            <Button size="sm" onClick={() => setStarting(true)} aria-label={`Start the MCP server for ${name}`}>
+            <Button size="sm" onClick={onStart} aria-label={`Start the MCP server for ${name}`}>
               Start
             </Button>
           )}
@@ -166,15 +167,6 @@ export function McpServerRow(props: {
           </Button>
         </div>
       )}
-      <StartServer
-        tool={tool}
-        open={starting}
-        onClose={() => setStarting(false)}
-        onStarted={(s) => {
-          setStarting(false)
-          settle(s)
-        }}
-      />
       <ForgetLogins
         tool={tool}
         open={forgetting}
@@ -186,13 +178,6 @@ export function McpServerRow(props: {
       />
     </li>
   )
-}
-
-/** Browser build only: `?tailscale=<state>` opens tg's Start dialog at that guide state. */
-function openedByScenario(id: string) {
-  if (platform.kind !== "mock") return false
-  const state = new URLSearchParams(window.location.search).get("tailscale")
-  return state !== null && state !== "leftover" && id === "tg"
 }
 
 function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: Busy; onClose(): void }) {
@@ -270,7 +255,10 @@ function Clients({ data, onForget }: { data: McpServerStatus; onForget(): void }
                     </>
                   )}
                 </span>
-                <span className="text-ink-dim tabular-nums">last login {clock(c.lastLoginAt)}</span>
+                <span className="text-ink-dim tabular-nums">
+                  last login {clock(c.lastLoginAt)}
+                  {c.lastTool ? ` · ${activityOf(c)}` : ""}
+                </span>
               </li>
             ))}
           </ul>

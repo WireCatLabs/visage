@@ -8,12 +8,14 @@ import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useSystem } from "../system/store"
+import { activityOf } from "./connect-steps"
 import { InstallPanel } from "./InstallPanel"
 import { fitLabel, fitLine, useLatestKnown } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolDetails } from "./ToolDetails"
 import { ToolIcon } from "./ToolIcon"
 import { useFits } from "./useFits"
+import { useMcpActivity } from "./useMcpActivity"
 
 const lampTone: Record<ToolStatus["kind"], LampTone> = {
   checking: "idle",
@@ -52,6 +54,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
   const storageLabel = installed ? fitLabel(fit) : null
   const panelId = `tool-panel-${tool.id}`
   const showInstallPanel = Boolean(session) && !session?.closed?.includes(tool.id)
+  const app = useMcpActivity(tool, installed, expanded)
 
   return (
     <li data-tour="tool" className="border-line border-b last:border-b-0">
@@ -80,6 +83,13 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
               className={cx("mt-1 truncate text-[0.95rem]", severity === "bad" ? "text-bad" : "text-warn-ink")}
             >
               {storageLine}
+            </p>
+          ) : app ? (
+            <p className="mt-1 flex items-center gap-2 text-[0.95rem] text-ink-soft tabular-nums">
+              <span aria-hidden className="size-[0.45rem] shrink-0 rounded-full bg-ok" />
+              <span className="truncate">
+                {app.claimedName ?? "A browser app"} · {activityOf(app)}
+              </span>
             </p>
           ) : (
             <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>

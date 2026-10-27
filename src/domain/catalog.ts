@@ -42,7 +42,7 @@ const ToolSchema = v.object({
   /** The HTTP MCP server for browser apps, run in the background by the tool; `{port}` and `{url}` are filled in Rust. */
   mcpServer: v.nullable(
     v.object({
-      /** What the Start dialog offers; a different one per tool, so two tools' servers do not collide. */
+      /** The port the guide offers; a different one per tool, so two tools' servers do not collide. */
       port: v.number(),
       start: v.array(v.string()),
       stop: v.array(v.string()),

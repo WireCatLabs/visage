@@ -4,36 +4,49 @@ import type { CatalogTool } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { FunnelState } from "@/platform/tailscale-schemas"
+import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
+import { Disclosure } from "@/ui/Disclosure"
+import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
+import { ConnectGuide } from "./ConnectGuide"
+import { scenarioOf } from "./connect-scenario"
+import { activityOf, appLabel, busiest } from "./connect-steps"
 import { McpServerRow, type RowState } from "./McpServerRow"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-/** Browser build only: `?mcp=<tool>` opens this section without a click, for review captures. */
+/** Browser build only: these scenarios open the section without a click, for review captures. */
 function openedByScenario(id: string) {
   if (platform.kind !== "mock") return false
   const params = new URLSearchParams(window.location.search)
-  if (params.has("tailscale") && id === "tg") return true
+  if (scenarioOf(id)) return true
   return [params.get("mcp"), params.get("mcp-fail"), params.get("mcp-old"), params.get("funnel-old")].includes(id)
 }
 
 function summaryOf(row: RowState): string | null {
   if (row.state === "loading") return null
   if (row.state === "error") return "Could not read it"
-  if (!row.data.available) return "Arrives with the next update"
-  return row.data.running ? "Running" : "Off"
+  const s = row.data
+  if (!s.available) return "Arrives with the next update"
+  if (!s.running) return s.clients.length > 0 ? "Server off" : "No app connected"
+  const used = busiest(s)
+  if (used) return `${used.claimedName ?? "An app"} · ${activityOf(used)}`
+  return s.clients.length > 0
+    ? `${s.clients.length} app${s.clients.length > 1 ? "s" : ""} logged in`
+    : "Server running, no app yet"
 }
 
 /**
- * The tool's HTTP MCP server, for ChatGPT and Claude in the browser behind the owner's tunnel. One server serves every
- * profile: the browser app names the profile in each call, and asks the owner when it is not clear. Agents on this
- * computer use the tools directly, so the section starts closed.
+ * Lets ChatGPT or Claude in the browser use the tool: its HTTP MCP server behind a tunnel, set up by a guide whose goal
+ * is a working call from the app, not a running server. One server serves every profile; the app names one in each
+ * call. Agents on this computer use the tools directly, so the section starts closed.
  */
 export function McpServer({ tool }: { tool: CatalogTool }) {
   const headingId = useId()
   const [open, setOpen] = useState(() => openedByScenario(tool.id))
   const [row, setRow] = useState<RowState>({ state: "loading" })
+  const [guiding, setGuiding] = useState<boolean | null>(() => (scenarioOf(tool.id) ? true : null))
   const calls = useRef(0)
   const [funnels, setFunnels] = useState<FunnelState[]>([])
 
@@ -65,11 +78,29 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
     load()
   }, [load])
 
-  const settle = (data: McpServerStatus) => {
-    calls.current++
-    setRow({ state: "ready", data })
-  }
+  const settle = useCallback(
+    (data: McpServerStatus) => {
+      calls.current++
+      setRow({ state: "ready", data })
+      loadFunnels()
+    },
+    [loadFunnels],
+  )
 
+  const reload = useCallback(async () => {
+    await Promise.all([load(), loadFunnels()])
+  }, [load, loadFunnels])
+
+  const data = row.state === "ready" ? row.data : null
+  const connected = data?.running === true && data.clients.length > 0
+  // Decided once, from the first answer: the guide never gives way to the overview because the server it started
+  // now has a logged-in app. Only Finish closes it.
+  const ready = data !== null
+  useEffect(() => {
+    if (ready && guiding === null) setGuiding(!connected)
+  }, [ready, guiding, connected])
+  const showGuide = data?.available === true && (guiding ?? !connected)
+  const funnel = funnels.find((f) => f.shared) ?? null
   const summary = summaryOf(row)
 
   return (
@@ -93,7 +124,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
               )}
               aria-hidden
             />
-            MCP server — for chat apps in the browser
+            Connect an AI app
           </span>
           {!open && (
             <span className="min-w-0 text-[0.9rem] font-normal text-ink-soft tabular-nums">
@@ -103,33 +134,79 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
         </button>
       </h4>
       {open && (
-        <div id={`${headingId}-body`} className="flex min-w-0 flex-col gap-3">
-          <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
-            Lets ChatGPT or Claude in the browser reach {tool.name} through a tunnel: Tailscale Funnel, which WireCat
-            sets up for you, or one you run. Agents on this computer do not need it. A browser app logs in once with the
-            code shown here and reaches every profile, each with its own permissions; it names the profile in each call.
+        <div id={`${headingId}-body`} className="reveal flex min-w-0 flex-col gap-4">
+          <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">
+            Let ChatGPT or Claude in the browser use {tool.name}, within each profile's permissions. WireCat gives this
+            computer an internet address, starts {tool.bin}'s server for browser apps, shows what to click in the app,
+            and checks that the app gets through. Nothing starts until you press Start the server. Agents on this
+            computer do not need any of it.
           </p>
-          <ul
-            className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
-            aria-label={`${tool.name} MCP server`}
-          >
-            <McpServerRow
+          {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
+          {data && !data.available && (
+            <p className="text-[0.92rem] text-ink-soft">
+              This version of {tool.name} cannot do it yet. It arrives with the next update of {tool.bin}.
+            </p>
+          )}
+          {data && showGuide && (
+            <ConnectGuide
               tool={tool}
-              row={row}
-              funnel={funnels.find((f) => f.shared) ?? null}
-              leftovers={funnels.filter((f) => !f.shared && f.live)}
-              reload={() => {
-                load()
-                loadFunnels()
-              }}
-              settle={(data) => {
-                settle(data)
-                loadFunnels()
-              }}
+              server={data}
+              funnel={funnel}
+              reload={reload}
+              settle={settle}
+              onDone={() => setGuiding(false)}
             />
-          </ul>
+          )}
+          {data?.available === true && !showGuide && <Connected data={data} onConnect={() => setGuiding(true)} />}
+          {row.state !== "loading" && (
+            <Disclosure summary="Server details">
+              <ul
+                className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
+                aria-label={`${tool.name} MCP server`}
+              >
+                <McpServerRow
+                  tool={tool}
+                  row={row}
+                  funnel={funnel}
+                  leftovers={funnels.filter((f) => !f.shared && f.live)}
+                  reload={reload}
+                  onStart={() => setGuiding(true)}
+                />
+              </ul>
+            </Disclosure>
+          )}
         </div>
       )}
     </section>
+  )
+}
+
+/** After setup: which apps use the tool and what each did last. */
+function Connected({ data, onConnect }: { data: McpServerStatus; onConnect(): void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app">
+        {data.clients.map((c) => (
+          <li
+            key={`${c.claimedName}-${c.lastLoginAt}`}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
+          >
+            <Lamp tone={data.running ? "ok" : "idle"} size="sm" label={data.running ? "Connected" : "Server off"} />
+            <span className="text-[0.95rem] text-ink">
+              Calls itself <span className="selectable font-mono">{appLabel(c)}</span>
+            </span>
+            <span className="text-[0.88rem] text-ink-soft tabular-nums">{activityOf(c)}</span>
+          </li>
+        ))}
+      </ul>
+      {!data.running && (
+        <p className="text-[0.88rem] text-warn-ink">The server is off, so these apps cannot reach it now.</p>
+      )}
+      <div>
+        <Button size="sm" onClick={onConnect}>
+          {data.running ? "Connect another app" : "Start and connect"}
+        </Button>
+      </div>
+    </div>
   )
 }

@@ -275,6 +275,18 @@ body {
   animation: reveal 180ms var(--ease-out-quart);
 }
 
+/* A guide's next step slides in from where the reader's eye already is; reduced motion makes it instant above. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+}
+
+.step-in {
+  animation: step-in 260ms var(--ease-out-quart);
+}
+
 /* A scrollbar that appears once content outgrows the window would narrow the page by its width and re-wrap every
    line. Reserve its gutter up front; WebKit before Safari 18.2 lacks the property, so it gets an always-on track,
    which is invisible because the track is transparent. */

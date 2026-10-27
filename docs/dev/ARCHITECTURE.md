@@ -225,9 +225,25 @@ stops the running sign-in first.
 ## The MCP server for browser apps
 
 ChatGPT and Claude in the browser reach a tool through its HTTP MCP server behind the owner's tunnel (step 3 of
-`docs/dev/plans/2026-10-26-mcp-full-commands.md`). The Manage panel has an "MCP server" section, closed by default
-because agents on this computer use the tools directly: one row per profile, so none is chosen for the owner, and one
-row for memo, which has no profiles. Zoom serves no HTTP MCP and Email is part of memo, so neither has the section.
+`docs/dev/plans/2026-10-26-mcp-full-commands.md`). The Manage panel has a "Connect an AI app" section, closed by
+default because agents on this computer use the tools directly. One server serves every profile; the app names one in
+each call. Zoom serves no HTTP MCP and Email is part of memo, so neither has the section.
+
+**The guide** (`ConnectGuide.tsx`) aims at a working call from the app, not at a running server. Five steps in a rail,
+on one surface that only Finish closes: choose the app (ChatGPT, Claude, another), the public address (Tailscale's own
+steps, done ones as ticks, or a tunnel the owner runs), start the server (Funnel, then `mcp server start`, with each
+part's progress; nothing runs before the owner presses Start the server), add it in the app, and test it. The step logic
+is plain TypeScript (`connect-steps.ts`); what to click in each app is one table, `connect-apps.ts`, with the vendors'
+pages it was read from, and takes the address and login code from `status`, so a different address shape changes no
+instruction. The test reads `status` every 4 s while it is on screen: an app counts once it logs in, or reaches the
+server, after the guide opened (an older login does not), and the guide ends at the first `tools/call`. From cli-core
+0.453 `status` reports per app `last_request_at`, `last_tool`, `last_tool_at` and `tool_calls_today` (the tool keeps
+names and times only); an older tool reports none, and the guide says to check the answer in the app. The step's
+heading takes focus when the step changes; steps fade in (`.step-in`), instantly under reduced motion. "If ChatGPT
+says it couldn't discover OAuth settings" shows the issuer and endpoints that `mcp_server_oauth` reads from the running
+server on 127.0.0.1 (a computer often cannot reach its own Funnel address), keeping only addresses on the connector's
+own origin. After setup the section lists the apps with their last call, and the tool's row on the Tools page shows the
+latest one, read when the row appears and when its panel closes. "Server details" keeps the row described below.
 
 Every action is the tool's own command from `mcpServer` in the catalog. `mcp server start` takes the tunnel's address
 and a port, which `mcp_server.rs` checks first (https, or http on this computer; no path; a port of 1024 or above) and
@@ -245,8 +261,9 @@ owner needs them as they are. They are never logged and never put in a report. A
 
 ## Tailscale Funnel for the MCP server
 
-The Start dialog of an MCP server row offers Tailscale Funnel, set up by the app, or a tunnel the owner runs (step 4 of
-`docs/dev/plans/2026-10-26-mcp-full-commands.md`). The guide has four steps, each with Check; the window re-checks when
+The guide's address step offers Tailscale Funnel, set up by the app, or a tunnel the owner runs (step 4 of
+`docs/dev/plans/2026-10-26-mcp-full-commands.md`). Tailscale's part has three steps, each with Check (the fourth below,
+a free public port, is checked there and done by the start step); the window re-checks when
 it regains focus. All of it is `tailscale.rs` running the `tailscale` CLI found on PATH (or inside the Mac app with
 `TAILSCALE_BE_CLI=1`, or in Program Files):
 
