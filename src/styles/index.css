@@ -377,3 +377,12 @@ dialog[data-closing]::backdrop {
 .fade-in {
   animation: reveal 200ms var(--ease-out-quart);
 }
+
+/* Rings are for keyboard users. After a click the browser can still match :focus-visible (a button clicked once a key
+   was pressed, focus moved by code), so `trackInputMode` hides them until the next navigation key. Unlayered, so it
+   also beats the Tailwind ring utilities on peers and wrappers. */
+:root[data-input="pointer"] :focus-visible,
+:root[data-input="pointer"] :focus-visible ~ *,
+:root[data-input="pointer"] :has(:focus-visible) {
+  outline: none;
+}

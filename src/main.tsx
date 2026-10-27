@@ -5,11 +5,13 @@ import { ErrorBoundary } from "./app/ErrorBoundary"
 import { runMockScenario } from "./app/scenarios"
 import { captureErrors } from "./features/report/errors"
 import "./styles/index.css"
+import { trackInputMode } from "./ui/input-mode"
 
 const root = document.getElementById("root")
 if (!root) throw new Error("index.html has no #root")
 
 captureErrors()
+trackInputMode()
 
 // The first frame would be laid out in a fallback font, and the swap to the real one re-wraps every paragraph
 // (19 px on Logs). The fonts ship with the app, so the wait is a few milliseconds; the cap keeps a broken font
