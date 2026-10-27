@@ -82,12 +82,31 @@ fn call(tool: &Tool, args: &[String]) -> Result<Value, String> {
     let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_secs(30)).map_err(|e| e.to_string())?;
     let mut value = out.json();
     if let Some(v) = value.as_mut() {
+        let before = v.clone();
         redact::json(v);
+        keep_client_names(&before, v);
     }
     match value {
         Some(v) if out.code == Some(0) => Ok(v),
         Some(v) => Err(v["error"]["message"].as_str().map_or_else(|| failure(&out), str::to_string)),
         None => Err(failure(&out)),
+    }
+}
+
+/// `redact::json` hides every `name`; an MCP app's own name ("claude-ai") says which app called, not who, and the Logs
+/// page groups conversations by it.
+fn keep_client_names(before: &Value, after: &mut Value) {
+    const NAME: &str = "/agent/client/name";
+    let put = |b: &Value, a: &mut Value| {
+        if let (Some(name), Some(slot)) = (b.pointer(NAME).and_then(Value::as_str), a.pointer_mut(NAME)) {
+            *slot = Value::String(redact::text(name));
+        }
+    };
+    if let (Some(b), Some(a)) = (before["items"].as_array(), after["items"].as_array_mut()) {
+        b.iter().zip(a.iter_mut()).for_each(|(b, a)| put(b, a));
+    }
+    if let (Some(b), Some(a)) = (before.get("item"), after.get_mut("item")) {
+        put(b, a);
     }
 }
 
@@ -104,6 +123,22 @@ mod tests {
 
     fn tg() -> &'static Tool {
         catalog::tool("tg").unwrap()
+    }
+
+    #[test]
+    fn keeps_the_mcp_apps_name_and_masks_the_rest() {
+        let raw = serde_json::json!({ "items": [{
+            "agent": { "kind": "mcp-client", "client": { "name": "claude-ai", "id": "3f9a1c2e" } },
+            "ids": { "user_id": "123456789" }
+        }] });
+        let mut v = raw.clone();
+        redact::json(&mut v);
+        keep_client_names(&raw, &mut v);
+        assert_eq!(v["items"][0]["agent"]["client"]["name"], "claude-ai");
+        assert_eq!(v["items"][0]["ids"]["user_id"], "•••");
+        let mut shown = serde_json::json!({ "item": { "agent": { "client": { "name": "•••" } } } });
+        keep_client_names(&serde_json::json!({ "item": { "agent": { "client": { "name": "chatgpt" } } } }), &mut shown);
+        assert_eq!(shown["item"]["agent"]["client"]["name"], "chatgpt");
     }
 
     #[test]

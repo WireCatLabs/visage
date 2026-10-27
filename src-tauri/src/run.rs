@@ -76,6 +76,10 @@ fn agent_env(names: impl Iterator<Item = std::ffi::OsString>) -> Vec<std::ffi::O
     AGENT_ENV.iter().map(std::ffi::OsString::from).chain(by_prefix).collect()
 }
 
+/// cli-core records a run with `via: "desktop"` and keeps it only when it fails, so the app's own reads (runs list,
+/// doctor, status) do not fill the owner's logs.
+pub const CALLER_ENV: &str = "WIRECAT_CALLER";
+
 pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>) -> Command {
     let mut cmd = Command::new(program);
     cmd.args(args)
@@ -94,6 +98,7 @@ pub fn command(program: &Path, args: &[&str], path_env: Option<&std::ffi::OsStr>
     for name in agent_env(std::env::vars_os().map(|(k, _)| k)) {
         cmd.env_remove(name);
     }
+    cmd.env(CALLER_ENV, "desktop");
     if let Some(p) = path_env {
         cmd.env("PATH", p);
     }
@@ -169,24 +174,25 @@ pub fn run(
     path_env: Option<&std::ffi::OsStr>,
     timeout: Duration,
 ) -> Result<Output, RunError> {
+    run_command(command(program, args, path_env), timeout)
+}
+
+/// `run`, for a `command()` the caller adjusted first.
+pub fn run_command(cmd: Command, timeout: Duration) -> Result<Output, RunError> {
     let started = Instant::now();
-    let result = run_inner(program, args, path_env, timeout);
+    let name = Path::new(cmd.get_program()).file_name().unwrap_or_default().to_string_lossy().into_owned();
+    let args = cmd.get_args().len();
+    let result = run_inner(cmd, timeout);
     if timing() {
-        let name = program.file_name().unwrap_or_default().to_string_lossy();
-        eprintln!("[wirecat timing] {name} ({} args) {} ms", args.len(), started.elapsed().as_millis());
+        eprintln!("[wirecat timing] {name} ({args} args) {} ms", started.elapsed().as_millis());
     }
     result
 }
 
-fn run_inner(
-    program: &Path,
-    args: &[&str],
-    path_env: Option<&std::ffi::OsStr>,
-    timeout: Duration,
-) -> Result<Output, RunError> {
+fn run_inner(cmd: Command, timeout: Duration) -> Result<Output, RunError> {
     let _slot = Slot::take();
     STARTED.fetch_add(1, Ordering::Relaxed);
-    let mut child = spawn(command(program, args, path_env))?;
+    let mut child = spawn(cmd)?;
     let mut out = child.stdout.take().unwrap();
     let mut err = child.stderr.take().unwrap();
     let out_t = thread::spawn(move || {
@@ -390,6 +396,16 @@ mod tests {
         }
         for name in ["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "WIRECAT_HOLDER", "OPENCLAW_SHELL"] {
             assert!(removed.contains(&std::ffi::OsString::from(name)), "{name}");
+        }
+    }
+
+    #[test]
+    fn tells_the_tool_the_run_is_desktops_own_and_still_drops_the_agents_variables() {
+        let cmd = command(Path::new("tg"), &[], None);
+        let envs: Vec<_> = cmd.get_envs().collect();
+        assert!(envs.contains(&(std::ffi::OsStr::new(CALLER_ENV), Some(std::ffi::OsStr::new("desktop")))));
+        for name in ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "OPENCODE_SESSION_ID"] {
+            assert!(envs.contains(&(std::ffi::OsStr::new(name), None)), "{name}");
         }
     }
 

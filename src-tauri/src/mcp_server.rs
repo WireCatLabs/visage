@@ -1,5 +1,6 @@
 use crate::catalog::{self, McpServerSource, Tool};
 use crate::skills::{body, call, failure};
+use crate::{paths, run};
 use serde::Serialize;
 use serde_json::Value;
 use std::time::Duration;
@@ -199,13 +200,26 @@ fn args(spec: &[String], port: u16, url: &str) -> Result<Vec<String>, String> {
 
 fn answer(tool: &Tool, args: &[String], timeout: Duration) -> Result<Value, String> {
     let (out, json) = call(tool, args, timeout)?;
+    answered(tool, &out, json)
+}
+
+fn answered(tool: &Tool, out: &run::Output, json: Option<Value>) -> Result<Value, String> {
     if unsupported(json.as_ref()) {
         return Err(too_old(tool));
     }
     match json {
         Some(v) if out.code == Some(0) => Ok(v),
-        _ => Err(failure(&out, json.as_ref())),
+        _ => Err(failure(out, json.as_ref())),
     }
+}
+
+/// The server outlives this call and serves agents and browser apps. Without Desktop's caller mark, cli-core files
+/// their runs under their own caller instead of keeping only failures as Desktop's.
+fn server_command(bin: &std::path::Path, args: &[String]) -> std::process::Command {
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let mut cmd = run::command(bin, &refs, Some(&paths::search_path()));
+    cmd.env_remove(run::CALLER_ENV);
+    cmd
 }
 
 fn unavailable() -> ServerStatus {
@@ -242,7 +256,11 @@ pub fn status(tool: &Tool) -> Result<ServerStatus, String> {
 pub fn start(tool: &Tool, port: u16, url: &str) -> Result<ServerStatus, String> {
     validate_port(port)?;
     validate_url(url)?;
-    answer(tool, &args(&source(tool)?.start, port, url)?, Duration::from_mins(1))?;
+    let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
+    let cmd = server_command(&bin, &args(&source(tool)?.start, port, url)?);
+    let out = run::run_command(cmd, Duration::from_mins(1)).map_err(|e| e.to_string())?;
+    let json = out.json();
+    answered(tool, &out, json)?;
     status(tool)
 }
 
@@ -337,6 +355,13 @@ pub fn config(tool: &Tool) -> Result<String, String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn starts_the_server_without_desktops_caller_mark() {
+        let cmd = server_command(std::path::Path::new("tg"), &["mcp".into(), "server".into(), "start".into()]);
+        let caller = cmd.get_envs().find(|(k, _)| *k == std::ffi::OsStr::new(run::CALLER_ENV));
+        assert_eq!(caller, Some((std::ffi::OsStr::new(run::CALLER_ENV), None)));
+    }
 
     #[test]
     fn takes_only_a_tunnel_address() {

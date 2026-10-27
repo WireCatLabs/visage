@@ -1,7 +1,8 @@
 use crate::{catalog, redact, runs, system, tools};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-use std::sync::mpsc;
+use serde_json::{Map, Value, json};
+use std::sync::{OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
 // The contract lives in docs/dev/report-api.md; keep both in step.
@@ -63,7 +64,7 @@ pub fn context() -> Context {
     }
 }
 
-fn recent_failures(installed: &[Value]) -> Vec<Value> {
+fn recent_failures(installed: &[Value]) -> Value {
     let (tx, rx) = mpsc::channel();
     let mut asked = 0;
     for tool in installed
@@ -88,7 +89,7 @@ fn recent_failures(installed: &[Value]) -> Vec<Value> {
             Err(_) => break,
         }
     }
-    found
+    safe_runs(&Value::Array(found))
 }
 
 pub fn send(draft: Draft, mut context: Context) -> Result<Sent, String> {
@@ -155,8 +156,11 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
     }
     // The interface may have held this for a while; mask again so nothing it carries leaves unmasked.
     if let Some(a) = context.attachments.as_mut() {
+        let runs = a.as_object_mut().and_then(|o| o.remove("runs"));
         redact::json(a);
-        hide_agent_sessions(a);
+        if let (Some(runs), Some(o)) = (runs, a.as_object_mut()) {
+            o.insert("runs".into(), safe_runs(&runs));
+        }
     }
     let expected = draft.expected.map(|e| redact::text(e.trim())).filter(|e| !e.is_empty());
     Ok(json!({
@@ -174,15 +178,188 @@ fn body(draft: Draft, context: &mut Context) -> Result<Value, String> {
     }))
 }
 
-/// The Logs page filters by an agent's session, so only the report masks it: the id ties a report to a private session log.
-fn hide_agent_sessions(attachments: &mut Value) {
-    let Some(tools) = attachments["runs"].as_array_mut() else { return };
-    for run in tools.iter_mut().filter_map(|t| t["runs"].as_array_mut()).flatten() {
-        if let Some(session) = run.pointer_mut("/agent/session_id").filter(|s| s.is_string()) {
-            *session = Value::String("•••".into());
+const MASKED: &str = "•••";
+
+/// Fields of a run that say what happened and on what, never to whom or where.
+const SAFE_FIELDS: [&str; 18] = [
+    "run_id",
+    "command",
+    "cli_command",
+    "status",
+    "started_at",
+    "completed_at",
+    "duration_ms",
+    "requests",
+    "error_code",
+    "provider_error",
+    "cli_version",
+    "runtime",
+    "platform",
+    "arch",
+    "operations",
+    "codes",
+    "kept_because_failed",
+    "events_dropped",
+];
+
+/// Locally a run keeps chat and person ids, paths and its caller's ids (TASK-31); a report carries only the fields
+/// above, plus masked markers where an id existed, so the team sees which conversation key the run had and nothing of
+/// it. A field a newer tool adds stays on this computer until it is named here.
+fn safe_runs(attachment: &Value) -> Value {
+    let tools = attachment.as_array().map_or(&[][..], Vec::as_slice);
+    Value::Array(
+        tools
+            .iter()
+            .filter_map(|t| {
+                let tool = t["tool"].as_str().filter(|id| catalog::tool(id).is_ok())?;
+                let runs = t["runs"].as_array().map_or(&[][..], Vec::as_slice);
+                Some(json!({ "tool": tool, "runs": runs.iter().map(safe_run).collect::<Vec<_>>() }))
+            })
+            .collect(),
+    )
+}
+
+fn safe_run(run: &Value) -> Value {
+    let mut out = Map::new();
+    for key in SAFE_FIELDS {
+        if let Some(v) = scalar(&run[key]) {
+            out.insert(key.into(), v);
         }
-        mask_typed_words(run);
     }
+    if let Some(via) = run["via"].as_str() {
+        out.insert("via".into(), via.into());
+    }
+    if let Some(unknown) = run["unknown_command"].as_str() {
+        out.insert("unknown_command".into(), free_text(unknown).into());
+    }
+    // A profile is a name the owner chose, and may be a person's; argv already hides it.
+    if run["profile"].is_string() {
+        out.insert("profile".into(), MASKED.into());
+    }
+    if run["argv"].is_array() {
+        let mut argv = json!({ "command": run["command"], "argv": run["argv"] });
+        mask_typed_words(&mut argv);
+        out.insert("argv".into(), argv["argv"].take());
+    }
+    if run["trace_id"].is_string() {
+        out.insert("trace_id".into(), MASKED.into());
+    }
+    if let Some(agent) = run["agent"].as_object() {
+        out.insert("agent".into(), safe_agent(agent));
+    }
+    if let Some(mcp) = run["mcp"].as_object() {
+        let mut m = pick(mcp, &["tool", "proxied"]);
+        mark(&mut m, mcp, &["connection_id", "request_id"]);
+        out.insert("mcp".into(), Value::Object(m));
+    }
+    if let Some(partial) = run["partial"].as_object() {
+        let mut p = pick(partial, &["failed", "stop_reason"]);
+        if let Some(failures) = partial.get("failures").and_then(Value::as_array) {
+            let kept =
+                failures.iter().filter_map(Value::as_object).map(|f| Value::Object(pick(f, &["stage", "error_code"])));
+            p.insert("failures".into(), Value::Array(kept.collect()));
+        }
+        out.insert("partial".into(), Value::Object(p));
+    }
+    if let Some(error) = run["error"].as_object() {
+        out.insert("error".into(), safe_error(error));
+    }
+    Value::Object(out)
+}
+
+fn safe_agent(agent: &Map<String, Value>) -> Value {
+    let mut a = pick(agent, &["kind", "from_chat"]);
+    if agent.get("session_id").is_some_and(Value::is_null) {
+        a.insert("session_id".into(), Value::Null);
+    }
+    mark(&mut a, agent, &["session_id"]);
+    if let Some(client) = agent.get("client").and_then(Value::as_object) {
+        let mut c = pick(client, &["name", "version"]);
+        mark(&mut c, client, &["id"]);
+        a.insert("client".into(), Value::Object(c));
+    }
+    Value::Object(a)
+}
+
+fn safe_error(error: &Map<String, Value>) -> Value {
+    let mut e = pick(error, &["class", "code"]);
+    for key in ["message", "operation"] {
+        if let Some(s) = error.get(key).and_then(Value::as_str) {
+            e.insert(key.into(), free_text(s).into());
+        }
+    }
+    if let Some(http) = error.get("http").and_then(Value::as_object) {
+        let mut h = pick(http, &["method", "status"]);
+        if let Some(t) = http.get("endpoint_template").and_then(Value::as_str) {
+            h.insert("endpoint_template".into(), free_text(t).into());
+        }
+        e.insert("http".into(), Value::Object(h));
+    }
+    if let Some(provider) = error.get("provider").and_then(Value::as_object) {
+        e.insert("provider".into(), Value::Object(pick(provider, &["key", "code"])));
+    }
+    if let Some(causes) = error.get("causes").and_then(Value::as_array) {
+        let kept = causes.iter().filter_map(Value::as_object).map(|c| {
+            let mut k = pick(c, &["class"]);
+            if let Some(m) = c.get("message").and_then(Value::as_str) {
+                k.insert("message".into(), free_text(m).into());
+            }
+            Value::Object(k)
+        });
+        e.insert("causes".into(), Value::Array(kept.collect()));
+    }
+    if let Some(stack) = error.get("stack").and_then(Value::as_array) {
+        let frames = stack.iter().filter_map(Value::as_str).map(|f| Value::String(free_text(f)));
+        e.insert("stack".into(), Value::Array(frames.collect()));
+    }
+    Value::Object(e)
+}
+
+/// Scalars and lists of scalars only; an object under a safe name is not trusted to be safe.
+fn scalar(v: &Value) -> Option<Value> {
+    match v {
+        Value::String(s) => Some(Value::String(redact::text(s))),
+        Value::Number(_) | Value::Bool(_) => Some(v.clone()),
+        Value::Array(items) if items.iter().all(|x| x.is_string() || x.is_number()) => {
+            Some(Value::Array(items.iter().map(|x| scalar(x).unwrap_or(Value::Null)).collect()))
+        }
+        _ => None,
+    }
+}
+
+fn pick(from: &Map<String, Value>, keys: &[&str]) -> Map<String, Value> {
+    keys.iter().filter_map(|k| Some(((*k).to_string(), scalar(from.get(*k)?)?))).collect()
+}
+
+/// Says an id was there without saying which.
+fn mark(to: &mut Map<String, Value>, from: &Map<String, Value>, keys: &[&str]) {
+    for key in keys {
+        if from.get(*key).is_some_and(|v| v.is_string() || v.is_number()) {
+            to.insert((*key).to_string(), MASKED.into());
+        }
+    }
+}
+
+fn free_text_rules() -> &'static [(Regex, &'static str)] {
+    static R: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
+    R.get_or_init(|| {
+        vec![
+            // Any user's home, not only this one's: `paths::tilde` knows only the home of the account running the app.
+            (Regex::new(r#"(?i)(?:/home|/Users|\b[a-z]:[\\/]Users)[\\/][^\\/\s"'`:;,)]+"#).unwrap(), "~"),
+            (Regex::new(r"\b[A-Za-z0-9_\-]{32,}\b").unwrap(), "[token]"),
+            // Chat, user and message ids are long numbers; times and line numbers are shorter.
+            (Regex::new(r"-?\b\d{6,}\b").unwrap(), "[number]"),
+        ]
+    })
+}
+
+/// Text a tool wrote about a failure, which may name a chat, a person, a file or a secret.
+fn free_text(s: &str) -> String {
+    let mut out = redact::text(s);
+    for (re, with) in free_text_rules() {
+        out = re.replace_all(&out, *with).into_owned();
+    }
+    out
 }
 
 /// Runs keep `argv` as typed (cli-core 0.439.0), so chat titles and message text are in it. Without the tool's
@@ -292,10 +469,134 @@ mod tests {
         let body = body(draft("Install fails", "mail me at a@b.com"), &mut context()).unwrap();
         assert_eq!(body["report"]["details"], "mail me at [email]");
         assert_eq!(body["report"]["expected"], Value::Null);
-        assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["phone"], "•••");
+        assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0].get("phone"), None);
         assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["agent"]["session_id"], "•••");
         assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][0]["agent"]["kind"], "claude-code");
         assert_eq!(body["report"]["attachments"]["runs"][0]["runs"][1]["agent"]["session_id"], Value::Null);
+    }
+
+    // Built at run time so the secret scanner does not read the fixture as a real token.
+    fn fake_bot_token() -> String {
+        format!("{}:{}", "123456789", ["AAH8aB3xZ", "0123456789abcdefghijklmnopq"].join("-"))
+    }
+
+    fn identifying_run() -> Value {
+        json!({
+            "run_id": "20261027T101500Z-messages-send-a1b2c3",
+            "command": "messages send",
+            "cli_command": "tg messages send",
+            "status": "partial",
+            "started_at": "2026-10-27T10:15:00.000Z",
+            "duration_ms": 3410,
+            "requests": 3,
+            "events_dropped": 412,
+            "error_code": "rate_limited",
+            "provider_error": "FLOOD_WAIT",
+            "cli_version": "0.89.0",
+            "operations": ["messages.sendMessage"],
+            "codes": ["rate_limited"],
+            "via": "mcp-http",
+            "profile": "anna-private",
+            "argv": ["anna-private", "messages", "send", "Mom", "SYNTHETIC-CONTENT", "--chat=Family", "--limit", "5"],
+            "directory": "/home/someone/.local/state/tg-cli/runs/2026-10-27",
+            "ids": { "chat": "-1001873246510", "user_id": "555666777" },
+            "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+            "agent": {
+                "kind": "mcp-client",
+                "session_id": "sess-abc-123",
+                "from_chat": true,
+                "client": { "name": "claude-ai", "version": "1.0", "id": "3f9a1c2e" }
+            },
+            "mcp": { "tool": "tg_send", "connection_id": "conn-77aa", "request_id": "req-9911", "proxied": true },
+            "partial": {
+                "failed": 1,
+                "stop_reason": "rate_limited",
+                "failures": [{ "id": "-1001873246510", "stage": "send", "error_code": "rate_limited", "title": "Mom" }]
+            },
+            "error": {
+                "class": "CliError",
+                "code": "rate_limited",
+                "message": "user 987654321 not in chat -1001873246510, see /home/someone/.cache/tg-cli/x.log, call +34 600 123 456",
+                "http": { "method": "POST", "endpoint_template": "/bot:token/sendMessage", "status": 429, "url": "https://x/1001873246510" },
+                "provider": { "key": "FLOOD_WAIT", "code": 420 },
+                "causes": [{ "class": "Error", "message": format!("token {} refused", fake_bot_token()) }],
+                "stack": [
+                    "send (/home/someone/.local/share/pnpm/node_modules/@wirecat/tg-cli/dist/send.js:64)",
+                    "run (/Users/someone/lib/node_modules/@wirecat/cli-core/dist/program.js:580)",
+                    "main (C:\\Users\\someone\\AppData\\Roaming\\npm\\tg.js:9)"
+                ]
+            }
+        })
+    }
+
+    #[test]
+    fn a_report_carries_no_id_path_typed_word_or_secret_of_a_run() {
+        let mut ctx = context();
+        ctx.attachments = Some(json!({ "runs": [{ "tool": "tg", "runs": [identifying_run()] }] }));
+        let body = body(draft("Send fails", "it fails"), &mut ctx).unwrap();
+        let sent = serde_json::to_string(&body).unwrap();
+        for leak in [
+            "1001873246510",
+            "555666777",
+            "987654321",
+            "someone",
+            "600 123",
+            "123456789:AAH",
+            "3f9a1c2e",
+            "conn-77aa",
+            "req-9911",
+            "4bf92f35",
+            "sess-abc-123",
+            "anna-private",
+            "Mom",
+            "SYNTHETIC-CONTENT",
+            "Family",
+        ] {
+            assert!(!sent.contains(leak), "{leak} reached the report");
+        }
+
+        let run = &body["report"]["attachments"]["runs"][0]["runs"][0];
+        assert_eq!(
+            run["agent"],
+            json!({ "kind": "mcp-client", "from_chat": true, "session_id": "•••",
+            "client": { "name": "claude-ai", "version": "1.0", "id": "•••" } })
+        );
+        assert_eq!(
+            run["mcp"],
+            json!({ "tool": "tg_send", "proxied": true, "connection_id": "•••", "request_id": "•••" })
+        );
+        assert_eq!(run["partial"]["failures"], json!([{ "stage": "send", "error_code": "rate_limited" }]));
+        assert_eq!(run["argv"][1], "messages");
+        assert_eq!(run["argv"][5], "--chat");
+        for (key, value) in [
+            ("run_id", json!("20261027T101500Z-messages-send-a1b2c3")),
+            ("status", json!("partial")),
+            ("via", json!("mcp-http")),
+            ("events_dropped", json!(412)),
+            ("requests", json!(3)),
+            ("profile", json!("•••")),
+            ("trace_id", json!("•••")),
+        ] {
+            assert_eq!(run[key], value, "{key}");
+        }
+        assert_eq!(run.get("directory"), None);
+        assert_eq!(
+            run["error"]["http"],
+            json!({ "method": "POST", "status": 429, "endpoint_template": "/bot:token/sendMessage" })
+        );
+        assert!(run["error"]["stack"][0].as_str().unwrap().contains("(~/.local/share/pnpm"));
+        assert!(run["error"]["stack"][2].as_str().unwrap().starts_with("main (~"));
+    }
+
+    #[test]
+    fn shows_in_the_dialog_the_same_runs_it_sends() {
+        let shown =
+            safe_runs(&json!([{ "tool": "tg", "runs": [identifying_run()] }, { "tool": "rm -rf", "runs": [] }]));
+        let mut ctx = context();
+        ctx.attachments = Some(json!({ "runs": shown.clone() }));
+        let body = body(draft("Send fails", "it fails"), &mut ctx).unwrap();
+        assert_eq!(body["report"]["attachments"]["runs"], shown);
+        assert_eq!(shown.as_array().unwrap().len(), 1);
     }
 
     #[test]
