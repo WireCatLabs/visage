@@ -6,7 +6,8 @@ import { formatNumber, type Messages, plural } from "@/i18n"
 type Em = (text: string) => ReactNode
 type Step = Record<string, string>
 
-const syncNote = (t: CatalogTool) => t.sync?.note?.replace(" {profile}", "") ?? null
+import { syncNote } from "./tool-text"
+
 const byId = (pick: (t: CatalogTool) => string | null | undefined) =>
   Object.fromEntries(tools.flatMap((t) => (pick(t) ? [[t.id, pick(t) as string]] : [])))
 
@@ -908,14 +909,5 @@ const es: typeof en = {
       `Las herramientas dejaron ${size} en este ordenador: almacenamiento compartido, sesiones, ajustes y cachés. Consérvalo si puedes volver a instalarlas; bórralo para quitarlo todo. Los tokens de inicio de sesión del llavero del sistema no se tocan.`,
   },
 }
-
-/** A tool's own text in the reader's language, or tools.json's English for a tool not translated yet. */
-export const toolText = (m: ToolsText, t: CatalogTool) => ({
-  tagline: m.tool.tagline[t.id] ?? t.tagline,
-  summary: m.tool.summary[t.id] ?? t.summary,
-  syncNote: m.tool.syncNote[t.id] ?? syncNote(t),
-})
-
-export const groupLabel = (m: ToolsText, key: string, label: string) => m.tool.group[key] ?? label
 
 export const toolsMessages: Messages<ToolsText> = { en, ru, es }

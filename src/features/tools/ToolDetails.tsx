@@ -15,10 +15,11 @@ import { useStorage } from "../storage/store"
 import { Health } from "./Health"
 import { packageNamesOf } from "./InstallPanel"
 import { McpServer } from "./McpServer"
-import { type ToolsText, toolsMessages, toolText } from "./messages"
+import { type ToolsText, toolsMessages } from "./messages"
 import { Permissions } from "./Permissions"
 import { FitDetails } from "./StorageFit"
 import { useTools } from "./store"
+import { toolText } from "./tool-text"
 
 function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: boolean; onClose: () => void }) {
   const installs = useTools((s) => s.installs[tool.id]) ?? []

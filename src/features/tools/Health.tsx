@@ -31,8 +31,9 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
-import { type ToolsText, toolsMessages, toolText } from "./messages"
+import { type ToolsText, toolsMessages } from "./messages"
 import { SyncControl } from "./Sync"
+import { toolText } from "./tool-text"
 
 type Words = ToolsText["health"]
 

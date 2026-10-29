@@ -3,9 +3,10 @@ import type { CatalogTool } from "@/domain/catalog"
 import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
-import { groupLabel, toolsMessages } from "./messages"
+import { toolsMessages } from "./messages"
 import { permissionsMessages } from "./messages-permissions"
 import { LEVELS } from "./permissions"
+import { groupLabel } from "./tool-text"
 
 export function LevelsHelp({ tool }: { tool: CatalogTool }) {
   const [open, setOpen] = useState(false)

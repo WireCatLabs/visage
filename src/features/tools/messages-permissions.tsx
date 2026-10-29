@@ -366,7 +366,7 @@ const ru: typeof en = {
 const es: typeof en = {
   permissions: {
     levels: { allow: "Permitir", ask: "Preguntar antes", readonly: "Solo lectura", deny: "Bloquear" },
-    levelDefault: (label) => `${label} (predeterminado)`,
+    levelDefault: (label) => `${label} (por defecto)`,
     states: {
       allowed: "Permitido",
       ask: "Pregunta antes",
@@ -483,7 +483,7 @@ const es: typeof en = {
       deny: "No funciona nada, ni siquiera leer. El agente sigue viendo los comandos, marcados como no permitidos.",
     },
     defaultNote:
-      "El nivel marcado como «(predeterminado)» es el que recibe un grupo cuando no hay nada definido: el nivel de los valores predeterminados en un perfil, y Permitir en los valores predeterminados. Elegirlo quita el ajuste. Para que un agente no cambie algo, elige Solo lectura o Bloquear.",
+      "El nivel marcado como «(por defecto)» es el que recibe un grupo cuando no hay nada definido: el nivel de los valores predeterminados en un perfil, y Permitir en los valores predeterminados. Elegirlo quita el ajuste. Para que un agente no cambie algo, elige Solo lectura o Bloquear.",
     groupsTitle: "Qué cubre cada grupo",
     notEvery: "No todas las apps tienen todas las acciones de esta lista.",
     reading: "Lectura:",

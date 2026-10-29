@@ -19,7 +19,7 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useProfiles } from "./Health"
 import { LevelsHelp } from "./LevelsHelp"
-import { groupLabel, toolsMessages } from "./messages"
+import { toolsMessages } from "./messages"
 import { type PermissionsText, permissionsMessages } from "./messages-permissions"
 import {
   blockedCommands,
@@ -42,6 +42,7 @@ import {
   summarize,
   widensLevel,
 } from "./permissions"
+import { groupLabel } from "./tool-text"
 
 type Words = PermissionsText
 
@@ -342,7 +343,8 @@ function Ceiling({ tool, profile, ceiling }: { tool: CatalogTool; profile: strin
 }
 
 const ROW = "flex flex-col gap-2 px-3 py-2.5"
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_11rem] items-center gap-x-3"
+// Wide enough for "Только чтение (по умолчанию)"; the same in every row, so the selects line up.
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_min(17rem,45%)] items-center gap-x-3"
 
 function GroupName(props: { label: string; groupKey: string; detail: string | null; tone?: LampTone }) {
   const { label, groupKey, detail, tone } = props
