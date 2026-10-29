@@ -5,7 +5,7 @@ import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { toolsMessages } from "./messages"
 import { permissionsMessages } from "./messages-permissions"
-import { LEVELS } from "./permissions"
+import { LEVELS } from "./permission-levels"
 import { groupLabel } from "./tool-text"
 
 export function LevelsHelp({ tool }: { tool: CatalogTool }) {

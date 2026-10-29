@@ -15,7 +15,7 @@ import {
   stillAllowed,
   summarize,
   widensLevel,
-} from "./permissions"
+} from "./permission-levels"
 
 const m = permissionsMessages.en.permissions
 

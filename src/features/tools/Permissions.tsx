@@ -41,7 +41,7 @@ import {
   stillAllowed,
   summarize,
   widensLevel,
-} from "./permissions"
+} from "./permission-levels"
 import { groupLabel } from "./tool-text"
 
 type Words = PermissionsText
