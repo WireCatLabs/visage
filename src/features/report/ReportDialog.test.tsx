@@ -1,6 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, expect, it, vi } from "vitest"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { ReportContext } from "@/platform/report-schemas"
 import { ReportDialog } from "./ReportDialog"
@@ -27,4 +28,15 @@ it("shows both links from the first frame and fills them in place when the conte
   await act(async () => arrive(real))
   expect(within(dialog).getByText(/2 failed runs from tg/)).toBeInTheDocument()
   expect(within(dialog).queryByText("Collecting versions and recent errors…")).not.toBeInTheDocument()
+})
+
+it("asks for the missing fields and counts the attached runs in the chosen language", async () => {
+  useLanguage.setState({ choice: "ru" })
+  render(<ReportDialog />)
+  act(() => useReport.getState().start())
+  const dialog = await screen.findByRole("dialog", { name: "Сообщить о проблеме" })
+  await userEvent.click(within(dialog).getByRole("button", { name: "Посмотреть, что прикладывается" }))
+  expect(await within(dialog).findByText(/^2 неудачных запуска/)).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole("button", { name: "Отправить отчёт" }))
+  expect(within(dialog).getByText("Опишите проблему одной строкой.")).toBeInTheDocument()
 })

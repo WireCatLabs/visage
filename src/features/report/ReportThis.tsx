@@ -1,9 +1,11 @@
 import { Bug } from "lucide-react"
 import { type Failure, failureReport } from "@/domain/report"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { useNav } from "../nav"
 import { useOnboarding } from "../onboarding/store"
 import { recentErrors } from "./errors"
+import { reportMessages } from "./messages"
 import { useReport } from "./store"
 
 type Props = Omit<Failure, "message" | "page"> & {
@@ -36,18 +38,19 @@ export function reportFailure({ error, log, page, ...failure }: Omit<Props, "onO
 }
 
 export function ReportThis({ onOpen, ...props }: Props) {
+  const m = useMessages(reportMessages)
   return (
     <Button
       size="sm"
       variant="ghost"
-      title="Open a report about this, filled in. You can read and change it before sending."
+      title={m.reportThisTitle}
       icon={<Bug className="size-4" aria-hidden />}
       onClick={() => {
         onOpen?.()
         reportFailure(props)
       }}
     >
-      Report this
+      {m.reportThis}
     </Button>
   )
 }

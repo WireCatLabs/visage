@@ -21,13 +21,13 @@ export const reportTool = (about: ReportAbout) => (about === "app" || about === 
 
 export const reportRepo = (tool: string | null) => (tool && findTool(tool)?.repo) || APP_REPO
 
-export type ReportProblem = { field: "summary" | "about" | "happened"; message: string }
+export type ReportProblem = { field: "summary" | "about" | "happened" }
 
 export function validateReport(f: ReportFields): ReportProblem[] {
   const problems: ReportProblem[] = []
-  if (!f.summary.trim()) problems.push({ field: "summary", message: "Write a one-line summary of the problem." })
-  if (!f.about) problems.push({ field: "about", message: "Choose the app or a tool." })
-  if (!f.happened.trim()) problems.push({ field: "happened", message: "Describe what went wrong." })
+  if (!f.summary.trim()) problems.push({ field: "summary" })
+  if (!f.about) problems.push({ field: "about" })
+  if (!f.happened.trim()) problems.push({ field: "happened" })
   return problems
 }
 

@@ -3,6 +3,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { tools } from "@/domain/catalog"
 import { issueBody, LIMITS, newIssueUrl, type ReportFields, type ReportProblem, validateReport } from "@/domain/report"
 import { ToolIcon } from "@/features/tools/ToolIcon"
+import { formatList, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
@@ -11,6 +12,7 @@ import { Dialog } from "@/ui/Dialog"
 import { Disclosure } from "@/ui/Disclosure"
 import { Monogram } from "@/ui/Logo"
 import { Select, type SelectGroup } from "@/ui/Select"
+import { reportMessages } from "./messages"
 import { attachmentsOf, useReport } from "./store"
 
 const SECURITY_POLICY = "https://github.com/WireCatLabs/.github/blob/main/SECURITY.md"
@@ -20,10 +22,10 @@ const empty: ReportFields = { summary: "", about: "", steps: "", happened: "", e
 
 type FieldId = keyof ReportFields
 
-const aboutOptions: SelectGroup<string>[] = [
-  { label: "The app", options: [{ value: "app", label: "WireCat Desktop", icon: <Monogram className="size-4" /> }] },
+const aboutOptions = (m: { theApp: string; aTool: string }): SelectGroup<string>[] => [
+  { label: m.theApp, options: [{ value: "app", label: "WireCat Desktop", icon: <Monogram className="size-4" /> }] },
   {
-    label: "A tool",
+    label: m.aTool,
     options: tools.map((t) => ({
       value: t.id,
       label: `${t.name} (${t.bin})`,
@@ -33,6 +35,7 @@ const aboutOptions: SelectGroup<string>[] = [
 ]
 
 export function ReportDialog() {
+  const m = useMessages(reportMessages)
   const { open, prefill, phase, close } = useReport()
   const [fields, setFields] = useState<ReportFields>(empty)
   const [tried, setTried] = useState(false)
@@ -77,7 +80,7 @@ export function ReportDialog() {
       open={open}
       wide
       scroll
-      title={phase === "sent" ? "Report sent" : "Report a problem"}
+      title={phase === "sent" ? m.sentTitle : m.title}
       onClose={close}
       actions={<Actions fields={fields} />}
     >
@@ -96,22 +99,21 @@ export function ReportDialog() {
           }}
         >
           <p className="max-w-[70ch] text-[0.875rem]">
-            Your report becomes a public issue on GitHub, so you can follow it. Email addresses, phone numbers and
-            tokens in your text are masked before it leaves this computer. For a security problem, use the{" "}
-            <button
-              type="button"
-              className="font-medium text-brand hover:text-brand-hover"
-              onClick={() => platform.openUrl(SECURITY_POLICY)}
-            >
-              security policy
-            </button>{" "}
-            instead.
+            {m.intro(
+              <button
+                type="button"
+                className="font-medium text-brand hover:text-brand-hover"
+                onClick={() => platform.openUrl(SECURITY_POLICY)}
+              >
+                {m.policy}
+              </button>,
+            )}
           </p>
 
           <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_15rem]">
             <Field
               id={id("summary")}
-              label="Summary"
+              label={m.summary}
               problem={problem("summary")}
               aside={<Counter value={fields.summary} limit={LIMITS.summary} id={`${id("summary")}-count`} />}
               extraDescribedBy={`${id("summary")}-count`}
@@ -128,19 +130,19 @@ export function ReportDialog() {
                     e.preventDefault()
                     document.getElementById(id("about"))?.focus()
                   }}
-                  placeholder="Installing Google Drive stops at “Verifying”"
+                  placeholder={m.summaryExample}
                   className={control}
                   disabled={sending}
                 />
               )}
             </Field>
-            <Field id={id("about")} label="About" problem={problem("about")}>
+            <Field id={id("about")} label={m.about} problem={problem("about")}>
               {(a11y) => (
                 <Select
                   {...a11y}
                   value={fields.about}
                   onChange={(about) => setFields((s) => ({ ...s, about }))}
-                  options={aboutOptions}
+                  options={aboutOptions(m)}
                   className="w-full"
                   disabled={sending}
                 />
@@ -148,12 +150,7 @@ export function ReportDialog() {
             </Field>
           </div>
 
-          <Field
-            id={id("steps")}
-            label="What were you doing?"
-            optional
-            hint="The steps that lead to the problem, one per line. Numbered steps help the most."
-          >
+          <Field id={id("steps")} label={m.steps} optional hint={m.stepsHint}>
             {(a11y) => (
               <textarea
                 {...a11y}
@@ -161,19 +158,14 @@ export function ReportDialog() {
                 rows={4}
                 maxLength={LIMITS.steps}
                 onChange={set("steps")}
-                placeholder={"1. Opened Tools\n2. Pressed Install on Google Drive\n3. Waited at “Verifying”"}
+                placeholder={m.stepsExample}
                 className={cx(control, "resize-y")}
                 disabled={sending}
               />
             )}
           </Field>
 
-          <Field
-            id={id("happened")}
-            label="What happened?"
-            problem={problem("happened")}
-            hint="What you saw. Copy the exact message if there was one."
-          >
+          <Field id={id("happened")} label={m.happened} problem={problem("happened")} hint={m.happenedHint}>
             {(a11y) => (
               <textarea
                 {...a11y}
@@ -181,14 +173,14 @@ export function ReportDialog() {
                 rows={4}
                 maxLength={LIMITS.happened}
                 onChange={set("happened")}
-                placeholder="The install stopped and said “EACCES: permission denied”."
+                placeholder={m.happenedExample}
                 className={cx(control, "resize-y")}
                 disabled={sending}
               />
             )}
           </Field>
 
-          <Field id={id("expected")} label="What did you expect?" optional>
+          <Field id={id("expected")} label={m.expected} optional>
             {(a11y) => (
               <textarea
                 {...a11y}
@@ -196,7 +188,7 @@ export function ReportDialog() {
                 rows={2}
                 maxLength={LIMITS.expected}
                 onChange={set("expected")}
-                placeholder="Google Drive to install and show a green lamp."
+                placeholder={m.expectedExample}
                 className={cx(control, "resize-y")}
                 disabled={sending}
               />
@@ -231,6 +223,7 @@ function Field({
   extraDescribedBy?: string
   children: (a11y: A11y) => ReactNode
 }) {
+  const m = useMessages(reportMessages)
   const describedBy = [problem && `${id}-error`, hint && `${id}-hint`, extraDescribedBy].filter(Boolean).join(" ")
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -239,7 +232,7 @@ function Field({
           <label htmlFor={id} className="text-[0.875rem] font-medium text-ink">
             {label}
           </label>
-          {optional && <span className="text-[0.9rem] text-ink-dim">optional</span>}
+          {optional && <span className="text-[0.9rem] text-ink-dim">{m.optional}</span>}
         </span>
         {aside}
       </div>
@@ -252,7 +245,7 @@ function Field({
       {problem && (
         <p id={`${id}-error`} className="flex items-center gap-1.5 text-[0.9rem] text-bad">
           <CircleAlert className="size-3.5 shrink-0" aria-hidden />
-          {problem.message}
+          {m.missing[problem.field]}
         </p>
       )}
     </div>
@@ -260,19 +253,21 @@ function Field({
 }
 
 function Counter({ value, limit, id }: { value: string; limit: number; id: string }) {
+  const m = useMessages(reportMessages)
   const n = value.length
   return (
     <span
       id={id}
       className={cx("font-mono text-[0.85rem] tabular-nums", n >= limit - 10 ? "text-warn-ink" : "text-ink-dim")}
     >
-      <span className="sr-only">Characters used: </span>
+      <span className="sr-only">{m.charactersUsed}</span>
       {n}/{limit}
     </span>
   )
 }
 
 function WhatIsSent({ fields }: { fields: ReportFields }) {
+  const m = useMessages(reportMessages)
   const { context, contextError, prefill } = useReport()
   const runs = (context?.attachments?.runs as { tool: string; runs: unknown[] }[] | undefined) ?? []
   const runCount = runs.reduce((n, r) => n + (Array.isArray(r.runs) ? r.runs.length : 0), 0)
@@ -281,33 +276,27 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
 
   return (
     <section
-      aria-label="What is sent"
+      aria-label={m.whatIsSent}
       className="flex flex-col gap-3 rounded-[0.45rem] bg-app-2 px-4 py-3.5 text-[0.875rem]"
     >
       <p className="flex gap-2.5">
         <LockKeyhole className="mt-[0.2rem] size-4 shrink-0 text-ink-dim" aria-hidden />
-        <span>
-          Recent error logs from your tools
-          {prefill.errors?.length ? ", and this window’s recent errors," : ""} are attached. They are masked, kept only
-          on WireCat’s server for 90 days, and never shown on GitHub. They can still contain personal details you typed
-          into a command, such as a search query.
-        </span>
+        <span>{m.logsNote(Boolean(prefill.errors?.length))}</span>
       </p>
       {/* Both links are there from the first frame; what they open waits for the context, so the dialog never grows
           or jumps when it arrives. */}
       <div className="flex flex-col gap-2 pl-[1.6rem]">
-        <Disclosure summary="See what is attached">
+        <Disclosure summary={m.seeAttached}>
           <AutoHeight swap={Boolean(context)}>
             {context ? (
               <>
                 <p className="mb-2">
-                  {runCount} failed {runCount === 1 ? "run" : "runs"}
-                  {runs.length ? ` from ${runs.map((r) => r.tool).join(", ")}` : ""}
-                  {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}
-                  {prefill.errors?.length
-                    ? `, and ${prefill.errors.length} recent ${prefill.errors.length === 1 ? "error" : "errors"} from this window`
-                    : ""}
-                  .
+                  {m.attached({
+                    runs: runCount,
+                    tools: formatList(runs.map((r) => r.tool)),
+                    logLines: prefill.log?.length ?? 0,
+                    errors: prefill.errors?.length ?? 0,
+                  })}
                 </p>
                 <pre className={pre}>{JSON.stringify(attachmentsOf(context, prefill), null, 2)}</pre>
               </>
@@ -316,7 +305,7 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
             )}
           </AutoHeight>
         </Disclosure>
-        <Disclosure summary="See the public issue">
+        <Disclosure summary={m.seeIssue}>
           <AutoHeight swap={Boolean(context)}>
             {context ? (
               <pre className={pre}>{`${fields.summary.trim() || "(summary)"}\n\n${issueBody(fields, context)}`}</pre>
@@ -331,19 +320,21 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
 }
 
 function Pending({ error }: { error: string | null }) {
-  if (error) return <p className="text-ink-dim">Not available: this computer’s details could not be read.</p>
+  const m = useMessages(reportMessages)
+  if (error) return <p className="text-ink-dim">{m.notAvailable}</p>
   return (
     <p className="flex items-center gap-2 text-ink-dim" role="status">
-      <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Collecting versions and recent errors…
+      <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> {m.collecting}
     </p>
   )
 }
 
 function Actions({ fields }: { fields: ReportFields }) {
+  const m = useMessages(reportMessages)
   const { phase, error, context, contextError, close } = useReport()
-  if (phase === "sent") return <Button onClick={close}>Done</Button>
+  if (phase === "sent") return <Button onClick={close}>{m.done}</Button>
   const preparing = !context && !contextError
-  const alert = phase === "failed" ? error : contextError && `Could not read this computer’s details: ${contextError}`
+  const alert = phase === "failed" ? error : contextError && m.contextFailed(contextError)
   return (
     <div className="flex w-full flex-wrap items-center justify-end gap-2">
       {alert && (
@@ -357,17 +348,17 @@ function Actions({ fields }: { fields: ReportFields }) {
           icon={<ExternalLink className="size-4" aria-hidden />}
           onClick={() => platform.openUrl(newIssueUrl(fields, context))}
         >
-          Open on GitHub instead
+          {m.openOnGitHub}
         </Button>
       )}
       <Button variant="ghost" onClick={close}>
-        Cancel
+        {m.cancel}
       </Button>
       <Button
         variant="primary"
         type="submit"
         form="report-form"
-        title="Send report (Ctrl+Enter)"
+        title={m.sendTitle}
         className="min-w-[9.5rem]"
         aria-keyshortcuts="Control+Enter Meta+Enter"
         disabled={!context || phase === "sending"}
@@ -379,20 +370,21 @@ function Actions({ fields }: { fields: ReportFields }) {
           )
         }
       >
-        {phase === "sending" ? "Sending…" : preparing ? "Preparing…" : phase === "failed" ? "Try again" : "Send report"}
+        {phase === "sending" ? m.sending : preparing ? m.preparing : phase === "failed" ? m.tryAgain : m.send}
       </Button>
     </div>
   )
 }
 
 function Sent() {
+  const m = useMessages(reportMessages)
   const sent = useReport((s) => s.sent)
   if (!sent) return null
   return (
     <div className="flex flex-col gap-3 pb-4">
       <p className="flex items-center gap-2 text-ink">
         <CircleCheck className="size-5 text-ok" aria-hidden />
-        {sent.issueUrl ? `Thank you. The report is issue #${sent.issueNumber}.` : "Thank you. The report is saved."}
+        {sent.issueUrl ? m.thanksIssue(sent.issueNumber ?? 0) : m.thanksSaved}
       </p>
       {sent.issueUrl ? (
         <div>
@@ -401,11 +393,11 @@ function Sent() {
             icon={<ExternalLink className="size-4" aria-hidden />}
             onClick={() => sent.issueUrl && platform.openUrl(sent.issueUrl)}
           >
-            Open the issue on GitHub
+            {m.openIssue}
           </Button>
         </div>
       ) : (
-        <p>GitHub did not answer in time, so the issue will be opened shortly. Your report id is {sent.id}.</p>
+        <p>{m.queued(sent.id)}</p>
       )}
     </div>
   )
