@@ -3,7 +3,7 @@ import { join, relative } from "node:path"
 import { parseSync } from "vite"
 import { describe, expect, it } from "vitest"
 
-// Folders whose text is not in catalogs yet. Each feature's conversion removes its line; the list ends empty.
+// Folders and files whose text is not in catalogs yet. Each conversion removes its lines; the list ends empty.
 const PENDING = [
   "src/features/about",
   "src/features/agents",
@@ -14,7 +14,26 @@ const PENDING = [
   "src/features/signin",
   "src/features/storage",
   "src/features/system",
-  "src/features/tools",
+  // The Connect guide and the MCP server: messages-connect.tsx.
+  "src/features/tools/ConnectGuide",
+  "src/features/tools/TailscaleGuide",
+  "src/features/tools/CloudflareGuide",
+  "src/features/tools/McpServer",
+  "src/features/tools/LoginCode",
+  // The rest of the Tools page: messages.tsx.
+  "src/features/tools/ClearDataOffer",
+  "src/features/tools/Health",
+  "src/features/tools/InstallPanel",
+  "src/features/tools/LevelsHelp",
+  "src/features/tools/Permissions",
+  "src/features/tools/StorageFit",
+  "src/features/tools/Sync",
+  "src/features/tools/ToolDetails",
+  "src/features/tools/ToolIcon",
+  "src/features/tools/ToolRow",
+  "src/features/tools/ToolsIntro",
+  "src/features/tools/ToolsPage",
+  "src/features/tools/UpgradeWarning",
   "src/features/update",
 ]
 
@@ -42,7 +61,7 @@ function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const path = join(dir, e.name)
     if (e.isDirectory()) return files(path)
-    return e.name.endsWith(".tsx") && !e.name.includes(".test.") && e.name !== "messages.tsx" ? [path] : []
+    return e.name.endsWith(".tsx") && !e.name.includes(".test.") && !e.name.startsWith("messages") ? [path] : []
   })
 }
 

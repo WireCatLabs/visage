@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { LANGS, type Messages, plural, systemLang } from "."
 
-const modules = import.meta.glob<Record<string, Messages<unknown>>>("/src/**/messages.{ts,tsx}", { eager: true })
+const modules = import.meta.glob<Record<string, Messages<unknown>>>("/src/**/messages*.{ts,tsx}", { eager: true })
 const catalogs = Object.entries(modules).flatMap(([file, mod]) =>
   Object.entries(mod).map(([name, messages]) => ({ where: `${file} ${name}`, messages })),
 )
