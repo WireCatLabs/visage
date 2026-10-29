@@ -699,14 +699,24 @@ async fn sync_last(id: String, profile: Option<String>) -> Result<sync::LastSync
     blocking(move || sync::last(tool, profile.as_deref())).await?
 }
 
+/// A Linux .deb or .rpm copy can only be replaced with administrator rights, which the app never asks for (rule 6);
+/// the `AppImage`, the macOS app and the per-user Windows installer replace themselves.
+#[tauri::command]
+fn update_self_installs() -> bool {
+    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // The login shell's PATH takes about half a second; read it while the window opens, not on the first page.
     std::thread::spawn(paths::search_path);
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(Arc::new(Running::default()))
         .invoke_handler(tauri::generate_handler![
+            update_self_installs,
             readiness,
             node_offer,
             setup_node,

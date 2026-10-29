@@ -1,5 +1,5 @@
 import { Bug } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AboutDialog } from "@/features/about/AboutDialog"
 import { useNav } from "@/features/nav"
 import { HelpMenu } from "@/features/onboarding/HelpMenu"
@@ -11,6 +11,8 @@ import { useReport } from "@/features/report/store"
 import { SignInDialog } from "@/features/signin/SignInDialog"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
+import { useUpdate } from "@/features/update/store"
+import { UpdateButton, UpdateDialog } from "@/features/update/UpdateDialog"
 import { Button } from "@/ui/Button"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { useSectionHistory } from "./history"
@@ -35,6 +37,9 @@ export function App() {
   }
   const toTools = () => setActive("tools")
   const [about, setAbout] = useState(false)
+  useEffect(() => {
+    useUpdate.getState().check()
+  }, [])
 
   return (
     <div className="flex h-full">
@@ -43,6 +48,7 @@ export function App() {
         <TopBar>
           {!onboarding && (
             <>
+              <UpdateButton />
               <Button
                 variant="ghost"
                 size="sm"
@@ -81,6 +87,7 @@ export function App() {
         <AboutDialog open={about} onClose={() => setAbout(false)} />
         <SignInDialog />
         <ReportDialog />
+        <UpdateDialog />
       </div>
       <Tour />
     </div>

@@ -26,6 +26,10 @@ import type { FunnelState, TailscaleDownload, TailscaleStatus } from "./tailscal
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
+/** A newer WireCat on GitHub Releases. `manual`: this copy cannot replace itself, so the user downloads it. */
+export type AppUpdate = { version: string; notes: string | null; manual: boolean }
+export type UpdateProgress = { downloaded: number; total: number | null }
+
 /** Everything the interface may ask of the machine. Each call names a known operation, never a command line. */
 export type Platform = {
   kind: "tauri" | "mock"
@@ -173,6 +177,11 @@ export type Platform = {
   settingsUnset(id: string, profile: string | null, defaults: boolean, setting: string): Promise<void>
   /** Levels the owner set, plus per-command access when the tool reports it. Saved with `settingsSet`. */
   permissionsShow(id: string, profile: string | null): Promise<Permissions>
+  /** Null when this is the newest release. */
+  checkUpdate(): Promise<AppUpdate | null>
+  /** Downloads and installs the update `checkUpdate` found; the app keeps running until `restart`. */
+  installUpdate(onProgress: (p: UpdateProgress) => void): Promise<void>
+  restart(): Promise<void>
   openUrl(url: string): Promise<void>
   window(action: WindowAction): Promise<void>
 }

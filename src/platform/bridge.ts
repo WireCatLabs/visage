@@ -1,6 +1,8 @@
 import { Channel, invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { openUrl } from "@tauri-apps/plugin-opener"
+import { relaunch } from "@tauri-apps/plugin-process"
+import { check, type Update } from "@tauri-apps/plugin-updater"
 import * as v from "valibot"
 import {
   AgentsSchema,
@@ -70,6 +72,9 @@ function events(onEvent: (e: v.InferOutput<typeof InstallEventSchema>) => void) 
   }
   return channel
 }
+
+/** The update the last check found; installing needs the plugin's own object, not the copy the interface holds. */
+let found: Update | null = null
 
 function detectOs(): Platform["os"] {
   const ua = navigator.userAgent.toLowerCase()
@@ -205,6 +210,23 @@ function createTauri(): Platform {
       invoke("settings_set", { id, profile, defaults, setting, value }),
     settingsUnset: (id, profile, defaults, setting) => invoke("settings_unset", { id, profile, defaults, setting }),
     permissionsShow: (id, profile) => call(PermissionsSchema, "permissions_show", { id, profile }),
+    checkUpdate: async () => {
+      found = await check()
+      if (!found) return null
+      const manual = !(await invoke<boolean>("update_self_installs"))
+      return { version: found.version, notes: found.body?.trim() || null, manual }
+    },
+    installUpdate: async (onProgress) => {
+      if (!found) throw new Error("No update was found to install.")
+      let downloaded = 0
+      let total: number | null = null
+      await found.downloadAndInstall((e) => {
+        if (e.event === "Started") total = e.data.contentLength ?? null
+        else if (e.event === "Progress") downloaded += e.data.chunkLength
+        onProgress({ downloaded, total })
+      })
+    },
+    restart: () => relaunch(),
     openUrl: (url) => openUrl(url),
     window: async (action) => {
       const w = getCurrentWindow()

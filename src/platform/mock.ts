@@ -13,6 +13,7 @@ import { settingsMock } from "./mock-settings"
 import { linkedProfiles, signInMock } from "./mock-signin"
 import { syncMock } from "./mock-sync"
 import { tailscaleMock } from "./mock-tailscale"
+import { updateMock } from "./mock-update"
 import type {
   Diagnosis,
   InstallEvent,
@@ -499,6 +500,7 @@ export function createMock(os: Platform["os"]): Platform {
     ...tailscaleMock(),
     ...cloudflareMock(),
     ...reportMock,
+    ...updateMock,
     ...runsMock,
     ...settingsMock,
     ...permissionsMock(settingsMock),
