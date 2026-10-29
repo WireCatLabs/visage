@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
+import { type Lang, useLang, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
@@ -17,6 +18,9 @@ import { scenarioOf } from "./connect-scenario"
 import { activityOf, appLabel, busiest } from "./connect-steps"
 import { forgetKept, useKept } from "./kept"
 import { McpServerRow, type RowState } from "./McpServerRow"
+import { mcpMessages } from "./messages-mcp"
+
+type Words = (typeof mcpMessages)["en"]["server"]
 
 const CODE_POLL_MS = 3000
 
@@ -36,17 +40,15 @@ function openedByScenario(id: string) {
   ].includes(id)
 }
 
-function summaryOf(row: RowState): string | null {
+function summaryOf(row: RowState, m: Words, lang: Lang): string | null {
   if (row.state === "loading") return null
-  if (row.state === "error") return "Could not read it"
+  if (row.state === "error") return m.unreadable
   const s = row.data
-  if (!s.available) return "Arrives with the next update"
-  if (!s.running) return s.clients.length > 0 ? "Server off" : "No app connected"
+  if (!s.available) return m.later
+  if (!s.running) return s.clients.length > 0 ? m.off : m.noApp
   const used = busiest(s)
-  if (used) return `${used.claimedName ?? "An app"} · ${activityOf(used)}`
-  return s.clients.length > 0
-    ? `${s.clients.length} app${s.clients.length > 1 ? "s" : ""} logged in`
-    : "Server running, no app yet"
+  if (used) return `${used.claimedName ?? m.anApp} · ${activityOf(used, Date.now(), lang)}`
+  return s.clients.length > 0 ? m.loggedIn(s.clients.length) : m.noAppYet
 }
 
 /**
@@ -55,6 +57,8 @@ function summaryOf(row: RowState): string | null {
  * call. Agents on this computer use the tools directly, so the section starts closed.
  */
 export function McpServer({ tool }: { tool: CatalogTool }) {
+  const m = useMessages(mcpMessages).server
+  const lang = useLang()
   const headingId = useId()
   const [open, setOpen] = useKept(`mcp:${tool.id}`, "open", () => openedByScenario(tool.id))
   // Sent here from another surface ("Connect an AI app" after a sign-in): shown once the tool's panel has opened.
@@ -157,7 +161,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
   }, [ready, guiding, connected, setGuiding])
   const showGuide = data?.available === true && (guiding ?? !connected)
   const funnel = funnels.find((f) => f.shared) ?? null
-  const summary = summaryOf(row)
+  const summary = summaryOf(row, m, lang)
 
   return (
     <section aria-labelledby={headingId} className="flex min-w-0 flex-col border-line border-t pt-4 lg:col-span-2">
@@ -178,7 +182,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
               )}
               aria-hidden
             />
-            Connect an AI app
+            {m.title}
           </span>
           {!open && (
             <span className="min-w-0 text-[0.9rem] font-normal text-ink-soft tabular-nums">
@@ -188,22 +192,14 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
         </button>
       </h4>
       <Collapse open={open} id={`${headingId}-body`} className="flex min-w-0 flex-col gap-4 pt-3">
-        <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">
-          Let ChatGPT or Claude in the browser use {tool.name}, within each profile's permissions. WireCat gives this
-          computer an internet address, starts {tool.bin}'s server, shows what to click in the app and checks that the
-          app gets through. Nothing starts until you press Start the server.
-        </p>
-        {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label="Reading the server's state" />}
+        <p className="max-w-[72ch] text-[0.92rem] text-ink-soft">{m.intro(tool.name, tool.bin)}</p>
+        {row.state === "loading" && <Skeleton className="h-[12rem] w-full" label={m.reading} />}
         {stale && row.state === "ready" && (
           <p role="status" className="text-[0.88rem] text-warn-ink">
-            Could not read the server's state just now ({stale}); showing the last answer and trying again.
+            {m.stale(stale)}
           </p>
         )}
-        {data && !data.available && (
-          <p className="text-[0.92rem] text-ink-soft">
-            This version of {tool.name} cannot do it yet. It arrives with the next update of {tool.bin}.
-          </p>
-        )}
+        {data && !data.available && <p className="text-[0.92rem] text-ink-soft">{m.notYet(tool.name, tool.bin)}</p>}
         {data && showGuide && (
           <ConnectGuide
             key={round}
@@ -217,12 +213,14 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
             onAgain={() => guide(true)}
           />
         )}
-        {data?.available === true && !showGuide && <Connected data={data} onConnect={() => guide(true)} />}
+        {data?.available === true && !showGuide && (
+          <Connected data={data} m={m} lang={lang} onConnect={() => guide(true)} />
+        )}
         {row.state !== "loading" && (
-          <Disclosure summary="Server details">
+          <Disclosure summary={m.details}>
             <ul
               className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app"
-              aria-label={`${tool.name} MCP server`}
+              aria-label={m.list(tool.name)}
             >
               <McpServerRow
                 tool={tool}
@@ -242,7 +240,8 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
 }
 
 /** After setup: which apps use the tool and what each did last. */
-function Connected({ data, onConnect }: { data: McpServerStatus; onConnect(): void }) {
+function Connected(props: { data: McpServerStatus; m: Words; lang: Lang; onConnect(): void }) {
+  const { data, m, lang, onConnect } = props
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line bg-app">
@@ -251,20 +250,18 @@ function Connected({ data, onConnect }: { data: McpServerStatus; onConnect(): vo
             key={`${c.claimedName}-${c.lastLoginAt}`}
             className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
           >
-            <Lamp tone={data.running ? "ok" : "idle"} size="sm" label={data.running ? "Connected" : "Server off"} />
+            <Lamp tone={data.running ? "ok" : "idle"} size="sm" label={data.running ? m.connected : m.off} />
             <span className="text-[0.95rem] text-ink">
-              Calls itself <span className="selectable font-mono">{appLabel(c)}</span>
+              {m.callsItself(<span className="selectable font-mono">{appLabel(c, lang)}</span>)}
             </span>
-            <span className="text-[0.88rem] text-ink-soft tabular-nums">{activityOf(c)}</span>
+            <span className="text-[0.88rem] text-ink-soft tabular-nums">{activityOf(c, Date.now(), lang)}</span>
           </li>
         ))}
       </ul>
-      {!data.running && (
-        <p className="text-[0.88rem] text-warn-ink">The server is off, so these apps cannot reach it now.</p>
-      )}
+      {!data.running && <p className="text-[0.88rem] text-warn-ink">{m.offWarning}</p>}
       <div>
         <Button size="sm" onClick={onConnect}>
-          {data.running ? "Connect another app" : "Start and connect"}
+          {data.running ? m.another : m.startConnect}
         </Button>
       </div>
     </div>

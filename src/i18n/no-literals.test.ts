@@ -13,12 +13,6 @@ const PENDING = [
   "src/features/signin",
   "src/features/storage",
   "src/features/system",
-  // The Connect guide and the MCP server: messages-connect.tsx.
-  "src/features/tools/ConnectGuide",
-  "src/features/tools/TailscaleGuide",
-  "src/features/tools/CloudflareGuide",
-  "src/features/tools/McpServer",
-  "src/features/tools/LoginCode",
   // The rest of the Tools page: messages.tsx.
   "src/features/tools/ClearDataOffer",
   "src/features/tools/Health",

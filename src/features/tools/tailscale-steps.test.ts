@@ -29,11 +29,11 @@ describe("Tailscale steps", () => {
   it("stop at the first missing step, and every later one waits for it", () => {
     const missing = stepsOf({ ...READY, installed: false })
     expect(missing.map((s) => s.done)).toEqual([false, false, false, false])
-    expect(missing[1]?.missing).toBe("Waits for the step before it.")
+    expect(missing[1]?.missing).toBe("blocked")
     expect(done({ ...READY, operator: false })[0]).toBe(false)
     expect(done({ ...READY, operator: null })[0]).toBe(true)
     expect(done({ ...READY, backend: "needsApproval" })).toEqual([true, false, false, false])
     expect(done({ ...READY, funnel: false })).toEqual([true, true, false, false])
-    expect(stepsOf({ ...READY, freePorts: [] })[3]?.missing).toMatch(/all .* in use/i)
+    expect(stepsOf({ ...READY, freePorts: [] })[3]?.missing).toBe("portsFull")
   })
 })

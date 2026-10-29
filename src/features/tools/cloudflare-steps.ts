@@ -2,32 +2,34 @@ import type { CloudflareStatus } from "@/platform/cloudflare-schemas"
 
 export type CloudflareStepId = "install" | "account" | "address"
 
-export type CloudflareStep = { id: CloudflareStepId; title: string; done: boolean; missing: string | null }
+export type CloudflareMissing = "blocked" | "unsupported" | "notInstalled" | "noAccount" | "noAddress"
 
-function install(s: CloudflareStatus): string | null {
-  if (!s.supported) return "Cloudflare publishes no cloudflared for this computer's processor."
-  return s.installed ? null : "cloudflared is not on this computer yet."
+export type CloudflareStep = { id: CloudflareStepId; done: boolean; missing: CloudflareMissing | null }
+
+function install(s: CloudflareStatus): CloudflareMissing | null {
+  if (!s.supported) return "unsupported"
+  return s.installed ? null : "notInstalled"
 }
 
 /** Logged in with no tunnel yet, or a tunnel exists: its login was used up making it. */
-const account = (s: CloudflareStatus) =>
-  s.signedIn || s.hostname !== null ? null : "WireCat is not connected to a Cloudflare account yet."
+const account = (s: CloudflareStatus): CloudflareMissing | null =>
+  s.signedIn || s.hostname !== null ? null : "noAccount"
 
 /** Logged in again while a tunnel exists means the owner is choosing another name. */
-const address = (s: CloudflareStatus) =>
-  s.hostname !== null && !s.signedIn ? null : "There is no address on your domain yet."
+const address = (s: CloudflareStatus): CloudflareMissing | null =>
+  s.hostname !== null && !s.signedIn ? null : "noAddress"
 
 /** A step is done only when every step before it is, as in the Tailscale guide. */
 export function cloudflareSteps(s: CloudflareStatus): CloudflareStep[] {
-  const all: [CloudflareStepId, string, (s: CloudflareStatus) => string | null][] = [
-    ["install", "Download cloudflared", install],
-    ["account", "Connect your Cloudflare account", account],
-    ["address", "Choose the address", address],
+  const all: [CloudflareStepId, (s: CloudflareStatus) => CloudflareMissing | null][] = [
+    ["install", install],
+    ["account", account],
+    ["address", address],
   ]
   let blocked = false
-  return all.map(([id, title, check]) => {
-    const missing = blocked ? "Waits for the step before it." : check(s)
+  return all.map(([id, check]) => {
+    const missing: CloudflareMissing | null = blocked ? "blocked" : check(s)
     blocked ||= missing !== null
-    return { id, title, done: missing === null, missing }
+    return { id, done: missing === null, missing }
   })
 }

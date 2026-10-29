@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import type { CatalogTool } from "@/domain/catalog"
+import { formatDate, type Lang, useLang, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
@@ -13,6 +14,9 @@ import { Skeleton } from "@/ui/Skeleton"
 import { activityOf } from "./connect-steps"
 import { LoginCode } from "./LoginCode"
 import { ForgetLogins } from "./McpServerDialogs"
+import { mcpMessages } from "./messages-mcp"
+
+type Words = (typeof mcpMessages)["en"]["row"]
 
 export type RowState =
   | { state: "loading" }
@@ -23,27 +27,30 @@ type Busy = "stopping" | "copying" | "closing" | null
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-const clock = (iso: string) => {
+const clock = (iso: string, lang: Lang) => {
   const when = new Date(iso)
-  const time = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  return when.toDateString() === new Date().toDateString() ? time : `${when.toLocaleDateString()} ${time}`
+  const today = when.toDateString() === new Date().toDateString()
+  return formatDate(
+    when,
+    today ? { hour: "2-digit", minute: "2-digit" } : { dateStyle: "short", timeStyle: "short" },
+    lang,
+  )
 }
 
-function lampOf(row: RowState, busy: Busy): { tone: LampTone; label: string } {
-  if (busy === "stopping" || row.state === "loading") return { tone: "busy", label: "Checking" }
-  if (row.state === "error") return { tone: "bad", label: "Could not read it" }
+function lampOf(row: RowState, busy: Busy, m: Words): { tone: LampTone; label: string } {
+  if (busy === "stopping" || row.state === "loading") return { tone: "busy", label: m.checking }
+  if (row.state === "error") return { tone: "bad", label: m.unreadable }
   const s = row.data
-  if (!s.available) return { tone: "idle", label: "Not available yet" }
-  if (!s.running) return { tone: "idle", label: "Off" }
-  if (s.outdated || !s.listening) return { tone: "warn", label: s.outdated ? "Runs an older version" : "Starting" }
-  return { tone: "ok", label: "Running" }
+  if (!s.available) return { tone: "idle", label: m.unavailable }
+  if (!s.running) return { tone: "idle", label: m.off }
+  if (s.outdated || !s.listening) return { tone: "warn", label: s.outdated ? m.older : m.starting }
+  return { tone: "ok", label: m.running }
 }
 
-function stateText(s: McpServerStatus, tool: CatalogTool) {
-  if (!s.available) return `Arrives with the next update of ${tool.name}`
-  if (!s.running) return "Off"
-  const since = s.startedAt ? ` since ${clock(s.startedAt)}` : ""
-  return `${s.listening ? "Running" : "Starting"}${since} on port ${s.port ?? "?"}${s.startedHere ? "" : ", started in a terminal"}`
+function stateText(s: McpServerStatus, tool: CatalogTool, m: Words, lang: Lang) {
+  if (!s.available) return m.later(tool.name)
+  if (!s.running) return m.off
+  return m.state(s.listening, s.startedAt ? clock(s.startedAt, lang) : null, String(s.port ?? "?"), !s.startedHere)
 }
 
 export function McpServerRow(props: {
@@ -65,7 +72,9 @@ export function McpServerRow(props: {
   const [forgetting, setForgetting] = useState(false)
   const name = tool.bin
   const data = row.state === "ready" ? row.data : null
-  const lamp = lampOf(row, busy)
+  const m = useMessages(mcpMessages).row
+  const lang = useLang()
+  const lamp = lampOf(row, busy, m)
 
   // The tool renews the code when it runs out; read the new one then, so the one on screen always works.
   const expiresAt = data?.loginCode?.expiresAt
@@ -119,64 +128,55 @@ export function McpServerRow(props: {
         <Lamp tone={lamp.tone} size="sm" label={lamp.label} />
         <span className="selectable font-mono text-[0.95rem] text-ink">{name}</span>
         <span className="min-w-0 text-[0.9rem] text-ink-soft tabular-nums">
-          {data ? stateText(data, tool) : row.state === "error" ? "Could not read it" : <Skeleton chars={22} />}
+          {data ? stateText(data, tool, m, lang) : row.state === "error" ? m.unreadable : <Skeleton chars={22} />}
         </span>
         <span className="ml-auto flex gap-2">
           {data?.available && !data.running && (
-            <Button size="sm" onClick={onStart} aria-label={`Start the MCP server for ${name}`}>
-              Start
+            <Button size="sm" onClick={onStart} aria-label={m.startLabel(name)}>
+              {m.start}
             </Button>
           )}
           {data?.running && data.startedHere && (
-            <Button size="sm" onClick={stop} disabled={busy !== null} aria-label={`Stop the MCP server for ${name}`}>
-              {busy === "stopping" ? "Stopping…" : "Stop"}
+            <Button size="sm" onClick={stop} disabled={busy !== null} aria-label={m.stopLabel(name)}>
+              {busy === "stopping" ? m.stopping : m.stop}
             </Button>
           )}
           {row.state === "error" && (
             <Button size="sm" variant="ghost" onClick={reload}>
-              Check again
+              {m.again}
             </Button>
           )}
         </span>
       </div>
       {row.state === "error" && <ErrorNotice inline>{row.message}</ErrorNotice>}
       {failure && <ErrorNotice inline>{failure}</ErrorNotice>}
-      {data?.running && !data.startedHere && (
-        <p className="text-[0.9rem] text-ink-soft">It was started in a terminal, so stop it there.</p>
-      )}
-      {data?.outdated && (
-        <p className="text-[0.9rem] text-warn-ink">
-          It runs an older version of {tool.bin}. Stop and start it to update.
-        </p>
-      )}
-      {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} onClose={closeFunnel} />}
+      {data?.running && !data.startedHere && <p className="text-[0.9rem] text-ink-soft">{m.inTerminal}</p>}
+      {data?.outdated && <p className="text-[0.9rem] text-warn-ink">{m.outdated(tool.bin)}</p>}
+      {data && funnel && <FunnelLine data={data} funnel={funnel} busy={busy} m={m} onClose={closeFunnel} />}
       {data?.running && route && data.connectorUrl?.startsWith(route.url) && (
         <p className={cx("pl-[1.6rem] text-[0.9rem]", route.live ? "text-ink-soft" : "text-warn-ink")}>
-          {route.live
-            ? "Reachable from the internet through your Cloudflare tunnel, which WireCat runs. Stop takes it off the tunnel."
-            : "Your Cloudflare tunnel is off, so browser apps cannot reach the server. Stop and start it to start the tunnel again."}
+          {route.live ? m.tunnelLive : m.tunnelOff}
         </p>
       )}
       {!funnel?.live &&
         leftovers.map((old) => (
           <div key={old.url} className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
             <p className="text-[0.9rem] text-warn-ink">
-              An older Tailscale Funnel{old.profile ? ` for profile ${old.profile}` : ""} still sends{" "}
-              <span className="selectable font-mono">{old.url}</span> to this computer. Starting the server replaces it.
+              {m.leftover(<span className="selectable font-mono">{old.url}</span>, old.profile ?? null)}
             </p>
             <Button size="sm" onClick={closeFunnel} disabled={busy !== null}>
-              {busy === "closing" ? "Turning off…" : "Turn it off"}
+              {busy === "closing" ? m.turningOff : m.turnOff}
             </Button>
           </div>
         ))}
-      {data?.running && <Running data={data} />}
+      {data?.running && <Running data={data} m={m} lang={lang} />}
       {data?.available && (data.clients.length > 0 || data.running) && (
-        <Clients data={data} onForget={() => setForgetting(true)} />
+        <Clients data={data} m={m} lang={lang} onForget={() => setForgetting(true)} />
       )}
       {data?.available && tool.mcpServer?.config && (
         <div className="pl-[1.6rem]">
           <Button size="sm" variant="ghost" onClick={copyConfig} disabled={busy !== null}>
-            {busy === "copying" ? "Copying…" : "Copy config for desktop apps"}
+            {busy === "copying" ? m.copying : m.copyConfig}
           </Button>
         </div>
       )}
@@ -193,94 +193,79 @@ export function McpServerRow(props: {
   )
 }
 
-function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: Busy; onClose(): void }) {
-  const { data, funnel, busy, onClose } = props
+function FunnelLine(props: { data: McpServerStatus; funnel: FunnelState; busy: Busy; m: Words; onClose(): void }) {
+  const { data, funnel, busy, m, onClose } = props
   const ours = data.connectorUrl?.startsWith(funnel.url) ?? false
   if (data.running && funnel.live && ours)
-    return (
-      <p className="pl-[1.6rem] text-[0.9rem] text-ink-soft">
-        Reachable from the internet through Tailscale Funnel, which WireCat set up. Stop turns it off.
-      </p>
-    )
+    return <p className="pl-[1.6rem] text-[0.9rem] text-ink-soft">{m.funnelLive}</p>
   if (data.running && !funnel.live && ours)
-    return (
-      <p className="pl-[1.6rem] text-[0.9rem] text-warn-ink">
-        Tailscale Funnel for this address is off, so browser apps cannot reach the server. Stop and start it to turn
-        Funnel on again.
-      </p>
-    )
+    return <p className="pl-[1.6rem] text-[0.9rem] text-warn-ink">{m.funnelOff}</p>
   if (!data.running && funnel.live)
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[1.6rem]">
         <p className="text-[0.9rem] text-warn-ink">
-          Tailscale Funnel still sends <span className="selectable font-mono">{funnel.url}</span> to this computer,
-          though the server is off.
+          {m.funnelLeft(<span className="selectable font-mono">{funnel.url}</span>)}
         </p>
         <Button size="sm" onClick={onClose} disabled={busy !== null}>
-          {busy === "closing" ? "Turning off…" : "Turn Funnel off"}
+          {busy === "closing" ? m.turningOff : m.turnFunnelOff}
         </Button>
       </div>
     )
   return null
 }
 
-function Running({ data }: { data: McpServerStatus }) {
+function Running({ data, m, lang }: { data: McpServerStatus; m: Words; lang: Lang }) {
   return (
     <div className="grid gap-3 pl-[1.6rem] md:grid-cols-2">
       {data.connectorUrl && (
         <div className="min-w-0">
-          <h5 className="mb-1.5 text-[0.9rem] font-medium text-ink-dim">Address for the browser app</h5>
-          <CopyField value={data.connectorUrl} label="Copy the connector address" />
+          <h5 className="mb-1.5 text-[0.9rem] font-medium text-ink-dim">{m.address}</h5>
+          <CopyField value={data.connectorUrl} label={m.copyAddress} />
         </div>
       )}
       <div className="min-w-0">
         <h5 className="mb-1.5 text-[0.9rem] font-medium text-ink-dim">
-          Login code
-          {data.loginCode && <span className="font-normal"> · until {clock(data.loginCode.expiresAt)}</span>}
+          {m.code}
+          {data.loginCode && <span className="font-normal">{m.until(clock(data.loginCode.expiresAt, lang))}</span>}
         </h5>
         {data.loginCode ? (
           <LoginCode server={{ ...data, loginCode: data.loginCode }} />
         ) : (
-          <p className="text-[0.9rem] text-ink-soft">Not shown yet. It appears once the server listens.</p>
+          <p className="text-[0.9rem] text-ink-soft">{m.noCode}</p>
         )}
       </div>
     </div>
   )
 }
 
-function Clients({ data, onForget }: { data: McpServerStatus; onForget(): void }) {
+function Clients(props: { data: McpServerStatus; m: Words; lang: Lang; onForget(): void }) {
+  const { data, m, lang, onForget } = props
   return (
     <div className="flex flex-col gap-1.5 pl-[1.6rem]">
-      <h5 className="text-[0.9rem] font-medium text-ink-dim">Logged-in apps</h5>
+      <h5 className="text-[0.9rem] font-medium text-ink-dim">{m.apps}</h5>
       {data.clients.length === 0 ? (
-        <p className="text-[0.9rem] text-ink-soft">None yet.</p>
+        <p className="text-[0.9rem] text-ink-soft">{m.none}</p>
       ) : (
         <>
           <ul className="flex flex-col gap-1 text-[0.875rem]">
             {data.clients.map((c) => (
               <li key={`${c.claimedName}-${c.lastLoginAt}`} className="flex flex-wrap gap-x-2">
                 <span className="text-ink">
-                  {c.claimedName === null ? (
-                    "An app with no name"
-                  ) : (
-                    <>
-                      Calls itself <span className="selectable font-mono">“{c.claimedName}”</span>
-                    </>
-                  )}
+                  {c.claimedName === null
+                    ? m.noName
+                    : m.callsItself(<span className="selectable font-mono">“{c.claimedName}”</span>)}
                 </span>
                 <span className="text-ink-dim tabular-nums">
-                  last login {clock(c.lastLoginAt)}
-                  {c.lastTool ? ` · ${activityOf(c)}` : ""}
+                  {m.lastLogin(clock(c.lastLoginAt, lang))}
+                  {c.lastTool ? ` · ${activityOf(c, Date.now(), lang)}` : ""}
                 </span>
               </li>
             ))}
           </ul>
-          <p className="max-w-[70ch] text-[0.85rem] text-ink-dim">
-            Any app can give itself any name. If you do not recognise one, forget all logins.
-          </p>
+          <p className="max-w-[70ch] text-[0.85rem] text-ink-dim">{m.anyName}</p>
           <div>
             <Button size="sm" variant="danger" onClick={onForget}>
-              Forget all logins
+              {m.forget}
             </Button>
           </div>
         </>

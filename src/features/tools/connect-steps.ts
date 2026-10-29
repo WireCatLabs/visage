@@ -1,16 +1,9 @@
+import { currentLang, type Lang, messagesOf } from "@/i18n"
 import type { McpClient, McpServerStatus, PublicCheck } from "@/platform/mcp-server-schemas"
 import type { AppId } from "./connect-apps"
+import { connectMessages } from "./messages-connect"
 
 export type ConnectStepId = "choose" | "address" | "start" | "reach" | "connect" | "test"
-
-export const STEP_TITLES: Record<ConnectStepId, string> = {
-  choose: "Choose the app",
-  address: "Public address",
-  start: "Start the server",
-  reach: "Check the address",
-  connect: "Add it in the app",
-  test: "Test it",
-}
 
 const ORDER: ConnectStepId[] = ["choose", "address", "start", "reach", "connect", "test"]
 
@@ -41,16 +34,9 @@ export function currentStep(p: Progress): ConnectStepId {
 export type StepState = "done" | "current" | "todo"
 
 /** `finished`: the last step is done too, so every step is a tick. */
-export function stepStates(
-  current: ConnectStepId,
-  finished = false,
-): { id: ConnectStepId; title: string; state: StepState }[] {
+export function stepStates(current: ConnectStepId, finished = false): { id: ConnectStepId; state: StepState }[] {
   const at = finished ? ORDER.length : ORDER.indexOf(current)
-  return ORDER.map((id, i) => ({
-    id,
-    title: STEP_TITLES[id],
-    state: i < at ? "done" : i === at ? "current" : "todo",
-  }))
+  return ORDER.map((id, i) => ({ id, state: i < at ? "done" : i === at ? "current" : "todo" }))
 }
 
 const after = (iso: string | null, since: number) => iso !== null && Date.parse(iso) >= since - 2000
@@ -74,29 +60,32 @@ export function testState(server: McpServerStatus | null, since: number): TestSt
   return { state: "waiting" }
 }
 
-/** "just now", "4 min ago", "3 h ago", "2 days ago". */
-export function ago(iso: string, now = Date.now()): string {
+/**
+ * "just now", "4 min ago", "3 h ago", "2 days ago". Sync and the Tools row call it too; a caller outside React must
+ * read `useLang()` itself, or a language switch does not reach the text.
+ */
+export function ago(iso: string, now = Date.now(), lang: Lang = currentLang()): string {
+  const m = messagesOf(connectMessages, lang).activity
   const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000))
-  if (seconds < 60) return "just now"
+  if (seconds < 60) return m.justNow
   const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 60) return m.minutes(minutes)
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
+  if (hours < 24) return m.hours(hours)
   const days = Math.round(hours / 24)
-  return days === 1 ? "yesterday" : `${days} days ago`
+  return days === 1 ? m.yesterday : m.days(days)
 }
 
 /** The app's name as it gave it; anyone may register any name, so the interface always says "calls itself". */
-export const appLabel = (c: McpClient) => (c.claimedName === null ? "An app with no name" : `“${c.claimedName}”`)
+export const appLabel = (c: McpClient, lang: Lang = currentLang()) =>
+  c.claimedName === null ? messagesOf(connectMessages, lang).activity.noName : `“${c.claimedName}”`
 
 /** One line for a logged-in app: "last call 2 min ago · tg_read · 14 today", or when it last logged in. */
-export function activityOf(c: McpClient, now = Date.now()): string {
-  if (c.lastTool && c.lastToolAt) {
-    const today = c.toolCallsToday ? ` · ${c.toolCallsToday} today` : ""
-    return `last call ${ago(c.lastToolAt, now)} · ${c.lastTool}${today}`
-  }
-  if (c.lastRequestAt) return `connected ${ago(c.lastRequestAt, now)}, no calls yet`
-  return `logged in ${ago(c.lastLoginAt, now)}`
+export function activityOf(c: McpClient, now = Date.now(), lang: Lang = currentLang()): string {
+  const m = messagesOf(connectMessages, lang).activity
+  if (c.lastTool && c.lastToolAt) return m.lastCall(ago(c.lastToolAt, now, lang), c.lastTool, c.toolCallsToday)
+  if (c.lastRequestAt) return m.connected(ago(c.lastRequestAt, now, lang))
+  return m.loggedIn(ago(c.lastLoginAt, now, lang))
 }
 
 /** The app that logged in last, for a row whose tool does not report calls yet. */

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
+import { useMessages } from "@/i18n"
 import type { McpServerStatus } from "@/platform/mcp-server-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
+import { mcpMessages } from "./messages-mcp"
 
 const MARK_MS = 20_000
 
@@ -19,6 +21,7 @@ export function LoginCode({
 }: {
   server: McpServerStatus & { loginCode: { code: string; expiresAt: string } }
 }) {
+  const m = useMessages(mcpMessages).code
   const { code, expiresAt } = server.loginCode
   const newest = newestLogin(server)
   const [seen, setSeen] = useState<Seen>({ code, expiresAt, newest })
@@ -46,7 +49,7 @@ export function LoginCode({
       : server.clients
           .filter((c) => c.lastLoginAt > usedAfter)
           .sort((a, b) => (a.lastLoginAt < b.lastLoginAt ? 1 : -1))[0]
-  const name = user ? (user.claimedName === null ? "an app with no name" : `“${user.claimedName}”`) : null
+  const name = user ? (user.claimedName === null ? m.noName : `“${user.claimedName}”`) : null
 
   return (
     <div className="flex flex-col gap-1">
@@ -56,14 +59,10 @@ export function LoginCode({
           usedAfter !== null && "ring-2 ring-brand/50",
         )}
       >
-        <CopyField key={code} value={code} label="Copy the login code" />
+        <CopyField key={code} value={code} label={m.copy} />
       </div>
       <span className="text-[0.85rem] text-ink-dim tabular-nums" aria-live="polite">
-        {usedAfter === null ? (
-          <>Each code works for one login. After an app logs in, a new one appears here.</>
-        ) : (
-          <span className="font-medium text-ink">New code — the last one was used{name ? ` by ${name}` : ""}.</span>
-        )}
+        {usedAfter === null ? m.once : <span className="font-medium text-ink">{name ? m.usedBy(name) : m.used}</span>}
       </span>
     </div>
   )

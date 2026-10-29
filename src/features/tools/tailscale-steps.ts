@@ -2,64 +2,77 @@ import type { TailscaleStatus } from "@/platform/tailscale-schemas"
 
 export type StepId = "install" | "login" | "funnel" | "connect"
 
+/** What is still missing; the guide says it in a sentence from its catalog. */
+export type Missing =
+  | "blocked"
+  | "notInstalled"
+  | "noOperator"
+  | "notRunning"
+  | "needsLogin"
+  | "needsApproval"
+  | "stopped"
+  | "starting"
+  | "unknown"
+  | "noHttps"
+  | "noFunnel"
+  | "noHost"
+  | "portsFull"
+
 export type Step = {
   id: StepId
-  title: string
   done: boolean
-  /** What is still missing, in a sentence; null once done. */
-  missing: string | null
+  /** Null once done. */
+  missing: Missing | null
 }
 
-function install(s: TailscaleStatus): string | null {
-  if (!s.installed) return "Tailscale is not installed on this computer."
-  if (s.operator === false) return "Tailscale is installed, but only the administrator may change its settings."
+function install(s: TailscaleStatus): Missing | null {
+  if (!s.installed) return "notInstalled"
+  if (s.operator === false) return "noOperator"
   return null
 }
 
-function login(s: TailscaleStatus): string | null {
-  if (!s.daemon) return "Tailscale is installed but not running."
+function login(s: TailscaleStatus): Missing | null {
+  if (!s.daemon) return "notRunning"
   switch (s.backend) {
     case "running":
       return null
     case "needsLogin":
-      return "This computer is not logged in to Tailscale."
+      return "needsLogin"
     case "needsApproval":
-      return "Your Tailscale network's admin has not approved this computer yet."
+      return "needsApproval"
     case "stopped":
-      return "Tailscale is turned off on this computer."
+      return "stopped"
     case "starting":
-      return "Tailscale is still connecting."
+      return "starting"
     default:
-      return "Tailscale did not say whether it is logged in."
+      return "unknown"
   }
 }
 
-function funnel(s: TailscaleStatus): string | null {
-  if (!s.https) return "HTTPS certificates are off for your Tailscale network."
-  if (!s.funnel) return "Your Tailscale network does not allow Funnel yet."
-  if (!s.host) return "This computer has no Tailscale name. Turn on MagicDNS."
+function funnel(s: TailscaleStatus): Missing | null {
+  if (!s.https) return "noHttps"
+  if (!s.funnel) return "noFunnel"
+  if (!s.host) return "noHost"
   return null
 }
 
-function connect(s: TailscaleStatus): string | null {
-  return s.freePorts.length === 0
-    ? "All of Funnel's public addresses on this computer are in use by other servers. Remove a Funnel you set up yourself."
-    : null
+function connect(s: TailscaleStatus): Missing | null {
+  return s.freePorts.length === 0 ? "portsFull" : null
 }
 
 /** A step is done only when every step before it is, so the guide always has one step to work on. */
 export function stepsOf(s: TailscaleStatus): Step[] {
-  const all: [StepId, string, (s: TailscaleStatus) => string | null][] = [
-    ["install", "Install Tailscale", install],
-    ["login", "Log in to Tailscale", login],
-    ["funnel", "Allow Funnel", funnel],
-    ["connect", "Connect this server", connect],
+  const all: [StepId, (s: TailscaleStatus) => Missing | null][] = [
+    ["install", install],
+    ["login", login],
+    ["funnel", funnel],
+    ["connect", connect],
   ]
   let blocked = false
-  return all.map(([id, title, check]) => {
-    const missing = blocked ? "Waits for the step before it." : check(s)
+  return all.map(([id, check]) => {
+    const missing: Missing | null = blocked ? "blocked" : check(s)
     blocked ||= missing !== null
-    return { id, title, done: missing === null, missing }
+    return { id, done: missing === null, missing }
   })
 }
 

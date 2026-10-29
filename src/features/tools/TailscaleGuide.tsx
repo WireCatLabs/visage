@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { TailscaleDownload, TailscaleLinux, TailscaleStatus } from "@/platform/tailscale-schemas"
 import { Button } from "@/ui/Button"
@@ -9,7 +10,11 @@ import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
-import { type Step, type StepId, stepsOf } from "./tailscale-steps"
+import { connectMessages } from "./messages-connect"
+import { tunnelMessages } from "./messages-tunnel"
+import { type StepId, stepsOf } from "./tailscale-steps"
+
+type Words = (typeof tunnelMessages)["en"]["tailscale"]
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -113,7 +118,7 @@ function Link({ href, children }: { href: string; children: ReactNode }) {
 }
 
 /** This Linux's commands from Tailscale, to copy or run in a terminal; the terminal gets them from Rust, not from here. */
-function Commands({ linux, label }: { linux: TailscaleLinux; label: string }) {
+function Commands({ linux, label, m }: { linux: TailscaleLinux; label: string; m: Words }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const open = async () => {
@@ -132,7 +137,7 @@ function Commands({ linux, label }: { linux: TailscaleLinux; label: string }) {
       {linux.method !== "config" && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={open} disabled={busy}>
-            {busy ? "Opening…" : linux.commands.length > 1 ? "Open a terminal with them" : "Open a terminal with it"}
+            {busy ? m.opening : linux.commands.length > 1 ? m.openTerminalMany : m.openTerminalOne}
           </Button>
         </div>
       )}
@@ -141,34 +146,23 @@ function Commands({ linux, label }: { linux: TailscaleLinux; label: string }) {
   )
 }
 
-const UPDATES: Record<TailscaleLinux["method"], string> = {
-  repo: "They add Tailscale's own update source, so your system's updates keep Tailscale current.",
-  package: "This is your distribution's own Tailscale package, so your system's updates keep it current.",
-  config: "",
-  script: "",
-}
-
-function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boolean }) {
+function LinuxInstall({ s, downloaded, m }: { s: TailscaleStatus; downloaded: boolean; m: Words }) {
   const linux = s.linux
   if (!linux) return null
+  const instructions = <Link href={linux.source}>{m.instructions}</Link>
   const source = (
     <Note>
       {linux.method === "script" ? (
-        <>
-          Tailscale lists no commands for {linux.name}. See its <Link href={PAGES.linux}>Linux install page</Link> or
-          the <Link href={PAGES.staticBinaries}>static binaries</Link> that run on any Linux.
-        </>
+        m.noCommands(
+          linux.name,
+          <Link href={PAGES.linux}>{m.linuxPage}</Link>,
+          <Link href={PAGES.staticBinaries}>{m.staticBinaries}</Link>,
+        )
+      ) : linux.method === "config" ? (
+        m.instructionsAndWiki(instructions, <Link href={PAGES.nixosWiki}>{m.nixosWiki}</Link>)
       ) : (
         <>
-          {UPDATES[linux.method]} {linux.method !== "config" && "They ask for your computer password. "}
-          <Link href={linux.source}>Tailscale's instructions</Link>
-          {linux.method === "config" && (
-            <>
-              {" "}
-              and the <Link href={PAGES.nixosWiki}>NixOS wiki</Link>
-            </>
-          )}
-          .
+          {linux.method === "repo" ? m.updatesRepo : m.updatesPackage} {m.password} {m.instructionsLink(instructions)}
         </>
       )}
     </Note>
@@ -176,32 +170,26 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
   if (linux.method === "config")
     return (
       <>
-        <Para>On NixOS, Tailscale is part of your system configuration. Add this line to it, then rebuild:</Para>
-        <Commands linux={linux} label="Copy the line" />
+        <Para>{m.nixos}</Para>
+        <Commands linux={linux} label={m.copyLine} m={m} />
         {source}
       </>
     )
   if (linux.method === "script")
     return (
       <>
-        <h4 className="pt-1 text-[0.9rem] font-medium text-ink-dim">Install with Tailscale's install script</h4>
-        <Commands linux={linux} label="Copy the install command" />
-        <Note>It asks for your computer password, because it installs a system service.</Note>
+        <h4 className="pt-1 text-[0.9rem] font-medium text-ink-dim">{m.scriptTitle}</h4>
+        <Commands linux={linux} label={m.copyInstall} m={m} />
+        <Note>{m.scriptPassword}</Note>
         {source}
       </>
     )
-  const heading = downloaded
-    ? `Then add Tailscale's update source for ${linux.name}`
-    : s.package
-      ? `Or install with Tailscale's commands for ${linux.name}`
-      : `Install with Tailscale's commands for ${linux.name}`
+  const heading = downloaded ? m.thenSource(linux.name) : s.package ? m.orCommands(linux.name) : m.commands(linux.name)
   return (
     <>
-      {s.package && !downloaded && (
-        <Note>A package installed by double-click does not update itself. The commands below do.</Note>
-      )}
+      {s.package && !downloaded && <Note>{m.noAutoUpdate}</Note>}
       <h4 className="pt-1 text-[0.9rem] font-medium text-ink-dim">{heading}</h4>
-      <Commands linux={linux} label="Copy the commands" />
+      <Commands linux={linux} label={m.copyCommands} m={m} />
       {source}
     </>
   )
@@ -209,15 +197,15 @@ function LinuxInstall({ s, downloaded }: { s: TailscaleStatus; downloaded: boole
 
 /** Installed from a .deb without Tailscale's update source: it works, but will not update with the system. Debian and
  * Ubuntu carry no tailscale package of their own; Fedora and openSUSE do, so the missing file says nothing there. */
-function UpdateSource({ linux }: { linux: TailscaleLinux }) {
+function UpdateSource({ linux, m }: { linux: TailscaleLinux; m: Words }) {
   return (
     <div className="flex flex-col gap-2 pl-9 text-[0.9rem]">
-      <Note>Installed without Tailscale's update source: system updates will not update it.</Note>
-      <Disclosure summary="Add the update source">
+      <Note>{m.noSource}</Note>
+      <Disclosure summary={m.addSource}>
         <div className="flex flex-col gap-2.5">
-          <Commands linux={linux} label="Copy the commands" />
+          <Commands linux={linux} label={m.copyCommands} m={m} />
           <Note>
-            {UPDATES.repo} <Link href={linux.source}>Tailscale's instructions</Link>.
+            {m.updatesRepo} {m.instructionsLink(<Link href={linux.source}>{m.instructions}</Link>)}
           </Note>
         </div>
       </Disclosure>
@@ -225,7 +213,7 @@ function UpdateSource({ linux }: { linux: TailscaleLinux }) {
   )
 }
 
-function InstallStep({ s }: { s: TailscaleStatus }) {
+function InstallStep({ s, m }: { s: TailscaleStatus; m: Words }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<TailscaleDownload | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -245,75 +233,45 @@ function InstallStep({ s }: { s: TailscaleStatus }) {
     const line = `sudo tailscale set --operator=${s.user ?? "$USER"}`
     return (
       <>
-        <Para>
-          On Linux, Tailscale takes orders only from the administrator unless you name your user as its operator. Do
-          this once: it lets WireCat log in and turn Funnel on without asking for your password each time.
-        </Para>
-        <CopyField value={line} label="Copy the command" />
-        <Note>
-          Paste it in a terminal; it asks for your computer password. WireCat does not run it for you, because it
-          changes who controls Tailscale. Then come back here; the step checks itself.
-        </Note>
+        <Para>{m.operator}</Para>
+        <CopyField value={line} label={m.copyCommand} />
+        <Note>{m.operatorHow}</Note>
       </>
     )
   }
 
   const desktop = s.os !== "linux"
-  const app = s.os === "macos" ? "The macOS Installer" : "Windows"
   return (
     <>
-      <Para>
-        Tailscale gives this computer a fixed https address on the internet, so ChatGPT or Claude in the browser can
-        reach the server.
-      </Para>
+      <Para>{m.why}</Para>
       {s.package && !done && (
-        <Para>
-          {desktop
-            ? `WireCat downloads Tailscale's official installer into Downloads and opens it. ${app} then asks for your computer password, because Tailscale installs a system service.`
-            : "WireCat downloads Tailscale's official package into Downloads and shows it in your file manager. Double-click it: your Software app installs it and asks for your computer password."}
-        </Para>
+        <Para>{s.os === "macos" ? m.downloadMacos : s.os === "windows" ? m.downloadWindows : m.downloadLinux}</Para>
       )}
       {s.package && !done && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="primary" onClick={download} disabled={busy}>
-            {busy ? "Downloading…" : desktop ? "Download and open the installer" : `Download Tailscale (.${s.package})`}
+            {busy ? m.downloading : desktop ? m.downloadInstaller : m.downloadPackage(s.package)}
           </Button>
-          <span className="text-[0.9rem] text-ink-dim">
-            From pkgs.tailscale.com, checked against Tailscale's checksum.
-          </span>
+          <span className="text-[0.9rem] text-ink-dim">{m.checksum}</span>
         </div>
       )}
       {done && (
         <div className="rounded-[0.4rem] border border-line bg-app-2 px-3 py-2 text-[0.9rem]">
-          <p>
-            Saved to <span className="selectable font-mono text-ink">{done.path}</span>.
-          </p>
-          {done.opened ? (
-            <p>
-              {app} opened it. Follow its steps; it asks for your computer password itself. Then open Tailscale
-              {s.os === "macos" ? " from Applications" : " from the Start menu"}.
-            </p>
-          ) : (
-            <p>
-              Your file manager shows it. Double-click it: your Software app installs it and asks for your password. If
-              nothing opens it, run the commands below instead.
-            </p>
-          )}
+          <p>{m.saved(<span className="selectable font-mono text-ink">{done.path}</span>)}</p>
+          <p>{done.opened ? (s.os === "macos" ? m.openedMacos : m.openedWindows) : m.shown}</p>
         </div>
       )}
       {desktop ? (
-        <Note>
-          Or get it yourself from <Link href={PAGES.download[s.os]}>Tailscale's download page</Link>.
-        </Note>
+        <Note>{m.yourself(<Link href={PAGES.download[s.os]}>{m.downloadPage}</Link>)}</Note>
       ) : (
-        <LinuxInstall s={s} downloaded={done !== null} />
+        <LinuxInstall s={s} downloaded={done !== null} m={m} />
       )}
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
     </>
   )
 }
 
-function LoginStep({ s, check }: { s: TailscaleStatus; check(): Promise<void> }) {
+function LoginStep({ s, m, check }: { s: TailscaleStatus; m: Words; check(): Promise<void> }) {
   const [page, setPage] = useState<string | null>(null)
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -349,29 +307,24 @@ function LoginStep({ s, check }: { s: TailscaleStatus; check(): Promise<void> })
   if (!s.daemon)
     return (
       <>
-        <Para>Tailscale is installed but not running.</Para>
+        <Para>{m.notRunning}</Para>
         {s.os === "linux" ? (
           <>
-            <Para>Start its service once; it then starts with the computer:</Para>
-            <CopyField value="sudo systemctl enable --now tailscaled" label="Copy the command" />
+            <Para>{m.startService}</Para>
+            <CopyField value="sudo systemctl enable --now tailscaled" label={m.copyCommand} />
           </>
         ) : (
-          <Para>
-            Open the Tailscale app{s.os === "macos" ? " from Applications" : " from the Start menu"}, then come back.
-          </Para>
+          <Para>{s.os === "macos" ? m.openAppMacos : m.openAppWindows}</Para>
         )}
       </>
     )
   if (s.backend === "needsApproval")
     return (
       <>
-        <Para>
-          You are logged in, but your Tailscale network asks its admin to approve each new computer. If that is you,
-          approve this one on the Machines page.
-        </Para>
+        <Para>{m.approval}</Para>
         <div>
           <Button size="sm" onClick={() => platform.openUrl(PAGES.machines)}>
-            Open the Machines page
+            {m.machines}
           </Button>
         </div>
       </>
@@ -379,39 +332,31 @@ function LoginStep({ s, check }: { s: TailscaleStatus; check(): Promise<void> })
   if (s.backend === "stopped")
     return (
       <>
-        <Para>
-          Tailscale is turned off on this computer. Turn it on from the Tailscale icon
-          {s.os === "macos" ? " in the menu bar" : s.os === "windows" ? " next to the clock" : ""}
-          {s.os === "linux" ? ", or with this command" : ""}.
-        </Para>
-        {s.os === "linux" && <CopyField value="tailscale up" label="Copy the command" />}
+        <Para>{s.os === "macos" ? m.stoppedMacos : s.os === "windows" ? m.stoppedWindows : m.stoppedLinux}</Para>
+        {s.os === "linux" && <CopyField value="tailscale up" label={m.copyCommand} />}
       </>
     )
   return (
     <>
-      <Para>
-        Press Log in. Your browser opens a tailscale.com page that asks you to sign in with Google, Microsoft, GitHub,
-        Apple or a passkey. New to Tailscale? The same page creates an account. This step finishes by itself when you
-        are done there.
-      </Para>
+      <Para>{m.login}</Para>
       <div className="flex flex-wrap items-center gap-2">
         {waiting ? (
           <>
             <span className="text-[0.9rem] text-ink" role="status">
-              Waiting for you in the browser…
+              {m.waiting}
             </span>
             {page && (
               <Button size="sm" onClick={() => platform.openUrl(page)}>
-                Open the page again
+                {m.pageAgain}
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={() => platform.tailscaleStop()}>
-              Stop
+              {m.stop}
             </Button>
           </>
         ) : (
           <Button size="sm" variant="primary" onClick={login} disabled={s.backend !== "needsLogin"}>
-            Log in
+            {m.logIn}
           </Button>
         )}
       </div>
@@ -420,31 +365,25 @@ function LoginStep({ s, check }: { s: TailscaleStatus; check(): Promise<void> })
   )
 }
 
-function FunnelStep({ s }: { s: TailscaleStatus }) {
+function FunnelStep({ s, m }: { s: TailscaleStatus; m: Words }) {
   if (!s.https || !s.host)
     return (
       <>
-        <Para>
-          Funnel needs secure (https) addresses in your Tailscale network. On the DNS page, turn on MagicDNS if it is
-          off, then under HTTPS Certificates choose Enable HTTPS.
-        </Para>
+        <Para>{m.https}</Para>
         <div>
           <Button size="sm" onClick={() => platform.openUrl(PAGES.dns)}>
-            Open the DNS page
+            {m.dns}
           </Button>
         </div>
-        <Note>Tailscale says the computer names then appear in a public certificate log.</Note>
+        <Note>{m.certLog}</Note>
       </>
     )
   return (
     <>
-      <Para>
-        Funnel is what lets the internet reach one address on this computer. Your network's access rules must allow it:
-        on the Access controls page, open the Funnel section and add Funnel to the policy.
-      </Para>
+      <Para>{m.funnel}</Para>
       <div>
         <Button size="sm" onClick={() => platform.openUrl(PAGES.acls)}>
-          Open the Access controls page
+          {m.acls}
         </Button>
       </div>
     </>
@@ -452,21 +391,25 @@ function FunnelStep({ s }: { s: TailscaleStatus }) {
 }
 
 export function StepHead({
-  step,
+  title,
+  done,
   index,
   open,
   checking,
   checked,
   onCheck,
 }: {
-  step: Pick<Step, "title" | "done">
+  title: string
+  done: boolean
   index: number
   open: boolean
   checking: boolean
   checked: boolean
   onCheck(): void
 }) {
-  const finished = step.done
+  const rail = useMessages(connectMessages).rail
+  const m = useMessages(tunnelMessages).tailscale
+  const finished = done
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span
@@ -478,20 +421,20 @@ export function StepHead({
       >
         {finished ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
       </span>
-      <h3 className={cx("text-[0.98rem] font-semibold", open || step.done ? "text-ink" : "text-ink-dim")}>
-        <span className="sr-only">Step {index + 1}: </span>
-        {step.title}
-        <span className="sr-only">{finished ? ", done" : open ? ", current step" : ", not done yet"}</span>
+      <h3 className={cx("text-[0.98rem] font-semibold", open || done ? "text-ink" : "text-ink-dim")}>
+        <span className="sr-only">{rail.step(index + 1)}</span>
+        {title}
+        <span className="sr-only">{finished ? rail.done : open ? rail.current : rail.notDone}</span>
       </h3>
       {(open || checked) && (
         <span className="ml-auto flex items-center gap-2">
           {checked && !checking && (
-            <span className={cx("text-[0.9rem]", step.done ? "text-ok" : "text-ink-soft")} role="status">
-              {step.done ? "Done" : "Not yet"}
+            <span className={cx("text-[0.9rem]", done ? "text-ok" : "text-ink-soft")} role="status">
+              {done ? m.stepDone : m.stepNotYet}
             </span>
           )}
-          <Button size="sm" variant="ghost" onClick={onCheck} disabled={checking} aria-label={`Check: ${step.title}`}>
-            {checking ? "Checking…" : "Check"}
+          <Button size="sm" variant="ghost" onClick={onCheck} disabled={checking} aria-label={m.checkStep(title)}>
+            {checking ? m.checking : m.check}
           </Button>
         </span>
       )}
@@ -502,35 +445,34 @@ export function StepHead({
 /** The four steps from nothing to a public address: each says what it is, why, and what the person will see. */
 export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof useTailscale> }) {
   const { status, error, checking, check } = tailscale
+  const m = useMessages(tunnelMessages).tailscale
   const [checked, setChecked] = useState<StepId | null>(null)
 
   if (!status)
     return error ? (
-      <ErrorNotice inline>Could not read Tailscale's state: {error}</ErrorNotice>
+      <ErrorNotice inline>{m.unreadable(error)}</ErrorNotice>
     ) : (
-      <Skeleton className="h-[14rem] w-full" label="Reading Tailscale's state" />
+      <Skeleton className="h-[14rem] w-full" label={m.reading} />
     )
 
   // Its last step, a free public port, is not a task for the owner: the guide's own Start step says when none is left.
   const steps = stepsOf(status).filter((s) => s.id !== "connect")
   const current = steps.find((s) => !s.done)?.id ?? null
   const body: Record<Exclude<StepId, "connect">, ReactNode> = {
-    install: <InstallStep s={status} />,
-    login: <LoginStep s={status} check={check} />,
-    funnel: <FunnelStep s={status} />,
+    install: <InstallStep s={status} m={m} />,
+    login: <LoginStep s={status} m={m} check={check} />,
+    funnel: <FunnelStep s={status} m={m} />,
   }
 
   return (
-    <ol
-      className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line"
-      aria-label="Set up Tailscale Funnel"
-    >
+    <ol className="flex flex-col divide-y divide-line rounded-[0.45rem] border border-line" aria-label={m.list}>
       {steps.map((step, i) => {
         const open = step.id === current
         return (
           <li key={step.id} className="flex flex-col px-4 py-3" aria-current={open ? "step" : undefined}>
             <StepHead
-              step={step}
+              title={m.titles[step.id]}
+              done={step.done}
               index={i}
               open={open}
               checking={checking}
@@ -541,15 +483,13 @@ export function TailscaleGuide({ tailscale }: { tailscale: ReturnType<typeof use
               }}
             />
             <Collapse open={open} className="flex flex-col gap-2.5 pt-2.5 pl-9 text-[0.9rem]">
-              {step.missing && checked === step.id && <p className="text-warn-ink">{step.missing}</p>}
+              {step.missing && checked === step.id && <p className="text-warn-ink">{m.missing[step.missing]}</p>}
               {step.id !== "connect" && body[step.id]}
-              <Note>
-                <Link href={guideUrl(step.id, status)}>Full guide</Link> for this step on wirecat.dev.
-              </Note>
+              <Note>{m.fullGuide(<Link href={guideUrl(step.id, status)}>{m.fullGuideLink}</Link>)}</Note>
             </Collapse>
             {step.id === "install" && step.done && status.package === "deb" && status.linux?.updates === false && (
               <div className="pt-2.5">
-                <UpdateSource linux={status.linux} />
+                <UpdateSource linux={status.linux} m={m} />
               </div>
             )}
           </li>

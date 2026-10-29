@@ -2,13 +2,14 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { CloudflareStatus } from "@/platform/cloudflare-schemas"
 import type { McpClient, McpServerStatus } from "@/platform/mcp-server-schemas"
 import type { TailscaleStatus } from "@/platform/tailscale-schemas"
-import { PRIVACY } from "./CloudflareGuide"
 import { McpServer } from "./McpServer"
 import { formProblem } from "./McpServerDialogs"
+import { tunnelMessages } from "./messages-tunnel"
 
 beforeEach(() => {
   vi.spyOn(platform, "mcpServerPublic").mockResolvedValue({ host: "x.ts.net", dns: "live", answer: { kind: "ok" } })
@@ -366,7 +367,7 @@ describe("Connect an AI app through a Cloudflare tunnel", () => {
     await guideAtAddress(user)
 
     expect(await screen.findByRole("radio", { name: /Tailscale Funnel/ })).toBeChecked()
-    expect(screen.getByText(PRIVACY)).toBeVisible()
+    expect(screen.getByText(tunnelMessages.en.cloudflare.privacy)).toBeVisible()
     expect(status).not.toHaveBeenCalled()
   })
 
@@ -586,9 +587,30 @@ describe("the address form", () => {
     expect(formProblem("https://laptop.tail1234.ts.net", "8765")).toBeNull()
     expect(formProblem("https://laptop.tail1234.ts.net/tg", "8765")).toBeNull()
     expect(formProblem("http://127.0.0.1:8765", "8765")).toBeNull()
-    expect(formProblem("http://laptop.ts.net", "8765")).toMatch(/https/)
-    expect(formProblem("https://x.ts.net/tg/mcp", "8765")).toMatch(/path of its own/)
-    expect(formProblem("https://x.ts.net/.well-known", "8765")).toMatch(/path of its own/)
-    expect(formProblem("https://x.ts.net", "80")).toMatch(/1024/)
+    expect(formProblem("http://laptop.ts.net", "8765")).toBe("url")
+    expect(formProblem("https://x.ts.net/tg/mcp", "8765")).toBe("url")
+    expect(formProblem("https://x.ts.net/.well-known", "8765")).toBe("url")
+    expect(formProblem("https://x.ts.net", "80")).toBe("port")
+  })
+})
+
+describe("in Russian", () => {
+  it("counts the logged-in apps and says when each logged in, in Russian plural forms", async () => {
+    useLanguage.setState({ choice: "ru" })
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString()
+    vi.spyOn(platform, "mcpServerStatus").mockResolvedValue({
+      ...RUNNING,
+      clients: [client("Claude", days(3)), client("ChatGPT", days(5))],
+    })
+    vi.spyOn(platform, "tailscaleFunnels").mockResolvedValue([])
+    vi.spyOn(platform, "cloudflareRoutes").mockResolvedValue([])
+    const user = userEvent.setup()
+    render(<McpServer tool={tool("tg")} />)
+
+    const toggle = screen.getByRole("button", { name: /^Подключить ИИ-приложение/ })
+    await waitFor(() => expect(toggle).toHaveTextContent(/Вошли 2 приложения$/))
+    await user.click(toggle)
+    expect(await screen.findByText("вход 3 дня назад")).toBeVisible()
+    expect(screen.getByText("вход 5 дней назад")).toBeVisible()
   })
 })

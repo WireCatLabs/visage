@@ -1,6 +1,7 @@
 import { Check } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react"
 import { type CatalogTool, tools } from "@/domain/catalog"
+import { formatDate, useLang, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { TunnelRoute } from "@/platform/cloudflare-schemas"
 import type { McpServerStatus, OAuthSettings } from "@/platform/mcp-server-schemas"
@@ -15,7 +16,7 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp } from "@/ui/Lamp"
 import { focusInPlace } from "@/ui/motion"
 import { useNav } from "../nav"
-import { CloudflareGuide, PRIVACY, useCloudflare } from "./CloudflareGuide"
+import { CloudflareGuide, useCloudflare } from "./CloudflareGuide"
 import { cloudflareSteps } from "./cloudflare-steps"
 import { APPS, type AppId, type AppStep, connectorName, testPrompt } from "./connect-apps"
 import { scenarioOf } from "./connect-scenario"
@@ -25,7 +26,6 @@ import {
   currentStep,
   type ReachState,
   reachOf,
-  STEP_TITLES,
   serving,
   stepStates,
   type TestState,
@@ -35,6 +35,8 @@ import { openConnect } from "./go"
 import { useKept } from "./kept"
 import { LoginCode } from "./LoginCode"
 import { formProblem } from "./McpServerDialogs"
+import { connectMessages } from "./messages-connect"
+import { tunnelMessages } from "./messages-tunnel"
 import { useTools } from "./store"
 import { TailscaleGuide, useTailscale } from "./TailscaleGuide"
 import { addressOf, stepsOf } from "./tailscale-steps"
@@ -53,8 +55,6 @@ type Tunnel = "tailscale" | "cloudflare" | "own"
 type Phase = "idle" | "tunnel" | "server" | "failed"
 type Failure = { at: "tunnel" | "server"; message: string }
 
-const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-
 /**
  * From "I want ChatGPT to use my Telegram" to the first call arriving, on one surface that stays until the owner
  * closes it. Each step says what happens before anything runs; a step already done is a tick in the rail.
@@ -72,6 +72,7 @@ export function ConnectGuide(props: {
   onAgain(): void
 }) {
   const { tool, server, funnel, route, reload, settle, onDone, onAgain } = props
+  const m = useMessages(connectMessages)
   const scenario = useRef(scenarioOf(tool.id)).current
   // Kept outside the component, so leaving the page mid-guide and coming back lands on the same step.
   const kept = `connect:${tool.id}`
@@ -187,14 +188,14 @@ export function ConnectGuide(props: {
 
   const funnelOff = tunnel === "tailscale" && serving(server) && funnel !== null && !funnel.live
   const tunnelOff = serving(server) && route !== null && !route.live && server.connectorUrl.startsWith(route.url)
-  const name = app ? APPS[app].name : "the app"
+  const name = app && app !== "other" ? m.apps[app].name : m.theApp
 
   const summary: Partial<Record<ConnectStepId, string | undefined>> = {
-    choose: app ? APPS[app].name : undefined,
+    choose: app ? m.apps[app].name : undefined,
     address: serving(server) ? new URL(server.connectorUrl).host : undefined,
-    start: serving(server) && server.port ? `Running on port ${server.port}` : undefined,
-    reach: reach.state === "live" ? "Published" : goOn ? "Not checked" : undefined,
-    connect: added ? "Added" : undefined,
+    start: serving(server) && server.port ? m.rail.runningOn(server.port) : undefined,
+    reach: reach.state === "live" ? m.rail.published : goOn ? m.rail.notChecked : undefined,
+    connect: added ? m.rail.added : undefined,
   }
 
   return (
@@ -213,10 +214,10 @@ export function ConnectGuide(props: {
         >
           <h5 ref={heading} tabIndex={-1} className="step-heading scroll-mt-3 text-[1.05rem] font-semibold text-ink">
             {current === "test" && test.state === "called"
-              ? `${name} can now use your ${tool.name}`
+              ? m.calledTitle(app ? m.apps[app].name : name, tool.name)
               : current === "connect" && app && app !== "other"
-                ? `Add it in ${name}`
-                : STEP_TITLES[current]}
+                ? m.addIn(name)
+                : m.steps[current]}
           </h5>
           {current === "choose" && <ChooseStep tool={tool} onChoose={setApp} />}
           {current === "address" && (
@@ -266,8 +267,8 @@ export function ConnectGuide(props: {
             <ul>
               <Progress state={reach.state === "live" ? "done" : "todo"}>
                 {reach.state === "live"
-                  ? `${new URL(server.connectorUrl).host} answers on the internet.`
-                  : `Not checked whether ${new URL(server.connectorUrl).host} answers on the internet.`}
+                  ? m.reach.live(new URL(server.connectorUrl).host)
+                  : m.reach.unchecked(new URL(server.connectorUrl).host)}
               </Progress>
             </ul>
           )}
@@ -300,8 +301,9 @@ function Rail(props: {
   onChoose?: (() => void) | undefined
 }) {
   const { current, finished, summary, onChoose } = props
+  const m = useMessages(connectMessages)
   return (
-    <ol className="flex flex-col gap-0.5" aria-label="Steps">
+    <ol className="flex flex-col gap-0.5" aria-label={m.rail.label}>
       {stepStates(current, finished).map((step, i) => (
         <li
           key={step.id}
@@ -339,10 +341,10 @@ function Rail(props: {
                     : "text-ink-dim",
               )}
             >
-              <span className="sr-only">Step {i + 1}: </span>
-              {step.title}
+              <span className="sr-only">{m.rail.step(i + 1)}</span>
+              {m.steps[step.id]}
               <span className="sr-only">
-                {step.state === "done" ? ", done" : step.state === "current" ? ", current step" : ""}
+                {step.state === "done" ? m.rail.done : step.state === "current" ? m.rail.current : ""}
               </span>
             </span>
             {step.state === "done" && summary[step.id] && (
@@ -354,7 +356,7 @@ function Rail(props: {
                     className="shrink-0 text-brand underline hover:text-brand-hover"
                     onClick={onChoose}
                   >
-                    Change
+                    {m.rail.change}
                   </button>
                 )}
               </span>
@@ -387,9 +389,10 @@ function Link({ href, children }: { href: string; children: ReactNode }) {
 }
 
 function ChooseStep({ tool, onChoose }: { tool: CatalogTool; onChoose(app: AppId): void }) {
+  const m = useMessages(connectMessages)
   return (
     <>
-      <Para>Which app should use {tool.name}? The steps after this one are written for it.</Para>
+      <Para>{m.choose(tool.name)}</Para>
       <div className="grid gap-2 sm:grid-cols-3">
         {(["chatgpt", "claude", "other"] as const).map((id) => (
           <button
@@ -398,14 +401,16 @@ function ChooseStep({ tool, onChoose }: { tool: CatalogTool; onChoose(app: AppId
             onClick={() => onChoose(id)}
             className="flex flex-col items-start gap-0.5 rounded-[0.45rem] border border-line-strong bg-app px-3.5 py-3 text-left transition-colors duration-150 hover:border-brand hover:bg-brand-soft/40"
           >
-            <span className="text-[0.98rem] font-semibold text-ink">{APPS[id].name}</span>
-            <span className="text-[0.9rem] text-ink-soft">{APPS[id].hint}</span>
+            <span className="text-[0.98rem] font-semibold text-ink">{m.apps[id].name}</span>
+            <span className="text-[0.9rem] text-ink-soft">{m.apps[id].hint}</span>
           </button>
         ))}
       </div>
     </>
   )
 }
+
+const exampleUrl = (tool: string) => `https://laptop.tail1234.ts.net/${tool}`
 
 const inputClass =
   "h-8 rounded-[0.35rem] border border-line-strong bg-app px-2.5 font-mono text-[0.85rem] text-ink placeholder:font-sans placeholder:text-ink-dim"
@@ -424,15 +429,19 @@ function AddressStep(props: {
   onConfirm(): void
 }) {
   const { tool, appName, tunnel, setTunnel, tailscale, cloudflare, ownUrl, setOwnUrl, port, setPort, onConfirm } = props
+  const m = useMessages(connectMessages).address
+  const tm = useMessages(tunnelMessages).tailscale
   const id = useId()
-  const [problem, setProblem] = useState<string | null>(null)
+  const [problem, setProblem] = useState<"url" | "port" | null>(null)
   const status = tailscale.status
   const steps = status ? stepsOf(status) : []
   const ready = steps.length > 0 && steps.every((s) => s.done)
-  const full = steps.find((s) => s.id === "connect" && !s.done && s.missing !== "Waits for the step before it.")
+  const full = steps.find((s) => s.id === "connect" && !s.done && s.missing !== "blocked")
   const address = status ? addressOf(status, tool.id) : null
+  const tailscaleUrl = address && `${address}/mcp`
   const cf = cloudflare.status
   const cfReady = cf !== null && cloudflareSteps(cf).every((s) => s.done)
+  const cfUrl = cf?.hostname && `https://${cf.hostname}/${tool.id}/mcp`
 
   const submit = () => {
     const wrong = formProblem(tunnel === "own" ? ownUrl.trim() : "https://x.example.com", port)
@@ -443,11 +452,7 @@ function AddressStep(props: {
 
   return (
     <>
-      <Para>
-        {tool.name} runs on this computer and {appName} runs on its own servers, so it needs an address on the internet
-        that leads here. It stays the same, and only the paths of this server are open; every app still has to log in
-        with a code from WireCat.
-      </Para>
+      <Para>{m.intro(tool.name, appName)}</Para>
       <TunnelChoice tunnel={tunnel} setTunnel={setTunnel} />
       {/* The choice opens its own part in place; the others fold away, so nothing above it moves. */}
       <div>
@@ -456,16 +461,12 @@ function AddressStep(props: {
           {cfReady && cf.hostname && (
             <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
               <p className="text-[0.92rem] text-ink">
-                The address will be{" "}
-                <span className="selectable font-mono">{`https://${cf.hostname}/${tool.id}/mcp`}</span>.
+                {m.willBe(<span className="selectable font-mono">{cfUrl}</span>)}
               </p>
-              <Note>
-                Next, WireCat starts the Cloudflare tunnel for it and {tool.bin}'s server in the background. Both keep
-                running until you stop them; after a restart of the computer, start them here again.
-              </Note>
+              <Note>{m.cloudflareNext(tool.bin)}</Note>
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="primary" onClick={submit}>
-                  Start the server
+                  {m.start}
                 </Button>
               </div>
             </div>
@@ -473,60 +474,49 @@ function AddressStep(props: {
         </Collapse>
         <Collapse open={tunnel === "tailscale"} className="flex flex-col gap-3.5">
           <TailscaleGuide tailscale={tailscale} />
-          {full && <p className="text-[0.88rem] text-warn-ink">{full.missing}</p>}
+          {full?.missing && <p className="text-[0.88rem] text-warn-ink">{tm.missing[full.missing]}</p>}
           {ready && (
             <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
               <p className="text-[0.92rem] text-ink">
-                The address will be{" "}
-                <span className="selectable font-mono">
-                  {address ? `${address}/mcp` : "on this computer's Tailscale name"}
-                </span>
-                .
+                {tailscaleUrl
+                  ? m.willBe(<span className="selectable font-mono">{tailscaleUrl}</span>)
+                  : m.onTailscaleName}
               </p>
-              <Note>
-                Next, WireCat turns on Tailscale Funnel for it and starts {tool.bin}'s server in the background. It
-                keeps running until you stop it, and the address stays the same next time.
-              </Note>
+              <Note>{m.tailscaleNext(tool.bin)}</Note>
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="primary" onClick={submit}>
-                  Start the server
+                  {m.start}
                 </Button>
               </div>
             </div>
           )}
         </Collapse>
         <Collapse open={tunnel === "own"} className="flex flex-col gap-3.5">
-          <Para>
-            Type the https address of your tunnel (cloudflared, ngrok, or a Tailscale Funnel you run) and point it at
-            127.0.0.1:{port || DEFAULT_PORT} on this computer.
-          </Para>
+          <Para>{m.ownIntro(port || String(DEFAULT_PORT))}</Para>
           <label className="flex flex-col gap-1" htmlFor={`${id}-url`}>
-            <span className="text-[0.9rem] font-medium text-ink-dim">The tunnel's address</span>
+            <span className="text-[0.9rem] font-medium text-ink-dim">{m.ownLabel}</span>
             <input
               id={`${id}-url`}
               className={`${inputClass} w-full max-w-[32rem]`}
               value={ownUrl}
               onChange={(e) => setOwnUrl(e.target.value)}
-              placeholder={`https://laptop.tail1234.ts.net/${tool.id}`}
+              placeholder={exampleUrl(tool.id)}
               autoComplete="off"
               spellCheck={false}
             />
           </label>
-          <Note>
-            With a path such as /{tool.id}, the tunnel must also route /.well-known/oauth-authorization-server/{tool.id}{" "}
-            and /.well-known/oauth-protected-resource/{tool.id} here.
-          </Note>
+          <Note>{m.ownPaths(tool.id)}</Note>
           <PortField id={`${id}-own-port`} port={port} setPort={setPort} />
           <div>
             <Button size="sm" variant="primary" onClick={submit}>
-              Start the server
+              {m.start}
             </Button>
           </div>
         </Collapse>
       </div>
-      {problem && <ErrorNotice inline>{problem}</ErrorNotice>}
+      {problem && <ErrorNotice inline>{m.problem[problem]}</ErrorNotice>}
       {tunnel !== "own" && (
-        <Disclosure summary="Use another port">
+        <Disclosure summary={m.otherPort}>
           <PortField id={`${id}-port`} port={port} setPort={setPort} />
         </Disclosure>
       )}
@@ -535,30 +525,17 @@ function AddressStep(props: {
 }
 
 function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunnel): void }) {
+  const m = useMessages(connectMessages)
+  const privacy = useMessages(tunnelMessages).cloudflare.privacy
   const name = useId()
   const options = [
-    {
-      id: "tailscale",
-      title: "Tailscale Funnel",
-      hint: "Recommended. Free, and the encryption ends on this computer, so Tailscale cannot read your messages.",
-      warn: null,
-    },
-    {
-      id: "cloudflare",
-      title: "Cloudflare tunnel (your own domain)",
-      hint: "For a Cloudflare account with your own domain on it.",
-      warn: PRIVACY,
-    },
-    {
-      id: "own",
-      title: "A tunnel I run myself",
-      hint: "cloudflared, ngrok or a Funnel you set up: you type its address.",
-      warn: null,
-    },
+    { id: "tailscale", ...m.address.tailscale, warn: null },
+    { id: "cloudflare", ...m.address.cloudflare, warn: privacy },
+    { id: "own", ...m.address.own, warn: null },
   ] as const
   return (
     <fieldset className="grid gap-2 sm:grid-cols-3">
-      <legend className="sr-only">How the address reaches this computer</legend>
+      <legend className="sr-only">{m.address.legend}</legend>
       {options.map((o) => (
         <label
           key={o.id}
@@ -595,9 +572,10 @@ function TunnelChoice({ tunnel, setTunnel }: { tunnel: Tunnel; setTunnel(t: Tunn
 }
 
 function PortField({ id, port, setPort }: { id: string; port: string; setPort(p: string): void }) {
+  const m = useMessages(connectMessages)
   return (
     <label className="flex flex-col gap-1" htmlFor={id}>
-      <span className="text-[0.9rem] font-medium text-ink-dim">Port on this computer</span>
+      <span className="text-[0.9rem] font-medium text-ink-dim">{m.address.port}</span>
       <input
         id={id}
         className={`${inputClass} w-28`}
@@ -611,7 +589,7 @@ function PortField({ id, port, setPort }: { id: string; port: string; setPort(p:
 
 function Progress({ state, children }: { state: "busy" | "done" | "todo" | "failed"; children: ReactNode }) {
   const tone = { busy: "busy", done: "ok", todo: "idle", failed: "bad" } as const
-  const label = { busy: "In progress", done: "Done", todo: "Not started", failed: "Failed" }[state]
+  const label = useMessages(connectMessages).progress[state]
   return (
     <li className="flex items-center gap-2.5">
       <Lamp tone={tone[state]} size="sm" label={label} />
@@ -630,45 +608,37 @@ function StartStep(props: {
   onBack(): void
 }) {
   const { tool, tunnel, phase, failure, approval, onRetry, onBack } = props
+  const m = useMessages(connectMessages).start
   const failedAt = phase === "failed" ? failure?.at : undefined
   const open = phase === "tunnel" ? "busy" : failedAt === "tunnel" ? "failed" : phase === "idle" ? "todo" : "done"
   const server = phase === "server" ? "busy" : failedAt === "server" ? "failed" : "todo"
   return (
     <>
       <ul className="flex flex-col gap-2">
-        {tunnel === "tailscale" && <Progress state={open}>Turn on Tailscale Funnel for {tool.bin}'s address</Progress>}
-        {tunnel === "cloudflare" && (
-          <Progress state={open}>Start the Cloudflare tunnel with {tool.bin}'s paths</Progress>
-        )}
-        <Progress state={server}>Start {tool.bin}'s server and wait until it answers</Progress>
+        {tunnel === "tailscale" && <Progress state={open}>{m.funnel(tool.bin)}</Progress>}
+        {tunnel === "cloudflare" && <Progress state={open}>{m.tunnel(tool.bin)}</Progress>}
+        <Progress state={server}>{m.server(tool.bin)}</Progress>
       </ul>
       {phase === "tunnel" && approval && (
-        <p className="text-[0.92rem] text-ink">
-          Tailscale asks you to approve Funnel for your network in the page that opened in your browser.{" "}
-          <Link href={approval}>Open it again</Link>
-        </p>
+        <p className="text-[0.92rem] text-ink">{m.approve(<Link href={approval}>{m.openAgain}</Link>)}</p>
       )}
       {phase === "tunnel" && tunnel === "tailscale" && (
         <div>
           <Button size="sm" variant="ghost" onClick={() => platform.tailscaleStop()}>
-            Stop
+            {m.stop}
           </Button>
         </div>
       )}
       {failure && phase === "failed" && (
         <>
           <ErrorNotice inline>{failure.message}</ErrorNotice>
-          <Note>
-            {/in use|EADDRINUSE/i.test(failure.message)
-              ? "Another program uses this port. Go back, open “Use another port”, choose another port and start again."
-              : "Nothing was left running. Try again, or go back and change the address or port."}
-          </Note>
+          <Note>{/in use|EADDRINUSE/i.test(failure.message) ? m.portInUse : m.nothingLeft}</Note>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={onRetry}>
-              Try again
+              {m.tryAgain}
             </Button>
             <Button size="sm" variant="ghost" onClick={onBack}>
-              Back to the address
+              {m.back}
             </Button>
           </div>
         </>
@@ -687,14 +657,14 @@ function Field({ label, value, copyLabel }: { label: string; value: string; copy
 }
 
 function Copy({ step, tool, server }: { step: AppStep; tool: CatalogTool; server: McpServerStatus }) {
-  if (step.copy === "url" && server.connectorUrl)
-    return <CopyField value={server.connectorUrl} label="Copy the server address" />
-  if (step.copy === "name") return <CopyField value={connectorName(tool)} label="Copy the name" />
+  const m = useMessages(connectMessages).copy
+  if (step.copy === "url" && server.connectorUrl) return <CopyField value={server.connectorUrl} label={m.address} />
+  if (step.copy === "name") return <CopyField value={connectorName(tool)} label={m.name} />
   if (step.copy === "code")
     return server.loginCode ? (
       <LoginCode server={{ ...server, loginCode: server.loginCode }} />
     ) : (
-      <Note>The code appears here in a moment.</Note>
+      <Note>{m.codeSoon}</Note>
     )
   return null
 }
@@ -708,7 +678,9 @@ function ReachStep(props: {
   onGoOn(): void
 }) {
   const { tool, app, server, reach, setReach, onGoOn } = props
-  const name = app ? APPS[app].name : "the app"
+  const all = useMessages(connectMessages)
+  const m = all.reach
+  const name = app && app !== "other" ? all.apps[app].name : all.theApp
   const [error, setError] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
   const firstMissing = useRef<number | null>(null)
@@ -752,9 +724,11 @@ function ReachStep(props: {
   return (
     <>
       <Para>
-        {name} reaches {tool.bin} from its own servers, so WireCat asks public DNS for{" "}
-        <span className="selectable font-mono text-ink">{host}</span> the way {name} will, then opens the address from
-        the internet's side.
+        {m.intro(
+          app ? all.apps[app].name : name,
+          tool.bin,
+          <span className="selectable font-mono text-ink">{host}</span>,
+        )}
       </Para>
       <ul className="flex flex-col gap-2">
         <Progress
@@ -770,13 +744,13 @@ function ReachStep(props: {
         >
           {reach.state === "publishing"
             ? funnel
-              ? "Tailscale is publishing your address…"
-              : "Waiting for the address to appear in public DNS…"
+              ? m.publishingFunnel
+              : m.publishingDns
             : reach.state === "unknown"
-              ? "Public DNS could not be asked from this computer"
+              ? m.dnsUnknown
               : reach.state === "checking"
-                ? "Asking public DNS…"
-                : "The address is published"}
+                ? m.asking
+                : m.published}
         </Progress>
       </ul>
       {reach.state === "publishing" && (
@@ -784,69 +758,46 @@ function ReachStep(props: {
           <div
             className="h-1.5 overflow-hidden rounded-full bg-app-3"
             role="progressbar"
-            aria-label="Waiting for Tailscale to publish the address"
+            aria-label={m.barLabel}
             aria-valuemin={0}
             aria-valuemax={10}
             aria-valuenow={minutes}
-            aria-valuetext={`${minutes} of up to 10 minutes`}
+            aria-valuetext={m.barValue(minutes)}
           >
             <div
               className="h-full rounded-full bg-brand transition-[width] duration-1000 ease-linear"
               style={{ width: `${Math.max(share * 100, 2)}%` }}
             />
           </div>
-          <Note>
-            {funnel
-              ? "A new Funnel address can take up to 10 minutes to appear on the internet."
-              : "A new DNS record usually appears within minutes."}{" "}
-            WireCat checks every 15 seconds and moves on by itself{minutes > 0 ? `; ${minutes} min so far` : ""}. Until
-            then {name} would say it cannot reach the address, so the next step waits.
-          </Note>
-          {share >= 1 && (
-            <p className="text-[0.9rem] text-warn-ink">
-              {funnel
-                ? "It is taking longer than Tailscale says. Keep this open; turning Funnel off and on again starts the wait over."
-                : `It is taking longer than usual. Check that ${host} is listed on Cloudflare's DNS page for your domain.`}
-            </p>
-          )}
+          <Note>{m.wait(funnel, minutes, name)}</Note>
+          {share >= 1 && <p className="text-[0.9rem] text-warn-ink">{funnel ? m.slowFunnel : m.slowDns(host)}</p>}
         </div>
       )}
-      {reach.state === "live" && !reach.tested && (
-        <Note>
-          This computer cannot open its own public address, which is usual, so the last part is tested by {name}.
-        </Note>
-      )}
+      {reach.state === "live" && !reach.tested && <Note>{m.selfUnreachable(name)}</Note>}
       {reach.state === "wrong" && (
         <>
           <ErrorNotice inline>
-            The address answers, but not with {tool.bin}'s server (it said {reach.status}).{" "}
-            {funnel
-              ? "Another Funnel or tunnel may use it. Check Server details, or go back and use another port."
-              : `Cloudflare may be checking visitors on your domain (Bot Fight Mode, or "I'm Under Attack" mode), which stops ${name} too; turn it off for the domain in Cloudflare's Security settings. Or another tunnel uses the name.`}
+            {funnel ? m.wrongFunnel(tool.bin, reach.status) : m.wrongTunnel(tool.bin, reach.status, name)}
           </ErrorNotice>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={check} disabled={checking}>
-              {checking ? "Checking…" : "Check again"}
+              {checking ? m.checking : m.again}
             </Button>
             <Button size="sm" variant="ghost" onClick={onGoOn}>
-              Go on anyway
+              {m.goOn}
             </Button>
           </div>
         </>
       )}
       {reach.state === "unknown" && (
         <>
-          <Para>
-            No public DNS service answered from this computer (some networks block them), so WireCat cannot see whether
-            the address is published. If {name} says it cannot reach the address, wait up to 10 minutes after the tunnel
-            started and try again there.
-          </Para>
+          <Para>{m.unknownHelp(name)}</Para>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="primary" onClick={onGoOn}>
-              Go on without the check
+              {m.goOnUnchecked}
             </Button>
             <Button size="sm" variant="ghost" onClick={check} disabled={checking}>
-              {checking ? "Checking…" : "Check again"}
+              {checking ? m.checking : m.again}
             </Button>
           </div>
         </>
@@ -856,10 +807,10 @@ function ReachStep(props: {
           <ErrorNotice inline>{error}</ErrorNotice>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={check} disabled={checking}>
-              {checking ? "Checking…" : "Check again"}
+              {checking ? m.checking : m.again}
             </Button>
             <Button size="sm" variant="ghost" onClick={onGoOn}>
-              Go on without the check
+              {m.goOnUnchecked}
             </Button>
           </div>
         </>
@@ -870,22 +821,22 @@ function ReachStep(props: {
 
 function ConnectStep(props: { tool: CatalogTool; app: AppId; server: McpServerStatus; onAdded(): void }) {
   const { tool, app, server, onAdded } = props
+  const m = useMessages(connectMessages)
   const spec = APPS[app]
+  const words = m.apps[app]
   return (
     <>
-      <Para>
-        {tool.bin}'s server is running. Do this in {spec.name}; WireCat watches for it to log in.
-      </Para>
+      <Para>{m.connect.intro(tool.bin, app === "other" ? m.theApp : words.name)}</Para>
       <ol className="flex flex-col gap-3">
         {spec.steps.map((step, i) => (
           <li key={step.text} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 gap-y-1.5">
             <span className="pt-px text-[0.9rem] font-semibold text-ink-dim tabular-nums">{i + 1}.</span>
             <span className="text-[0.92rem] text-ink">
-              {step.text}
+              {m.appSteps[step.text]}
               {step.link && (
                 <>
                   {" "}
-                  <Link href={step.link.href}>{step.link.label}</Link>
+                  <Link href={step.link.href}>{m.appLinks[step.link.label]}</Link>
                 </>
               )}
             </span>
@@ -898,18 +849,18 @@ function ConnectStep(props: { tool: CatalogTool; app: AppId; server: McpServerSt
         ))}
       </ol>
       <Note>
-        {spec.limits}
+        {words.limits}
         {spec.help && (
           <>
             {" "}
-            <Link href={spec.help.href}>{spec.help.label}</Link>.
+            <Link href={spec.help}>{words.help}</Link>.
           </>
         )}
       </Note>
       <DiscoveryHelp tool={tool} app={app} />
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button size="sm" variant="primary" onClick={onAdded}>
-          I added it, test the connection
+          {m.connect.added}
         </Button>
       </div>
     </>
@@ -920,7 +871,9 @@ function ConnectStep(props: { tool: CatalogTool; app: AppId; server: McpServerSt
 function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
   const [settings, setSettings] = useState<OAuthSettings | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const name = APPS[app].name
+  const all = useMessages(connectMessages)
+  const m = all.connect
+  const name = app === "other" ? all.theApp : all.apps[app].name
   const load = async () => {
     if (settings) return
     try {
@@ -931,34 +884,19 @@ function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
   }
   return (
     <div onClickCapture={load}>
-      <Disclosure summary={`If ${app === "other" ? "the app" : name} says it couldn't discover OAuth settings`}>
+      <Disclosure summary={m.discovery(name)}>
         <div className="flex flex-col gap-2.5">
-          <Para>
-            This message usually means the address is not on the internet yet: the app could not reach the server at
-            all. A new address can take up to 10 minutes to appear, and the step “Check the address” waits for it. Wait,
-            then add the server in the app again.
-          </Para>
-          <Note>
-            If the address is published and the app still says it, and its form offers advanced OAuth settings, these
-            are the values, read from the running server:
-          </Note>
+          <Para>{m.discoveryWhy}</Para>
+          <Note>{m.discoveryValues}</Note>
           {error && <ErrorNotice inline>{error}</ErrorNotice>}
           {settings && (
             <div className="grid gap-2.5 md:grid-cols-2">
-              <Field
-                label="Authorization URL"
-                value={settings.authorizationEndpoint}
-                copyLabel="Copy the authorization URL"
-              />
-              <Field label="Token URL" value={settings.tokenEndpoint} copyLabel="Copy the token URL" />
+              <Field label={m.authorization} value={settings.authorizationEndpoint} copyLabel={m.copyAuthorization} />
+              <Field label={m.token} value={settings.tokenEndpoint} copyLabel={m.copyToken} />
               {settings.registrationEndpoint && (
-                <Field
-                  label="Registration URL"
-                  value={settings.registrationEndpoint}
-                  copyLabel="Copy the registration URL"
-                />
+                <Field label={m.registration} value={settings.registrationEndpoint} copyLabel={m.copyRegistration} />
               )}
-              <Field label="Issuer" value={settings.issuer} copyLabel="Copy the issuer" />
+              <Field label={m.issuer} value={settings.issuer} copyLabel={m.copyIssuer} />
             </div>
           )}
         </div>
@@ -969,6 +907,7 @@ function DiscoveryHelp({ tool, app }: { tool: CatalogTool; app: AppId }) {
 
 function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reload(): Promise<void> }) {
   const { tool, port, name, reload } = props
+  const m = useMessages(connectMessages).off
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const turnOn = async () => {
@@ -984,14 +923,11 @@ function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reloa
   }
   return (
     <div className="flex flex-col gap-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3.5 py-2.5">
-      <p className="text-[0.9rem] text-warn-ink">
-        Tailscale Funnel is off for this server, so {name} cannot reach it. Turn it on again; the address stays the
-        same, though it can take up to 10 minutes to be reachable again.
-      </p>
+      <p className="text-[0.9rem] text-warn-ink">{m.funnel(name)}</p>
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
       <div>
         <Button size="sm" onClick={turnOn} disabled={busy}>
-          {busy ? "Turning Funnel on…" : "Turn Funnel on"}
+          {busy ? m.turningOn : m.turnOn}
         </Button>
       </div>
     </div>
@@ -1001,6 +937,7 @@ function FunnelOff(props: { tool: CatalogTool; port: number; name: string; reloa
 /** cloudflared stops with the computer; the tools' servers too, but a server started again finds its tunnel off. */
 function TunnelOff(props: { tool: CatalogTool; port: number; name: string; reload(): Promise<void> }) {
   const { tool, port, name, reload } = props
+  const m = useMessages(connectMessages).off
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const turnOn = async () => {
@@ -1016,14 +953,11 @@ function TunnelOff(props: { tool: CatalogTool; port: number; name: string; reloa
   }
   return (
     <div className="flex flex-col gap-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3.5 py-2.5">
-      <p className="text-[0.9rem] text-warn-ink">
-        The Cloudflare tunnel is not running, so {name} cannot reach this server. Start it again; the address stays the
-        same.
-      </p>
+      <p className="text-[0.9rem] text-warn-ink">{m.tunnel(name)}</p>
       {error && <ErrorNotice inline>{error}</ErrorNotice>}
       <div>
         <Button size="sm" onClick={turnOn} disabled={busy}>
-          {busy ? "Starting the tunnel…" : "Start the tunnel"}
+          {busy ? m.starting : m.start}
         </Button>
       </div>
     </div>
@@ -1042,7 +976,10 @@ function TestStep(props: {
   onAgain(): void
 }) {
   const { tool, app, server, test, since, quietFromStart, onBack, onDone, onAgain } = props
-  const name = APPS[app].name
+  const all = useMessages(connectMessages)
+  const m = all.test
+  const lang = useLang()
+  const name = app === "other" ? all.theApp : all.apps[app].name
   const [quiet, setQuiet] = useState(quietFromStart)
   useEffect(() => {
     if (test.state !== "waiting" || quiet) return
@@ -1058,54 +995,42 @@ function TestStep(props: {
         <Progress state={loggedIn ? "done" : "busy"}>
           {loggedIn ? (
             <>
-              {appLabel(test.client)} logged in <span className="text-ink-dim">(the name the app gave itself)</span>
+              {m.loggedIn(appLabel(test.client, lang))} <span className="text-ink-dim">{m.selfNamed}</span>
             </>
           ) : (
-            `Waiting for ${name} to log in…`
+            m.waitingLogin(name)
           )}
         </Progress>
         {counts || !loggedIn ? (
           <Progress state={test.state === "called" ? "done" : loggedIn ? "busy" : "todo"}>
             {test.state === "called" ? (
               <>
-                First call arrived: <span className="selectable font-mono">{test.client.lastTool}</span>
+                {m.firstCall} <span className="selectable font-mono">{test.client.lastTool}</span>
                 {test.client.lastToolAt && (
-                  <span className="text-ink-dim tabular-nums"> at {clock(test.client.lastToolAt)}</span>
+                  <span className="text-ink-dim tabular-nums">
+                    {m.at(formatDate(test.client.lastToolAt, { hour: "2-digit", minute: "2-digit" }, lang))}
+                  </span>
                 )}
               </>
             ) : (
-              "Waiting for the first call…"
+              m.waitingCall
             )}
           </Progress>
         ) : null}
       </ul>
-      {!loggedIn && (
-        <Para>
-          Finish the login in {name}: it opens a WireCat page that asks for the login code from the step before.
-        </Para>
-      )}
+      {!loggedIn && <Para>{m.finishLogin(name)}</Para>}
       {loggedIn && test.state !== "called" && (
         <div className="flex flex-col gap-2">
-          <Para>
-            Now ask {name} something that needs {tool.name}, in a new chat with it turned on:
-          </Para>
+          <Para>{m.askNow(name, tool.name)}</Para>
           <div className="max-w-[34rem]">
-            <CopyField value={testPrompt(tool)} label="Copy the test prompt" />
+            <CopyField value={testPrompt(tool, all)} label={m.copyPrompt} />
           </div>
-          {!counts && (
-            <Note>
-              This version of {tool.bin} does not report calls, so check the answer in {name}. Update {tool.name} on the
-              Tools page to see calls here.
-            </Note>
-          )}
+          {!counts && <Note>{m.noCounts(tool.bin, name, tool.name)}</Note>}
         </div>
       )}
       {test.state === "called" && (
         <>
-          <Para>
-            {name} reached {tool.bin} through the internet address, logged in and called a tool. From now on this panel
-            shows when it last did.
-          </Para>
+          <Para>{m.reached(all.apps[app].name, tool.bin)}</Para>
           <NextSteps tool={tool} name={name} onAgain={onAgain} />
         </>
       )}
@@ -1113,11 +1038,11 @@ function TestStep(props: {
       <div className="flex flex-wrap items-center gap-2 pt-1">
         {test.state === "called" || (loggedIn && !counts) ? (
           <Button size="sm" variant="primary" onClick={onDone}>
-            Finish
+            {m.finish}
           </Button>
         ) : (
           <Button size="sm" variant="ghost" onClick={onBack}>
-            Back to the steps in {name}
+            {m.back(name)}
           </Button>
         )}
       </div>
@@ -1127,26 +1052,28 @@ function TestStep(props: {
 
 /** Rule 9: the goal is reached, so say what else is worth doing from here. */
 function NextSteps({ tool, name, onAgain }: { tool: CatalogTool; name: string; onAgain(): void }) {
+  const all = useMessages(connectMessages)
+  const m = all.next
   const installs = useTools((s) => s.installs)
   const others = tools.filter((t) => t.mcpServer && t.id !== tool.id && (installs[t.id]?.length ?? 0) > 0)
   return (
     <div className="flex flex-col gap-2.5 rounded-[0.45rem] bg-app-2 px-4 py-3">
-      <p className="text-[0.92rem] font-medium text-ink">What next</p>
+      <p className="text-[0.92rem] font-medium text-ink">{m.title}</p>
       <div className="flex max-w-[34rem] flex-col gap-1">
-        <span className="text-[0.9rem] text-ink-soft">Ask {name} something, in a chat with it turned on:</span>
-        <CopyField value={testPrompt(tool)} label="Copy a prompt to try" />
+        <span className="text-[0.9rem] text-ink-soft">{m.ask(name)}</span>
+        <CopyField value={testPrompt(tool, all)} label={m.copyPrompt} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={onAgain}>
-          Connect another app
+          {m.another}
         </Button>
         {others.map((t) => (
           <Button key={t.id} size="sm" variant="ghost" onClick={() => openConnect(t.id)}>
-            Connect {t.name} too
+            {m.too(t.name)}
           </Button>
         ))}
         <Button size="sm" variant="ghost" onClick={() => useNav.getState().go("logs")}>
-          See its calls in Logs
+          {m.logs}
         </Button>
       </div>
     </div>
@@ -1155,24 +1082,20 @@ function NextSteps({ tool, name, onAgain }: { tool: CatalogTool; name: string; o
 
 function Troubleshoot(props: { name: string; tool: CatalogTool; app: AppId; server: McpServerStatus }) {
   const { name, tool, app, server } = props
+  const m = useMessages(connectMessages).trouble
   return (
     <div className="flex flex-col gap-2 rounded-[0.45rem] bg-app-2 px-4 py-3">
-      <p className="text-[0.92rem] font-medium text-ink">
-        Nothing has logged in yet. What {name} says decides the fix:
-      </p>
+      <p className="text-[0.92rem] font-medium text-ink">{m.title(name)}</p>
       <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[0.88rem] text-ink-soft">
         <li>
-          <span className="text-ink">It couldn't reach or connect to the server:</span> check the address is exactly{" "}
-          <span className="selectable font-mono text-ink">{server.connectorUrl}</span>, with /mcp at the end. A new
-          address can also take up to 10 minutes to appear on the internet; try again in the app after that.
+          <span className="text-ink">{m.unreachable}</span>{" "}
+          {m.unreachableFix(<span className="selectable font-mono text-ink">{server.connectorUrl}</span>)}
         </li>
         <li>
-          <span className="text-ink">The login page says the code is wrong or expired:</span> each code works for 10
-          minutes. Type the one in the step before as it is now.
+          <span className="text-ink">{m.badCode}</span> {m.badCodeFix}
         </li>
         <li>
-          <span className="text-ink">No WireCat login page opened:</span> choose OAuth as the authentication in {name},
-          and remove and add the server again.
+          <span className="text-ink">{m.noPage}</span> {m.noPageFix(name)}
         </li>
       </ul>
       <DiscoveryHelp tool={tool} app={app} />
