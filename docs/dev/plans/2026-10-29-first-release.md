@@ -15,7 +15,7 @@ is on `main`).
 | `build` Linux | ubuntu-22.04 | `.AppImage`, `.deb`, `.rpm` | An AppImage runs only where glibc is at least as new as the build machine's; 22.04 reaches more systems than 24.04. |
 | `build` macOS | macos-latest | one universal `.dmg` and `.app.tar.gz` | One download for every Mac, and one job fills both `darwin-aarch64` and `darwin-x86_64` in `latest.json`, so fewer jobs race to rewrite it. Cost: a bigger file and a longer build. |
 | `build` Windows | windows-latest | NSIS `-setup.exe` only | NSIS installs per user, so neither the install nor an update asks for administrator rights (rule 6). The MSI installs per machine. |
-| `check` | ubuntu-latest | nothing | Fails when `latest.json` lacks one of the four platforms (see Risks). |
+| `publish` | ubuntu-latest | the published release | Fails when `latest.json` lacks one of the four platforms (see Risks); otherwise publishes the release and marks it latest. |
 
 Builds use [tauri-action](https://github.com/tauri-apps/tauri-action) v1.0.0, pinned by commit like `ci.yml`, with
 `releaseId` from the `draft` job.
@@ -26,12 +26,12 @@ Builds use [tauri-action](https://github.com/tauri-apps/tauri-action) v1.0.0, pi
 - The tag is `v` + that version: `v0.1.0` first. A tag that differs fails the `draft` job.
 - A version that is already published fails too; a draft of it is reused, so re-running a failed release is safe.
 
-## The draft flow
+## The release flow
 
 1. Push the tag. The workflow makes the draft (notes generated from merged PRs), and the three builds upload to it.
-2. `check` passes when `latest.json` has all four platforms.
-3. A person installs each download, edits the notes, and presses Publish.
-4. Only then do installed copies see it: the updater reads
+2. `publish` checks that `latest.json` has all four platforms, then publishes the release with no person in the loop
+   (NEED-134: the owner wants releases fully automated).
+3. Only then do installed copies see it: the updater reads
    `https://github.com/WireCatLabs/wirecat-desktop/releases/latest/download/latest.json`, and GitHub's "latest" is the
    newest release that is neither a draft nor a prerelease
    ([GitHub REST: latest release](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)).
@@ -150,15 +150,15 @@ environment (Settings → Environments → release), so each release waits for y
 
 1. `bin/setup-updater-key`. It also commits and pushes the public key. **Before the first tag.**
 2. Merge PR #1 into `main` once CI is green.
-3. `bin/tag-release` on `main`. It checks the branch, the versions and the key, then pushes `v0.1.0`.
-4. Check the draft (each installer, the notes, `check` green), then Publish.
-5. When ready: `bin/setup-apple-signing <file.p12>` and `bin/setup-windows-signing`. The next tag is signed.
+3. `bin/tag-release` on `main`. It checks the branch, the versions and the key, then pushes `v0.1.0`; the
+   workflow builds and publishes it.
+4. When ready: `bin/setup-apple-signing <file.p12>` and `bin/setup-windows-signing`. The next tag is signed.
 
 ## If the first run fails
 
 `release.yml` first runs on the real tag, so these are untested until then: Windows signing through ssign, `--config`
-read from the repository root, `latest.json` written when uploading by `releaseId`, and `check`. The draft is private,
-so a failure is safe: delete the draft and the tag (`git push origin :refs/tags/v0.1.0`), fix, and run
+read from the repository root, `latest.json` written when uploading by `releaseId`, and `publish`. A failure stops before publishing and the draft is
+private, so it is safe: delete the draft and the tag (`git push origin :refs/tags/v0.1.0`), fix, and run
 `bin/tag-release` again. A draft left over is reused.
 
 ## Risks
@@ -172,7 +172,7 @@ so a failure is safe: delete the draft and the tag (`git push origin :refs/tags/
   Linux and the `web` job pass. `permissions.ts` beside `Permissions.tsx` did exactly that until `permission-levels.ts`.
 
 - **`latest.json` can lose a platform.** Each build downloads it, adds its own platforms and uploads it again. Two
-  builds that finish together can overwrite each other. `check` catches it; re-running the build whose platform is
+  builds that finish together can overwrite each other. `publish` catches it before publishing; re-running the build whose platform is
   missing fixes it.
 - **Download links in `latest.json` are GitHub API asset URLs** (tauri-action 1.0.0 changelog, #1315), which GitHub
   rate-limits without a login (60 an hour per address). Updates are rare, so this should not matter.

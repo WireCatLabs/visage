@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tags main with v<package.json version> and pushes the tag; .github/workflows/release.yml then builds a draft release.
+# Tags main with v<package.json version> and pushes the tag; .github/workflows/release.yml then builds and publishes the release.
 # Refuses unless main is checked out, clean and up to date, and the updater key is in place (bin/setup-updater-key).
 set -euo pipefail
 
@@ -25,4 +25,4 @@ fi
 
 git tag -a "$tag" -m "WireCat $version"
 git push -q origin "$tag"
-echo "Pushed $tag. The draft release builds at https://github.com/WireCatLabs/wirecat-desktop/actions/workflows/release.yml"
+echo "Pushed $tag. The release builds and publishes itself at https://github.com/WireCatLabs/wirecat-desktop/actions/workflows/release.yml"

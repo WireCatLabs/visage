@@ -1,6 +1,7 @@
 name: Release
 
-# A tag v<package.json version> builds every installer into a DRAFT GitHub Release; a person checks it and publishes.
+# A tag v<package.json version> builds every installer into a draft GitHub Release, published once latest.json has
+# every platform (the owner wants releases fully automated, NEED-134).
 # Plan: docs/dev/plans/2026-10-29-first-release.md
 on:
   push:
@@ -163,8 +164,9 @@ jobs:
             Write-Output "$($file.Name): signed by $($sig.SignerCertificate.Subject)"
           }
 
-  # The builds each rewrite latest.json in turn, so two finishing at once can drop an entry; this catches it.
-  check:
+  # The builds each rewrite latest.json in turn, so two finishing at once can drop an entry; this catches it before the
+  # release goes public, since a published release is what every installed copy updates to.
+  publish:
     needs: [draft, build]
     runs-on: ubuntu-latest
     # Only push access lists draft releases.
@@ -184,4 +186,4 @@ jobs:
             echo "::error::latest.json lacks:$missing. Re-run the failed build job of that system."
             exit 1
           fi
-          echo "latest.json has every platform. Check the draft and publish it."
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
