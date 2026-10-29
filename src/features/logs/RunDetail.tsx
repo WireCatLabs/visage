@@ -20,6 +20,7 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
+import { TextButton } from "@/ui/TextButton"
 import { ReportThis } from "../report/ReportThis"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
 import { toolName } from "./names"
@@ -174,14 +175,13 @@ function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter
               <>
                 {" "}
                 in session{" "}
-                <button
-                  type="button"
+                <TextButton
                   onClick={() => onFilter("session_id", agent.session as string, false)}
                   title="Show only this session's runs"
                   className="selectable font-mono text-ink-soft hover:text-brand"
                 >
                   {agent.session}
-                </button>
+                </TextButton>
               </>
             )}
             .{" "}

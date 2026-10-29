@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { platform } from "@/platform/bridge"
@@ -210,6 +210,31 @@ describe("Logs", () => {
     expect(screen.getByRole("region", { name: "Command line" })).toHaveTextContent(
       /Started by Claude Code through claude-code \(MCP on this computer\) in session 5c0e9d41/,
     )
+  }, 15000)
+
+  it("lets the owner select a run's session id without filtering, and filters on Enter", async () => {
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await loaded()
+    await user.type(
+      screen.getByRole("combobox", { name: "Search runs" }),
+      ' cli_command:"tg messages read" via:mcp-stdio',
+    )
+    await user.click(await screen.findByRole("button", { name: /^Show run tg messages read / }))
+    const search = screen.getByRole("combobox", { name: "Search runs" }) as HTMLInputElement
+    const before = search.value
+    const id = screen.getByTitle("Show only this session's runs")
+
+    const text = id.firstChild as Text
+    window.getSelection()?.setBaseAndExtent(text, 0, text, 8)
+    fireEvent.click(id)
+    expect(search.value).toBe(before)
+    expect(window.getSelection()?.toString()).toBe("5c0e9d41")
+
+    window.getSelection()?.removeAllRanges()
+    id.focus()
+    await user.keyboard("{Enter}")
+    expect(search.value).toMatch(/session_id:5c0e9d41/)
   }, 15000)
 
   it("says a success kept as its summary line has no steps to show", async () => {

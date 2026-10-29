@@ -27,6 +27,8 @@ import {
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
+import { selectsTextIn } from "@/ui/selection"
+import { TextButton } from "@/ui/TextButton"
 import { ToolIcon } from "../tools/ToolIcon"
 import { toolName } from "./names"
 import { RunDetail } from "./RunDetail"
@@ -79,8 +81,7 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
   const [field, value] = agent.session ? ["session_id", agent.session] : ["agent", agent.kind]
   return (
     <td className="pr-[0.6rem]">
-      <button
-        type="button"
+      <TextButton
         onClick={(e) => {
           e.stopPropagation()
           onFilter(field, value, false)
@@ -94,7 +95,7 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
             {shortSession(agent.session)}
           </span>
         )}
-      </button>
+      </TextButton>
     </td>
   )
 }
@@ -181,7 +182,9 @@ export function RunsTable({
     return (
       <Fragment key={key}>
         <tr
-          onClick={() => onToggle(key, run)}
+          onClick={(e) => {
+            if (!selectsTextIn(e.currentTarget)) onToggle(key, run)
+          }}
           className={cx(
             "group h-[2.6rem] cursor-pointer border-line border-b transition-colors duration-150 hover:bg-app-2",
             open && "bg-app-2",

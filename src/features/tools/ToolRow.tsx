@@ -11,7 +11,7 @@ import { Lamp, type LampTone } from "@/ui/Lamp"
 import { holdInPlace } from "@/ui/motion"
 import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
-import { selectsTextIn } from "@/ui/selection"
+import { TextButton } from "@/ui/TextButton"
 import { useSystem } from "../system/store"
 import { activityOf } from "./connect-steps"
 import { InstallPanel } from "./InstallPanel"
@@ -79,20 +79,9 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           label={storageLabel ? `${lampLabel(status)}. ${storageLabel}` : lampLabel(status)}
         />
         <ToolIcon id={tool.id} className="size-[1.6rem] text-ink xl:size-[1.75rem]" />
-        {/* WebKit never starts a text selection inside a <button>, and the name, storage and sync lines are worth
-            copying, so this is a div that acts as one. */}
-        {/* biome-ignore lint/a11y/useSemanticElements: see above */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            if (!selectsTextIn(e.currentTarget)) toggle(tool.id)
-          }}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter" && e.key !== " ") return
-            e.preventDefault()
-            toggle(tool.id)
-          }}
+        <TextButton
+          as="div"
+          onClick={() => toggle(tool.id)}
           aria-expanded={expanded}
           aria-controls={panelId}
           className="group min-w-0 py-3 text-left"
@@ -124,7 +113,7 @@ export function ToolRow({ tool }: { tool: CatalogTool }) {
           ) : (
             <p className="mt-1 truncate text-[0.95rem] text-ink-soft">{tool.tagline}</p>
           )}
-        </div>
+        </TextButton>
         {sync ? <RowSyncButton entry={tool} info={sync} /> : <span />}
         <Version status={status} installed={installs?.[0]?.version ?? null} />
         <div data-tour="tool-action" className="flex justify-end">
