@@ -72,6 +72,12 @@ infers it from the certificate. The workflow exports the five only when all five
 is set but empty as a certificate to import (`crates/tauri-bundler/src/bundle/macos/sign.rs`), so passing empty
 secrets would fail the build. The next tag after the script is signed and notarized, with no workflow edit.
 
+Without a Mac, `bin/make-apple-certificate` does what Keychain Access would: it makes the key and the request file to
+upload (Certificates → + → Developer ID Application, Account Holder only), then turns the downloaded `.cer` into a
+`.p12` with Apple's intermediate certificate and runs `bin/setup-apple-signing`. The key and `.p12` stay in
+`~/.config/wirecat-signing/` (mode 700); the `.p12` password goes to the keyring (`service wirecat`, account
+`apple-p12-password`).
+
 ### Windows (Certum)
 
 Owner, 2026-10-29: the certificate is Certum's open-source code signing in the cloud (SimplySign, NEED-128 A), and

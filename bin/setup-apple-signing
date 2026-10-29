@@ -19,9 +19,11 @@ for program in gh openssl base64; do
 done
 gh auth status >/dev/null 2>&1 || { echo "Log in first: gh auth login" >&2; exit 1; }
 
-read -rsp "Password of the .p12 file: " P12_PASSWORD
-echo
-export P12_PASSWORD
+if [ -z "${P12_PASSWORD:-}" ]; then
+  read -rsp "Password of the .p12 file: " P12_PASSWORD
+  echo
+  export P12_PASSWORD
+fi
 
 # Keychain Access exports with older ciphers that OpenSSL 3 reads only with -legacy.
 subject=""

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# One-off (TASK-39): makes the Developer ID Application certificate on Linux, for owners without a Mac.
+#   bin/make-apple-certificate              step 1: a private key and a request file to upload to Apple
+#   bin/make-apple-certificate <file.cer>   step 2: Apple's certificate + the key → a .p12,
+#                                           then bin/setup-apple-signing
+# The key never leaves this computer; the .p12 is kept beside it, readable by this user only.
+set -euo pipefail
+
+dir="${XDG_CONFIG_HOME:-$HOME/.config}/wirecat-signing"
+key="$dir/developer-id.key"
+csr="$dir/developer-id.certSigningRequest"
+p12="$dir/developer-id.p12"
+umask 077
+mkdir -p "$dir"
+command -v openssl >/dev/null || { echo "openssl is missing." >&2; exit 1; }
+
+cer="${1:-}"
+if [ -z "$cer" ]; then
+  if [ -f "$key" ]; then
+    echo "A key already exists. Upload this file to Apple, or move $dir away to start over:"
+    echo "  $csr"
+    exit 0
+  fi
+  read -rp "Apple ID (the e-mail of the developer account): " email
+  [ -n "$email" ] || { echo "The e-mail is needed." >&2; exit 1; }
+  openssl req -new -newkey rsa:2048 -nodes -keyout "$key" -out "$csr" \
+    -subj "/emailAddress=$email/CN=WireCat" 2>/dev/null
+  echo "Upload this file at https://developer.apple.com/account/resources/certificates/add"
+  echo "(Developer ID → Developer ID Application), download the .cer, then run:"
+  echo "  bin/make-apple-certificate ~/Downloads/developerID_application.cer"
+  echo "  $csr"
+  exit 0
+fi
+
+[ -f "$cer" ] || { echo "No file $cer." >&2; exit 1; }
+[ -f "$key" ] || { echo "No key at $key: run bin/make-apple-certificate without a file first." >&2; exit 1; }
+
+pem="$dir/developer-id.pem"
+openssl x509 -inform DER -in "$cer" -out "$pem" 2>/dev/null || openssl x509 -in "$cer" -out "$pem"
+if [ "$(openssl x509 -in "$pem" -noout -pubkey)" != "$(openssl pkey -in "$key" -pubout)" ]; then
+  echo "This certificate was made from another request, not from the key in $dir." >&2
+  exit 1
+fi
+
+# The signing machine needs the intermediate certificate too; Apple names which one issued this certificate.
+case "$(openssl x509 -in "$pem" -noout -issuer)" in
+  *G2*) ca_url="https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer" ;;
+  *) ca_url="https://www.apple.com/certificateauthority/DeveloperIDCA.cer" ;;
+esac
+ca="$dir/developer-id-ca.pem"
+curl -fsSL "$ca_url" | openssl x509 -inform DER -out "$ca"
+
+P12_PASSWORD="$(openssl rand -base64 24)"
+export P12_PASSWORD
+# 3DES and SHA-1 because older macOS `security import` cannot read OpenSSL 3's default AES .p12.
+openssl pkcs12 -export -inkey "$key" -in "$pem" -certfile "$ca" -out "$p12" -passout env:P12_PASSWORD \
+  -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
+echo "Made $p12"
+if command -v secret-tool >/dev/null; then
+  printf "%s" "$P12_PASSWORD" |
+    secret-tool store --label "WireCat Developer ID .p12 password" service wirecat account apple-p12-password \
+    && echo "Its password is in the keyring: service wirecat, account apple-p12-password." \
+    || echo "Could not save its password in the keyring; it is only in the GitHub secret now."
+fi
+
+exec "$(dirname "$0")/setup-apple-signing" "$p12"
