@@ -62,10 +62,15 @@ jobs:
             echo "::error::$TAG is already published. Bump the version in package.json."
             exit 1
           fi
+          # The id comes from the create call itself: the release list lags behind a new draft, and an empty id makes
+          # tauri-action skip every upload while the build still passes.
           if [ -z "${id:-}" ]; then
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
-              --title "WireCat ${TAG#v}" --generate-notes
-            read -r id draft <<<"$(find_draft)"
+            id="$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" \
+              -f name="WireCat ${TAG#v}" -F draft=true -F generate_release_notes=true --jq .id)"
+          fi
+          if [ -z "${id:-}" ]; then
+            echo "::error::Could not create or find the draft release for $TAG."
+            exit 1
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
