@@ -105,12 +105,23 @@ commands read. The last command shows:
 
 ### 4b. Check that the certificate fits your key
 
+First write the public half of your key to a file. It asks for the key passphrase:
+
 ```sh
-diff <(openssl x509 -in developer-id.pem -noout -pubkey) <(openssl pkey -in developer-id.key -pubout) && echo "The certificate matches the key."
+openssl pkey -in developer-id.key -pubout -out developer-id.pub
 ```
 
-It asks for the key passphrase. If it prints anything other than "The certificate matches the key.", the
-certificate was made from another request file. Repeat step 3 with this folder's request file.
+Then compare it with the certificate:
+
+```sh
+diff <(openssl x509 -in developer-id.pem -noout -pubkey) developer-id.pub && echo "The certificate matches the key."
+```
+
+Two commands, because zsh runs a command inside `<( … )` in the background, where it cannot read the keyboard: a
+passphrase prompt there fails with "unable to get passphrase".
+
+If it prints anything other than "The certificate matches the key.", the certificate was made from another request
+file. Repeat step 3 with this folder's request file.
 
 ### 4c. Download Apple's intermediate certificate
 
@@ -229,7 +240,7 @@ Then delete the working files. The `.p12` already holds the key and both certifi
 downloaded again from Apple:
 
 ```sh
-rm developer-id.key developer-id.certSigningRequest developer-id.pem developerID_application.cer apple-ca.cer apple-ca.pem
+rm developer-id.key developer-id.pub developer-id.certSigningRequest developer-id.pem developerID_application.cer apple-ca.cer apple-ca.pem
 ```
 
 You may keep `developer-id.p12` in this folder or delete it too, once it is in the password manager.
