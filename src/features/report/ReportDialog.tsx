@@ -4,6 +4,7 @@ import { tools } from "@/domain/catalog"
 import { issueBody, LIMITS, newIssueUrl, type ReportFields, type ReportProblem, validateReport } from "@/domain/report"
 import { ToolIcon } from "@/features/tools/ToolIcon"
 import { platform } from "@/platform/bridge"
+import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
@@ -292,32 +293,49 @@ function WhatIsSent({ fields }: { fields: ReportFields }) {
           into a command, such as a search query.
         </span>
       </p>
-      {context ? (
-        <div className="flex flex-col gap-2 pl-[1.6rem]">
-          <Disclosure summary="See what is attached">
-            <p className="mb-2">
-              {runCount} failed {runCount === 1 ? "run" : "runs"}
-              {runs.length ? ` from ${runs.map((r) => r.tool).join(", ")}` : ""}
-              {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}
-              {prefill.errors?.length
-                ? `, and ${prefill.errors.length} recent ${prefill.errors.length === 1 ? "error" : "errors"} from this window`
-                : ""}
-              .
-            </p>
-            <pre className={pre}>{JSON.stringify(attachmentsOf(context, prefill), null, 2)}</pre>
-          </Disclosure>
-          <Disclosure summary="See the public issue">
-            <pre className={pre}>{`${fields.summary.trim() || "(summary)"}\n\n${issueBody(fields, context)}`}</pre>
-          </Disclosure>
-        </div>
-      ) : (
-        !contextError && (
-          <p className="flex items-center gap-2 pl-[1.6rem] text-ink-dim" role="status">
-            <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Collecting versions and recent errors…
-          </p>
-        )
-      )}
+      {/* Both links are there from the first frame; what they open waits for the context, so the dialog never grows
+          or jumps when it arrives. */}
+      <div className="flex flex-col gap-2 pl-[1.6rem]">
+        <Disclosure summary="See what is attached">
+          <AutoHeight swap={Boolean(context)}>
+            {context ? (
+              <>
+                <p className="mb-2">
+                  {runCount} failed {runCount === 1 ? "run" : "runs"}
+                  {runs.length ? ` from ${runs.map((r) => r.tool).join(", ")}` : ""}
+                  {prefill.log?.length ? `, and the ${prefill.log.length}-line install log` : ""}
+                  {prefill.errors?.length
+                    ? `, and ${prefill.errors.length} recent ${prefill.errors.length === 1 ? "error" : "errors"} from this window`
+                    : ""}
+                  .
+                </p>
+                <pre className={pre}>{JSON.stringify(attachmentsOf(context, prefill), null, 2)}</pre>
+              </>
+            ) : (
+              <Pending error={contextError} />
+            )}
+          </AutoHeight>
+        </Disclosure>
+        <Disclosure summary="See the public issue">
+          <AutoHeight swap={Boolean(context)}>
+            {context ? (
+              <pre className={pre}>{`${fields.summary.trim() || "(summary)"}\n\n${issueBody(fields, context)}`}</pre>
+            ) : (
+              <Pending error={contextError} />
+            )}
+          </AutoHeight>
+        </Disclosure>
+      </div>
     </section>
+  )
+}
+
+function Pending({ error }: { error: string | null }) {
+  if (error) return <p className="text-ink-dim">Not available: this computer’s details could not be read.</p>
+  return (
+    <p className="flex items-center gap-2 text-ink-dim" role="status">
+      <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> Collecting versions and recent errors…
+    </p>
   )
 }
 
@@ -350,6 +368,7 @@ function Actions({ fields }: { fields: ReportFields }) {
         type="submit"
         form="report-form"
         title="Send report (Ctrl+Enter)"
+        className="min-w-[9.5rem]"
         aria-keyshortcuts="Control+Enter Meta+Enter"
         disabled={!context || phase === "sending"}
         icon={
