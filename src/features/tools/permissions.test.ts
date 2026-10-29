@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { findTool } from "@/domain/catalog"
 import type { CommandAccess, Permissions } from "@/platform/permissions-schemas"
+import { permissionsMessages } from "./messages-permissions"
 import {
   commandLine,
   defaultLevel,
@@ -15,6 +16,8 @@ import {
   summarize,
   widensLevel,
 } from "./permissions"
+
+const m = permissionsMessages.en.permissions
 
 const messages = { key: "messages", label: "Messages" }
 const cmd = (path: string, writes: boolean, available = true): CommandAccess => ({
@@ -51,8 +54,8 @@ describe("summarize", () => {
       }),
     )
     expect(s.state).toBe("partial")
-    expect(partialDetail(s)).toBe("1 of 3 changes allowed")
-    expect(stateLabel(s)).toBe("Partial write")
+    expect(partialDetail(s, m)).toBe("1 of 3 changes allowed")
+    expect(stateLabel(s, m)).toBe("Partial write")
     expect(s.overrides.map((o) => o.key)).toEqual(["messages.send"])
     expect(s.commands).toHaveLength(4)
   })
@@ -70,8 +73,8 @@ describe("summarize", () => {
       }),
     )
     expect(contacts.state).toBe("partial")
-    expect(partialDetail(contacts)).toBe("1 of 2 reads allowed")
-    expect(stateLabel(contacts)).toBe("Partial read")
+    expect(partialDetail(contacts, m)).toBe("1 of 2 reads allowed")
+    expect(stateLabel(contacts, m)).toBe("Partial read")
     expect(stillAllowed(contacts).map((c) => c.path.join(" "))).toEqual(["contacts context"])
   })
 
@@ -113,16 +116,16 @@ describe("summarize", () => {
 
   it("notes when the commands are held tighter than the level says", () => {
     const s = summarize(messages, view({ commands: [cmd("messages list", false, false)] }))
-    expect(moreBlocked(s, "allow")).toBe("In practice: blocked")
-    expect(moreBlocked(s, "deny")).toBeNull()
+    expect(moreBlocked(s, "allow", m)).toBe("In practice: blocked")
+    expect(moreBlocked(s, "deny", m)).toBeNull()
   })
 
   it("sums the groups up in one line for the closed panel", () => {
     const reads = [cmd("messages list", false)]
     const allowed = summarize(messages, view({ commands: reads }))
     const readonly = summarize(messages, view({ commands: [...reads, cmd("messages send", true, false)] }))
-    expect(overview([allowed, allowed, readonly])).toBe("Allowed for 2 groups · Read only for 1 group")
-    expect(overview([readonly, readonly])).toBe("Read only for all 2 groups")
+    expect(overview([allowed, allowed, readonly], m)).toBe("Allowed for 2 groups · Read only for 1 group")
+    expect(overview([readonly, readonly], m)).toBe("Read only for all 2 groups")
   })
 })
 
@@ -138,7 +141,7 @@ describe("changing a level", () => {
       permission: null,
       reason: "the read-only lock blocks this change",
     }
-    expect(locks([locked, locked, cmd("messages edit", true, false)])).toEqual([
+    expect(locks([locked, locked, cmd("messages edit", true, false)], m)).toEqual([
       "the read-only lock blocks this change",
     ])
     expect(removalWidens({ key: "messages", level: "ask", origin: "profile", from: null })).toBe(true)
@@ -152,9 +155,11 @@ describe("changing a level", () => {
   })
 
   it("locks a profile's key in the defaults view and an environment variable everywhere", () => {
-    expect(lockReason(s.own, true)).toMatch(/Choose that profile/)
-    expect(lockReason(s.own, false)).toBeNull()
-    expect(lockReason({ key: "messages", level: "deny", origin: "environment", from: "TG_X" }, false)).toMatch(/TG_X/)
+    expect(lockReason(s.own, true, m)).toMatch(/Choose that profile/)
+    expect(lockReason(s.own, false, m)).toBeNull()
+    expect(lockReason({ key: "messages", level: "deny", origin: "environment", from: "TG_X" }, false, m)).toMatch(
+      /TG_X/,
+    )
   })
 
   it("shows the exact command, with --defaults when no profile is chosen", () => {

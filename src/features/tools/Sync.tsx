@@ -2,7 +2,8 @@ import { AlertTriangle, CheckCircle2, CircleStop, LoaderCircle, RefreshCw, X } f
 import { useEffect } from "react"
 import { type CatalogTool, ownerId, signsInHere, syncNeedsProfile, syncsHere } from "@/domain/catalog"
 import { toolStatus } from "@/domain/status"
-import { advice, clock, doneNext, progressLine, resultLine, resultNext, type SyncWhat, share } from "@/domain/sync"
+import { advice, clock, type SyncFailure, type SyncWhat, share } from "@/domain/sync"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { LastSync } from "@/platform/sync-schemas"
 import { AutoHeight } from "@/ui/AutoHeight"
@@ -15,18 +16,23 @@ import { ReportThis } from "../report/ReportThis"
 import { useSignIn } from "../signin/store"
 import { useElapsed } from "../storage/useElapsed"
 import { ago } from "./connect-steps"
+import { type SyncText, syncMessages } from "./messages-sync"
 import { useTools } from "./store"
 import { blockedBy, type SyncRun, syncKey, useSync } from "./sync-store"
+
+type Words = SyncText
+
+const NO_FAILURE: SyncFailure = { message: "", code: null, reason: null, run: null }
 
 /**
  * "Last synced 12 min ago". With no time the tool still may have synced: a run log keeps a success only when asked
  * (`--record`, which the app passes), and drive sets its time only once nothing is left to fetch.
  */
-export function lastLine(last: LastSync, what: SyncWhat): string {
-  if (!last.known) return "Last sync unknown: the tool does not say"
-  const left = last.left && last.left > 0 ? `${last.left.toLocaleString("en-US")} ${what} still to come` : null
-  if (last.at) return `Last synced ${ago(last.at)}${left ? ` · ${left}` : ""}`
-  return left ? `Not finished: ${left}` : "No sync recorded from this app yet"
+export function lastLine(last: LastSync, what: SyncWhat, m: Words): string {
+  if (!last.known) return m.lastUnknown
+  const left = last.left && last.left > 0 ? m.left(what, last.left) : null
+  if (last.at) return [m.lastSynced(ago(last.at)), left].filter(Boolean).join(" · ")
+  return left ? m.notFinished(left) : m.noneRecorded
 }
 
 /** One profile's sync in the Manage panel: the button, when it last ran, its progress and its result. */
@@ -38,26 +44,27 @@ export function SyncControl({ tool, profile }: { tool: CatalogTool; profile: str
   const { start, stop } = useSync.getState()
   const what: SyncWhat = tool.sync?.what ?? "messages"
   const running = run?.phase === "running"
+  const m = useMessages(syncMessages).sync
 
   useEffect(() => {
     void useSync.getState().loadLast(tool.id, profile)
   }, [tool.id, profile])
 
   if (!syncsHere(tool)) return null
-  const label = profile ? `Sync ${tool.name} ${profile}` : `Sync ${tool.name}`
+  const label = m.region(profile ? `${tool.name} ${profile}` : tool.name)
 
   return (
     <section className="flex flex-col gap-1.5" aria-label={label}>
       <div className="flex min-h-[2.25rem] items-center gap-3">
         <div className="min-w-0 flex-1" aria-live="polite">
           {running ? (
-            <Progress run={run} />
+            <Progress run={run} m={m} />
           ) : run ? (
-            <Outcome run={run} what={what} account={profile ?? tool.name} />
+            <Outcome run={run} what={what} m={m} />
           ) : last ? (
-            <p className="truncate text-[0.875rem] text-ink-soft tabular-nums">{lastLine(last, what)}</p>
+            <p className="truncate text-[0.875rem] text-ink-soft tabular-nums">{lastLine(last, what, m)}</p>
           ) : (
-            <Skeleton chars={22} label="Reading the last sync" />
+            <Skeleton chars={22} label={m.readingLast} />
           )}
         </div>
         {running ? (
@@ -68,7 +75,7 @@ export function SyncControl({ tool, profile }: { tool: CatalogTool; profile: str
             disabled={run.stopping}
             icon={<CircleStop className="size-4" aria-hidden />}
           >
-            <StableText value={run.stopping ? "Stopping…" : "Stop"} variants={["Stop", "Stopping…"]} />
+            <StableText value={run.stopping ? m.stopping : m.stop} variants={[m.stop, m.stopping]} />
           </Button>
         ) : (
           <Button
@@ -76,30 +83,30 @@ export function SyncControl({ tool, profile }: { tool: CatalogTool; profile: str
             variant={run ? "secondary" : "primary"}
             onClick={() => start(tool.id, profile)}
             disabled={blocked}
-            title={blocked ? "Another sync of this account is running" : undefined}
+            title={blocked ? m.anotherRunning : undefined}
             icon={<RefreshCw className="size-4" aria-hidden />}
           >
-            <StableText value={run ? "Sync again" : "Sync now"} variants={["Sync now", "Sync again"]} />
+            <StableText value={run ? m.syncAgain : m.syncNow} variants={[m.syncNow, m.syncAgain]} />
           </Button>
         )}
       </div>
       <AutoHeight swap={running ? "running" : (run?.phase ?? "idle")}>
-        {run && !running ? <Next run={run} tool={tool} profile={profile} what={what} /> : null}
+        {run && !running ? <Next run={run} tool={tool} profile={profile} what={what} m={m} /> : null}
       </AutoHeight>
     </section>
   )
 }
 
-function Progress({ run }: { run: SyncRun }) {
+function Progress({ run, m }: { run: SyncRun; m: Words }) {
   const elapsed = useElapsed(run.startedAt)
-  const counted = progressLine(run.progress)
-  const stage = run.stopping ? "Stopping, keeping what came in" : (counted ?? run.stage ?? "Starting")
+  const counted = run.progress ? m.progress(run.progress) : null
+  const stage = run.stopping ? m.stoppingKeeping : (counted ?? run.stage ?? m.starting)
   const pct = run.stopping ? null : share(run.progress)
   return (
     <div className="flex flex-col gap-1">
       <div
         role="progressbar"
-        aria-label="Syncing"
+        aria-label={m.syncing}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct ?? undefined}
@@ -126,13 +133,13 @@ function Progress({ run }: { run: SyncRun }) {
   )
 }
 
-function Outcome({ run, what, account }: { run: SyncRun; what: SyncWhat; account: string }) {
+function Outcome({ run, what, m }: { run: SyncRun; what: SyncWhat; m: Words }) {
   const took = run.endedAt ? clock(run.endedAt - run.startedAt) : null
   if (run.phase === "done" && run.summary) {
     return (
       <p className="reveal flex items-center gap-2 text-[0.9rem] font-medium text-ink">
         <CheckCircle2 className="size-4 shrink-0 text-ok" aria-hidden />
-        <span className="truncate">{resultLine(what, run.summary)}</span>
+        <span className="truncate">{m.result(what, run.summary)}</span>
         {took && (
           <span className="shrink-0 font-mono text-[0.85rem] font-normal text-ink-dim tabular-nums">{took}</span>
         )}
@@ -143,21 +150,20 @@ function Outcome({ run, what, account }: { run: SyncRun; what: SyncWhat; account
     return (
       <p className="reveal flex items-center gap-2 text-[0.9rem] font-medium text-ink">
         <CircleStop className="size-4 shrink-0 text-ink-soft" aria-hidden />
-        Stopped
+        {m.stopped}
       </p>
     )
   }
-  const a = advice(run.failure ?? { message: "", code: null, reason: null, run: null }, account)
   return (
     <p className="reveal flex items-center gap-2 text-[0.9rem] font-medium text-ink">
       <AlertTriangle className="size-4 shrink-0 text-warn" aria-hidden />
-      <span className="truncate">{a.title}</span>
+      <span className="truncate">{m.advice[advice(run.failure ?? NO_FAILURE).kind]}</span>
     </p>
   )
 }
 
-function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; what: SyncWhat }) {
-  const { run, tool: entry, profile, what } = props
+function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; what: SyncWhat; m: Words }) {
+  const { run, tool: entry, profile, what, m } = props
   const dismiss = () => useSync.getState().dismiss(entry.id, profile)
   const outdated = useTools(
     (s) =>
@@ -172,21 +178,21 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
       size="sm"
       variant="ghost"
       onClick={dismiss}
-      aria-label="Dismiss"
+      aria-label={m.dismiss}
       icon={<X className="size-4" aria-hidden />}
     />
   )
   let body: React.ReactNode
   if (run.phase === "done" && run.summary) {
-    body = <p>{resultNext(what, run.summary) ?? doneNext(what)}</p>
+    body = <p>{m.next(what, run.summary) ?? m.done(what)}</p>
   } else if (run.phase === "stopped") {
-    body = <p>What came in is kept. The next sync continues from there.</p>
+    body = <p>{m.stoppedNext}</p>
   } else {
-    const failure = run.failure ?? { message: "", code: null, reason: null, run: null }
-    const a = advice(failure, profile ?? entry.name)
+    const failure = run.failure ?? NO_FAILURE
+    const a = advice(failure)
     body = (
       <div className="flex flex-col gap-2">
-        <p>{a.text}</p>
+        <p>{m.adviceText(a.kind, profile ?? entry.name, failure.message, Boolean(a.logs))}</p>
         <div className="flex flex-wrap items-center gap-3">
           {a.signIn && entry.setup && profile && (
             <Button
@@ -197,20 +203,26 @@ function Next(props: { run: SyncRun; tool: CatalogTool; profile: string | null; 
                   : platform.openSetup(entry.id, profile)
               }
             >
-              Sign in
+              {m.signIn}
             </Button>
           )}
           {a.update && outdated && (
             <Button size="sm" onClick={() => useTools.getState().install(entry.id)}>
-              Update {entry.name}
+              {m.update(entry.name)}
             </Button>
           )}
-          {a.report && <ReportThis what={`Syncing ${entry.name}`} tool={entry.id} error={failure.message} />}
+          {a.report && (
+            <ReportThis
+              what={`Syncing ${entry.name}`}
+              tool={entry.id}
+              error={failure.message || syncMessages.en.sync.adviceText("failed", "", "", false)}
+            />
+          )}
         </div>
         {(failure.code || failure.run) && (
           <div>
             <Button size="sm" variant="ghost" onClick={() => openRun(entry, failure.run)}>
-              Open the run on Logs
+              {m.openRun}
             </Button>
           </div>
         )}
@@ -262,6 +274,7 @@ export function useRowSync(entry: CatalogTool, installed: boolean) {
 export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNullable<ReturnType<typeof useRowSync>> }) {
   const what = entry.sync?.what ?? "messages"
   const who = info.profile && syncNeedsProfile(entry) ? `${info.profile} · ` : ""
+  const m = useMessages(syncMessages).sync
   const elapsed = useElapsed(info.run?.phase === "running" ? info.run.startedAt : null)
   if (info.run?.phase === "running") {
     return (
@@ -269,7 +282,9 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
         <LoaderCircle className="size-3.5 shrink-0 motion-safe:animate-spin text-brand" aria-hidden />
         <span className="truncate">
           {who}
-          {info.run.stopping ? "Stopping…" : (progressLine(info.run.progress) ?? `${info.run.stage ?? "Syncing"}…`)}{" "}
+          {info.run.stopping
+            ? m.stopping
+            : ((info.run.progress && m.progress(info.run.progress)) ?? `${info.run.stage ?? m.syncing}…`)}{" "}
           {clock(elapsed)}
         </span>
       </span>
@@ -278,10 +293,10 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
   if (info.run) {
     const text =
       info.run.phase === "done" && info.run.summary
-        ? resultLine(what, info.run.summary)
+        ? m.result(what, info.run.summary)
         : info.run.phase === "stopped"
-          ? "Sync stopped; what came in is kept"
-          : `Sync: ${advice(info.run.failure ?? { message: "", code: null, reason: null, run: null }, info.profile ?? entry.name).title}`
+          ? m.rowStopped
+          : m.rowFailed(m.advice[advice(info.run.failure ?? NO_FAILURE).kind])
     return (
       <span className="truncate">
         {who}
@@ -292,7 +307,7 @@ export function RowSyncLine({ entry, info }: { entry: CatalogTool; info: NonNull
   return info.last ? (
     <span className="reveal truncate tabular-nums">
       {who}
-      {lastLine(info.last, what)}
+      {lastLine(info.last, what, m)}
     </span>
   ) : null
 }
@@ -308,13 +323,14 @@ export function RowSyncButton({
   const { start, stop } = useSync.getState()
   const running = info.run?.phase === "running"
   const name = info.profile ? `${entry.name} ${info.profile}` : entry.name
+  const m = useMessages(syncMessages).sync
   if (!running && !info.canStart && !info.run) return null
   return (
     <button
       type="button"
       className="inline-flex size-9 items-center justify-center rounded-[0.35rem] text-ink-soft transition-colors duration-150 hover:bg-app-3 hover:text-ink disabled:opacity-45"
-      aria-label={running ? `Stop syncing ${name}` : `Sync ${name} now`}
-      title={running ? "Stop the sync" : "Sync now"}
+      aria-label={running ? m.stopSyncing(name) : m.syncNamed(name)}
+      title={running ? m.stopTitle : m.syncNow}
       disabled={running && info.run?.stopping}
       onClick={() => (running ? stop(entry.id, info.profile) : start(entry.id, info.profile))}
     >

@@ -1,7 +1,9 @@
 import { findTool } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { useCompat } from "./compat-store"
+import { toolsMessages } from "./messages"
 import { namesOf, useUpdatable } from "./StorageFit"
 import { useTools } from "./store"
 
@@ -12,18 +14,19 @@ export function UpgradeWarning() {
   const updatable = useUpdatable(warning?.locksOut ?? [])
   const stuck = (warning?.locksOut ?? []).filter((id) => !updatable.includes(id))
   const close = () => useCompat.getState().dismiss()
+  const m = useMessages(toolsMessages).upgrade
   if (!warning) return null
   const name = findTool(warning.id)?.name ?? warning.id
 
   return (
     <Dialog
       open
-      title={`${version ? `${name} ${version}` : name} will move storage to schema ${warning.to}`}
+      title={m.title(version ? `${name} ${version}` : name, warning.to)}
       onClose={close}
       actions={
         <>
           <Button variant="ghost" data-autofocus onClick={close}>
-            Not now
+            {m.notNow}
           </Button>
           {updatable.length > 0 && (
             <Button
@@ -32,28 +35,17 @@ export function UpgradeWarning() {
                 close()
               }}
             >
-              Update {namesOf(updatable)} too
+              {m.updateToo(namesOf(updatable))}
             </Button>
           )}
         </>
       }
     >
-      <p>
-        {namesOf(warning.locksOut)} can't read schema {warning.to}. They stop working with storage the next time {name}{" "}
-        runs, which may be soon if it runs in the background.
-      </p>
+      <p>{m.locksOut(warning.locksOut.length, namesOf(warning.locksOut), warning.to, name)}</p>
       {warning.mayLockOut.length > 0 && (
-        <p className="mt-2">
-          {namesOf(warning.mayLockOut)} can't say which schema{" "}
-          {warning.mayLockOut.length === 1 ? "it reads" : "they read"}, so{" "}
-          {warning.mayLockOut.length === 1 ? "it" : "they"} may stop too.
-        </p>
+        <p className="mt-2">{m.mayLockOut(warning.mayLockOut.length, namesOf(warning.mayLockOut))}</p>
       )}
-      {stuck.length > 0 && (
-        <p className="mt-2">
-          No newer {namesOf(stuck)} is out yet, so updating can't fix {stuck.length === 1 ? "it" : "them"} today.
-        </p>
-      )}
+      {stuck.length > 0 && <p className="mt-2">{m.stuck(stuck.length, namesOf(stuck))}</p>}
     </Dialog>
   )
 }

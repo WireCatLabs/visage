@@ -1,6 +1,7 @@
 import { LoaderCircle, RefreshCw } from "lucide-react"
 import { useEffect } from "react"
 import { tools } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton, StableText } from "@/ui/Skeleton"
@@ -8,15 +9,15 @@ import { ReportThis } from "../report/ReportThis"
 import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
 import { useCompat } from "./compat-store"
+import { toolsMessages } from "./messages"
 import { StorageSummary } from "./StorageFit"
 import { useTools } from "./store"
 import { ToolRow } from "./ToolRow"
 import { ToolsIntro } from "./ToolsIntro"
 import { UpgradeWarning } from "./UpgradeWarning"
 
-const CHECK_LABELS = ["Check again", "Checking…"] as const
-
 export function ToolsPage() {
+  const m = useMessages(toolsMessages).page
   const refreshing = useTools((s) => s.refreshing)
   const error = useTools((s) => s.error)
   const systemError = useSystem((s) => s.error)
@@ -27,11 +28,7 @@ export function ToolsPage() {
   const compat = useCompat((s) => s.compat)
   const mayHaveTools = useTools((s) => !s.checked || Object.values(s.installs).some((copies) => copies.length > 0))
   const storageSlot = mayHaveTools && !error && compat !== null
-  const progress = refreshing
-    ? "Looking for WireCat tools on this computer…"
-    : askingNpm
-      ? "Checking npm for newer versions…"
-      : null
+  const progress = refreshing ? m.looking : askingNpm ? m.askingNpm : null
 
   useEffect(() => {
     useTools.getState().refresh()
@@ -41,7 +38,7 @@ export function ToolsPage() {
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div className="flex items-end justify-between gap-4">
         <div className="flex min-w-0 items-baseline gap-[1.2rem]">
-          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Tools</h1>
+          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">{m.title}</h1>
           <p aria-live="polite" className="flex min-w-0 items-center gap-1.5 text-[0.9rem] text-ink-soft">
             {progress && (
               <>
@@ -59,7 +56,7 @@ export function ToolsPage() {
           className="inline-flex items-center gap-1.5 rounded-[0.35rem] px-2 py-1 text-[0.875rem] text-ink-dim transition-colors hover:bg-app-3 hover:text-ink disabled:opacity-60"
         >
           <RefreshCw className={cx("size-4", refreshing && "animate-spin")} aria-hidden />
-          <StableText value={refreshing ? "Checking…" : "Check again"} variants={CHECK_LABELS} />
+          <StableText value={refreshing ? m.checking : m.checkAgain} variants={[m.checkAgain, m.checking]} />
         </button>
       </div>
 
@@ -67,19 +64,19 @@ export function ToolsPage() {
       <NodeNotice />
       {error && (
         <ErrorNotice action={<ReportThis what="Looking for WireCat tools" error={error.message} />}>
-          Could not inspect this computer: {error.message}
+          {m.inspectFailed(error.message)}
         </ErrorNotice>
       )}
       {systemError && (
         <ErrorNotice action={<ReportThis what="Checking Node.js and npm" error={systemError} />}>
-          Could not check Node.js and npm: {systemError}
+          {m.systemFailed(systemError)}
         </ErrorNotice>
       )}
 
       {storageSlot ? (
         <div className="flex min-h-[3.4rem] flex-col justify-center">
           {compat === undefined ? (
-            <Skeleton className="h-[3.4rem] w-full rounded-[0.2rem]" label="Checking storage" />
+            <Skeleton className="h-[3.4rem] w-full rounded-[0.2rem]" label={m.checkingStorage} />
           ) : (
             <StorageSummary />
           )}
@@ -88,7 +85,7 @@ export function ToolsPage() {
         <StorageSummary />
       )}
 
-      <ul aria-label="WireCat tools" className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
+      <ul aria-label={m.list} className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
         {tools.map((t) => (
           <ToolRow key={t.id} tool={t} />
         ))}
@@ -96,11 +93,7 @@ export function ToolsPage() {
 
       <UpgradeWarning />
 
-      {latestUnknown && (
-        <p className="text-[0.9rem] text-ink-dim">
-          Could not ask npm for the latest versions, so updates are not shown.
-        </p>
-      )}
+      {latestUnknown && <p className="text-[0.9rem] text-ink-dim">{m.latestUnknown}</p>}
     </div>
   )
 }

@@ -127,11 +127,6 @@ export function runTool(owner: string, command: string): string {
 }
 
 /** "Memo and Email" for a shared package, the tool's own name otherwise. */
-export const packageNames = (id: string) =>
-  samePackage(id)
-    .map((t) => t.name)
-    .join(" and ")
-
 export const installCommand = (t: CatalogTool) => `npm install -g ${t.package}`
 
 /** Removes one copy with the program that installed it; `install.rs` uninstall_steps maps the same managers. */

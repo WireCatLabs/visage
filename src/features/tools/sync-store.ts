@@ -111,7 +111,8 @@ export const useSync = create<State>()((set, get) => {
             if (running())
               apply(tool, profile, {
                 event: "failed",
-                message: "The sync ended without saying how.",
+                // An empty message is the interface's cue to say the sync ended without a result.
+                message: "",
                 code: null,
                 reason: null,
                 run: null,

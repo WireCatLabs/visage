@@ -8,7 +8,7 @@ describe("summarize", () => {
   })
 
   it("explains an expired Zoom sign-in", () => {
-    expect(summarize({ item: { state: "expired" } }, 0)[0]?.text).toMatch(/expired/)
+    expect(summarize({ item: { state: "expired" } }, 0)[0]?.note).toBe("expired")
   })
 
   it("passes a tool's own error message through", () => {
@@ -16,7 +16,7 @@ describe("summarize", () => {
   })
 
   it("says all is well only when the tool exited cleanly", () => {
-    expect(summarize({ item: {} }, 0)).toEqual([{ tone: "ok", text: "No problems found." }])
+    expect(summarize({ item: {} }, 0)).toEqual([{ tone: "ok", note: "no_problems" }])
     expect(summarize({ item: {} }, 3)[0]?.tone).toBe("bad")
   })
 
@@ -64,9 +64,7 @@ describe("summarize", () => {
       const issue = { kind: "missing_setting", file, key: "api_id", what: "api_id is not set." }
       const both = summarize(report({ error: "old message", issues: [issue] }), 0)
       expect(both.map((f) => f.text)).toEqual(["api_id is not set."])
-      expect(summarize(report({ error: "old message", issues: [] }), 0)).toEqual([
-        { tone: "ok", text: "No problems found." },
-      ])
+      expect(summarize(report({ error: "old message", issues: [] }), 0)).toEqual([{ tone: "ok", note: "no_problems" }])
     })
 
     it("shows a kind it does not know as a warning", () => {
@@ -81,8 +79,8 @@ describe("summarize", () => {
         report({ issues: [{ line: "twelve" }, { kind: "invalid_value", what: "Bad limit." }] }),
         0,
       )
-      expect(findings.map((f) => [f.tone, f.text])).toEqual([
-        ["warn", "A configuration problem could not be read."],
+      expect(findings.map((f) => [f.tone, f.text ?? f.note])).toEqual([
+        ["warn", "unreadable_issue"],
         ["warn", "Bad limit."],
       ])
     })

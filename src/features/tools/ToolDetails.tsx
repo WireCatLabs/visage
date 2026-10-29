@@ -1,7 +1,8 @@
 import { AlertTriangle, ExternalLink, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { type CatalogTool, installCommand, ownerId, packageNames, removeCommand, samePackage } from "@/domain/catalog"
+import { type CatalogTool, installCommand, ownerId, removeCommand, samePackage } from "@/domain/catalog"
 import { formatBytes } from "@/domain/format"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { StorageFolder } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
@@ -12,7 +13,9 @@ import { Pill } from "@/ui/Pill"
 import { Skeleton } from "@/ui/Skeleton"
 import { useStorage } from "../storage/store"
 import { Health } from "./Health"
+import { packageNamesOf } from "./InstallPanel"
 import { McpServer } from "./McpServer"
+import { type ToolsText, toolsMessages, toolText } from "./messages"
 import { Permissions } from "./Permissions"
 import { FitDetails } from "./StorageFit"
 import { useTools } from "./store"
@@ -23,6 +26,8 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
   const shared = samePackage(tool.id).length > 1
   const [deleteData, setDeleteData] = useState(false)
   const data = useOwnData(tool, open)
+  const m = useMessages(toolsMessages).uninstall
+  const names = packageNamesOf(tool.id)
   const bytes = data.folders?.reduce((sum, f) => sum + f.bytes, 0) ?? 0
   const deleting = deleteData && (data.folders?.length ?? 0) > 0
 
@@ -33,12 +38,12 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
   return (
     <Dialog
       open={open}
-      title={`Uninstall ${packageNames(tool.id)}?`}
+      title={m.title(names)}
       onClose={onClose}
       actions={
         <>
           <Button variant="ghost" onClick={onClose} autoFocus>
-            Keep it
+            {m.keep}
           </Button>
           <Button
             variant="danger"
@@ -47,29 +52,15 @@ function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: bo
               useTools.getState().uninstall(tool.id, deleting ? bytes : undefined)
             }}
           >
-            {deleting ? "Uninstall and delete data" : "Uninstall"}
+            {deleting ? m.andDelete : m.uninstall}
           </Button>
         </>
       }
     >
-      {shared && (
-        <p className="mb-2 font-medium text-ink">
-          Uninstall removes {packageNames(tool.id)} together: they are one program.
-        </p>
-      )}
-      <p>
-        This removes the <code className="font-mono text-ink">{tool.bin}</code> command
-        {copies === 2
-          ? " (both copies, each with the program that installed it)"
-          : copies > 2
-            ? ` (all ${copies} copies, each with the program that installed it)`
-            : ""}
-        . Your profiles, storage and settings stay on this computer unless you delete them below.
-      </p>
-      <p className="mt-2">
-        If you set up background services with it (a server or a timer), remove them first with the tool itself.
-      </p>
-      <DeleteDataChoice tool={tool} data={data} bytes={bytes} checked={deleteData} onChange={setDeleteData} />
+      {shared && <p className="mb-2 font-medium text-ink">{m.together(names)}</p>}
+      <p>{m.removes(<code className="font-mono text-ink">{tool.bin}</code>, copies)}</p>
+      <p className="mt-2">{m.services}</p>
+      <DeleteDataChoice tool={tool} data={data} bytes={bytes} checked={deleteData} onChange={setDeleteData} m={m} />
     </Dialog>
   )
 }
@@ -97,9 +88,11 @@ function DeleteDataChoice(props: {
   bytes: number
   checked: boolean
   onChange(v: boolean): void
+  m: ToolsText["uninstall"]
 }) {
-  const { tool, data, bytes, checked, onChange } = props
-  const name = samePackage(tool.id).length > 1 ? packageNames(tool.id) : tool.name
+  const { tool, data, bytes, checked, onChange, m } = props
+  const kinds = useMessages(toolsMessages).details.kind
+  const name = samePackage(tool.id).length > 1 ? packageNamesOf(tool.id) : tool.name
   const none = data.folders !== null && data.folders.length === 0
   return (
     <div className="mt-4 border-line border-t pt-3">
@@ -112,39 +105,31 @@ function DeleteDataChoice(props: {
           className="mt-[0.3rem] size-[1.05rem] shrink-0 accent-brand"
         />
         <span>
-          Also delete {name}'s data
-          <span className="block text-[0.9rem] text-ink-soft">
-            {none
-              ? "It has no data on this computer."
-              : "Its settings, sign-in sessions and caches. Deleted only if the uninstall succeeds."}
-          </span>
+          {m.alsoDelete(name)}
+          <span className="block text-[0.9rem] text-ink-soft">{none ? m.noData : m.dataWhat}</span>
         </span>
       </label>
-      {data.sharedInUse && (
-        <p className="mt-2 ml-[1.6rem] text-[0.9rem] text-ink-soft">
-          Messages in the shared storage stay; other tools use it. Clear them on Storage.
-        </p>
-      )}
+      {data.sharedInUse && <p className="mt-2 ml-[1.6rem] text-[0.9rem] text-ink-soft">{m.sharedStays}</p>}
       {/* Room for three folders and the total, so the centred dialog keeps its buttons in place when they arrive. */}
       <div className="mt-2 ml-[1.6rem] min-h-[6rem]">
         {data.folders === null ? (
           data.error ? (
-            <ErrorNotice inline>Could not read its folders: {data.error}</ErrorNotice>
+            <ErrorNotice inline>{m.foldersFailed(data.error)}</ErrorNotice>
           ) : (
-            <Skeleton className="h-[6rem] w-full" label="Reading its folders" />
+            <Skeleton className="h-[6rem] w-full" label={m.readingFolders} />
           )
         ) : (
           !none && (
-            <ul className="flex flex-col gap-1 text-[0.9rem]" aria-label={`${name}'s data folders`}>
+            <ul className="flex flex-col gap-1 text-[0.9rem]" aria-label={m.folders(name)}>
               {data.folders.map((f) => (
                 <li key={f.path} className="flex flex-wrap items-baseline gap-x-2">
                   <code className="selectable min-w-0 break-all font-mono text-ink">{f.path}</code>
                   <span className="text-ink-dim tabular-nums">
-                    {f.kind} · {formatBytes(f.bytes)}
+                    {kinds[f.kind] ?? f.kind} · {formatBytes(f.bytes)}
                   </span>
                 </li>
               ))}
-              {data.folders.length > 1 && <li className="text-ink-soft tabular-nums">{formatBytes(bytes)} in all</li>}
+              {data.folders.length > 1 && <li className="text-ink-soft tabular-nums">{m.inAll(formatBytes(bytes))}</li>}
             </ul>
           )
         )}
@@ -156,6 +141,8 @@ function DeleteDataChoice(props: {
 export function ToolDetails({ tool }: { tool: CatalogTool }) {
   const installs = useTools((s) => s.installs[tool.id]) ?? []
   const [confirming, setConfirming] = useState(false)
+  const t = useMessages(toolsMessages)
+  const m = t.details
 
   return (
     <div className="grid gap-x-[2.4rem] gap-y-6 border-line border-t bg-app-2/60 px-[1.3rem] py-[1.4rem] lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
@@ -163,30 +150,30 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
       {installs.length > 0 ? (
         <Health tool={tool} />
       ) : (
-        <p className="text-[0.95rem] text-ink-soft">Install {tool.name} to connect an account and run health checks.</p>
+        <p className="text-[0.95rem] text-ink-soft">{m.installFirst(tool.name)}</p>
       )}
-      <section aria-label={`About ${tool.name}`} className="flex flex-col gap-4">
-        <p className="max-w-[70ch] text-[0.95rem] leading-relaxed text-ink-soft">{tool.summary}</p>
+      <section aria-label={m.about(tool.name)} className="flex flex-col gap-4">
+        <p className="max-w-[70ch] text-[0.95rem] leading-relaxed text-ink-soft">{toolText(t, tool).summary}</p>
         <div className="flex gap-5">
-          <ExternalLinkButton href={tool.docs}>Documentation</ExternalLinkButton>
-          <ExternalLinkButton href={tool.repo}>GitHub</ExternalLinkButton>
+          <ExternalLinkButton href={tool.docs}>{m.docs}</ExternalLinkButton>
+          <ExternalLinkButton href={tool.repo}>{m.github}</ExternalLinkButton>
         </div>
         <div>
-          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">Install from a terminal</h4>
-          <CopyField value={installCommand(tool)} label="Copy the install command" />
+          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">{m.installFromTerminal}</h4>
+          <CopyField value={installCommand(tool)} label={m.copyInstall} />
         </div>
         <div>
-          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">Installed at</h4>
-          {installs.length === 0 && <p className="text-[0.875rem] text-ink-soft">Not installed on this computer.</p>}
+          <h4 className="mb-2 text-[0.9rem] font-medium text-ink-dim">{m.installedAt}</h4>
+          {installs.length === 0 && <p className="text-[0.875rem] text-ink-soft">{m.notInstalledHere}</p>}
           <ul className="flex flex-col gap-1.5">
             {installs.map((i, n) => (
               <li key={i.path} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.875rem]">
                 <code className="selectable min-w-0 truncate font-mono text-ink">{i.path}</code>
                 <span className="text-ink-dim">
-                  {i.version ?? "does not start"} · {i.manager}
+                  {i.version ?? m.doesNotStart} · {i.manager}
                 </span>
                 {installs.length > 1 &&
-                  (n === 0 ? <Pill tone="brand">runs first</Pill> : <Pill tone="warn">not used</Pill>)}
+                  (n === 0 ? <Pill tone="brand">{m.runsFirst}</Pill> : <Pill tone="warn">{m.notUsed}</Pill>)}
               </li>
             ))}
           </ul>
@@ -200,7 +187,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
               onClick={() => setConfirming(true)}
               icon={<Trash2 className="size-4" aria-hidden />}
             >
-              Uninstall
+              {m.uninstall}
             </Button>
           </div>
         )}
@@ -216,32 +203,32 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
 function ExtraCopies({ tool }: { tool: CatalogTool }) {
   const installs = useTools((s) => s.installs[tool.id]) ?? []
   const [first, ...unused] = installs
+  const m = useMessages(toolsMessages).details
   if (!first) return null
   return (
     <section
-      aria-label={`More than one copy of ${tool.name}`}
+      aria-label={m.extraLabel(tool.name)}
       className="flex flex-col gap-2 rounded-[0.35rem] border border-warn/40 bg-warn/10 px-4 py-3 lg:col-span-2"
     >
       <p className="flex items-start gap-2 text-[0.95rem] text-ink">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
         <span>
-          {installs.length} copies of <code className="font-mono">{tool.bin}</code> are installed. A terminal runs{" "}
-          <code className="selectable font-mono">{first.path}</code> ({first.version ?? "does not start"},{" "}
-          {first.manager}); the {unused.length === 1 ? "other is" : "others are"} never used and can confuse updates.
-          Remove {unused.length === 1 ? "it" : "them"} with the program that installed{" "}
-          {unused.length === 1 ? "it" : "them"}:
+          {m.extra(
+            installs.length,
+            <code className="font-mono">{tool.bin}</code>,
+            <code className="selectable font-mono">{first.path}</code>,
+            first.version ?? m.doesNotStart,
+            first.manager,
+          )}
         </span>
       </p>
       <ul className="flex flex-col gap-2 pl-6">
         {unused.map((i) => (
           <li key={i.path} className="flex flex-col gap-1">
             <span className="text-[0.9rem] text-ink-soft">
-              <code className="selectable font-mono">{i.path}</code> · {i.version ?? "does not start"} · {i.manager}
+              <code className="selectable font-mono">{i.path}</code> · {i.version ?? m.doesNotStart} · {i.manager}
             </span>
-            <CopyField
-              value={removeCommand(i.manager, tool.package, i.path)}
-              label={`Copy the command that removes ${i.path}`}
-            />
+            <CopyField value={removeCommand(i.manager, tool.package, i.path)} label={m.removeCopy(i.path)} />
           </li>
         ))}
       </ul>

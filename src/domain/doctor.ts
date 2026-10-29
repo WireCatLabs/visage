@@ -3,8 +3,34 @@ import * as v from "valibot"
 /** Where a configuration problem sits. Never a value from the file: values can be tokens. */
 export type ConfigPlace = { file?: string; profile?: string; key?: string; line?: number; column?: number }
 
-/** A finding with `config` belongs to the configuration group, even when the tool did not say where. */
-export type Finding = { tone: "ok" | "warn" | "bad"; text: string; fix?: string; config?: ConfigPlace }
+/** The app's own words for a finding; the interface writes them in the reader's language. */
+export type DoctorNote =
+  | "unreadable_issue"
+  | "invalid_setting"
+  | "unknown_problem"
+  | "tool_error"
+  | "no_config"
+  | "no_data"
+  | "no_token"
+  | "expired"
+  | "not_signed_in"
+  | "no_problems"
+  | "unreadable"
+  | "stopped"
+
+/**
+ * `text` is what the tool said, shown as it said it; `note` is a finding in the app's own words, with the exit code
+ * for the two that name one. A finding with `config` belongs to the configuration group, even when the tool did not
+ * say where.
+ */
+export type Finding = {
+  tone: "ok" | "warn" | "bad"
+  text?: string
+  note?: DoctorNote
+  exitCode?: number | null
+  fix?: string
+  config?: ConfigPlace
+}
 
 const Problem = v.union([v.string(), v.looseObject({ what: v.optional(v.string()), fix: v.optional(v.string()) })])
 
@@ -44,7 +70,10 @@ const Report = v.looseObject({
 
 type Config = NonNullable<NonNullable<v.InferOutput<typeof Report>["item"]>["config"]>
 
-const problemText = (p: v.InferOutput<typeof Problem>) => (typeof p === "string" ? p : (p.what ?? "Unknown problem"))
+const problemSaid = (p: v.InferOutput<typeof Problem>): Pick<Finding, "text" | "note"> => {
+  const text = typeof p === "string" ? p : p.what
+  return text === undefined ? { note: "unknown_problem" } : { text }
+}
 
 function place(i: v.InferOutput<typeof Issue>): ConfigPlace {
   const at: ConfigPlace = {}
@@ -58,12 +87,12 @@ function place(i: v.InferOutput<typeof Issue>): ConfigPlace {
 
 function issueFinding(raw: unknown): Finding {
   const parsed = v.safeParse(Issue, raw)
-  if (!parsed.success) return { tone: "warn", text: "A configuration problem could not be read.", config: {} }
+  if (!parsed.success) return { tone: "warn", note: "unreadable_issue", config: {} }
   const issue = parsed.output
   // A file that is not valid JSON stops the tool altogether; every other kind, known or new, is a warning.
   const finding: Finding = {
     tone: issue.kind === "invalid_json" ? "bad" : "warn",
-    text: issue.what ?? "A setting is not valid.",
+    ...(issue.what === undefined ? { note: "invalid_setting" as const } : { text: issue.what }),
     config: place(issue),
   }
   if (issue.fix) finding.fix = issue.fix
@@ -80,28 +109,27 @@ function configFindings(config: Config | undefined): Finding[] {
 export function summarize(report: unknown, exitCode: number | null): Finding[] {
   const parsed = v.safeParse(Report, report)
   if (!parsed.success) {
-    return [{ tone: "bad", text: `The tool's answer could not be read (exit code ${exitCode ?? "unknown"}).` }]
+    return [{ tone: "bad", note: "unreadable", exitCode }]
   }
   const { error, item } = parsed.output
   const findings = configFindings(item?.config)
-  if (error) return [...findings, { tone: "bad", text: error.message ?? "The tool reported an error." }]
+  if (error)
+    return [
+      ...findings,
+      error.message === undefined ? { tone: "bad", note: "tool_error" } : { tone: "bad", text: error.message },
+    ]
 
   for (const p of item?.problems ?? []) {
     const fix = typeof p === "string" ? undefined : p.fix
-    findings.push(fix ? { tone: "warn", text: problemText(p), fix } : { tone: "warn", text: problemText(p) })
+    findings.push(fix ? { tone: "warn", ...problemSaid(p), fix } : { tone: "warn", ...problemSaid(p) })
   }
-  for (const p of item?.files?.problems ?? []) findings.push({ tone: "warn", text: problemText(p) })
-  if (item?.config?.found === false) findings.push({ tone: "warn", text: "No configuration file yet." })
-  if (item?.store?.exists === false)
-    findings.push({ tone: "warn", text: "No local data yet. Nothing has been synced." })
-  if (item?.token?.present === false) findings.push({ tone: "warn", text: "Not signed in: no token for this profile." })
-  if (item?.state === "expired")
-    findings.push({ tone: "warn", text: "Sign-in has expired. Connect again to renew it." })
-  if (item?.state === "not_configured" || item?.state === "missing") {
-    findings.push({ tone: "warn", text: "Not signed in yet." })
-  }
+  for (const p of item?.files?.problems ?? []) findings.push({ tone: "warn", ...problemSaid(p) })
+  if (item?.config?.found === false) findings.push({ tone: "warn", note: "no_config" })
+  if (item?.store?.exists === false) findings.push({ tone: "warn", note: "no_data" })
+  if (item?.token?.present === false) findings.push({ tone: "warn", note: "no_token" })
+  if (item?.state === "expired") findings.push({ tone: "warn", note: "expired" })
+  if (item?.state === "not_configured" || item?.state === "missing")
+    findings.push({ tone: "warn", note: "not_signed_in" })
   if (findings.length > 0) return findings
-  return exitCode === 0
-    ? [{ tone: "ok", text: "No problems found." }]
-    : [{ tone: "bad", text: `The check stopped with exit code ${exitCode ?? "unknown"}.` }]
+  return exitCode === 0 ? [{ tone: "ok", note: "no_problems" }] : [{ tone: "bad", note: "stopped", exitCode }]
 }

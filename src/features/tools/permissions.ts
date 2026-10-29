@@ -1,14 +1,10 @@
 import type { CatalogTool, PermissionGroup } from "@/domain/catalog"
 import type { CommandAccess, Level, OwnLevel, Permissions } from "@/platform/permissions-schemas"
+import type { PermissionsText } from "./messages-permissions"
+
+type Words = PermissionsText
 
 export const LEVELS: readonly Level[] = ["allow", "ask", "readonly", "deny"]
-
-export const LEVEL_LABEL: Record<Level, string> = {
-  allow: "Allow",
-  ask: "Ask first",
-  readonly: "Read only",
-  deny: "Block",
-}
 
 const ORDER: Record<Level, number> = { deny: 0, readonly: 1, ask: 2, allow: 3 }
 
@@ -81,35 +77,27 @@ export function summarize(group: PermissionGroup, permissions: Permissions, fall
   return { ...base, reads, writes, state }
 }
 
-export const STATE_LABEL: Record<GroupState, string> = {
-  allowed: "Allowed",
-  ask: "Asks first",
-  readonly: "Read only",
-  blocked: "Blocked",
-  partial: "Partial",
-}
-
 const mixed = (c: Count) => c.allowed > 0 && c.allowed < c.total
 
 /** The state in words; a partial group says which half is partly blocked, as `partialDetail` counts it. */
-export function stateLabel(s: GroupSummary): string {
-  if (s.state !== "partial" || !s.reads || !s.writes) return STATE_LABEL[s.state]
-  return mixed(s.writes) || !mixed(s.reads) ? "Partial write" : "Partial read"
+export function stateLabel(s: GroupSummary, m: Words): string {
+  if (s.state !== "partial" || !s.reads || !s.writes) return m.states[s.state]
+  return mixed(s.writes) || !mixed(s.reads) ? m.partialWrite : m.partialRead
 }
 
 /** "3 of 8 changes allowed", for the half that is partly blocked. */
-export function partialDetail(s: GroupSummary): string | null {
+export function partialDetail(s: GroupSummary, m: Words): string | null {
   if (s.state !== "partial" || !s.reads || !s.writes) return null
-  if (mixed(s.writes) || !mixed(s.reads)) return `${s.writes.allowed} of ${s.writes.total} changes allowed`
-  return `${s.reads.allowed} of ${s.reads.total} reads allowed`
+  if (mixed(s.writes) || !mixed(s.reads)) return m.changesAllowed(s.writes.allowed, s.writes.total)
+  return m.readsAllowed(s.reads.allowed, s.reads.total)
 }
 
 const STATE_ORDER: Record<GroupState, number> = { blocked: 0, readonly: 1, partial: 1, ask: 2, allowed: 3 }
 
 /** When the commands the tool reports are held tighter than the level says, such as reads blocked under another key. */
-export function moreBlocked(s: GroupSummary, level: Level): string | null {
+export function moreBlocked(s: GroupSummary, level: Level, m: Words): string | null {
   if (s.state === "partial" || STATE_ORDER[s.state] >= ORDER[level]) return null
-  return `In practice: ${STATE_LABEL[s.state].toLowerCase()}`
+  return m.inPractice[s.state]
 }
 
 export const blockedCommands = (s: GroupSummary) => s.commands.filter((c) => !c.available)
@@ -124,8 +112,8 @@ export function stillAllowed(s: GroupSummary): CommandAccess[] {
 /** A command the tool blocks without naming a key no level can lift, such as a read-only lock in the environment. */
 export const isLock = (c: CommandAccess) => !c.available && c.permission === null
 
-export const locks = (commands: readonly CommandAccess[] | null) => [
-  ...new Set((commands ?? []).filter(isLock).map((c) => c.reason ?? "The tool blocks it without saying why.")),
+export const locks = (commands: readonly CommandAccess[] | null, m: Words) => [
+  ...new Set((commands ?? []).filter(isLock).map((c) => c.reason ?? m.lockUnexplained)),
 ]
 
 /**
@@ -144,12 +132,11 @@ export function layerOf(level: OwnLevel, defaultsView: boolean): "here" | "defau
 }
 
 /** Why a key cannot be changed in this view, or null when it can. */
-export function lockReason(level: OwnLevel | undefined, defaultsView: boolean): string | null {
+export function lockReason(level: OwnLevel | undefined, defaultsView: boolean, m: Words): string | null {
   if (!level) return null
   const layer = layerOf(level, defaultsView)
-  if (layer === "profile") return "A profile sets this, not the defaults. Choose that profile to change it."
-  if (layer === "elsewhere" && level.origin === "environment")
-    return `Set by the environment variable ${level.from ?? ""}. Change or remove it there.`
+  if (layer === "profile") return m.lockProfile
+  if (layer === "elsewhere" && level.origin === "environment") return m.lockEnv(level.from ?? "")
   return null
 }
 
@@ -169,13 +156,12 @@ export function commandLine(
 }
 
 /** One line for the closed Permissions panel: "Allowed for 4 groups · Read only for 2 groups". */
-export function overview(summaries: readonly GroupSummary[]): string {
+export function overview(summaries: readonly GroupSummary[], m: Words): string {
   const counts = new Map<string, number>()
-  for (const s of summaries) counts.set(stateLabel(s), (counts.get(stateLabel(s)) ?? 0) + 1)
-  const groups = (n: number) => `${n} ${n === 1 ? "group" : "groups"}`
+  for (const s of summaries) counts.set(stateLabel(s, m), (counts.get(stateLabel(s, m)) ?? 0) + 1)
   if (counts.size === 1) {
-    const [label] = counts.keys()
-    return summaries.length === 1 ? `${label}` : `${label} for all ${groups(summaries.length)}`
+    const [label = ""] = counts.keys()
+    return summaries.length === 1 ? label : m.overviewAll(label, summaries.length)
   }
-  return [...counts].map(([label, n]) => `${label} for ${groups(n)}`).join(" · ")
+  return [...counts].map(([label, n]) => m.overviewSome(label, n)).join(" · ")
 }

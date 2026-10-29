@@ -173,7 +173,7 @@ export const useTools = create<ToolsState>((set, get) => {
       if (get().sessions[id]?.step === "queued") {
         patchSession(id, (s) => ({
           ...s,
-          outcome: { event: "failed", reason: "cancelled", message: "Cancelled before it started.", hint: null },
+          outcome: { event: "failed", reason: "cancelled", message: "", hint: null },
         }))
         return
       }

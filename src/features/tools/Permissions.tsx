@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 
 import type { CatalogTool } from "@/domain/catalog"
 import { setupCommand } from "@/domain/catalog"
 import { readLast, remember } from "@/features/config/store"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { CommandAccess, Permissions as Data, Level, OwnLevel } from "@/platform/permissions-schemas"
 import { Button } from "@/ui/Button"
@@ -18,6 +19,8 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useProfiles } from "./Health"
 import { LevelsHelp } from "./LevelsHelp"
+import { groupLabel, toolsMessages } from "./messages"
+import { type PermissionsText, permissionsMessages } from "./messages-permissions"
 import {
   blockedCommands,
   type Count,
@@ -27,7 +30,6 @@ import {
   type GroupState,
   type GroupSummary,
   isLock,
-  LEVEL_LABEL,
   LEVELS,
   layerOf,
   lockReason,
@@ -41,20 +43,14 @@ import {
   widensLevel,
 } from "./permissions"
 
+type Words = PermissionsText
+
 const TONE: Record<GroupState, LampTone> = {
   allowed: "ok",
   ask: "ok",
   readonly: "idle",
   blocked: "bad",
   partial: "warn",
-}
-
-/** What the confirm dialog says each level lets through. */
-const MEANS: Record<Level, string> = {
-  allow: "run these commands, including changes, without asking",
-  ask: "run these commands; a change asks for a yes in the terminal, and over MCP the agent's app decides",
-  readonly: "read, but not change anything",
-  deny: "not run these commands at all",
 }
 
 /** `level: null` removes the key; `after` is the level that applies after, when the app knows it. */
@@ -90,6 +86,8 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
   const [open, setOpen] = useState(false)
   const latest = useRef(0)
   const defaultsView = profile === null
+  const t = useMessages(toolsMessages)
+  const m = useMessages(permissionsMessages).permissions
 
   const load = useCallback(async () => {
     const call = ++latest.current
@@ -140,7 +138,9 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
 
   const request = (change: Change, widening: boolean) => (widening ? setConfirming(change) : save(change))
 
-  const summaries = data ? groups.map((g) => summarize(g, data, defaultLevel(g.key, defaults))) : []
+  const summaries = data
+    ? groups.map((g) => summarize({ ...g, label: groupLabel(t, g.key, g.label) }, data, defaultLevel(g.key, defaults)))
+    : []
 
   return (
     <section
@@ -163,17 +163,11 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
               )}
               aria-hidden
             />
-            Permissions — what agents may do
+            {m.heading}
           </span>
           {!open && (
             <span className="min-w-0 text-[0.9rem] font-normal text-ink-soft tabular-nums">
-              {data ? (
-                `${overview(summaries)} · ${profile ? `as ${profile}` : "defaults"}`
-              ) : error ? (
-                "Could not read them"
-              ) : (
-                <Skeleton chars={34} />
-              )}
+              {data ? m.closed(overview(summaries, m), profile) : error ? m.readFailedShort : <Skeleton chars={34} />}
             </span>
           )}
         </button>
@@ -181,33 +175,30 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
       {/* Outside the closed body: these limit every level, so they stay in sight. */}
       {data?.ceiling && <Ceiling tool={tool} profile={profile} ceiling={data.ceiling} />}
       {data &&
-        locks(data.commands).map((reason) => (
+        locks(data.commands, m).map((reason) => (
           <p
             key={reason}
             className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2 text-[0.9rem] text-ink"
           >
-            {tool.name} blocks some commands whatever the levels below say: {reason}.
+            {m.blocksSome(tool.name, reason)}
           </p>
         ))}
       <Collapse open={open} id={`${headingId}-body`} className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
             <p className="text-[0.9rem] text-ink-soft">
-              What your agent and scripts may do through {tool.bin}
-              {profile ? (
-                <>
-                  {" "}
-                  as <span className="font-medium text-ink">{profile}</span>
-                </>
-              ) : (
-                " in every profile that sets nothing of its own"
-              )}
-              . <LevelsHelp tool={tool} />
+              {profile
+                ? m.introProfile(
+                    tool.bin,
+                    <span className="font-medium text-ink">{profile}</span>,
+                    <LevelsHelp tool={tool} />,
+                  )
+                : m.introDefaults(tool.bin, <LevelsHelp tool={tool} />)}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor={`${headingId}-profile`}>
-              Profile
+              {m.profile}
             </label>
             <Select
               id={`${headingId}-profile`}
@@ -215,7 +206,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
               value={profile ?? ""}
               onChange={(p) => choose(p === "" ? null : p)}
               options={[
-                { value: "", label: "Defaults (all profiles)" },
+                { value: "", label: m.defaultsOption },
                 ...(profiles ?? []).map((p) => ({ value: p.name, label: p.name })),
               ]}
               className="min-w-[11rem]"
@@ -225,7 +216,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
               variant="ghost"
               onClick={load}
               disabled={loading}
-              aria-label="Read permissions again"
+              aria-label={m.reload}
               icon={<RefreshCw className={cx("size-4", loading && "animate-spin")} aria-hidden />}
             />
           </div>
@@ -236,26 +227,26 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
             inline
             action={<ReportThis what={`Reading ${tool.name} permissions`} tool={tool.id} error={error} />}
           >
-            Could not read permissions: {error}
+            {m.readFailed(error)}
           </ErrorNotice>
         )}
-        <Notes tool={tool} data={data} defaultsView={defaultsView} />
-        {data ? <Totals summaries={summaries} /> : !error && !defaultsView && <Skeleton chars={44} />}
+        <Notes tool={tool} data={data} defaultsView={defaultsView} m={m} />
+        {data ? <Totals summaries={summaries} m={m} /> : !error && !defaultsView && <Skeleton chars={44} />}
 
         {!data && !error ? (
           <ul className="divide-y divide-line rounded-[0.45rem] border border-line bg-app">
             {groups.map((g, n) => (
               <li key={g.key} className={ROW}>
                 <div className={ROW_GRID}>
-                  <GroupName label={g.label} groupKey={g.key} detail={null} />
-                  <Skeleton className="h-8 w-full" label={n === 0 ? "Loading permissions" : ""} />
+                  <GroupName label={groupLabel(t, g.key, g.label)} groupKey={g.key} detail={null} />
+                  <Skeleton className="h-8 w-full" label={n === 0 ? m.loading : ""} />
                 </div>
               </li>
             ))}
           </ul>
         ) : data ? (
           <ul
-            aria-label={`${tool.name} permissions`}
+            aria-label={m.list(tool.name)}
             className={cx(
               "divide-y divide-line rounded-[0.45rem] border border-line bg-app transition-opacity duration-150",
               loading && "opacity-60",
@@ -270,6 +261,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
                 defaultsView={defaultsView}
                 rows={rows}
                 onChange={request}
+                m={m}
               />
             ))}
           </ul>
@@ -282,6 +274,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
           profile={profile}
           change={confirming}
           ceiling={data?.ceiling ?? null}
+          m={m}
           onClose={() => setConfirming(null)}
           onConfirm={() => {
             const change = confirming
@@ -294,7 +287,7 @@ export function Permissions({ tool }: { tool: CatalogTool }) {
   )
 }
 
-function Totals({ summaries }: { summaries: GroupSummary[] }) {
+function Totals({ summaries, m }: { summaries: GroupSummary[]; m: Words }) {
   const sum = (pick: (s: GroupSummary) => Count | null) =>
     summaries.reduce(
       (t, s) => {
@@ -306,22 +299,12 @@ function Totals({ summaries }: { summaries: GroupSummary[] }) {
   const reads = sum((s) => s.reads)
   const writes = sum((s) => s.writes)
   if (reads.total + writes.total === 0) return null
-  const part = (name: string, c: Count) =>
-    c.allowed === c.total ? `${name}: all ${c.total} allowed` : `${name}: ${c.allowed} of ${c.total} allowed`
-  return (
-    <p className="text-[0.9rem] text-ink tabular-nums">
-      {part("Reading", reads)} · {part("Changing", writes)}
-    </p>
-  )
+  return <p className="text-[0.9rem] text-ink tabular-nums">{m.totals(reads, writes)}</p>
 }
 
-function Notes({ tool, data, defaultsView }: { tool: CatalogTool; data: Data | null; defaultsView: boolean }) {
-  if (defaultsView)
-    return (
-      <p className="text-[0.875rem] text-ink-soft">
-        Choose a profile to see which commands it may run. A level a profile sets wins over these defaults.
-      </p>
-    )
+function Notes(props: { tool: CatalogTool; data: Data | null; defaultsView: boolean; m: Words }) {
+  const { tool, data, defaultsView, m } = props
+  if (defaultsView) return <p className="text-[0.875rem] text-ink-soft">{m.chooseProfile}</p>
   if (!data) return null
   if (data.commandsError)
     return (
@@ -329,34 +312,27 @@ function Notes({ tool, data, defaultsView }: { tool: CatalogTool; data: Data | n
         inline
         action={<ReportThis what={`Listing ${tool.name} commands`} tool={tool.id} error={data.commandsError} />}
       >
-        Could not list the commands: {data.commandsError}
+        {m.commandsFailed(data.commandsError)}
       </ErrorNotice>
     )
   if (data.commands === null)
-    return (
-      <p className="text-[0.875rem] text-ink-soft">
-        This version of {tool.bin} does not say which commands a profile may run, so only the levels in its settings
-        file are shown. Update {tool.name} to see every command.
-      </p>
-    )
+    return <p className="text-[0.875rem] text-ink-soft">{m.noCommands(tool.bin, tool.name)}</p>
   return null
 }
 
 function Ceiling({ tool, profile, ceiling }: { tool: CatalogTool; profile: string | null; ceiling: Level }) {
   const command = setupCommand(tool, profile)
+  const m = useMessages(permissionsMessages).permissions
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2">
-      <p className="min-w-0 flex-1 text-[0.9rem] text-ink">
-        Every WireCat tool here is {ceiling === "deny" ? "blocked" : "read only"}: you chose this when you first set up
-        WireCat. Nothing below goes above it. Run setup again to change it.
-      </p>
+      <p className="min-w-0 flex-1 text-[0.9rem] text-ink">{m.ceiling(ceiling === "deny")}</p>
       {tool.setup && profile ? (
         <Button
           size="sm"
           onClick={() => platform.openSetup(tool.id, profile)}
           icon={<Terminal className="size-4" aria-hidden />}
         >
-          Open setup
+          {m.openSetup}
         </Button>
       ) : (
         command && <code className="selectable font-mono text-[0.85rem] text-ink">{command}</code>
@@ -393,18 +369,15 @@ function GroupRow(props: {
   defaultsView: boolean
   rows: Record<string, Row>
   onChange: (change: Change, widening: boolean) => void
+  m: Words
 }) {
-  const { tool, summary: s, ceiling, defaultsView, rows, onChange } = props
+  const { tool, summary: s, ceiling, defaultsView, rows, onChange, m } = props
   const status = rows[s.group.key]
-  const lock = lockReason(s.own, defaultsView) ?? s.commands.find(isLock)?.reason ?? null
+  const lock = lockReason(s.own, defaultsView, m) ?? s.commands.find(isLock)?.reason ?? null
   const still = stillAllowed(s)
   const blocked = blockedCommands(s)
   const held = capped(s.level, ceiling)
-  const detail =
-    lock ??
-    (held !== s.level ? `${LEVEL_LABEL[held]} for now: your first-run answer holds every tool there` : null) ??
-    partialDetail(s) ??
-    moreBlocked(s, held)
+  const detail = lock ?? (held !== s.level ? m.heldFor(held) : null) ?? partialDetail(s, m) ?? moreBlocked(s, held, m)
   const separately = s.overrides.length
   const removable = s.own !== undefined && layerOf(s.own, defaultsView) === "here"
 
@@ -421,7 +394,7 @@ function GroupRow(props: {
       <div className={ROW_GRID}>
         <GroupName label={s.group.label} groupKey={s.group.key} detail={detail} tone={TONE[s.state]} />
         <Select<Level>
-          aria-label={`${s.group.label} permission`}
+          aria-label={m.select(s.group.label)}
           className="w-full"
           size="sm"
           value={s.level}
@@ -429,23 +402,24 @@ function GroupRow(props: {
           onChange={choose}
           options={LEVELS.map((l) => ({
             value: l,
-            label: l === s.fallback ? `${LEVEL_LABEL[l]} (default)` : LEVEL_LABEL[l],
+            label: l === s.fallback ? m.levelDefault(m.levels[l]) : m.levels[l],
           }))}
         />
       </div>
-      <RowStatus row={status} />
+      <RowStatus row={status} m={m} />
       {(blocked.length > 0 || separately > 0) && (
-        <Disclosure summary={disclosureLabel(blocked.length, separately)}>
+        <Disclosure summary={m.disclosure(blocked.length, separately)}>
           <div className="flex flex-col gap-3 pb-1 pl-5">
             {separately > 0 && (
-              <SubList title="Set separately">
-                <ul aria-label={`${s.group.label}: set separately`} className="flex flex-col gap-1.5">
+              <SubList title={m.setSeparately}>
+                <ul aria-label={m.setSeparatelyList(s.group.label)} className="flex flex-col gap-1.5">
                   {s.overrides.map((o) => (
                     <Override
                       key={o.key}
                       level={o}
                       defaultsView={defaultsView}
                       row={rows[o.key]}
+                      m={m}
                       onChange={(level) =>
                         onChange(
                           { key: o.key, label: o.key, level, from: o.level, overrides: [] },
@@ -458,8 +432,8 @@ function GroupRow(props: {
               </SubList>
             )}
             {blocked.length > 0 && (
-              <SubList title={defaultsView ? "Blocked" : "Blocked for this profile"}>
-                <ul aria-label={`${s.group.label}: blocked commands`} className="flex flex-col gap-1.5">
+              <SubList title={defaultsView ? m.blocked : m.blockedForProfile}>
+                <ul aria-label={m.blockedList(s.group.label)} className="flex flex-col gap-1.5">
                   {blocked.map((c) => (
                     <Blocked
                       key={c.path.join(" ")}
@@ -467,6 +441,7 @@ function GroupRow(props: {
                       command={c}
                       row={c.permission ? rows[c.permission] : undefined}
                       allowed={!defaultsView}
+                      m={m}
                       onAllow={(key) =>
                         onChange({ key, label: key, level: "allow", from: undefined, overrides: [] }, true)
                       }
@@ -476,8 +451,8 @@ function GroupRow(props: {
               </SubList>
             )}
             {still.length > 0 && (
-              <SubList title="Still allowed">
-                <ul aria-label={`${s.group.label}: still allowed`} className="flex flex-col gap-1">
+              <SubList title={m.stillAllowed}>
+                <ul aria-label={m.stillAllowedList(s.group.label)} className="flex flex-col gap-1">
                   {still.map((c) => (
                     <li key={c.path.join(" ")}>
                       <code className="selectable font-mono text-[0.9rem] text-ink">
@@ -504,14 +479,6 @@ function SubList({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-const disclosureLabel = (blocked: number, separately: number) =>
-  [
-    blocked > 0 && `${blocked} blocked ${blocked === 1 ? "command" : "commands"}`,
-    separately > 0 && `${separately} set separately`,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-
 /** A key under a group: its built-in default lives in the tool, so removing it is offered as such, not as a level. */
 function KeySelect(props: {
   label: string
@@ -519,8 +486,9 @@ function KeySelect(props: {
   defaultsView: boolean
   disabled: boolean
   onChange: (level: Level | null) => void
+  m: Words
 }) {
-  const { label, own, defaultsView, disabled, onChange } = props
+  const { label, own, defaultsView, disabled, onChange, m } = props
   const removable = layerOf(own, defaultsView) === "here"
   return (
     <Select<Level | "">
@@ -531,8 +499,8 @@ function KeySelect(props: {
       disabled={disabled}
       onChange={(l) => onChange(l === "" ? null : l)}
       options={[
-        ...LEVELS.map((l) => ({ value: l, label: LEVEL_LABEL[l] })),
-        ...(removable ? [{ value: "" as const, label: "Remove this key" }] : []),
+        ...LEVELS.map((l) => ({ value: l, label: m.levels[l] })),
+        ...(removable ? [{ value: "" as const, label: m.removeKey }] : []),
       ]}
     />
   )
@@ -543,28 +511,30 @@ function Override(props: {
   defaultsView: boolean
   row: Row | undefined
   onChange: (level: Level | null) => void
+  m: Words
 }) {
-  const { level, defaultsView, row, onChange } = props
-  const lock = lockReason(level, defaultsView)
+  const { level, defaultsView, row, onChange, m } = props
+  const lock = lockReason(level, defaultsView, m)
   return (
     <li className="flex flex-col gap-1">
       <div className={ROW_GRID}>
         <span className="min-w-0">
           <code className="selectable font-mono text-[0.9rem] text-ink">{level.key}</code>
           {layerOf(level, defaultsView) === "defaults" && (
-            <span className="ml-2 text-[0.9rem] text-ink-soft">from the defaults</span>
+            <span className="ml-2 text-[0.9rem] text-ink-soft">{m.fromDefaults}</span>
           )}
           {lock && <span className="block text-[0.9rem] text-ink-soft">{lock}</span>}
         </span>
         <KeySelect
-          label={`${level.key} permission`}
+          label={m.select(level.key)}
           own={level}
           defaultsView={defaultsView}
           disabled={Boolean(lock) || row?.state === "saving"}
           onChange={onChange}
+          m={m}
         />
       </div>
-      <RowStatus row={row} />
+      <RowStatus row={row} m={m} />
     </li>
   )
 }
@@ -575,8 +545,9 @@ function Blocked(props: {
   row: Row | undefined
   allowed: boolean
   onAllow: (key: string) => void
+  m: Words
 }) {
-  const { tool, command, row, allowed, onAllow } = props
+  const { tool, command, row, allowed, onAllow, m } = props
   const key = command.permission === "*" ? null : command.permission
   const own = key === command.path.join(".")
   return (
@@ -588,21 +559,21 @@ function Blocked(props: {
         {command.reason && <span className="min-w-0 flex-1 text-[0.9rem] text-ink-soft">{command.reason}</span>}
         {key && allowed && (
           <Button size="sm" variant="ghost" disabled={row?.state === "saving"} onClick={() => onAllow(key)}>
-            {own ? "Allow" : `Allow all of ${key}`}
+            {own ? m.allow : m.allowAll(key)}
           </Button>
         )}
       </div>
-      <RowStatus row={row} />
+      <RowStatus row={row} m={m} />
     </li>
   )
 }
 
-function RowStatus({ row }: { row: Row | undefined }) {
+function RowStatus({ row, m }: { row: Row | undefined; m: Words }) {
   if (!row) return null
   if (row.state === "saving")
     return (
       <p role="status" className="text-[0.9rem] text-ink-soft">
-        Saving…
+        {m.saving}
       </p>
     )
   return (
@@ -620,56 +591,45 @@ function ConfirmWiden(props: {
   profile: string | null
   change: Change
   ceiling: Level | null
+  m: Words
   onClose: () => void
   onConfirm: () => void
 }) {
-  const { tool, profile, change, ceiling, onClose, onConfirm } = props
-  const who = profile ? `the ${profile} profile` : "every profile that sets nothing of its own"
+  const { tool, profile, change, ceiling, m, onClose, onConfirm } = props
   const next = change.level ?? change.after
   return (
     <Dialog
       open
       wide
-      title={next ? `${LEVEL_LABEL[next]}: ${change.label}?` : `Remove the level for ${change.label}?`}
+      title={next ? m.confirmTitle(m.levels[next], change.label) : m.removeTitle(change.label)}
       onClose={onClose}
       actions={
         <>
           <Button variant="ghost" onClick={onClose} data-autofocus>
-            Keep it
+            {m.keep}
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            {next ? LEVEL_LABEL[next] : "Remove"}
+            {next ? m.levels[next] : m.remove}
           </Button>
         </>
       }
     >
-      <p>
-        {next
-          ? `Agents and scripts using ${who} will ${MEANS[next]}.`
-          : `The tool's own default then applies to ${who}. It may let more through than ${LEVEL_LABEL[change.from ?? "readonly"].toLowerCase()}.`}
-      </p>
+      <p>{next ? m.means(next, profile) : m.fallsBack(profile, change.from ?? "readonly")}</p>
       {change.overrides.length > 0 && (
         <p className="mt-2">
-          These stay as they are:{" "}
-          {change.overrides.map((o, n) => (
-            <span key={o.key}>
-              {n > 0 && ", "}
-              <code className="font-mono text-ink">{o.key}</code> ({LEVEL_LABEL[o.level].toLowerCase()})
-            </span>
-          ))}
-          .
+          {m.overridesStay(
+            change.overrides.map((o, n) => (
+              <span key={o.key}>
+                {n > 0 && ", "}
+                <code className="font-mono text-ink">{o.key}</code> ({m.levelInline[o.level]})
+              </span>
+            )),
+          )}
         </p>
       )}
-      {ceiling && (
-        <p className="mt-2">
-          Your first-run answer still keeps every tool read only, so this has no effect until then.
-        </p>
-      )}
-      <p className="mt-3 mb-1.5 text-[0.9rem]">WireCat runs:</p>
-      <CopyField
-        value={commandLine(tool, profile, { key: change.key, level: change.level })}
-        label="Copy the command"
-      />
+      {ceiling && <p className="mt-2">{m.ceilingNoEffect}</p>}
+      <p className="mt-3 mb-1.5 text-[0.9rem]">{m.runs}</p>
+      <CopyField value={commandLine(tool, profile, { key: change.key, level: change.level })} label={m.copyCommand} />
     </Dialog>
   )
 }

@@ -13,20 +13,6 @@ const PENDING = [
   "src/features/signin",
   "src/features/storage",
   "src/features/system",
-  // The rest of the Tools page: messages.tsx.
-  "src/features/tools/ClearDataOffer",
-  "src/features/tools/Health",
-  "src/features/tools/InstallPanel",
-  "src/features/tools/LevelsHelp",
-  "src/features/tools/Permissions",
-  "src/features/tools/StorageFit",
-  "src/features/tools/Sync",
-  "src/features/tools/ToolDetails",
-  "src/features/tools/ToolIcon",
-  "src/features/tools/ToolRow",
-  "src/features/tools/ToolsIntro",
-  "src/features/tools/ToolsPage",
-  "src/features/tools/UpgradeWarning",
 ]
 
 // Names and words that are the same in every language: products, tools, and what a reader types.

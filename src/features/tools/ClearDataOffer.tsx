@@ -1,14 +1,17 @@
 import { useEffect } from "react"
 import { formatBytes } from "@/domain/format"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { areaBytes, useStorage } from "../storage/store"
+import { toolsMessages } from "./messages"
 import { useTools } from "./store"
 
 // Shown once, after the last WireCat tool is uninstalled: the one moment deleting everything is both safe and likely wanted.
 export function ClearDataOffer() {
   const open = useTools((s) => s.offerClear)
   const { areas, load, clearAll } = useStorage()
+  const m = useMessages(toolsMessages).clear
 
   useEffect(() => {
     if (open) load()
@@ -26,12 +29,12 @@ export function ClearDataOffer() {
   return (
     <Dialog
       open={open && leftovers.length > 0}
-      title="No WireCat tools are installed. Delete their data too?"
+      title={m.title}
       onClose={close}
       actions={
         <>
           <Button variant="ghost" onClick={close} autoFocus>
-            Keep data
+            {m.keep}
           </Button>
           <Button
             variant="danger"
@@ -40,16 +43,12 @@ export function ClearDataOffer() {
               clearAll()
             }}
           >
-            Delete {formatBytes(bytes)}
+            {m.delete(formatBytes(bytes))}
           </Button>
         </>
       }
     >
-      <p>
-        The tools left {formatBytes(bytes)} on this computer: shared storage, sessions, settings and caches. Keep it if
-        you may install them again; delete it to remove everything. Sign-in tokens in your system keyring are not
-        touched.
-      </p>
+      <p>{m.text(formatBytes(bytes))}</p>
     </Dialog>
   )
 }
