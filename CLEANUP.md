@@ -74,3 +74,11 @@
 - `.claude/worktrees/first-release` (ветка chore/first-release) — worktree TASK-39, всё в feat/desktop-mvp. 2026-10-29
 - `.claude/worktrees/bug24` (ветка fix/bug-24-tool-row-loop) — worktree BUG-24, всё в feat/desktop-mvp; свой node_modules, Rust target общий. 2026-10-29
 - /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/{ssign,tauri,actionlint} — TASK-39: исходники ssign и tauri для чтения, бинарь actionlint. 2026-10-29
+- `.claude/worktrees/i18n-agents` and branch `i18n-agents`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-connect` and branch `i18n-connect`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-tools` and branch `i18n-tools`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-logs` and branch `i18n-logs`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-storage` and branch `i18n-storage`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-config` and branch `i18n-config`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-onboarding` and branch `i18n-onboarding`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/i18n-signin` and branch `i18n-signin`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
