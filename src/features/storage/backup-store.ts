@@ -4,6 +4,8 @@ import { platform } from "@/platform/bridge"
 import { useStorage } from "./store"
 
 export type Progress = { step: "starting" | "copying" | "compressing" | "encrypting"; done: number; total: number }
+/** A failed clear: the backup before it did not finish, or what the tool answered. */
+export type ClearError = { backupFailed: true } | { backupFailed: false; message: string }
 export type Made = { file: BackupFile; folder: string; storeBytes: number; millis: number }
 
 type BackupState = {
@@ -17,7 +19,7 @@ type BackupState = {
   preview: ResetPreview | null | undefined
   previewError: string | null
   clearing: boolean
-  clearError: string | null
+  clearError: ClearError | null
   /** The empty store's schema once a clear finished. */
   cleared: number | null
   loadBackups(): Promise<void>
@@ -108,7 +110,7 @@ export const useBackups = create<BackupState>((set, get) => ({
   async clear(backupFirst) {
     set({ clearError: null, cleared: null })
     if (backupFirst && !(await get().backup())) {
-      set({ clearError: "The backup did not finish, so nothing was deleted." })
+      set({ clearError: { backupFailed: true } })
       return false
     }
     set({ clearing: true })
@@ -116,7 +118,7 @@ export const useBackups = create<BackupState>((set, get) => ({
       set({ cleared: await platform.storeReset() })
       return true
     } catch (e) {
-      set({ clearError: message(e) })
+      set({ clearError: { backupFailed: false, message: message(e) } })
       return false
     } finally {
       set({ clearing: false })

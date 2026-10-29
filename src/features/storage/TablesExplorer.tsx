@@ -1,8 +1,9 @@
 import { ArrowDown, ArrowUp, Search } from "lucide-react"
 import { useState } from "react"
 import { findTool } from "@/domain/catalog"
-import { formatDuration, KIND_LABEL, sortTables, splitTables, type TableSort, totalBytes } from "@/domain/database"
+import { sortTables, splitTables, type TableSort, totalBytes } from "@/domain/database"
 import { formatBytes } from "@/domain/format"
+import { formatNumber, useMessages } from "@/i18n"
 import type { Table } from "@/platform/archive-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -10,17 +11,19 @@ import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
+import { storageMessages } from "./messages"
 import { useStorage } from "./store"
 import { useElapsed } from "./useElapsed"
 
-const COLUMNS: { key: TableSort["key"]; label: string; numeric: boolean }[] = [
-  { key: "name", label: "Table", numeric: false },
-  { key: "kind", label: "Kind", numeric: false },
-  { key: "rows", label: "Rows", numeric: true },
-  { key: "bytes", label: "Size", numeric: true },
+const COLUMNS: { key: TableSort["key"]; numeric: boolean }[] = [
+  { key: "name", numeric: false },
+  { key: "kind", numeric: false },
+  { key: "rows", numeric: true },
+  { key: "bytes", numeric: true },
 ]
 
 export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
+  const m = useMessages(storageMessages)
   const tables = useStorage((s) => s.tables)
   const tablesError = useStorage((s) => s.tablesError)
   const [query, setQuery] = useState("")
@@ -31,13 +34,14 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
   if (tables && !tables.available)
     return (
       <Frame count={null}>
-        <p className="text-[0.9rem] text-ink-soft">The table list arrives with the next update of {tool}.</p>
+        <p className="text-[0.9rem] text-ink-soft">{m.listLater(tool)}</p>
       </Frame>
     )
 
   const { main, search } = splitTables(tables?.tables ?? [])
-  const shownMain = sortTables(main, query, sort)
-  const shownSearch = sortTables(search, query, sort)
+  const kindLabel = (kind: string) => m.tableKind[kind] ?? kind
+  const shownMain = sortTables(main, query, sort, kindLabel)
+  const shownSearch = sortTables(search, query, sort, kindLabel)
   const onSort = (key: TableSort["key"]) =>
     setSort((s) =>
       s.key === key ? { key, descending: !s.descending } : { key, descending: key !== "name" && key !== "kind" },
@@ -47,7 +51,7 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
     <Frame count={tables ? main.length + search.length : null} className="reveal">
       {tablesError && (
         <ErrorNotice inline action={<ReportThis what="Listing the storage tables" error={tablesError} />}>
-          Could not list the tables: {tablesError}
+          {m.listError(tablesError)}
         </ErrorNotice>
       )}
       {tables === null ? null : (
@@ -57,8 +61,8 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
               <Search className="pointer-events-none absolute left-[0.6rem] size-[0.95rem] text-ink-dim" aria-hidden />
               <input
                 type="search"
-                aria-label="Find a table"
-                placeholder="Find a table"
+                aria-label={m.findTable}
+                placeholder={m.findTable}
                 spellCheck={false}
                 autoComplete="off"
                 value={query}
@@ -68,15 +72,15 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
             </label>
             <MeasureSizes measured={tables.measured} />
           </div>
-          <TableOf tables={shownMain} sort={sort} onSort={onSort} label="Tables" measured={tables.measured} />
+          <TableOf tables={shownMain} sort={sort} onSort={onSort} label={m.tables} measured={tables.measured} />
           {query.trim() !== "" && shownMain.length === 0 && shownSearch.length === 0 && (
-            <p className="text-[0.9rem] text-ink-soft">No table name contains “{query.trim()}”.</p>
+            <p className="text-[0.9rem] text-ink-soft">{m.noMatch(query.trim())}</p>
           )}
           {shownSearch.length > 0 && (
             <Disclosure
               summary={
                 <>
-                  Search index tables ({shownSearch.length})
+                  {m.searchTables(shownSearch.length)}
                   {tables.measured && (
                     <span className="font-mono text-ink-dim tabular-nums">
                       {" "}
@@ -86,15 +90,12 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
                 </>
               }
             >
-              <p className="mb-2 max-w-[70ch] text-[0.9rem] text-ink-soft">
-                Built from the data above so search is fast; rebuilding them loses nothing. Their rows are not counted,
-                which would read every index in full.
-              </p>
+              <p className="mb-2 max-w-[70ch] text-[0.9rem] text-ink-soft">{m.searchNote}</p>
               <TableOf
                 tables={shownSearch}
                 sort={sort}
                 onSort={onSort}
-                label="Search index tables"
+                label={m.searchTablesLabel}
                 measured={tables.measured}
               />
             </Disclosure>
@@ -107,17 +108,16 @@ export function TablesExplorer({ answeredBy }: { answeredBy: string }) {
 
 /** A full table list, sized as it arrives: the list box is at its maximum height whenever there are many tables. */
 export function TablesSkeleton() {
+  const m = useMessages(storageMessages)
   return (
     <Frame count={null}>
       <div className="flex flex-wrap items-center gap-3">
-        <Skeleton className="h-8 min-w-[14rem] flex-1 sm:max-w-[22rem]" label="Counting rows" />
+        <Skeleton className="h-8 min-w-[14rem] flex-1 sm:max-w-[22rem]" label={m.countingRows} />
         <div className="flex flex-wrap items-center gap-3">
           <Button size="sm" disabled>
-            Measure sizes
+            {m.measure}
           </Button>
-          <span className="text-[0.9rem] text-ink-dim">
-            Reads the whole file: seconds, or a few minutes when storage is large
-          </span>
+          <span className="text-[0.9rem] text-ink-dim">{m.measureHint}</span>
         </div>
       </div>
       <Skeleton className="h-[26rem] w-full rounded-[0.45rem]" />
@@ -135,10 +135,11 @@ function Frame({
   className?: string
   children: React.ReactNode
 }) {
+  const m = useMessages(storageMessages)
   return (
     <section aria-labelledby="tables-title" className={cx("flex flex-col gap-3", className)}>
       <h3 id="tables-title" className="text-[1rem] font-semibold">
-        Tables
+        {m.tables}
         {count !== null && <span className="ml-2 font-mono text-[0.9rem] font-normal text-ink-dim">{count}</span>}
       </h3>
       {children}
@@ -151,23 +152,18 @@ function MeasureSizes({ measured }: { measured: boolean }) {
   const measuredIn = useStorage((s) => s.measuredIn)
   const measureSizes = useStorage((s) => s.measureSizes)
   const elapsed = useElapsed(measuring)
+  const m = useMessages(storageMessages)
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button size="sm" onClick={measureSizes} disabled={measuring !== null}>
-        {measuring !== null ? "Measuring…" : measured ? "Measure again" : "Measure sizes"}
+        {measuring !== null ? m.measuring : measured ? m.measureAgain : m.measure}
       </Button>
       <span className="text-[0.9rem] text-ink-dim" role="status">
-        {measuring !== null ? (
-          <>
-            Reading every page of the file… <span className="font-mono tabular-nums">{formatDuration(elapsed)}</span>
-          </>
-        ) : measured && measuredIn !== null ? (
-          <>
-            Measured in <span className="font-mono tabular-nums">{formatDuration(measuredIn)}</span>
-          </>
-        ) : (
-          "Reads the whole file: seconds, or a few minutes when storage is large"
-        )}
+        {measuring !== null
+          ? m.readingPages(<span className="font-mono tabular-nums">{m.duration(elapsed)}</span>)
+          : measured && measuredIn !== null
+            ? m.measuredIn(<span className="font-mono tabular-nums">{m.duration(measuredIn)}</span>)
+            : m.measureHint}
       </span>
     </div>
   )
@@ -181,6 +177,7 @@ function TableOf(props: {
   measured: boolean
 }) {
   const { tables, sort, onSort, label, measured } = props
+  const m = useMessages(storageMessages)
   if (tables.length === 0) return null
   return (
     <div className="max-h-[26rem] overflow-auto rounded-[0.45rem] border border-line">
@@ -199,7 +196,7 @@ function TableOf(props: {
                   onClick={() => onSort(c.key)}
                   className="inline-flex items-center gap-1 rounded-[0.3rem] hover:text-ink"
                 >
-                  {c.label}
+                  {m.column[c.key]}
                   {sort.key === c.key &&
                     (sort.descending ? (
                       <ArrowDown className="size-[0.85rem]" aria-hidden />
@@ -217,9 +214,9 @@ function TableOf(props: {
               <th scope="row" className="selectable px-3 py-[0.35rem] text-left font-mono text-[0.9rem] font-normal">
                 {t.name}
               </th>
-              <td className="px-3 py-[0.35rem] text-ink-soft">{KIND_LABEL[t.kind] ?? t.kind}</td>
+              <td className="px-3 py-[0.35rem] text-ink-soft">{m.tableKind[t.kind] ?? t.kind}</td>
               <td className="px-3 py-[0.35rem] text-right font-mono tabular-nums">
-                {t.rows === null ? <span className="text-ink-dim">—</span> : t.rows.toLocaleString("en-US")}
+                {t.rows === null ? <span className="text-ink-dim">—</span> : formatNumber(t.rows)}
               </td>
               <td className="px-3 py-[0.35rem] text-right font-mono tabular-nums">
                 {measured && t.bytes !== null ? formatBytes(t.bytes) : <span className="text-ink-dim">—</span>}

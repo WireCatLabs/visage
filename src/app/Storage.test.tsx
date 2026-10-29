@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
+import { useLanguage } from "@/i18n"
 import { App } from "./App"
 
 describe("Storage", () => {
@@ -47,4 +48,16 @@ describe("Storage", () => {
     await user.click(screen.getByRole("button", { name: "Check health" }))
     expect(await screen.findByText("No problems found", {}, { timeout: 6000 })).toBeInTheDocument()
   }, 20000)
+
+  it("speaks Russian, counts included", async () => {
+    useLanguage.setState({ choice: "ru" })
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole("button", { name: /Хранилище/ }))
+
+    const archive = await screen.findByRole("region", { name: "В хранилище" })
+    const bySource = await within(archive).findByRole("table", { name: "По источникам" }, { timeout: 4000 })
+    expect(bySource).toHaveTextContent("через tg · 2 аккаунта")
+    expect(screen.getByRole("button", { name: "Сделать копию" })).toBeInTheDocument()
+  }, 15000)
 })

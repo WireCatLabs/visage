@@ -1,23 +1,19 @@
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { type Progress, percent } from "./backup-store"
-
-const STEP: Record<Progress["step"], string> = {
-  starting: "Checking disk space",
-  copying: "Copying storage",
-  compressing: "Compressing",
-  encrypting: "Encrypting",
-}
+import { backupMessages } from "./messages-backup"
 
 export function BackupProgress({ progress, onCancel }: { progress: Progress; onCancel: () => void }) {
+  const m = useMessages(backupMessages)
   const pct = percent(progress)
   // The tool seals in one run and prints nothing until it ends, so there is no share done to show.
   const unknown = progress.step === "encrypting"
   return (
     <div className="flex items-center gap-4">
-      <span className="w-[10.5rem] shrink-0 text-[0.9rem] text-ink-soft">{STEP[progress.step]}…</span>
+      <span className="min-w-[10.5rem] shrink-0 text-[0.9rem] text-ink-soft">{m.step[progress.step]}…</span>
       <div
         role="progressbar"
-        aria-label={STEP[progress.step]}
+        aria-label={m.step[progress.step]}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={unknown ? undefined : pct}
@@ -37,10 +33,10 @@ export function BackupProgress({ progress, onCancel }: { progress: Progress; onC
       </span>
       {/* Stopping the tool mid-seal leaves its plain copy of the whole store beside it, so sealing runs to the end. */}
       {unknown ? (
-        <span className="w-[4.6rem] shrink-0 text-right text-[0.85rem] text-ink-dim">Can't stop</span>
+        <span className="min-w-[4.6rem] shrink-0 text-right text-[0.85rem] text-ink-dim">{m.cantStop}</span>
       ) : (
-        <Button variant="ghost" size="sm" className="w-[4.6rem]" onClick={onCancel}>
-          Cancel
+        <Button variant="ghost" size="sm" className="min-w-[4.6rem]" onClick={onCancel}>
+          {m.cancel}
         </Button>
       )}
     </div>

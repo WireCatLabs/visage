@@ -21,14 +21,9 @@ export type BreakdownLike = {
 
 export type Dimension = "provider" | "chatKind" | "account" | "year" | "attachment"
 
-export const DIMENSIONS: readonly { id: Dimension; label: string }[] = [
-  { id: "provider", label: "Source" },
-  { id: "chatKind", label: "Chat type" },
-  { id: "account", label: "Account" },
-  { id: "year", label: "Year" },
-  { id: "attachment", label: "Files" },
-]
+export const DIMENSIONS: readonly Dimension[] = ["provider", "chatKind", "account", "year", "attachment"]
 
+/** Product names, the same in every language; the other sources are named in `ArchiveWords.providers`. */
 const PROVIDERS: Record<string, string> = {
   telegram: "Telegram",
   whatsapp: "WhatsApp",
@@ -36,26 +31,7 @@ const PROVIDERS: Record<string, string> = {
   email: "Email",
   "google-drive": "Google Drive",
   zoom: "Zoom",
-  notes: "Notes",
-  chat: "Chat",
 }
-
-const CHAT_KINDS: Record<string, string> = {
-  dialog: "One-to-one",
-  group: "Groups",
-  channel: "Channels",
-  saved: "Saved messages",
-  unknown: "Unknown kind",
-}
-
-const OWNERS: Record<string, string> = {
-  message: "messages",
-  email: "emails",
-  document: "documents",
-  meeting: "meetings",
-}
-
-export const providerName = (p: string) => PROVIDERS[p] ?? p
 
 /** The command that collects each source into storage, so a number can be traced to the tool that wrote it. */
 const COLLECTED_BY: Record<string, string> = {
@@ -71,26 +47,32 @@ const COLLECTED_BY: Record<string, string> = {
 export const collectedBy = (p: string): string | null => COLLECTED_BY[p] ?? null
 
 /** Totals in the order the page shows them; only the tables this store has. */
-export const TOTALS: readonly { key: string; label: string }[] = [
-  { key: "messages", label: "Messages" },
-  { key: "chats", label: "Chats" },
-  { key: "emails", label: "Emails" },
-  { key: "documents", label: "Documents" },
-  { key: "meetings", label: "Meetings" },
-  { key: "attachments", label: "Attachments" },
-  { key: "accounts", label: "Accounts" },
-]
+export const TOTALS = ["messages", "chats", "emails", "documents", "meetings", "attachments", "accounts"] as const
+export type TotalKey = (typeof TOTALS)[number]
 
-export function totals(rows: Record<string, number>) {
-  return TOTALS.filter((t) => t.key in rows).map((t) => ({ ...t, value: rows[t.key] ?? 0 }))
+export function totals(rows: Record<string, number>): { key: TotalKey; value: number }[] {
+  return TOTALS.filter((key) => key in rows).map((key) => ({ key, value: rows[key] ?? 0 }))
 }
+
+export type Counted = "accounts" | "chats" | "messages" | "emails" | "documents" | "meetings"
+
+/** The words of the breakdown, in the interface's language; the catalog is in `features/storage/messages.tsx`. */
+export type ArchiveWords = {
+  count: (what: Counted, n: number) => string
+  via: (command: string) => string
+  /** Sources that are not a product name, such as notes. */
+  providers: Readonly<Record<string, string>>
+  chatKinds: Readonly<Record<string, string>>
+  /** `kind` is the tool's own word (photo, voice); `owner` is message, email, document or meeting. */
+  attachment: (kind: string, owner: string) => string
+}
+
+const providerName = (p: string, w: ArchiveWords) => w.providers[p] ?? PROVIDERS[p] ?? p
 
 export type BarRow = { id: string; label: string; detail: string; value: number; share: number }
 
-const n = (x: number) => x.toLocaleString("en-US")
-
-function itemsOf(g: GroupLike): { value: number; detail: string } {
-  const parts: [number, string][] = [
+function itemsOf(g: GroupLike, w: ArchiveWords): { value: number; detail: string } {
+  const parts: [number, Counted][] = [
     [g.chats, "chats"],
     [g.messages, "messages"],
     [g.emails, "emails"],
@@ -101,7 +83,7 @@ function itemsOf(g: GroupLike): { value: number; detail: string } {
     value: g.messages + g.emails + g.documents + g.meetings,
     detail: parts
       .filter(([c]) => c > 0)
-      .map(([c, w]) => `${n(c)} ${c === 1 ? w.slice(0, -1) : w}`)
+      .map(([c, what]) => w.count(what, c))
       .join(" · "),
   }
 }
@@ -114,20 +96,25 @@ const withShares = (rows: Omit<BarRow, "share">[]): BarRow[] => {
 const byValue = (a: { value: number }, b: { value: number }) => b.value - a.value
 
 /** Rows for one dimension, largest first (years newest first). `formatBytes` sizes the files view. */
-export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n: number) => string): BarRow[] {
+export function breakdownRows(
+  b: BreakdownLike,
+  dim: Dimension,
+  formatBytes: (n: number) => string,
+  w: ArchiveWords,
+  formatNumber: (n: number) => string = String,
+): BarRow[] {
   switch (dim) {
     case "provider":
       return withShares(
         b.providers
           .map((g) => {
-            const { value, detail } = itemsOf(g)
-            const accounts = `${g.accounts} ${g.accounts === 1 ? "account" : "accounts"}`
+            const { value, detail } = itemsOf(g, w)
             const via = collectedBy(g.provider)
             return {
               id: g.provider,
-              label: providerName(g.provider),
+              label: providerName(g.provider, w),
               value,
-              detail: [via ? `via ${via}` : null, accounts, detail].filter(Boolean).join(" · "),
+              detail: [via ? w.via(via) : null, w.count("accounts", g.accounts), detail].filter(Boolean).join(" · "),
             }
           })
           .sort(byValue),
@@ -137,8 +124,8 @@ export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n:
         b.chatKinds
           .map((g) => ({
             id: `${g.provider}:${g.key}`,
-            label: `${providerName(g.provider)} · ${CHAT_KINDS[g.key ?? "unknown"] ?? g.key}`,
-            ...itemsOf(g),
+            label: `${providerName(g.provider, w)} · ${w.chatKinds[g.key ?? "unknown"] ?? g.key}`,
+            ...itemsOf(g, w),
           }))
           .sort(byValue),
       )
@@ -147,8 +134,8 @@ export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n:
         b.accounts
           .map((g, i) => ({
             id: `${g.provider}:${g.key}:${i}`,
-            label: `${providerName(g.provider)} · ${g.key ?? "•••"}`,
-            ...itemsOf(g),
+            label: `${providerName(g.provider, w)} · ${g.key ?? "•••"}`,
+            ...itemsOf(g, w),
           }))
           .sort(byValue),
       )
@@ -164,7 +151,7 @@ export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n:
             value: groups.reduce((s, g) => s + g.messages, 0),
             detail: [...groups]
               .sort((a, z) => z.messages - a.messages)
-              .map((g) => `${providerName(g.provider)} ${n(g.messages)}`)
+              .map((g) => `${providerName(g.provider, w)} ${formatNumber(g.messages)}`)
               .join(" · "),
           })),
       )
@@ -174,20 +161,11 @@ export function breakdownRows(b: BreakdownLike, dim: Dimension, formatBytes: (n:
         b.attachmentKinds
           .map((a) => ({
             id: `${a.owner}:${a.kind}`,
-            label: `${a.kind[0]?.toUpperCase() ?? ""}${a.kind.slice(1)} in ${OWNERS[a.owner] ?? a.owner}`,
+            label: w.attachment(a.kind, a.owner),
             value: a.count,
             detail: a.bytes > 0 ? formatBytes(a.bytes) : "",
           }))
           .sort(byValue),
       )
   }
-}
-
-/** What the value of a dimension's rows counts, for the column header. */
-export const UNIT: Record<Dimension, string> = {
-  provider: "items",
-  chatKind: "messages",
-  account: "items",
-  year: "messages",
-  attachment: "files",
 }

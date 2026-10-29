@@ -1,8 +1,8 @@
 import { Archive, FolderOpen, Lock, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { findTool } from "@/domain/catalog"
-import { formatDuration } from "@/domain/database"
 import { formatBytes } from "@/domain/format"
+import { formatDate, useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Skeleton } from "@/ui/Skeleton"
 import { BackupPassword } from "./BackupPassword"
@@ -10,17 +10,20 @@ import { BackupProgress } from "./BackupProgress"
 import { passwordProblem } from "./backup-password"
 import { useBackups } from "./backup-store"
 import { ClearStorageDialog } from "./ClearStorageDialog"
+import { storageMessages } from "./messages"
+import { backupMessages } from "./messages-backup"
 
-const day = (ms: number) =>
-  new Date(ms).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+const DAY_AND_TIME: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+}
 
 export function BackupPanel() {
+  const m = useMessages(backupMessages)
+  const { duration, showInFiles } = useMessages(storageMessages)
   const { backups, listError, progress, made, backupError, clearing, preview, clearError, cleared } = useBackups()
   const { loadBackups, backup, cancel, open, loadPreview } = useBackups.getState()
   const [confirming, setConfirming] = useState(false)
@@ -47,13 +50,13 @@ export function BackupPanel() {
   const restoreBin = bin ?? "tg"
   const clearBlocked =
     preview === undefined
-      ? "Asking the tool what clearing would delete…"
+      ? m.clearAsking
       : preview === null
-        ? "Install Telegram, WhatsApp or MAX: clearing is done by a messenger tool."
+        ? m.clearNoTool
         : !preview.supported
-          ? `Clearing needs a newer ${bin}, one that lists what clearing would delete. Update ${bin} on the Tools page.`
+          ? m.clearOld(bin ?? preview.answeredBy)
           : !preview.exists
-            ? "Storage is not created yet, so there is nothing to clear."
+            ? m.clearNothing
             : null
 
   return (
@@ -61,12 +64,10 @@ export function BackupPanel() {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-line border-b px-[1.3rem] py-[0.9rem]">
         <div>
           <h2 id="backups-title" className="text-[1.08rem] font-semibold">
-            Backups
+            {m.backups}
           </h2>
           <p className="mt-0.5 text-[0.9rem] text-ink-dim">
-            A copy of the whole storage database, in{" "}
-            <span className="selectable font-mono">{backups?.folder ?? "~/WireCat backups"}</span>. Without a password
-            it is a plain zip: keep it somewhere private.
+            {m.backupsIntro(<code className="selectable font-mono">{backups?.folder ?? "~/WireCat backups"}</code>)}
           </p>
         </div>
         <Button
@@ -76,7 +77,7 @@ export function BackupPanel() {
           icon={<Archive className="size-4" aria-hidden />}
           className="min-w-[9.5rem]"
         >
-          Back up now
+          {m.backUpNow}
         </Button>
       </div>
 
@@ -94,10 +95,8 @@ export function BackupPanel() {
             className="mt-[0.3rem] size-[1.05rem] shrink-0 accent-brand"
           />
           <span>
-            Protect with a password
-            <span className="block text-[0.9rem] text-ink-soft">
-              The tool compresses and encrypts the backup itself. Opening it later asks for the password.
-            </span>
+            {m.protect}
+            <span className="block text-[0.9rem] text-ink-soft">{m.protectHelp}</span>
           </span>
         </label>
         {protect && (
@@ -116,29 +115,29 @@ export function BackupPanel() {
           <BackupProgress progress={progress} onCancel={() => cancel()} />
         ) : backupError ? (
           <p role="alert" className="text-[0.95rem] text-bad">
-            The backup did not finish: {backupError}
+            {m.backupFailed(backupError)}
           </p>
         ) : made ? (
           <p role="status" className="text-[0.95rem] text-ink-soft">
-            {made.file.encrypted ? "Backed up with a password to" : "Backed up to"}{" "}
-            <span className="selectable font-mono text-ink">{made.file.name}</span> ·{" "}
-            <span className="font-mono tabular-nums">{formatBytes(made.file.bytes)}</span> from{" "}
-            <span className="font-mono tabular-nums">{formatBytes(made.storeBytes)}</span> in{" "}
-            <span className="font-mono tabular-nums">{formatDuration(made.millis)}</span>
+            {m.made(
+              made.file.encrypted,
+              <span className="selectable font-mono text-ink">{made.file.name}</span>,
+              <span className="font-mono tabular-nums">{formatBytes(made.file.bytes)}</span>,
+              <span className="font-mono tabular-nums">{formatBytes(made.storeBytes)}</span>,
+              <span className="font-mono tabular-nums">{duration(made.millis)}</span>,
+            )}
           </p>
         ) : (
-          <p className="text-[0.95rem] text-ink-soft">
-            Tools keep using storage while it is copied. You need about one and a half times its size free.
-          </p>
+          <p className="text-[0.95rem] text-ink-soft">{m.copyNeeds}</p>
         )}
         {cleared !== null && (
           <p role="status" className="text-[0.95rem] text-ink-soft">
-            Storage was cleared. It is empty at schema {cleared} and fills again with the next sync or import.
+            {m.cleared(cleared)}
           </p>
         )}
         {clearError && !confirming && (
           <p role="alert" className="text-[0.95rem] text-bad">
-            {clearError}
+            {clearError.backupFailed ? m.clearBackupFailed : clearError.message}
           </p>
         )}
       </div>
@@ -150,29 +149,29 @@ export function BackupPanel() {
           </p>
         )}
         {backups === undefined ? (
-          <Skeleton className="h-[3.4rem] w-full" label="Reading backups" />
+          <Skeleton className="h-[3.4rem] w-full" label={m.readingBackups} />
         ) : backups.files.length === 0 ? (
-          <p className="text-[0.9rem] text-ink-dim">No backups yet.</p>
+          <p className="text-[0.9rem] text-ink-dim">{m.noBackups}</p>
         ) : (
-          <ul aria-label="Backups on this computer" className="flex flex-col gap-1">
+          <ul aria-label={m.backupsLabel} className="flex flex-col gap-1">
             {backups.files.map((f) => (
               <li
                 key={f.name}
-                className="grid grid-cols-[1rem_minmax(0,1fr)_6rem_11rem_1.5rem] items-center gap-3 text-[0.9rem]"
+                className="grid grid-cols-[1rem_minmax(0,1fr)_6rem_minmax(11rem,auto)_1.5rem] items-center gap-3 text-[0.9rem]"
               >
                 {f.encrypted ? (
-                  <Lock className="size-3.5 text-ink-soft" role="img" aria-label="Encrypted with a password" />
+                  <Lock className="size-3.5 text-ink-soft" role="img" aria-label={m.encrypted} />
                 ) : (
                   <span />
                 )}
                 <span className="selectable truncate font-mono text-[0.85rem] text-ink">{f.name}</span>
                 <span className="text-right font-mono text-ink-dim tabular-nums">{formatBytes(f.bytes)}</span>
-                <span className="text-ink-dim tabular-nums">{day(f.modified)}</span>
+                <span className="text-ink-dim tabular-nums">{formatDate(f.modified, DAY_AND_TIME)}</span>
                 <button
                   type="button"
                   onClick={() => open(f.name)}
-                  aria-label={`Show ${f.name} in the file manager`}
-                  title="Show in file manager"
+                  aria-label={m.showFile(f.name)}
+                  title={showInFiles}
                   className="grid size-6 shrink-0 place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
                 >
                   <FolderOpen className="size-3.5" aria-hidden />
@@ -183,21 +182,26 @@ export function BackupPanel() {
         )}
         {backups && backups.files.length > 0 && (
           <div
-            aria-label="How to restore"
+            aria-label={m.howToRestore}
             role="note"
             className="mt-3 flex flex-col gap-0.5 text-[0.9rem] text-ink-soft"
           >
             {kinds.has(false) && (
               <p>
-                To restore a <span className="font-mono">.zip</span>: unzip it, then run{" "}
-                <span className="selectable font-mono text-ink">{restoreBin} store restore wirecat.db</span>.
+                {m.restoreZip(
+                  <code className="font-mono">.zip</code>,
+                  <code className="selectable font-mono text-ink">{restoreBin} store restore wirecat.db</code>,
+                )}
               </p>
             )}
             {kinds.has(true) && (
               <p>
-                To restore a <span className="font-mono">.db.sealed</span>: run{" "}
-                <span className="selectable font-mono text-ink">{restoreBin} store restore &lt;file&gt;.db.sealed</span>
-                ; it asks for the password.
+                {m.restoreSealed(
+                  <code className="font-mono">.db.sealed</code>,
+                  <code className="selectable font-mono text-ink">
+                    {restoreBin} store restore &lt;file&gt;.db.sealed
+                  </code>,
+                )}
               </p>
             )}
           </div>
@@ -205,17 +209,16 @@ export function BackupPanel() {
         {backups && backups.files.length > 0 && (
           <Button variant="ghost" size="sm" className="mt-2 -ml-3" onClick={() => open(null)}>
             <FolderOpen className="size-3.5" aria-hidden />
-            Open backups folder
+            {m.openBackups}
           </Button>
         )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-line border-t px-[1.3rem] py-[0.9rem]">
         <div className="max-w-[62ch]">
-          <h3 className="text-[0.98rem] font-semibold">Clear storage</h3>
+          <h3 className="text-[0.98rem] font-semibold">{m.clearStorage}</h3>
           <p id="clear-why" className="mt-0.5 text-[0.9rem] text-ink-soft">
-            {clearBlocked ??
-              "Deletes every message, chat, email, document and meeting in storage. Settings and sign-ins stay."}
+            {clearBlocked ?? m.clearWhat}
           </p>
         </div>
         <Button
@@ -226,7 +229,7 @@ export function BackupPanel() {
           icon={<Trash2 className="size-4" aria-hidden />}
           className="min-w-[9.5rem]"
         >
-          {clearing ? "Clearing…" : "Clear storage…"}
+          {clearing ? m.clearing : m.clearOpen}
         </Button>
       </div>
 

@@ -10,7 +10,6 @@ const PENDING = [
   "src/features/onboarding",
   "src/features/report",
   "src/features/signin",
-  "src/features/storage",
   "src/features/system",
 ]
 

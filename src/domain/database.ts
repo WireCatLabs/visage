@@ -3,13 +3,6 @@
 export type TableLike = { name: string; kind: string; rows: number | null; bytes: number | null }
 export type TableSort = { key: "name" | "kind" | "rows" | "bytes"; descending: boolean }
 
-export const KIND_LABEL: Record<string, string> = {
-  data: "Data",
-  internal: "Internal",
-  search_index: "Search index",
-  search_index_part: "Search index part",
-}
-
 const isSearch = (t: TableLike) => t.kind === "search_index" || t.kind === "search_index_part"
 
 /** Search indexes are rebuilt from the data, so they go under their own heading. */
@@ -17,14 +10,20 @@ export function splitTables<T extends TableLike>(tables: readonly T[]): { main: 
   return { main: tables.filter((t) => !isSearch(t)), search: tables.filter(isSearch) }
 }
 
-/** `null` sorts last either way: an unmeasured size is not a small one. */
-export function sortTables<T extends TableLike>(tables: readonly T[], query: string, sort: TableSort): T[] {
+/** `null` sorts last either way: an unmeasured size is not a small one. Kinds sort by the label the reader sees. */
+export function sortTables<T extends TableLike>(
+  tables: readonly T[],
+  query: string,
+  sort: TableSort,
+  kindLabel: (kind: string) => string = (kind) => kind,
+): T[] {
   const q = query.trim().toLowerCase()
   const shown = q === "" ? [...tables] : tables.filter((t) => t.name.toLowerCase().includes(q))
   const dir = sort.descending ? -1 : 1
   return shown.sort((a, b) => {
     if (sort.key === "name" || sort.key === "kind") {
-      const by = (KIND_LABEL[a[sort.key]] ?? a[sort.key]).localeCompare(KIND_LABEL[b[sort.key]] ?? b[sort.key])
+      const label = (t: T) => (sort.key === "kind" ? kindLabel(t.kind) : t.name)
+      const by = label(a).localeCompare(label(b))
       return by === 0 ? a.name.localeCompare(b.name) : by * dir
     }
     const x = a[sort.key]
@@ -43,28 +42,48 @@ export const BACKUP_STALE_DAYS = 8
 
 export type Tone = "ok" | "warn" | "bad" | "idle"
 
+/** The sentences about the storage file, in the interface's language; the catalog is in `features/storage/messages.tsx`. */
+export type DatabaseWords = {
+  noBackup: string
+  /** `checked` is what the backup job wrote about its own check, as it wrote it. */
+  backup: (at: number, days: number, checked: string | null) => string
+  backupStale: (at: number, days: number, checked: string | null) => string
+  schemaBehind: (speaks: number) => string
+  schemaAhead: string
+  didNotOpen: (problem: string) => string
+  schemaOld: (schema: number, bin: string, speaks: number) => string
+  schemaTooNew: (schema: number, needs: number | null, bin: string, speaks: number) => string
+  damaged: (details: string) => string
+  danglingRows: (n: number) => string
+  brokenIndexes: (n: number, names: string) => string
+  lowDisk: (free: string, needed: string) => string
+  toolSuggests: string
+  chatsBehind: (n: number) => string
+  orphans: (n: number) => string
+}
+
 export function backupState(
   backup: { at: string; checked: string | null } | null,
   now: number,
+  w: DatabaseWords,
 ): { tone: Tone; text: string } {
-  if (!backup) return { tone: "idle", text: "No backup recorded beside the storage file" }
+  if (!backup) return { tone: "idle", text: w.noBackup }
   const at = Date.parse(backup.at)
   const days = Math.floor((now - at) / DAY)
-  const when = days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`
-  const date = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-  const checked = backup.checked ? `, ${backup.checked}` : ""
-  if (days >= BACKUP_STALE_DAYS)
-    return { tone: "warn", text: `${date}, ${when}${checked}. The backup job has not finished since` }
-  return { tone: "ok", text: `${date}, ${when}${checked}` }
+  if (days >= BACKUP_STALE_DAYS) return { tone: "warn", text: w.backupStale(at, days, backup.checked) }
+  return { tone: "ok", text: w.backup(at, days, backup.checked) }
 }
 
 // `speaks` comes from the one tool that answered, so the words stay about the tools in general; the Tools page names
 // each tool that cannot read the store.
-export function schemaState(schema: number | null, speaks: number | null): { tone: Tone; text: string } | null {
+export function schemaState(
+  schema: number | null,
+  speaks: number | null,
+  w: DatabaseWords,
+): { tone: Tone; text: string } | null {
   if (schema === null || speaks === null || schema === speaks) return null
-  if (schema < speaks)
-    return { tone: "warn", text: `newer tools use ${speaks}; storage moves to it the next time one writes` }
-  return { tone: "warn", text: "newer than some installed tools know; update them on the Tools page" }
+  if (schema < speaks) return { tone: "warn", text: w.schemaBehind(speaks) }
+  return { tone: "warn", text: w.schemaAhead }
 }
 
 export type CheckLike = {
@@ -88,61 +107,35 @@ export type CheckLike = {
 
 export type Issue = { text: string; fix: string | null }
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`
-
 /** Each failed check in plain words, with the command that fixes it when there is one. */
-export function healthIssues(c: CheckLike, formatBytes: (n: number) => string): Issue[] {
-  if (c.problem) return [{ text: `Storage did not open: ${c.problem}`, fix: null }]
+export function healthIssues(c: CheckLike, formatBytes: (n: number) => string, w: DatabaseWords): Issue[] {
+  if (c.problem) return [{ text: w.didNotOpen(c.problem), fix: null }]
   const issues: Issue[] = []
   const migrate = c.fixes.find((f) => f.endsWith("store migrate")) ?? `${c.bin} store migrate`
   if (c.checks.schema === false && c.schema !== null && c.speaks !== null) {
-    if (c.schema < c.speaks)
-      issues.push({
-        text: `Storage is at schema ${c.schema}; ${c.bin} speaks ${c.speaks}. Back it up, then bring it up to date.`,
-        fix: migrate,
-      })
+    if (c.schema < c.speaks) issues.push({ text: w.schemaOld(c.schema, c.bin, c.speaks), fix: migrate })
     else if (c.writable === false)
-      issues.push({
-        text: `Storage is at schema ${c.schema} and needs a tool that speaks at least ${c.minCompatible}; ${c.bin} speaks ${c.speaks}.`,
-        fix: `${c.bin} upgrade`,
-      })
+      issues.push({ text: w.schemaTooNew(c.schema, c.minCompatible, c.bin, c.speaks), fix: `${c.bin} upgrade` })
   }
   if (c.checks.integrity === false)
-    issues.push({
-      text: `SQLite found damage in the file: ${c.integrity.slice(0, 3).join("; ")}. Restore a backup.`,
-      fix: `${c.bin} store restore <backup file>`,
-    })
+    issues.push({ text: w.damaged(c.integrity.slice(0, 3).join("; ")), fix: `${c.bin} store restore <backup file>` })
   if (c.checks.foreign_keys === false)
-    issues.push({
-      text: `${plural(c.foreignKeyViolations, "row points", "rows point")} at a row that is not there.`,
-      fix: `${c.bin} store repair --dry-run`,
-    })
+    issues.push({ text: w.danglingRows(c.foreignKeyViolations), fix: `${c.bin} store repair --dry-run` })
   if (c.checks.search_indexes === false)
     issues.push({
-      text: `${plural(c.brokenIndexes.length, "search index is", "search indexes are")} damaged: ${c.brokenIndexes.join(", ")}. Search may miss messages until it is rebuilt.`,
+      text: w.brokenIndexes(c.brokenIndexes.length, c.brokenIndexes.join(", ")),
       fix: `${c.bin} store rebuild`,
     })
   if (c.checks.disk === false)
-    issues.push({
-      text: `Only ${formatBytes(c.diskFree)} free on the disk; a backup or a clean-up needs about ${formatBytes(c.diskNeeded)}.`,
-      fix: null,
-    })
-  for (const fix of c.fixes) if (!issues.some((i) => i.fix === fix)) issues.push({ text: "The tool suggests:", fix })
+    issues.push({ text: w.lowDisk(formatBytes(c.diskFree), formatBytes(c.diskNeeded)), fix: null })
+  for (const fix of c.fixes) if (!issues.some((i) => i.fix === fix)) issues.push({ text: w.toolSuggests, fix })
   return issues
 }
 
 /** What the check reports but does not count as a fault. */
-export function healthNotes(c: CheckLike): string[] {
+export function healthNotes(c: CheckLike, w: DatabaseWords): string[] {
   const notes: string[] = []
-  if (c.chatsBehind > 0)
-    notes.push(`${plural(c.chatsBehind, "chat has", "chats have")} newer messages than storage holds.`)
-  if (c.orphanPointers > 0)
-    notes.push(`${plural(c.orphanPointers, "tag or link points", "tags and links point")} at something deleted.`)
+  if (c.chatsBehind > 0) notes.push(w.chatsBehind(c.chatsBehind))
+  if (c.orphanPointers > 0) notes.push(w.orphans(c.orphanPointers))
   return notes
-}
-
-export function formatDuration(ms: number): string {
-  const s = Math.round(ms / 1000)
-  if (s < 60) return `${s} s`
-  return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`
 }

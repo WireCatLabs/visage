@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
+import { storageMessages } from "@/features/storage/messages"
 import { type BreakdownLike, breakdownRows, type GroupLike, totals } from "./archive"
 import { describeEntry } from "./files"
+
+const words = storageMessages.en.archiveWords
 
 const g = (provider: string, key: string | null, c: Partial<GroupLike>): GroupLike => ({
   provider,
@@ -28,7 +31,7 @@ const breakdown: BreakdownLike = {
 
 describe("breakdownRows", () => {
   it("names sources with the tool that collects them, sorts largest first and scales bars to the largest", () => {
-    const rows = breakdownRows(breakdown, "provider", String)
+    const rows = breakdownRows(breakdown, "provider", String, words)
     expect(rows.map((r) => r.label)).toEqual(["Telegram", "Chat"])
     expect(rows[0]?.share).toBe(1)
     expect(rows[0]?.detail).toMatch(/^via tg · /)
@@ -36,7 +39,7 @@ describe("breakdownRows", () => {
   })
 
   it("adds providers up per year, newest first", () => {
-    const rows = breakdownRows(breakdown, "year", String)
+    const rows = breakdownRows(breakdown, "year", String, words)
     expect(rows.map((r) => [r.label, r.value])).toEqual([
       ["2026", 400],
       ["2025", 600],
@@ -45,11 +48,11 @@ describe("breakdownRows", () => {
   })
 
   it("labels chat kinds and files in words", () => {
-    expect(breakdownRows(breakdown, "chatKind", String).map((r) => r.label)).toEqual([
+    expect(breakdownRows(breakdown, "chatKind", String, words).map((r) => r.label)).toEqual([
       "Telegram · Groups",
       "Telegram · One-to-one",
     ])
-    expect(breakdownRows(breakdown, "attachment", (n) => `${n} B`)[0]).toMatchObject({
+    expect(breakdownRows(breakdown, "attachment", (n) => `${n} B`, words)[0]).toMatchObject({
       label: "Photo in messages",
       value: 7,
       detail: "2048 B",
@@ -57,7 +60,7 @@ describe("breakdownRows", () => {
   })
 
   it("lists only the totals the store has", () => {
-    expect(totals({ messages: 5, chats: 2, identities: 9 }).map((t) => t.label)).toEqual(["Messages", "Chats"])
+    expect(totals({ messages: 5, chats: 2, identities: 9 }).map((t) => t.key)).toEqual(["messages", "chats"])
   })
 })
 
@@ -66,8 +69,8 @@ describe("describeEntry", () => {
     expect(describeEntry("tg", "state", "sessions")?.secret).toBe(true)
     expect(describeEntry("max", "state", "profiles")?.secret).toBe(true)
     expect(describeEntry("drive", "config", "client_secret_[client id].json")?.secret).toBe(true)
-    expect(describeEntry("shared", "state", "wirecat.db")?.what).toMatch(/Shared storage/)
-    expect(describeEntry("max", "cache", "personal.db")?.what).toMatch(/older per-profile/)
+    expect(describeEntry("shared", "state", "wirecat.db")?.key).toBe("store")
+    expect(describeEntry("max", "cache", "personal.db")?.key).toBe("maxCache")
     expect(describeEntry("tg", "state", "something-new")).toBeNull()
   })
 })

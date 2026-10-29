@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
 import { findTool } from "@/domain/catalog"
-import { backupState, formatDuration, healthIssues, healthNotes, schemaState } from "@/domain/database"
+import { backupState, healthIssues, healthNotes, schemaState } from "@/domain/database"
 import { formatBytes } from "@/domain/format"
+import { formatDate, useMessages } from "@/i18n"
 import type { StoreInfo } from "@/platform/archive-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
@@ -9,51 +10,54 @@ import { Disclosure, DisclosureSkeleton } from "@/ui/Disclosure"
 import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
+import { storageMessages } from "./messages"
 import { useStorage } from "./store"
 import { useElapsed } from "./useElapsed"
 
-const dateTime = (iso: string) =>
-  new Date(iso).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+const DAY_AND_TIME: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+}
 
 export function DatabaseFacts({ info }: { info: StoreInfo }) {
+  const m = useMessages(storageMessages)
   const tool = findTool(info.answeredBy)?.name ?? info.answeredBy
   const facts = info.facts
-  const schema = schemaState(info.schema, info.speaks)
-  const backup = facts ? backupState(facts.backup, Date.now()) : null
+  const schema = schemaState(info.schema, info.speaks, m.databaseWords)
+  const backup = facts ? backupState(facts.backup, Date.now(), m.databaseWords) : null
 
   return (
     <section aria-labelledby="database-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id="database-title" className="text-[1rem] font-semibold">
-          Storage file
+          {m.storageFile}
         </h3>
         <CheckButton />
       </div>
       <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-[1.2rem] gap-y-2 text-[0.95rem]">
         {info.path && (
-          <Fact label="File">
+          <Fact label={m.fact.file}>
             <span className="selectable block truncate font-mono text-[0.9rem]">{info.path}</span>
           </Fact>
         )}
-        <Fact label="Size">
-          <span className="font-mono tabular-nums">{formatBytes(info.fileBytes)}</span>
-          <span className="text-ink-soft"> and </span>
-          <span className="font-mono tabular-nums">{formatBytes(info.walBytes)}</span>
-          <span className="text-ink-soft"> not yet written into it (the write-ahead log)</span>
+        <Fact label={m.fact.size}>
+          <span className="text-ink-soft">
+            {m.sizeWal(
+              <span className="font-mono text-ink tabular-nums">{formatBytes(info.fileBytes)}</span>,
+              <span className="font-mono text-ink tabular-nums">{formatBytes(info.walBytes)}</span>,
+            )}
+          </span>
         </Fact>
         {facts && (
-          <Fact label="Journal mode">
+          <Fact label={m.fact.journal}>
             <span className="font-mono">{facts.journalMode}</span>
           </Fact>
         )}
         {info.schema !== null && (
-          <Fact label="Schema">
+          <Fact label={m.fact.schema}>
             <span className="inline-flex items-center gap-2">
               {schema && <Lamp tone={schema.tone} size="sm" />}
               <span className="font-mono tabular-nums">{info.schema}</span>
@@ -62,17 +66,20 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
           </Fact>
         )}
         {facts && (
-          <Fact label="Unused space">
-            <span className="font-mono tabular-nums">{formatBytes(facts.freePages * facts.pageSize)}</span>
+          <Fact label={m.fact.unused}>
             <span className="text-ink-soft">
-              {" "}
-              in {facts.freePages.toLocaleString("en-US")} free pages of {facts.pageCount.toLocaleString("en-US")}; a
-              clean-up (VACUUM) would give it back
+              {m.unusedSpace(
+                <span className="font-mono text-ink tabular-nums">
+                  {formatBytes(facts.freePages * facts.pageSize)}
+                </span>,
+                facts.freePages,
+                facts.pageCount,
+              )}
             </span>
           </Fact>
         )}
         {backup && (
-          <Fact label="Last backup">
+          <Fact label={m.fact.backup}>
             <span className="inline-flex items-start gap-2">
               <span className="pt-[0.35rem]">
                 <Lamp tone={backup.tone} size="sm" />
@@ -81,34 +88,36 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
             </span>
           </Fact>
         )}
-        <Fact label="Health">
+        <Fact label={m.fact.health}>
           <Health />
         </Fact>
       </dl>
       {facts ? (
         facts.migrations.length > 0 && (
-          <Disclosure summary={`Migration history (${facts.migrations.length})`}>
+          <Disclosure summary={m.migrations(facts.migrations.length)}>
             <div className="max-h-[16rem] max-w-[34rem] overflow-auto">
-              <table aria-label="Migration history" className="w-full text-[0.9rem]">
+              <table aria-label={m.migrationsLabel} className="w-full text-[0.9rem]">
                 <thead className="sticky top-0 bg-app">
                   <tr className="text-left text-ink-dim">
                     <th scope="col" className="py-1 pr-4 font-medium">
-                      Version
+                      {m.version}
                     </th>
                     <th scope="col" className="py-1 pr-4 font-medium">
-                      Applied
+                      {m.applied}
                     </th>
                     <th scope="col" className="py-1 font-medium">
-                      Readable by tools from
+                      {m.readableFrom}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="font-mono tabular-nums">
-                  {[...facts.migrations].reverse().map((m) => (
-                    <tr key={m.version} className="border-line border-t">
-                      <td className="py-1 pr-4">{m.version}</td>
-                      <td className="py-1 pr-4 text-ink-soft">{m.appliedAt ? dateTime(m.appliedAt) : "—"}</td>
-                      <td className="py-1 text-ink-soft">schema {m.minCompatible}</td>
+                  {[...facts.migrations].reverse().map((x) => (
+                    <tr key={x.version} className="border-line border-t">
+                      <td className="py-1 pr-4">{x.version}</td>
+                      <td className="py-1 pr-4 text-ink-soft">
+                        {x.appliedAt ? formatDate(x.appliedAt, DAY_AND_TIME) : "—"}
+                      </td>
+                      <td className="py-1 text-ink-soft">{m.schema(x.minCompatible)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -117,9 +126,7 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
           </Disclosure>
         )
       ) : (
-        <p className="text-[0.9rem] text-ink-soft">
-          Journal mode, unused space, migration history and the last backup arrive with the next update of {tool}.
-        </p>
+        <p className="text-[0.9rem] text-ink-soft">{m.factsLater(tool)}</p>
       )}
     </section>
   )
@@ -127,31 +134,32 @@ export function DatabaseFacts({ info }: { info: StoreInfo }) {
 
 /** The section as it will look with a current tool, while the tool is still being asked. */
 export function DatabaseFactsSkeleton() {
+  const m = useMessages(storageMessages)
   return (
     <section aria-labelledby="database-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id="database-title" className="text-[1rem] font-semibold">
-          Storage file
+          {m.storageFile}
         </h3>
         <CheckButton />
       </div>
       <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-[1.2rem] gap-y-2 text-[0.95rem]">
-        <Fact label="File">
+        <Fact label={m.fact.file}>
           <span className="block font-mono text-[0.9rem]">
             <Skeleton chars={34} />
           </span>
         </Fact>
-        <Fact label="Size">
+        <Fact label={m.fact.size}>
           <span className="font-mono">
             <Skeleton chars={44} />
           </span>
         </Fact>
-        <Fact label="Journal mode">
+        <Fact label={m.fact.journal}>
           <span className="font-mono">
             <Skeleton chars={3} />
           </span>
         </Fact>
-        <Fact label="Schema">
+        <Fact label={m.fact.schema}>
           <span className="inline-flex items-center gap-2">
             <Lamp tone="idle" size="sm" />
             <span className="font-mono">
@@ -159,12 +167,12 @@ export function DatabaseFactsSkeleton() {
             </span>
           </span>
         </Fact>
-        <Fact label="Unused space">
+        <Fact label={m.fact.unused}>
           <span className="font-mono">
             <Skeleton chars={52} />
           </span>
         </Fact>
-        <Fact label="Last backup">
+        <Fact label={m.fact.backup}>
           <span className="inline-flex items-start gap-2">
             <span className="pt-[0.35rem]">
               <Lamp tone="idle" size="sm" />
@@ -172,7 +180,7 @@ export function DatabaseFactsSkeleton() {
             <Skeleton chars={58} />
           </span>
         </Fact>
-        <Fact label="Health">
+        <Fact label={m.fact.health}>
           <Health />
         </Fact>
       </dl>
@@ -191,16 +199,18 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function CheckButton() {
+  const m = useMessages(storageMessages)
   const checking = useStorage((s) => s.checking)
   const runCheck = useStorage((s) => s.runCheck)
   return (
     <Button size="sm" onClick={runCheck} disabled={checking !== null}>
-      {checking !== null ? "Checking…" : "Check health"}
+      {checking !== null ? m.checking : m.checkHealth}
     </Button>
   )
 }
 
 function Health() {
+  const m = useMessages(storageMessages)
   const checking = useStorage((s) => s.checking)
   const check = useStorage((s) => s.check)
   const checkedIn = useStorage((s) => s.checkedIn)
@@ -212,7 +222,7 @@ function Health() {
       <span className="inline-flex items-center gap-2" role="status">
         <Lamp tone="busy" size="sm" />
         <span className="text-ink-soft">
-          Reading every page of the file… <span className="font-mono tabular-nums">{formatDuration(elapsed)}</span>
+          {m.readingPages(<span className="font-mono tabular-nums">{m.duration(elapsed)}</span>)}
         </span>
       </span>
     )
@@ -220,7 +230,7 @@ function Health() {
     return (
       <span className="inline-flex flex-wrap items-center gap-2" role="alert">
         <Lamp tone="bad" size="sm" />
-        <span className="text-bad">The check did not finish: {checkError}</span>
+        <span className="text-bad">{m.checkFailed(checkError)}</span>
         <ReportThis what="Checking the message storage" error={checkError} />
       </span>
     )
@@ -228,23 +238,19 @@ function Health() {
     return (
       <span className="inline-flex items-center gap-2">
         <Lamp tone="idle" size="sm" />
-        <span className="text-ink-soft">
-          Not checked yet. The check reads the whole file, a minute or two when storage is large.
-        </span>
+        <span className="text-ink-soft">{m.notChecked}</span>
       </span>
     )
 
-  const issues = healthIssues(check, formatBytes)
-  const notes = healthNotes(check)
-  const took = checkedIn === null ? "" : ` · checked in ${formatDuration(checkedIn)}`
+  const issues = healthIssues(check, formatBytes, m.databaseWords)
+  const notes = healthNotes(check, m.databaseWords)
+  const took = checkedIn === null ? "" : ` · ${m.checkedIn(m.duration(checkedIn))}`
   return (
     <div className="flex flex-col gap-2" role="status">
       <span className="inline-flex items-center gap-2">
         <Lamp tone={issues.length === 0 ? "ok" : "bad"} size="sm" />
         <span className={issues.length === 0 ? "text-ink" : "text-bad"}>
-          {issues.length === 0
-            ? "No problems found"
-            : `${issues.length} ${issues.length === 1 ? "problem" : "problems"} found`}
+          {issues.length === 0 ? m.noProblems : m.problems(issues.length)}
         </span>
         <span className="text-[0.9rem] text-ink-dim">{took}</span>
       </span>
@@ -253,7 +259,7 @@ function Health() {
           {issues.map((issue) => (
             <li key={`${issue.text}${issue.fix}`} className="flex max-w-[70ch] flex-col gap-1">
               <span className="text-ink-soft">{issue.text}</span>
-              {issue.fix && <CopyField value={issue.fix} label="Copy the command" />}
+              {issue.fix && <CopyField value={issue.fix} label={m.copyCommand} />}
             </li>
           ))}
         </ul>
