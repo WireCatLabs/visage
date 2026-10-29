@@ -9,7 +9,7 @@
       },
       "rpm": {
         "desktopTemplate": "linux/wirecat.desktop",
-        "obsoletes": ["WireCat"]
+        "obsoletes": ["wire-cat"]
       }
     }
   }

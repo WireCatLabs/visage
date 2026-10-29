@@ -71,6 +71,8 @@ jobs:
           hdiutil detach "$mount"
           app="$(ls -d ~/Applications/*.app | head -1)"
           lipo -archs "$app"/Contents/MacOS/*
+          codesign --display --verbose=2 "$app" 2>&1 | grep -E "^(Signature|Authority|TeamIdentifier)=" || true
+          codesign --verify --deep --strict "$app"
           # Reports what Gatekeeper tells a user who double-clicks it; unsigned builds are expected to be rejected.
           spctl --assess --type execute -vv "$app" || true
           "$app"/Contents/MacOS/* &
@@ -120,6 +122,8 @@ jobs:
         run: |
           dnf install -y -q gh
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.rpm" --dir dl
+          gh release download v0.1.0 --repo "$GITHUB_REPOSITORY" --pattern "*.rpm" --dir old
+          dnf install -y -q ./old/*.rpm
           dnf install -y -q ./dl/*.rpm
           rpm -qi "$(rpm -qp --qf '%{NAME}' dl/*.rpm)"
           rpm -ql "$(rpm -qp --qf '%{NAME}' dl/*.rpm)" | grep -E '^/usr/bin/|\.desktop$'
