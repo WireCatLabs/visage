@@ -112,9 +112,11 @@ export function StorageSummary() {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-2.5 text-[0.95rem]"
+      className="flex min-h-[calc(3.25rem+2px)] items-center justify-between gap-4 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-2.5 text-[0.95rem]"
     >
-      <p>
+      {/* The button arrives once the latest versions are known: beside the text and at a height kept from the start,
+          it adds no height of its own. */}
+      <p className="min-w-0">
         {count} an update to read storage: {namesOf(cannotRead)}.
         {known && updatable.length === 0 && " No newer versions are out yet."}
         {quiet}

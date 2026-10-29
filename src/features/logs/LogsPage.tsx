@@ -342,8 +342,9 @@ function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => voi
         <li key={s.id} className="flex min-w-0 items-center gap-[0.45rem]">
           <Lamp tone={sourceTone(s)} size="sm" label={sourceWords(s)} />
           <span className="font-medium">{toolName(s.id)}</span>
+          {/* As wide as "reading…" from the start, so a count arriving never unwraps the row and moves the tools after it. */}
           <span
-            className={cx("truncate", s.state === "error" ? "text-bad" : "text-ink-dim")}
+            className={cx("min-w-[3.8rem] truncate", s.state === "error" ? "text-bad" : "text-ink-dim")}
             title={s.error ?? undefined}
           >
             {sourceWords(s)}

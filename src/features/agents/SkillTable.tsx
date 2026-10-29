@@ -107,7 +107,8 @@ export function SkillTable({ view, loading }: { view: AgentView; loading: boolea
                   </>
                 )}
               </span>
-              <span className="flex items-center gap-1">
+              {/* Room for Read and an action from the start, so Read stays put when the check adds Install or Update. */}
+              <span className="flex min-w-[9.6rem] items-center gap-1">
                 <Button
                   size="sm"
                   variant="ghost"

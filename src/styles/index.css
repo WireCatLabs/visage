@@ -81,9 +81,10 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* The interface scales with the window, as a native app's content does at different display sizes. */
+/* The interface scales with the window, as a native app's content does at different display sizes. `--ui-scale` is
+   the owner's own size from Settings, multiplied outside the clamp so it still applies at the window's limits. */
 html {
-  font-size: clamp(12px, 0.5rem + 0.42vw, 15px);
+  font-size: calc(clamp(13px, 0.5rem + 0.52vw, 18px) * var(--ui-scale, 1));
 }
 
 html,

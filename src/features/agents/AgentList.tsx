@@ -90,7 +90,12 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
       <>
         <Lamp size="sm" tone="idle" />
         <span className="min-w-0">
-          <span className={cx("block font-semibold leading-tight", entry.type !== "pending" && !on && "text-ink-dim")}>
+          <span
+            className={cx(
+              "block truncate font-semibold leading-tight",
+              entry.type !== "pending" && !on && "text-ink-dim",
+            )}
+          >
             {entry.name}
           </span>
           <span className="block truncate text-[0.9rem] text-ink-dim">
@@ -107,7 +112,7 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
     <>
       <Lamp size="sm" tone={rowTone(view)} />
       <span className="min-w-0 flex-1">
-        <span className={cx("block font-semibold leading-tight", on && "text-brand")}>{view.agent.name}</span>
+        <span className={cx("block truncate font-semibold leading-tight", on && "text-brand")}>{view.agent.name}</span>
         <span className="block truncate text-[0.9rem] text-ink-soft">{checking ? <Skeleton chars={12} /> : note}</span>
       </span>
       {view.todo.length > 0 && (

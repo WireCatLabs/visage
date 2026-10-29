@@ -149,19 +149,13 @@ for (const name of pages) {
   for (const selector of spec.clicks ?? []) {
     await settle(page)
     await page.click(selector)
-    // What the click itself opens is the owner's doing; only what data does after it counts.
-    await page.evaluate(
-      () =>
-        new Promise((done) =>
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => {
-              window.__shifts = []
-              window.__heights = window.__heights.slice(-1)
-              done()
-            }),
-          ),
-        ),
-    )
+    // What the click itself opens is the owner's doing; only what data does after it counts. A panel opens a frame or
+    // two after the click, so the reset waits as long as the browser's own CLS does (500ms after input).
+    await page.waitForTimeout(500)
+    await page.evaluate(() => {
+      window.__shifts = []
+      window.__heights = window.__heights.slice(-1)
+    })
     started = Date.now()
   }
   for (const ms of shots) {
