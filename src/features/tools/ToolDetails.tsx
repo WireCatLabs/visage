@@ -18,7 +18,7 @@ import { FitDetails } from "./StorageFit"
 import { useTools } from "./store"
 
 function ConfirmUninstall({ tool, open, onClose }: { tool: CatalogTool; open: boolean; onClose: () => void }) {
-  const installs = useTools((s) => s.installs[tool.id] ?? [])
+  const installs = useTools((s) => s.installs[tool.id]) ?? []
   const copies = installs.length
   const shared = samePackage(tool.id).length > 1
   const [deleteData, setDeleteData] = useState(false)
@@ -154,7 +154,7 @@ function DeleteDataChoice(props: {
 }
 
 export function ToolDetails({ tool }: { tool: CatalogTool }) {
-  const installs = useTools((s) => s.installs[tool.id] ?? [])
+  const installs = useTools((s) => s.installs[tool.id]) ?? []
   const [confirming, setConfirming] = useState(false)
 
   return (
@@ -214,7 +214,7 @@ export function ToolDetails({ tool }: { tool: CatalogTool }) {
 
 // Uninstall would take every copy, so the advice removes only the ones the terminal never reaches.
 function ExtraCopies({ tool }: { tool: CatalogTool }) {
-  const installs = useTools((s) => s.installs[tool.id] ?? [])
+  const installs = useTools((s) => s.installs[tool.id]) ?? []
   const [first, ...unused] = installs
   if (!first) return null
   return (

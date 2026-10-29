@@ -30,3 +30,14 @@ it("opens a row on a click and on Enter, but not when a drag over its text ends 
   fireEvent.click(header)
   expect(header).toHaveAttribute("aria-expanded", "false")
 })
+
+it("opens a row while the tool check is still running (BUG-24)", async () => {
+  render(<App />)
+  const list = await screen.findByRole("list", { name: "WireCat tools" })
+  const header = within(list).getByRole("button", { name: /^Telegram/ })
+  expect(useTools.getState().installs.tg).toBeUndefined()
+
+  fireEvent.click(header)
+  expect(header).toHaveAttribute("aria-expanded", "true")
+  expect(await within(header.closest("li") as HTMLElement).findByRole("button", { name: "Manage" })).toBeVisible()
+})

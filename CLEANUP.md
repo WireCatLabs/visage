@@ -72,3 +72,4 @@
 - `.claude/worktrees/sel-flicker` (ветка fix/select-flicker) — worktree BUG-23 и UX-16, всё в feat/desktop-mvp (fast-forward); своего Rust target нет. 2026-10-29
 - `.claude/worktrees/first-release/src-tauri/target` (1.3 GB) — сборка clippy TASK-39; не нужна, следующая сборка идёт в общий `src-tauri/target`. 2026-10-29
 - `.claude/worktrees/first-release` (ветка chore/first-release) — worktree TASK-39, всё в feat/desktop-mvp. 2026-10-29
+- `.claude/worktrees/bug24` (ветка fix/bug-24-tool-row-loop) — worktree BUG-24, всё в feat/desktop-mvp; свой node_modules, Rust target общий. 2026-10-29
