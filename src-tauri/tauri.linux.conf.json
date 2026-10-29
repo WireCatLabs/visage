@@ -1,0 +1,16 @@
+{
+  "productName": "wirecat",
+  "bundle": {
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/wirecat.desktop",
+        "conflicts": ["wire-cat"],
+        "replaces": ["wire-cat"]
+      },
+      "rpm": {
+        "desktopTemplate": "linux/wirecat.desktop",
+        "obsoletes": ["WireCat"]
+      }
+    }
+  }
+}
