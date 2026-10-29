@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# One-off, before the first release tag (TASK-39): the key pair that signs WireCat's updates.
+# Every installed copy trusts only the public key it was built with, so a release built before this ran can never
+# update itself, and losing the private key means no copy already out there can be updated again.
+# The private key and its password go to the OS keyring and to the repository secrets the release workflow reads;
+# neither is ever printed. The public key goes into src-tauri/tauri.conf.json, which you then commit.
+set -euo pipefail
+
+repo="WireCatLabs/wirecat-desktop"
+service="wirecat"
+root="$(cd "$(dirname "$0")/.." && pwd)"
+conf="$root/src-tauri/tauri.conf.json"
+
+for program in secret-tool gh jq openssl pnpm; do
+  command -v "$program" >/dev/null || { echo "$program is missing." >&2; exit 1; }
+done
+if secret-tool lookup service "$service" account updater-key >/dev/null 2>&1; then
+  echo "An updater key is already in the keyring (service $service, account updater-key)." >&2
+  echo "Copies built with its public key trust only it: replacing it cuts them off from updates." >&2
+  exit 1
+fi
+if [ -n "$(jq -r '.plugins.updater.pubkey' "$conf")" ]; then
+  echo "$conf already has an updater public key. Not replacing it." >&2
+  exit 1
+fi
+gh auth status >/dev/null 2>&1 || { echo "Log in first: gh auth login" >&2; exit 1; }
+
+dir="$(mktemp -d "${XDG_RUNTIME_DIR:-$HOME}/updater-key.XXXXXX")"
+chmod 700 "$dir"
+trap 'rm -rf "$dir"' EXIT
+
+password="$(openssl rand -base64 32)"
+# The CLI takes the password only as an argument; its output is silenced so nothing about the key reaches the screen.
+if ! (cd "$root" && CI=true pnpm -s tauri signer generate --ci -w "$dir/updater.key" -p "$password" >/dev/null 2>&1); then
+  echo "tauri signer generate failed. Run 'pnpm install' in $root and try again." >&2
+  exit 1
+fi
+
+secret-tool store --label "WireCat updater private key" service "$service" account updater-key <"$dir/updater.key"
+printf '%s' "$password" | secret-tool store --label "WireCat updater key password" service "$service" account updater-key-password
+gh secret set TAURI_SIGNING_PRIVATE_KEY --repo "$repo" <"$dir/updater.key" >/dev/null
+printf '%s' "$password" | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo "$repo" >/dev/null
+unset password
+
+jq --arg key "$(cat "$dir/updater.key.pub")" '.plugins.updater.pubkey = $key' "$conf" >"$dir/conf.json"
+cp "$dir/conf.json" "$conf"
+(cd "$root" && pnpm -s biome format --write src-tauri/tauri.conf.json >/dev/null 2>&1) || true
+
+echo "Saved the updater private key and its password to the keyring (service $service, accounts updater-key and"
+echo "updater-key-password) and to the $repo secrets TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD."
+echo "Wrote the public key into src-tauri/tauri.conf.json. Commit it:"
+echo "  git add src-tauri/tauri.conf.json && git commit -m 'chore: updater public key'"
+echo
+echo "Also keep a copy in your password manager; without it no installed WireCat can be updated again:"
+echo "  secret-tool lookup service $service account updater-key | wl-copy"

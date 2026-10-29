@@ -1,0 +1,151 @@
+name: Release
+
+# A tag v<package.json version> builds every installer into a DRAFT GitHub Release; a person checks it and publishes.
+# Plan: docs/dev/plans/2026-10-29-first-release.md
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Every copy trusts only the updater key it was built with: a release without one can never update itself.
+      - id: version
+        env:
+          HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          tag="v$(jq -r .version package.json)"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($tag)."
+            exit 1
+          fi
+          if [ -z "$(jq -r '.plugins.updater.pubkey' src-tauri/tauri.conf.json)" ] || [ "$HAS_UPDATER_KEY" != true ]; then
+            echo "::error::No updater key. Run bin/setup-updater-key and commit src-tauri/tauri.conf.json first."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      # One job makes the draft, so the three builds cannot each make their own.
+      - id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          find_draft() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+              --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.id) \(.draft)\""
+          }
+          read -r id draft <<<"$(find_draft)" || true
+          if [ -n "${id:-}" ] && [ "$draft" != true ]; then
+            echo "::error::$TAG is already published. Bump the version in package.json."
+            exit 1
+          fi
+          if [ -z "${id:-}" ]; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+              --title "WireCat ${TAG#v}" --generate-notes
+            read -r id draft <<<"$(find_draft)"
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: draft
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04, not latest: an AppImage runs only on systems with this glibc or newer.
+          - os: ubuntu-22.04
+            args: ""
+          # One universal app: both darwin entries of latest.json, one download for every Mac.
+          - os: macos-latest
+            args: --target universal-apple-darwin
+          # NSIS only: it installs per user, so neither the install nor an update asks for administrator rights.
+          - os: windows-latest
+            args: --bundles nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+      - if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Tauri treats a variable that is set but empty as a certificate to import, so the Apple variables are exported
+      # only when all five secrets exist. Until then the app is built unsigned.
+      - if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          names="APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID"
+          for name in $names; do
+            if [ -z "${!name}" ]; then
+              echo "::notice::$name is not set: the macOS app is not signed or notarized."
+              exit 0
+            fi
+          done
+          for name in $names; do
+            end="END_$(openssl rand -hex 8)"
+            { echo "$name<<$end"; echo "${!name}"; echo "$end"; } >> "$GITHUB_ENV"
+          done
+      - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ needs.draft.outputs.id }}
+          # Updater files only here: without the private key (a local or CI build) the build would fail on them.
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          updaterJsonPreferNsis: true
+
+  # The builds each rewrite latest.json in turn, so two finishing at once can drop an entry; this catches it.
+  check:
+    needs: [draft, build]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.draft.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --dir .
+          missing=""
+          for key in darwin-aarch64 darwin-x86_64 linux-x86_64 windows-x86_64; do
+            jq -e --arg k "$key" '.platforms[$k].url and .platforms[$k].signature' latest.json >/dev/null || missing="$missing $key"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::latest.json lacks:$missing. Re-run the failed build job of that system."
+            exit 1
+          fi
+          echo "latest.json has every platform. Check the draft and publish it."
