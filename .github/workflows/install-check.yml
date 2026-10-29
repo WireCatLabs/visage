@@ -120,6 +120,8 @@ jobs:
         run: |
           dnf install -y -q gh
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.rpm" --dir dl
+          gh release download v0.1.0 --repo "$GITHUB_REPOSITORY" --pattern "*.rpm" --dir old
+          dnf install -y -q ./old/*.rpm
           dnf install -y -q ./dl/*.rpm
           rpm -qi "$(rpm -qp --qf '%{NAME}' dl/*.rpm)"
           rpm -ql "$(rpm -qp --qf '%{NAME}' dl/*.rpm)" | grep -E '^/usr/bin/|\.desktop$'
