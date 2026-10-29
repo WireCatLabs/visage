@@ -1,7 +1,9 @@
 import { Check, ChevronRight, Copy, Filter, FilterX, Group } from "lucide-react"
 import { useEffect, useState } from "react"
 import { inlineJson } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
+import { logsMessages } from "./messages"
 
 /** Maps a leaf's path to a run field the query can filter on, or null when no run summary carries it. */
 export type FieldOf = (path: string[]) => string | null
@@ -38,6 +40,7 @@ function Children({ value, path, depth, ...rest }: NodeProps) {
 }
 
 function Node({ name, value, path, depth, fieldOf, onFilter, onGroup }: NodeProps & { name: string }) {
+  const m = useMessages(logsMessages)
   const nested = value !== null && typeof value === "object"
   const size = nested ? (Array.isArray(value) ? value.length : Object.keys(value as object).length) : 0
   const [open, setOpen] = useState(depth < 3 && size <= 12)
@@ -57,9 +60,7 @@ function Node({ name, value, path, depth, fieldOf, onFilter, onGroup }: NodeProp
             className={cx("size-[0.9rem] text-ink-dim transition-transform duration-150", open && "rotate-90")}
           />
           <span className="text-ink-soft">{name}</span>
-          <span className="text-ink-dim">
-            {open ? brackets[0] : `${brackets[0]} ${size} ${size === 1 ? "item" : "items"} ${brackets[1]}`}
-          </span>
+          <span className="text-ink-dim">{open ? brackets[0] : `${brackets[0]} ${m.items(size)} ${brackets[1]}`}</span>
         </button>
         {open && (
           <Children value={value} path={path} depth={depth} fieldOf={fieldOf} onFilter={onFilter} onGroup={onGroup} />
@@ -94,16 +95,16 @@ function Node({ name, value, path, depth, fieldOf, onFilter, onGroup }: NodeProp
       <span className="ml-auto flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
         {filterable && (
           <>
-            <LeafAction label={`Filter by ${field}:${term}`} onClick={() => onFilter(field, term, false)}>
+            <LeafAction label={m.filterBy(`${field}:${term}`)} onClick={() => onFilter(field, term, false)}>
               <Filter className="size-[0.85rem]" aria-hidden />
             </LeafAction>
-            <LeafAction label={`Exclude ${field}:${term}`} onClick={() => onFilter(field, term, true)}>
+            <LeafAction label={m.exclude(`${field}:${term}`)} onClick={() => onFilter(field, term, true)}>
               <FilterX className="size-[0.85rem]" aria-hidden />
             </LeafAction>
           </>
         )}
         {groupable && (
-          <LeafAction label={`Group by ${field}`} onClick={() => onGroup(field)}>
+          <LeafAction label={m.groupByField(field)} onClick={() => onGroup(field)}>
             <Group className="size-[0.85rem]" aria-hidden />
           </LeafAction>
         )}
@@ -127,7 +128,8 @@ function LeafAction({ label, onClick, children }: { label: string; onClick: () =
   )
 }
 
-export function CopyValue({ value, label = "Copy value" }: { value: string; label?: string }) {
+export function CopyValue({ value, label }: { value: string; label?: string }) {
+  const m = useMessages(logsMessages)
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
@@ -136,7 +138,7 @@ export function CopyValue({ value, label = "Copy value" }: { value: string; labe
   }, [copied])
   return (
     <LeafAction
-      label={copied ? "Copied" : label}
+      label={copied ? m.copied : (label ?? m.copyValue)}
       onClick={() => navigator.clipboard.writeText(value).then(() => setCopied(true))}
     >
       {copied ? (

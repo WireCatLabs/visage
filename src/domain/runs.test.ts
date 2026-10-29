@@ -3,7 +3,6 @@ import {
   agentOf,
   cliCommand,
   clientOf,
-  commandLabel,
   commandLine,
   conversations,
   countValues,
@@ -14,6 +13,7 @@ import {
   groupRuns,
   inlineJson,
   inRange,
+  isBareCommand,
   matcher,
   orderRecord,
   parseQuery,
@@ -71,10 +71,10 @@ describe("run query", () => {
   })
 
   it("reports what it cannot read", () => {
-    expect(parseQuery('command:"sync').problems[0]?.message).toMatch(/quote/)
-    expect(parseQuery("status:").problems[0]?.message).toMatch(/needs a value/)
-    expect(parseQuery("duration_ms:>soon").problems[0]?.message).toMatch(/numbers/)
-    expect(unknownFields(parseQuery("stauts:failed"), runs)[0]?.message).toMatch(/stauts/)
+    expect(parseQuery('command:"sync').problems[0]).toMatchObject({ code: "unclosed" })
+    expect(parseQuery("status:").problems[0]).toMatchObject({ code: "noValue", field: "status" })
+    expect(parseQuery("duration_ms:>soon").problems[0]).toMatchObject({ code: "notNumber", op: ">", value: "soon" })
+    expect(unknownFields(parseQuery("stauts:failed"), runs)[0]).toMatchObject({ code: "unknownField", field: "stauts" })
   })
 })
 
@@ -133,8 +133,8 @@ describe("commands, facets and grouping by path", () => {
     expect(cliCommand("tg", "chats list")).toBe("tg chats list")
     expect(cliCommand("max", "max")).toBe("max")
     expect(cliCommand("max", "")).toBe("max")
-    expect(commandLabel("max")).toBe("max (no command)")
-    expect(commandLabel("tg chats list")).toBe("tg chats list")
+    expect(isBareCommand("max")).toBe(true)
+    expect(isBareCommand("tg chats list")).toBe(false)
   })
 
   it("orders facets with profile before error code, and values by count with ties alphabetical", () => {

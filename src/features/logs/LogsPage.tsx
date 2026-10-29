@@ -4,7 +4,6 @@ import { tools } from "@/domain/catalog"
 import {
   CONVERSATION,
   conversations,
-  FACET_LABELS,
   FACETS,
   facetCounts,
   formatDay,
@@ -22,6 +21,7 @@ import {
   withConversations,
   withZeros,
 } from "@/domain/runs"
+import { type Lang, useLang, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
@@ -34,15 +34,17 @@ import { Facets } from "./Facets"
 import { Groups } from "./Groups"
 import { KeepRuns } from "./KeepRuns"
 import { useLive } from "./live"
-import { LOGS_DOCS, toolName } from "./names"
+import { logsMessages } from "./messages"
+import { fieldLabel, LOGS_DOCS, type LogsWords, toolName } from "./names"
 import { QueryBar } from "./QueryBar"
 import { RunsTable } from "./RunsTable"
-import { runKey, type Source, useLogs, useShownLogs } from "./store"
+import { runKey, type Source, timing, useLogs, useShownLogs } from "./store"
 
 const STEP = 100
 const NONE = new Set<string>()
 
 export function LogsPage() {
+  const m = useMessages(logsMessages)
   const { loadedAt, liveRound, reading, asked, live, query, range, groupBy, expanded, details } = useLogs()
   const sources = useShownLogs((s) => s.sources)
   const { load, loadMore, setQuery, setRange, setGroupBy, toggle, setLive } = useLogs.getState()
@@ -145,17 +147,15 @@ export function LogsPage() {
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Logs</h1>
+          <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">{m.title}</h1>
           <p className="mt-3 max-w-[72ch] text-[0.95rem] text-ink-soft">
-            What each tool recorded about its own runs. A tool keeps every run: successful ones for 7 days, failed ones
-            for 30. A tool set to keep failed runs only, or one older than that, lists mostly failures by design; it
-            does not mean everything is broken.{" "}
+            {m.intro}{" "}
             <button
               type="button"
               onClick={() => platform.openUrl(LOGS_DOCS)}
               className="inline-flex items-baseline gap-[0.2rem] font-medium text-brand hover:text-brand-hover"
             >
-              How to search logs
+              {m.howToSearch}
               <ExternalLink className="size-[0.8rem] self-center" aria-hidden />
             </button>
           </p>
@@ -165,7 +165,7 @@ export function LogsPage() {
           <Button
             aria-pressed={live}
             onClick={() => setLive(!live)}
-            title={live ? "Stop reading the runs every 5 seconds" : "Read the runs again every 5 seconds"}
+            title={live ? m.liveStop : m.liveStart}
             icon={
               <span
                 aria-hidden
@@ -176,14 +176,14 @@ export function LogsPage() {
               />
             }
           >
-            Live
+            {m.live}
           </Button>
           <Button
             onClick={() => load()}
             disabled={reading.length > 0}
             icon={<RefreshCw className={cx("size-4", reading.length > 0 && "animate-spin")} aria-hidden />}
           >
-            <StableText value={reading.length > 0 ? "Reading…" : "Read again"} variants={["Reading…", "Read again"]} />
+            <StableText value={reading.length > 0 ? m.reading : m.readAgain} variants={[m.reading, m.readAgain]} />
           </Button>
         </div>
       </div>
@@ -193,10 +193,7 @@ export function LogsPage() {
       <Sources list={list} onMore={loadMore} />
 
       {withLogs.length === 0 && list.length > 0 ? (
-        <Empty>
-          No installed tool keeps run logs yet. Telegram, MAX and WhatsApp do: install one on the Tools page, and its
-          failed runs will show up here.
-        </Empty>
+        <Empty>{m.noLogs}</Empty>
       ) : (
         <>
           <div className="flex flex-wrap items-start gap-[0.7rem]">
@@ -211,7 +208,7 @@ export function LogsPage() {
               onClick={() => setFacetsOpen(!facetsOpen)}
               icon={<SlidersHorizontal className="size-4" aria-hidden />}
             >
-              Facets
+              {m.facets}
             </Button>
           </div>
 
@@ -242,7 +239,7 @@ export function LogsPage() {
                   since={oldest}
                   reading={older}
                   grouped={byConversation ? sectionsTotal : groupBy ? groups.length : null}
-                  groupWord={byConversation ? ["conversation", "conversations"] : ["group", "groups"]}
+                  byConversation={byConversation}
                   bareHidden={bareHidden}
                   onShowBare={() => setQuery(toggleTerm(query, NO_COMMAND, "true", true))}
                 />
@@ -250,24 +247,22 @@ export function LogsPage() {
                   {held > 0 && (
                     <Button size="sm" variant="primary" className="reveal shadow-panel" onClick={showHeld}>
                       <ArrowUp className="size-4" aria-hidden />
-                      {held} new {held === 1 ? "run" : "runs"}
+                      {m.newRuns(held)}
                     </Button>
                   )}
                 </div>
                 <div ref={tableRef} className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
                   {matched.length === 0 ? (
                     <p className="flex flex-wrap items-center gap-3 px-[1.3rem] py-[1.6rem] text-[0.95rem] text-ink-soft">
-                      {all.length === 0
-                        ? "Nothing recorded. An empty log means none of these tools has run lately, or failed if it keeps failed runs only."
-                        : "No run matches this search in the chosen time range."}
+                      {all.length === 0 ? m.nothingRecorded : m.noMatch}
                       {query && (
                         <Button size="sm" variant="ghost" onClick={() => setQuery("")}>
-                          Clear the search
+                          {m.clearSearch}
                         </Button>
                       )}
                       {range !== "all" && all.length > 0 && (
                         <Button size="sm" variant="ghost" onClick={() => setRange("all")}>
-                          Look at all loaded runs
+                          {m.lookAtAll}
                         </Button>
                       )}
                     </p>
@@ -312,17 +307,17 @@ export function LogsPage() {
                 </div>
                 {byConversation && sections.length < sectionsTotal && (
                   <div className="flex items-center justify-center gap-3 text-[0.9rem] text-ink-dim">
-                    Showing {sections.length} of {sectionsTotal} conversations
+                    {m.showingConversations(sections.length, sectionsTotal)}
                     <Button size="sm" onClick={() => setShown(Math.max(shown, sectionRuns) + STEP)}>
-                      Show more
+                      {m.showMore}
                     </Button>
                   </div>
                 )}
                 {!groupBy && matched.length > shown && (
                   <div className="flex items-center justify-center gap-3 text-[0.9rem] text-ink-dim">
-                    Showing {shown} of {matched.length}
+                    {m.showingRuns(shown, matched.length)}
                     <Button size="sm" onClick={() => setShown(shown + STEP)}>
-                      Show {Math.min(STEP, matched.length - shown)} more
+                      {m.showNMore(Math.min(STEP, matched.length - shown))}
                     </Button>
                   </div>
                 )}
@@ -336,18 +331,19 @@ export function LogsPage() {
 }
 
 function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => void }) {
+  const m = useMessages(logsMessages)
   return (
-    <ul aria-label="Where the runs come from" className="flex flex-wrap gap-x-[1.4rem] gap-y-[0.45rem] text-[0.9rem]">
+    <ul aria-label={m.sources} className="flex flex-wrap gap-x-[1.4rem] gap-y-[0.45rem] text-[0.9rem]">
       {list.map((s) => (
         <li key={s.id} className="flex min-w-0 items-center gap-[0.45rem]">
-          <Lamp tone={sourceTone(s)} size="sm" label={sourceWords(s)} />
+          <Lamp tone={sourceTone(s)} size="sm" label={sourceWords(m, s)} />
           <span className="font-medium">{toolName(s.id)}</span>
           {/* As wide as "reading…" from the start, so a count arriving never unwraps the row and moves the tools after it. */}
           <span
             className={cx("min-w-[3.8rem] truncate", s.state === "error" ? "text-bad" : "text-ink-dim")}
             title={s.error ?? undefined}
           >
-            {sourceWords(s)}
+            {sourceWords(m, s)}
           </span>
           {s.state === "error" && (
             <ReportThis what={`Reading ${toolName(s.id)} runs`} tool={s.id} error={s.error ?? "could not be read"} />
@@ -358,7 +354,7 @@ function Sources({ list, onMore }: { list: Source[]; onMore: (id: string) => voi
               onClick={() => onMore(s.id)}
               className="font-medium text-brand hover:text-brand-hover"
             >
-              Load older
+              {m.loadOlder}
             </button>
           )}
         </li>
@@ -378,15 +374,15 @@ const sourceTone = (s: Source) =>
           ? "ok"
           : "idle"
 
-function sourceWords(s: Source): string {
-  if (s.state === "late") return s.runs.length ? `${s.error}, showing its last answer` : (s.error ?? "")
-  if (s.state === "none") return "keeps no run logs yet"
-  if (s.state === "missing") return "not installed"
-  if (s.state === "update") return `arrives with the next update of ${toolName(s.id)}`
-  if (s.state === "error") return s.error ?? "could not be read"
+function sourceWords(m: LogsWords, s: Source): string {
+  if (s.state === "late") return m.late(timing.answer / 1000, s.runs.length > 0)
+  if (s.state === "none") return m.keepsNoLogs
+  if (s.state === "missing") return m.notInstalled
+  if (s.state === "update") return m.withNextUpdate(toolName(s.id))
+  if (s.state === "error") return s.error ?? m.couldNotBeRead
   const n = s.runs.length
-  const runs = `${n}${s.hasMore ? "+" : ""} ${n === 1 ? "run" : "runs"}`
-  return s.state === "loading" ? (n ? `${runs}, reading older…` : "reading…") : runs
+  const runs = m.runCount(n, s.hasMore)
+  return s.state === "loading" ? (n ? m.readingOlder(runs) : m.readingShort) : runs
 }
 
 // The table's own header and rows at their real height, so the first tool's runs land where the placeholders were.
@@ -394,6 +390,7 @@ const PLACEHOLDER_ROWS = 20
 
 function Loading(props: { reading: string[]; total: number; facetsOpen: boolean; newest: boolean }) {
   const { reading, total, facetsOpen, newest } = props
+  const m = useMessages(logsMessages)
   const done = total - reading.length
   return (
     <div className="grid gap-[1.5rem] lg:grid-cols-[13.5rem_minmax(0,1fr)]">
@@ -407,7 +404,7 @@ function Loading(props: { reading: string[]; total: number; facetsOpen: boolean;
         <p className="flex flex-wrap items-center gap-x-[0.6rem] text-[0.9rem] text-ink-soft">
           <span
             role="progressbar"
-            aria-label="Tools read"
+            aria-label={m.toolsRead}
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={done}
@@ -418,12 +415,7 @@ function Loading(props: { reading: string[]; total: number; facetsOpen: boolean;
               style={{ width: `${Math.max(8, (done / Math.max(total, 1)) * 100)}%` }}
             />
           </span>
-          <span>
-            <span className="tabular-nums">
-              {done} of {total}
-            </span>{" "}
-            tools done, reading {reading.map(toolName).join(", ")}…
-          </span>
+          <span className="tabular-nums">{m.toolsDone(done, total, reading.map(toolName))}</span>
         </p>
         <div className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
           <RunsTable
@@ -451,35 +443,38 @@ function Summary(props: {
   since: string
   reading: Source[]
   grouped: number | null
-  groupWord: [string, string]
+  byConversation: boolean
   bareHidden: number
   onShowBare: () => void
 }) {
-  const { matched, total, failed, since, reading, grouped, groupWord, bareHidden, onShowBare } = props
+  const { matched, total, failed, since, reading, grouped, byConversation, bareHidden, onShowBare } = props
+  const m = useMessages(logsMessages)
+  const lang = useLang()
+  const count = <strong className="font-mono font-semibold text-ink tabular-nums">{matched}</strong>
   return (
     <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-[0.6rem] text-[0.9rem] text-ink-soft">
       <span>
-        <strong className="font-mono font-semibold text-ink tabular-nums">{matched}</strong>{" "}
-        {matched === 1 ? "run matches" : "runs match"}
-        {grouped !== null && `, in ${grouped} ${grouped === 1 ? groupWord[0] : groupWord[1]}`}
+        {grouped === null
+          ? m.matches(matched, count)
+          : byConversation
+            ? m.matchesInConversations(matched, count, grouped)
+            : m.matchesInGroups(matched, count, grouped)}
       </span>
       {total > 0 && (
-        <span className="text-ink-dim">
-          over the last {total} kept runs{since ? ` since ${formatDay(since)}` : ""}; {failed} of them failed
-        </span>
+        <span className="text-ink-dim">{m.over(total, since ? formatDay(since, lang) : null, failed)}</span>
       )}
       {bareHidden > 0 && (
-        <span className="text-ink-dim">
-          <span className="tabular-nums">{bareHidden}</span> {bareHidden === 1 ? "run" : "runs"} with no command hidden{" "}
+        <span className="text-ink-dim tabular-nums">
+          {m.bareHidden(bareHidden)}{" "}
           <button type="button" onClick={onShowBare} className="font-medium text-brand hover:text-brand-hover">
-            Show them
+            {m.showThem}
           </button>
         </span>
       )}
       {reading.length > 0 && (
         <span className="inline-flex items-center gap-[0.4rem] text-ink-dim">
           <Lamp tone="busy" size="sm" />
-          still reading {reading.map((s) => toolName(s.id)).join(", ")}
+          {m.stillReading(reading.map((s) => toolName(s.id)))}
         </span>
       )}
     </p>
@@ -491,30 +486,35 @@ const scrolledPast = (el: HTMLElement | null) => {
   return Boolean(el && main && el.getBoundingClientRect().top < main.getBoundingClientRect().top)
 }
 
-function ago(ms: number) {
+// The short style, because this line ticks every second beside the buttons and must not grow and push them.
+function ago(ms: number, lang: Lang) {
+  const format = new Intl.RelativeTimeFormat(lang, { style: "short" })
   const s = Math.max(0, Math.round(ms / 1000))
-  if (s < 60) return `${s} s ago`
-  const m = Math.round(s / 60)
-  return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`
+  if (s < 60) return format.format(-s, "second")
+  const min = Math.round(s / 60)
+  return min < 60 ? format.format(-min, "minute") : format.format(-Math.round(min / 60), "hour")
 }
 
 // Its own one-second clock, so only this line renders again as the time passes.
 function Freshness({ at, reading, asked }: { at: number | null; reading: number; asked: number }) {
+  const m = useMessages(logsMessages)
+  const lang = useLang()
   const [, setTick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 1000)
     return () => clearInterval(t)
   }, [])
   const text =
-    at === null ? "" : reading ? `Reading ${asked - reading} of ${asked} tools…` : `Updated ${ago(Date.now() - at)}`
+    at === null ? "" : reading ? m.readingTools(asked - reading, asked) : m.updated(ago(Date.now() - at, lang))
   return <span className="min-w-[10.5rem] text-right text-[0.9rem] text-ink-dim tabular-nums">{text}</span>
 }
 
 function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => void }) {
+  const m = useMessages(logsMessages)
   const name = useId()
   return (
     <fieldset className="inline-flex h-[2.8rem] items-center rounded-[0.45rem] border-0 bg-app-3 p-[3px]">
-      <legend className="sr-only">Time range</legend>
+      <legend className="sr-only">{m.timeRange}</legend>
       {RANGES.map((r) => (
         <label key={r.id} className="relative h-full">
           <input
@@ -526,7 +526,7 @@ function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => 
             className="peer sr-only"
           />
           <span className="grid h-full min-w-[3rem] cursor-pointer place-items-center rounded-[0.35rem] px-[0.7rem] font-mono text-[0.9rem] text-ink-soft transition-colors duration-150 hover:text-ink peer-checked:bg-app peer-checked:text-ink peer-checked:shadow-panel peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
-            {r.id === "all" ? "All" : `Last ${r.label}`}
+            {m.ranges[r.id]}
           </span>
         </label>
       ))}
@@ -537,11 +537,12 @@ function Range({ value, onChange }: { value: RangeId; onChange: (r: RangeId) => 
 const GROUPABLE: string[] = [CONVERSATION, ...FACETS, "cli_version"]
 
 function GroupBy({ value, onChange }: { value: string | null; onChange: (f: string | null) => void }) {
+  const m = useMessages(logsMessages)
   const id = useId()
   return (
     <div className="flex h-[2.8rem] items-center gap-[0.5rem]">
       <label htmlFor={id} className="shrink-0 whitespace-nowrap text-[0.95rem] text-ink-dim">
-        Group by
+        {m.groupBy}
       </label>
       <Select
         id={id}
@@ -549,10 +550,10 @@ function GroupBy({ value, onChange }: { value: string | null; onChange: (f: stri
         value={value ?? ""}
         onChange={(f) => onChange(f || null)}
         options={[
-          { value: "", label: "Nothing" },
+          { value: "", label: m.nothing },
           ...[...GROUPABLE, ...(value && !GROUPABLE.includes(value) ? [value] : [])].map((f) => ({
             value: f,
-            label: FACET_LABELS[f] ?? f,
+            label: fieldLabel(m, f),
           })),
         ]}
         className="min-w-[9rem]"

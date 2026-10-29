@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 import { type Session, sessionQuery } from "@/domain/agents"
 import { formatWhen, shortSession } from "@/domain/runs"
 import { TARGET_FOLDER } from "@/domain/skills"
-import { useMessages } from "@/i18n"
+import { useLang, useMessages } from "@/i18n"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
@@ -159,6 +159,7 @@ function OtherFixes({ view }: { view: AgentView }) {
 function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Session[] | null }) {
   const go = useNav((s) => s.go)
   const m = useMessages(agentsMessages)
+  const lang = useLang()
   if (sessions === null) return <Skeleton className="h-8 w-full" label={m.readingRunLogs} />
   if (sessions.length === 0) return <p className="text-[0.9rem] text-ink-soft">{m.noSessions(agent.name)}</p>
   const open = (s: Session) => {
@@ -171,7 +172,9 @@ function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Sessio
     <ul className={cx(box, "divide-y divide-line")}>
       {sessions.slice(0, 3).map((s) => (
         <li key={s.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-[0.9rem]">
-          <span className="w-[8.5rem] font-mono text-[0.9rem] tabular-nums">{formatWhen(s.last, new Date())}</span>
+          <span className="w-[8.5rem] font-mono text-[0.9rem] tabular-nums">
+            {formatWhen(s.last, new Date(), lang)}
+          </span>
           <span className="selectable font-mono text-[0.9rem] text-ink-soft" title={s.session ?? undefined}>
             {s.session ? shortSession(s.session) : m.noSessionId}
           </span>

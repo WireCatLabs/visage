@@ -2,6 +2,8 @@
 // Syntax, close to the WireCat search language: `status:failed cli_command:"tg chats*" -profile:work duration_ms:>1000`.
 // Terms are ANDed, except that several plain values of one field mean "any of them", so facet clicks add up.
 
+import type { Lang } from "@/i18n"
+
 export type Run = {
   tool: string
   run_id: string
@@ -19,7 +21,13 @@ export type Term =
   | { kind: "field"; field: string; value: string; op: Op; negate: boolean; start: number; end: number; raw: string }
   | { kind: "text"; value: string; negate: boolean; start: number; end: number; raw: string }
 
-export type QueryProblem = { start: number; end: number; message: string }
+/** What is wrong with a term, as a code and its values; the interface words it in the chosen language. */
+export type QueryProblem = { start: number; end: number } & (
+  | { code: "unclosed" }
+  | { code: "noValue"; field: string }
+  | { code: "notNumber"; op: Op; value: string }
+  | { code: "unknownField"; field: string }
+)
 export type Parsed = { terms: Term[]; problems: QueryProblem[] }
 
 /** The fields a facet column shows, in order. */
@@ -35,25 +43,6 @@ export const FACETS = [
   "error.class",
   "error.http.status",
 ] as const
-export const FACET_LABELS: Record<string, string> = {
-  tool: "Tool",
-  status: "Status",
-  cli_command: "Command",
-  command: "Subcommand",
-  error_code: "Error code",
-  profile: "Profile",
-  agent: "Agent",
-  session_id: "Agent session",
-  via: "Started through",
-  client: "App",
-  connection: "MCP connection",
-  trace_id: "Trace",
-  conversation: "Conversation",
-  "error.class": "Error class",
-  "error.http.status": "HTTP status",
-  cli_version: "Version",
-}
-
 // Short names for fields a run keeps nested; `valuesAt` reads them at their real path.
 const PATHS: Record<string, string> = {
   agent: "agent.kind",
@@ -90,7 +79,9 @@ const AGENT_NAMES: Record<string, string> = {
   openclaw: "OpenClaw",
   "mcp-client": "MCP app",
 }
-export const agentName = (kind: string) => AGENT_NAMES[kind] ?? kind
+/** `mcpApp` names an app that called over MCP without saying which, in the reader's language. */
+export const agentName = (kind: string, mcpApp?: string) =>
+  kind === "mcp-client" && mcpApp ? mcpApp : (AGENT_NAMES[kind] ?? kind)
 /** Enough of a session id to tell sessions apart in a column; the whole id is one click away. */
 export const shortSession = (id: string) => id.slice(0, 8)
 
@@ -177,8 +168,6 @@ export function orderRecord(record: Record<string, unknown>): Record<string, unk
 
 /** A `cli_command` that is the tool's name alone: it was started without a command it knows. */
 export const isBareCommand = (value: string) => value !== "" && !value.includes(" ")
-export const BARE_COMMAND_HINT = "The tool was started without a known command — often a typo or a missing profile."
-export const commandLabel = (value: string) => (isBareCommand(value) ? `${value} (no command)` : value)
 /** A field the runs do not carry: "true" when the tool was started without a command it knows. */
 export const NO_COMMAND = "no_command"
 /** The default query: runs with no command are mostly typos, noise next to the runs that did something. */
@@ -241,7 +230,7 @@ export function parseQuery(query: string): Parsed {
   for (const t of tokenize(query)) {
     const { raw, start, end } = t
     if (t.unclosed) {
-      problems.push({ start, end, message: "A quote is not closed." })
+      problems.push({ start, end, code: "unclosed" })
       continue
     }
     const negate = raw.startsWith("-") && raw.length > 1
@@ -254,11 +243,11 @@ export function parseQuery(query: string): Parsed {
       rest = rest.slice(op === "=" ? 0 : op.length)
       const value = unquote(rest)
       if (!value) {
-        problems.push({ start, end, message: `${name}: needs a value, like ${name}:something.` })
+        problems.push({ start, end, code: "noValue", field: name })
         continue
       }
       if (op !== "=" && Number.isNaN(Number(value))) {
-        problems.push({ start, end, message: `${op} compares numbers; "${value}" is not one.` })
+        problems.push({ start, end, code: "notNumber", op, value })
         continue
       }
       const field = ALIASES[name.toLowerCase()] ?? name.toLowerCase()
@@ -379,14 +368,6 @@ export function groupRuns(runs: Run[], field: string): Group[] {
   }
   return [...groups.values()].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
 }
-
-const VIA_NAMES: Record<string, string> = {
-  cli: "Terminal",
-  "mcp-stdio": "MCP on this computer",
-  "mcp-http": "MCP over the internet",
-  desktop: "WireCat Desktop",
-}
-export const viaName = (via: string) => VIA_NAMES[via] ?? via
 
 /** The app that called an MCP server, as it named itself; `id` is a hash of its login, never the login. */
 export type RunClient = { name: string; version?: Maybe<string>; id?: Maybe<string> }
@@ -561,7 +542,7 @@ export function toggleTerm(query: string, field: string, value: string, negate =
 export function unknownFields(parsed: Parsed, runs: Run[]): QueryProblem[] {
   return parsed.terms.flatMap((t) =>
     t.kind === "field" && runs.length > 0 && !runs.some((r) => valuesAt(r, t.field).length > 0)
-      ? [{ start: t.start, end: t.end, message: `No run has a field named ${t.field}.` }]
+      ? [{ start: t.start, end: t.end, code: "unknownField" as const, field: t.field }]
       : [],
   )
 }
@@ -581,10 +562,17 @@ export function inlineJson(value: unknown, width = 60): string | null {
   return text.length <= width ? text : null
 }
 
-export type Suggestion = { label: string; insert: string; hint: string }
+/** `hint` is a field's label or a value's count; null for a field with no label. */
+export type Suggestion = { label: string; insert: string; hint: string | null }
 export type Suggestions = { from: number; to: number; items: Suggestion[] }
 
-export function suggest(query: string, cursor: number, runs: Run[], fields: readonly string[]): Suggestions {
+export function suggest(
+  query: string,
+  cursor: number,
+  runs: Run[],
+  fields: readonly string[],
+  labels: Readonly<Record<string, string>> = {},
+): Suggestions {
   const tok = tokenize(query).find((t) => t.start <= cursor && cursor <= t.end)
   const from = tok?.start ?? cursor
   const to = tok?.end ?? cursor
@@ -596,7 +584,7 @@ export function suggest(query: string, cursor: number, runs: Run[], fields: read
     const prefix = body.toLowerCase()
     const items = fields
       .filter((f) => f.startsWith(prefix) && f !== prefix)
-      .map((f) => ({ label: `${f}:`, insert: `${negate}${f}:`, hint: FACET_LABELS[f] ?? "field" }))
+      .map((f) => ({ label: `${f}:`, insert: `${negate}${f}:`, hint: labels[f] ?? null }))
     return { from, to, items }
   }
   const field = ALIASES[body.slice(0, colon).toLowerCase()] ?? body.slice(0, colon).toLowerCase()
@@ -609,11 +597,11 @@ export function suggest(query: string, cursor: number, runs: Run[], fields: read
 }
 
 export const RANGES = [
-  { id: "1h", label: "1h", ms: 3_600_000 },
-  { id: "24h", label: "24h", ms: 86_400_000 },
-  { id: "7d", label: "7d", ms: 7 * 86_400_000 },
-  { id: "30d", label: "30d", ms: 30 * 86_400_000 },
-  { id: "all", label: "All", ms: Number.POSITIVE_INFINITY },
+  { id: "1h", ms: 3_600_000 },
+  { id: "24h", ms: 86_400_000 },
+  { id: "7d", ms: 7 * 86_400_000 },
+  { id: "30d", ms: 30 * 86_400_000 },
+  { id: "all", ms: Number.POSITIVE_INFINITY },
 ] as const
 export type RangeId = (typeof RANGES)[number]["id"]
 
@@ -647,21 +635,21 @@ export function formatDuration(ms: number | undefined): string {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0")
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const dayMonth = (d: Date, lang: Lang) => d.toLocaleString(lang, { day: "numeric", month: "short" })
 
-/** Local time: "14:05:12" today, "Yesterday 14:05", "3 Oct 14:05" otherwise. */
-export function formatWhen(iso: string, now: Date): string {
+/** Local time on a 24-hour clock: "14:05:12" today, "Yesterday 14:05", "Oct 3 14:05" otherwise, in `lang`. */
+export function formatWhen(iso: string, now: Date, lang: Lang): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const days = Math.round((day(now) - day(d)) / 86_400_000)
   if (days === 0) return `${hm}:${pad(d.getSeconds())}`
-  if (days === 1) return `Yesterday ${hm}`
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${hm}`
+  if (days === 1) {
+    const yesterday = new Intl.RelativeTimeFormat(lang, { numeric: "auto" }).format(-1, "day")
+    return `${yesterday.charAt(0).toLocaleUpperCase(lang)}${yesterday.slice(1)} ${hm}`
+  }
+  return `${dayMonth(d, lang)} ${hm}`
 }
 
-export const formatDay = (iso: string) => {
-  const d = new Date(iso)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
-}
+export const formatDay = (iso: string, lang: Lang) => dayMonth(new Date(iso), lang)

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { LogsPage } from "./LogsPage"
 import { timing, useLogs } from "./store"
@@ -186,6 +187,28 @@ describe("Logs", () => {
     const browser = screen.getByRole("rowgroup", { name: "claude-ai" })
     expect(within(browser).getAllByRole("row")[0]).toHaveTextContent(/MCP over the internet\s*from .+3 runs\s*1 failed/)
     expect(screen.getByRole("rowgroup", { name: "WireCat Desktop" })).toHaveTextContent(/1 run\s*1 failed/)
+  }, 15000)
+
+  it("speaks Russian: conversation headers count runs in Russian plural forms", async () => {
+    useLanguage.setState({ choice: "ru" })
+    const user = userEvent.setup()
+    render(<LogsPage />)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Прочитать заново" })).toBeEnabled(), {
+      timeout: 4000,
+    })
+
+    expect(screen.getByRole("heading", { name: "Журнал" })).toBeInTheDocument()
+    const keeping = screen.getByRole("region", { name: "Какие запуски хранит каждый инструмент" })
+    expect(
+      await within(keeping).findByRole("img", { name: "Telegram хранит успешные запуски 7 дней, неудачные 30 дней" }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("combobox", { name: "Группировка" }))
+    await user.click(screen.getByRole("option", { name: "Разговор" }))
+    const session = screen.getByRole("rowgroup", { name: "Claude Code, сеанс 5c0e9d41" })
+    expect(within(session).getAllByRole("row")[0]).toHaveTextContent(/MCP на этом компьютере · сеанс 5c0e9d41/)
+    expect(within(session).getAllByRole("row")[0]).toHaveTextContent(/3 запуска\s*с ошибкой: 1/)
+    expect(screen.getByRole("rowgroup", { name: "WireCat Desktop" })).toHaveTextContent(/1 запуск\s*с ошибкой: 1/)
   }, 15000)
 
   it("shows a run's requests as lines, with the retry, the wait and the steps not kept marked", async () => {
@@ -375,7 +398,7 @@ describe("Logs live", () => {
     await waitFor(() => expect(calls).toBeGreaterThanOrEqual(perRound * 3), { timeout: 4000 })
     // One read per tool at most at any moment: a second round never starts while one is running.
     expect(most).toBeLessThanOrEqual(tools.size)
-    expect(screen.getByText(/^Updated \d+ s ago$/)).toBeInTheDocument()
+    expect(screen.getByText(/^Updated \d+ sec\. ago$/)).toBeInTheDocument()
 
     let visibility = "hidden"
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility })

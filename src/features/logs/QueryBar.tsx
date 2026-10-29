@@ -1,12 +1,14 @@
 import { ExternalLink, Search, X } from "lucide-react"
 import { type KeyboardEvent, useId, useMemo, useRef, useState } from "react"
-import { FACET_LABELS, type Parsed, type QueryProblem, type Run, type Suggestion, suggest } from "@/domain/runs"
+import { type Parsed, type QueryProblem, type Run, type Suggestion, suggest } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { cx } from "@/ui/cx"
-import { LOGS_DOCS } from "./names"
+import { logsMessages } from "./messages"
+import { LOGS_DOCS, problemText } from "./names"
 
 const FIELDS = [
-  ...Object.keys(FACET_LABELS),
+  ...Object.keys(logsMessages.en.fields),
   "run_id",
   "operations",
   "codes",
@@ -29,6 +31,7 @@ type Props = {
 }
 
 export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
+  const m = useMessages(logsMessages)
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const mirror = useRef<HTMLDivElement>(null)
@@ -36,7 +39,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
 
-  const suggestions = useMemo(() => suggest(query, cursor, runs, FIELDS), [query, cursor, runs])
+  const suggestions = useMemo(() => suggest(query, cursor, runs, FIELDS, m.fields), [query, cursor, runs, m])
   const showList = open && suggestions.items.length > 0
 
   const accept = (s: Suggestion) => {
@@ -100,7 +103,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
         <input
           ref={input}
           role="combobox"
-          aria-label="Search runs"
+          aria-label={m.searchRuns}
           aria-autocomplete="list"
           aria-expanded={showList}
           aria-controls={`${id}-list`}
@@ -110,7 +113,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
           spellCheck={false}
           autoComplete="off"
           value={query}
-          placeholder="status:failed command:sync* -profile:work timeout"
+          placeholder={m.placeholder}
           onChange={(e) => {
             onChange(e.target.value)
             setOpen(true)
@@ -132,8 +135,8 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
               onChange("")
               input.current?.focus()
             }}
-            aria-label="Clear the search"
-            title="Clear"
+            aria-label={m.clearSearch}
+            title={m.clear}
             className="absolute right-[0.45rem] grid size-[1.9rem] place-items-center rounded-[0.3rem] text-ink-dim hover:bg-app-3 hover:text-ink"
           >
             <X className="size-[0.95rem]" aria-hidden />
@@ -144,7 +147,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
         <div
           id={`${id}-list`}
           role="listbox"
-          aria-label="Suggestions"
+          aria-label={m.suggestions}
           className="absolute top-[calc(100%+0.3rem)] left-0 z-20 max-h-[18rem] w-[min(26rem,100%)] overflow-y-auto rounded-[0.45rem] border border-line bg-app p-1 shadow-panel"
         >
           {suggestions.items.map((s, i) => (
@@ -165,23 +168,21 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
               )}
             >
               <span className="truncate font-mono text-[0.95rem] text-ink">{s.label}</span>
-              <span className="shrink-0 text-[0.9rem] text-ink-dim tabular-nums">{s.hint}</span>
+              <span className="shrink-0 text-[0.9rem] text-ink-dim tabular-nums">{s.hint ?? m.fieldHint}</span>
             </div>
           ))}
         </div>
       )}
       <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.9rem]">
         <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={problem ? "text-bad" : "text-ink-dim"}>
-          {problem
-            ? problem.message
-            : "field:value to filter, * matches anything, a leading - excludes. Two values of one field match either."}
+          {problem ? problemText(m, problem) : m.searchHint}
         </p>
         <button
           type="button"
           onClick={() => platform.openUrl(LOGS_DOCS)}
           className="inline-flex shrink-0 items-center gap-[0.2rem] font-medium text-brand hover:text-brand-hover"
         >
-          Search syntax
+          {m.searchSyntax}
           <ExternalLink className="size-[0.8rem]" aria-hidden />
         </button>
       </div>

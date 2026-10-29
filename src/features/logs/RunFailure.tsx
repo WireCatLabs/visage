@@ -1,21 +1,24 @@
 import { ChevronRight } from "lucide-react"
 import { type ReactNode, useId, useState } from "react"
 import type { RunError } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import { Collapse } from "@/ui/Collapse"
 import { cx } from "@/ui/cx"
+import { logsMessages } from "./messages"
 
 /** What the tool recorded about how the run failed, before anything else in the run. */
 export function RunFailure({ error, action }: { error: RunError; action?: ReactNode }) {
+  const m = useMessages(logsMessages)
   const { http, provider, causes } = error
   const request = http && [http.method, http.endpoint].filter(Boolean).join(" ")
   return (
     <section
-      aria-label="What went wrong"
+      aria-label={m.whatWentWrong}
       className="flex flex-col gap-[0.7rem] rounded-[0.2rem] border border-bad/40 bg-bad/10 px-[1rem] py-[0.8rem]"
     >
       <div className="flex flex-col gap-[0.3rem]">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-[0.9rem] font-medium text-ink-dim">What went wrong</h4>
+          <h4 className="text-[0.9rem] font-medium text-ink-dim">{m.whatWentWrong}</h4>
           {action}
         </div>
         <p className="flex flex-wrap items-baseline gap-x-[0.6rem] gap-y-1">
@@ -26,20 +29,20 @@ export function RunFailure({ error, action }: { error: RunError; action?: ReactN
       </div>
       <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-[1rem] gap-y-[0.35rem] text-[0.9rem]">
         {request && (
-          <Fact term="Request">
+          <Fact term={m.request}>
             {request}
             {http?.status !== undefined && <span className="pl-[0.6rem] font-medium text-bad">{http.status}</span>}
           </Fact>
         )}
-        {!request && http?.status !== undefined && <Fact term="HTTP status">{http.status}</Fact>}
-        {error.operation && <Fact term="Operation">{error.operation}</Fact>}
+        {!request && http?.status !== undefined && <Fact term={m.httpStatus}>{http.status}</Fact>}
+        {error.operation && <Fact term={m.operation}>{error.operation}</Fact>}
         {provider && (
-          <Fact term="Service refused">
-            {[provider.key, provider.code === undefined ? null : `code ${provider.code}`].filter(Boolean).join(" · ")}
+          <Fact term={m.serviceRefused}>
+            {[provider.key, provider.code === undefined ? null : m.code(provider.code)].filter(Boolean).join(" · ")}
           </Fact>
         )}
         {causes.length > 0 && (
-          <Fact term={causes.length === 1 ? "Caused by" : "Causes"}>
+          <Fact term={causes.length === 1 ? m.causedBy : m.causes}>
             <ol className="flex flex-col gap-[0.2rem]">
               {causes.map((c, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: a cause chain has no id and never reorders
@@ -67,6 +70,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
 }
 
 function Stack({ frames }: { frames: string[] }) {
+  const m = useMessages(logsMessages)
   const [open, setOpen] = useState(false)
   const id = useId()
   return (
@@ -82,7 +86,7 @@ function Stack({ frames }: { frames: string[] }) {
           aria-hidden
           className={cx("size-[0.9rem] transition-transform duration-150", open && "rotate-90")}
         />
-        Where in the tool · {frames.length} {frames.length === 1 ? "frame" : "frames"}
+        {m.whereInTool(frames.length)}
       </button>
       <Collapse open={open} id={id} className="pt-[0.35rem]">
         <ol className="selectable overflow-x-auto rounded-[0.45rem] border border-line bg-app px-[0.8rem] py-[0.5rem] font-mono text-[0.85rem] text-ink-soft">

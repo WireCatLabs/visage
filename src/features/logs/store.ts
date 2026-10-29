@@ -36,7 +36,8 @@ export type Detail = { state: "loading" | "ready" | "error"; item: RunDetail["it
  */
 export type Keeping =
   | { state: "loading" }
-  | { state: "error"; error: string }
+  /** `error` null: the tool reports no `record` setting at all. */
+  | { state: "error"; error: string | null }
   | {
       state: "ready"
       record: boolean
@@ -217,7 +218,7 @@ export const useLogs = create<LogsState>((set, get) => {
         if (f.state !== "loading") return [f.id, f]
         const s = base[f.id] ?? f
         const a = answers[f.id]
-        if (!a) return [f.id, { ...s, state: "late", error: `did not answer in ${timing.answer / 1000} s` }]
+        if (!a) return [f.id, { ...s, state: "late", error: null }]
         if (a.state !== "ready" || !(live && s.pages > 1)) return [f.id, { ...s, ...a }]
         return [f.id, { ...s, ...a, runs: withOlder(a.runs ?? [], s.runs), pages: s.pages, hasMore: s.hasMore }]
       }),
@@ -233,7 +234,7 @@ export const useLogs = create<LogsState>((set, get) => {
       const days = rows.find((r) => r.key === "keep_runs_for_days")?.value
       const success = rows.find((r) => r.key === "keep_successful_runs_for_days")
       if (!record) {
-        keep(id, { state: "error", error: "The tool does not report a record setting." })
+        keep(id, { state: "error", error: null })
         return
       }
       keep(id, {

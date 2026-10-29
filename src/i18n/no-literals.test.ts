@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest"
 const PENDING = [
   "src/features/about",
   "src/features/config",
-  "src/features/logs",
   "src/features/onboarding",
   "src/features/report",
   "src/features/signin",

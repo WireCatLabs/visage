@@ -1,9 +1,14 @@
-import { FACET_LABELS, formatWhen, type Group } from "@/domain/runs"
+import { formatWhen, type Group } from "@/domain/runs"
+import { useLang, useMessages } from "@/i18n"
 import { ValueLabel, valueTitle } from "./Facets"
+import { logsMessages } from "./messages"
+import { fieldLabel } from "./names"
 
 type Props = { field: string; groups: Group[]; now: Date; onPick: (value: string) => void }
 
 export function Groups({ field, groups, now, onPick }: Props) {
+  const m = useMessages(logsMessages)
+  const lang = useLang()
   const max = groups[0]?.count ?? 1
   return (
     <table className="w-full table-fixed border-collapse text-[0.95rem]">
@@ -16,13 +21,13 @@ export function Groups({ field, groups, now, onPick }: Props) {
       </colgroup>
       <thead>
         <tr className="border-line-strong border-b text-left text-[0.9rem] text-ink-dim">
-          <th className="py-[0.55rem] pl-[1.3rem] font-medium">{FACET_LABELS[field] ?? field}</th>
+          <th className="py-[0.55rem] pl-[1.3rem] font-medium">{fieldLabel(m, field)}</th>
           <th className="font-medium">
-            <span className="sr-only">Share</span>
+            <span className="sr-only">{m.share}</span>
           </th>
-          <th className="pr-[0.9rem] text-right font-medium">Runs</th>
-          <th className="pr-[0.9rem] text-right font-medium">Failed</th>
-          <th className="pr-[1.3rem] font-medium">Latest</th>
+          <th className="pr-[0.9rem] text-right font-medium">{m.runs}</th>
+          <th className="pr-[0.9rem] text-right font-medium">{m.failed}</th>
+          <th className="pr-[1.3rem] font-medium">{m.latest}</th>
         </tr>
       </thead>
       <tbody>
@@ -33,7 +38,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
                 type="button"
                 disabled={g.value === ""}
                 onClick={() => onPick(g.value)}
-                title={g.value === "" ? "Runs without this field" : `Show only ${valueTitle(field, g.value)}`}
+                title={g.value === "" ? m.withoutField : m.showOnly(valueTitle(m, field, g.value))}
                 className="flex w-full min-w-0 items-center rounded-[0.3rem] px-[0.5rem] py-[0.3rem] text-left hover:bg-app-3 disabled:pointer-events-none"
               >
                 <ValueLabel field={field} value={g.value} />
@@ -50,7 +55,7 @@ export function Groups({ field, groups, now, onPick }: Props) {
             <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] tabular-nums">{g.count}</td>
             <td className="pr-[0.9rem] text-right font-mono text-[0.95rem] text-ink-soft tabular-nums">{g.failed}</td>
             <td className="truncate pr-[1.3rem] font-mono text-[0.9rem] text-ink-soft tabular-nums">
-              {formatWhen(g.last, now)}
+              {formatWhen(g.last, now, lang)}
             </td>
           </tr>
         ))}

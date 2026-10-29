@@ -1,6 +1,6 @@
 import type { CatalogTool } from "@/domain/catalog"
 import { formatWhen, shortSession } from "@/domain/runs"
-import { useMessages } from "@/i18n"
+import { useLang, useMessages } from "@/i18n"
 import type { Claim } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { ErrorNotice } from "@/ui/ErrorNotice"
@@ -17,6 +17,7 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
   const busy = useConnect((s) => s.busy[key] === true)
   const failure = useConnect((s) => s.failures[key])
   const m = useMessages(agentsMessages)
+  const lang = useLang()
   return (
     <li className="px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.9rem]">
@@ -29,7 +30,7 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
             {shortSession(c.session)}
           </span>
         )}
-        {c.claim.until && <span className="text-ink-soft">{m.until(formatWhen(c.claim.until, new Date()))}</span>}
+        {c.claim.until && <span className="text-ink-soft">{m.until(formatWhen(c.claim.until, new Date(), lang))}</span>}
         <Button
           size="sm"
           variant="danger"

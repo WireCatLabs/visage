@@ -12,25 +12,24 @@ import { Fragment } from "react"
 import {
   agentName,
   agentOf,
-  BARE_COMMAND_HINT,
   type Conversation,
   clientOf,
-  commandLabel,
   formatDuration,
   formatWhen,
   isBareCommand,
   type Run,
   shortSession,
   statusTone,
-  viaName,
 } from "@/domain/runs"
+import { formatDate, useLang, useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { selectsTextIn } from "@/ui/selection"
 import { TextButton } from "@/ui/TextButton"
 import { ToolIcon } from "../tools/ToolIcon"
-import { toolName } from "./names"
+import { logsMessages } from "./messages"
+import { commandLabel, type LogsWords, toolName, viaName } from "./names"
 import { RunDetail } from "./RunDetail"
 import { type Detail, runKey } from "./store"
 
@@ -55,18 +54,19 @@ type Props = {
 const commandOf = (run: Run) => (typeof run.cli_command === "string" ? run.cli_command : run.command)
 
 function CommandCell({ value, unknown }: { value: string; unknown: string | null }) {
+  const m = useMessages(logsMessages)
   const bare = isBareCommand(value)
   const typed = unknown && unknown !== "[redacted]" ? unknown : null
   return (
     <td
       className="truncate font-mono text-[0.95rem] font-medium group-hover:text-brand"
-      title={bare ? `${typed ? `It did not know "${typed}". ` : ""}${BARE_COMMAND_HINT}` : value}
+      title={bare ? [typed && m.didNotKnow(typed), m.bareHint].filter(Boolean).join(" ") : value}
     >
       {value}
       {bare && (
         <span className="font-normal font-sans text-ink-dim">
           {" "}
-          (no command{typed && <span className="font-mono"> {typed}</span>})
+          {typed ? m.noCommandTyped(<span className="font-mono">{typed}</span>) : m.noCommand}
         </span>
       )}
     </td>
@@ -74,10 +74,12 @@ function CommandCell({ value, unknown }: { value: string; unknown: string | null
 }
 
 function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] }) {
+  const m = useMessages(logsMessages)
   const agent = agentOf(run)
   if (!agent) return <td className="text-ink-dim">—</td>
   // A browser app has no session of its own to show; the name it gave says who it is.
-  const shown = agent.kind === "mcp-client" ? (clientOf(run)?.name ?? agentName(agent.kind)) : agentName(agent.kind)
+  const shown =
+    agent.kind === "mcp-client" ? (clientOf(run)?.name ?? agentName(agent.kind, m.mcpApp)) : agentName(agent.kind)
   const [field, value] = agent.session ? ["session_id", agent.session] : ["agent", agent.kind]
   return (
     <td className="pr-[0.6rem]">
@@ -86,7 +88,7 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
           e.stopPropagation()
           onFilter(field, value, false)
         }}
-        title={agent.session ? `Only runs of session ${agent.session}` : `Only runs ${shown} started`}
+        title={agent.session ? m.onlySession(agent.session) : m.onlyStartedBy(shown)}
         className="flex max-w-full min-w-0 items-baseline gap-[0.4rem] rounded-[0.3rem] text-left hover:text-brand"
       >
         <span className="truncate">{shown}</span>
@@ -100,20 +102,15 @@ function AgentCell({ run, onFilter }: { run: Run; onFilter: Props["onFilter"] })
   )
 }
 
-const STATUS_WORD: Record<string, string> = {
-  success: "Succeeded",
-  failed: "Failed",
-  partial: "Partial",
-  running: "Running",
-}
+const FULL: Intl.DateTimeFormatOptions = { dateStyle: "full", timeStyle: "long" }
 
 const CHAT_KINDS = new Set(["hermes-agent", "openclaw"])
 
 /** Who held the conversation: the agent, else the app that called, else how the runs were started. */
-export function conversationTitle(c: Conversation): string {
-  if (c.agent === "mcp-client" || (!c.agent && c.client)) return c.client?.name ?? agentName("mcp-client")
-  if (c.agent) return agentName(c.agent)
-  return c.via ? viaName(c.via) : "Not in a conversation"
+export function conversationTitle(m: LogsWords, c: Conversation): string {
+  if (c.agent === "mcp-client" || (!c.agent && c.client)) return c.client?.name ?? m.mcpApp
+  if (c.agent) return agentName(c.agent, m.mcpApp)
+  return c.via ? viaName(m, c.via) : m.notInConversation
 }
 
 function WhoIcon({ c }: { c: Conversation }) {
@@ -131,30 +128,32 @@ function WhoIcon({ c }: { c: Conversation }) {
 }
 
 function ConversationRow({ conversation: c, now }: { conversation: Conversation; now: Date }) {
+  const m = useMessages(logsMessages)
+  const lang = useLang()
   // Claude Code calls itself "claude-code" over MCP; repeating it next to its name says nothing.
   const client = c.client && c.agent !== "mcp-client" && c.client.name !== c.agent ? c.client.name : null
   const details = [
     client,
-    c.via && (c.agent || c.client) ? viaName(c.via) : null,
-    c.session ? `session ${shortSession(c.session)}` : null,
+    c.via && (c.agent || c.client) ? viaName(m, c.via) : null,
+    c.session ? m.session(shortSession(c.session)) : null,
   ].filter(Boolean)
   return (
     <tr className="h-[2.6rem] border-line-strong border-b bg-app-2/70">
       <td colSpan={9} className="pl-[0.8rem]">
         <span className="flex min-w-0 items-center gap-[0.55rem] text-[0.9rem]">
           {c.key ? <WhoIcon c={c} /> : <span className="size-[1rem] shrink-0" />}
-          <span className="truncate font-medium">{conversationTitle(c)}</span>
+          <span className="truncate font-medium">{conversationTitle(m, c)}</span>
           {details.length > 0 && <span className="truncate text-ink-dim">{details.join(" · ")}</span>}
           <span className="ml-auto flex shrink-0 items-baseline gap-[1.1rem] text-[0.9rem] text-ink-soft">
             {c.key && (
-              <span className="font-mono tabular-nums" title={new Date(c.first).toString()}>
-                from {formatWhen(c.first, now)}
+              <span className="font-mono tabular-nums" title={formatDate(c.first, FULL, lang)}>
+                {m.from(formatWhen(c.first, now, lang))}
               </span>
             )}
-            <span className="tabular-nums">
-              {c.runs.length} {c.runs.length === 1 ? "run" : "runs"}
+            <span className="tabular-nums">{m.runsN(c.runs.length)}</span>
+            <span className={cx("tabular-nums", c.failed > 0 ? "text-bad" : "text-ink-dim")}>
+              {m.failedN(c.failed)}
             </span>
-            <span className={cx("tabular-nums", c.failed > 0 ? "text-bad" : "text-ink-dim")}>{c.failed} failed</span>
           </span>
         </span>
       </td>
@@ -176,6 +175,8 @@ export function RunsTable({
   onFilter,
   onGroup,
 }: Props) {
+  const m = useMessages(logsMessages)
+  const lang = useLang()
   const row = (run: Run) => {
     const key = runKey(run)
     const open = expanded === key
@@ -195,7 +196,10 @@ export function RunsTable({
             <button
               type="button"
               aria-expanded={open}
-              aria-label={`${open ? "Hide" : "Show"} run ${commandLabel(commandOf(run))} at ${formatWhen(run.started_at, now)}`}
+              aria-label={(open ? m.hideRun : m.showRun)(
+                commandLabel(m, commandOf(run)),
+                formatWhen(run.started_at, now, lang),
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 onToggle(key, run)
@@ -210,9 +214,9 @@ export function RunsTable({
           </td>
           <td
             className="font-mono text-[0.9rem] text-ink-soft tabular-nums"
-            title={new Date(run.started_at).toString()}
+            title={formatDate(run.started_at, FULL, lang)}
           >
-            {formatWhen(run.started_at, now)}
+            {formatWhen(run.started_at, now, lang)}
           </td>
           <td>
             <span className="flex min-w-0 items-center gap-[0.4rem]">
@@ -230,7 +234,7 @@ export function RunsTable({
             <span className="flex items-center gap-[0.45rem]">
               <Lamp tone={statusTone(run.status)} size="sm" />
               <span className={cx(run.status === "partial" && "text-warn-ink")}>
-                {STATUS_WORD[run.status] ?? run.status}
+                {m.statuses[run.status] ?? run.status}
               </span>
             </span>
           </td>
@@ -270,15 +274,15 @@ export function RunsTable({
         </colgroup>
         <thead>
           <tr className="border-line-strong border-b text-left text-[0.9rem] text-ink-dim">
-            <th className="sr-only">Details</th>
+            <th className="sr-only">{m.details}</th>
             <th aria-sort={newest ? "descending" : "ascending"} className="py-[0.55rem] font-medium">
               <button
                 type="button"
                 onClick={onSort}
                 className="inline-flex items-center gap-1 rounded-[0.3rem] hover:text-ink"
-                title={newest ? "Newest first" : "Oldest first"}
+                title={newest ? m.newestFirst : m.oldestFirst}
               >
-                Time
+                {m.time}
                 {newest ? (
                   <ArrowDown className="size-[0.85rem]" aria-hidden />
                 ) : (
@@ -286,20 +290,20 @@ export function RunsTable({
                 )}
               </button>
             </th>
-            <th className="font-medium">Tool</th>
-            <th className="font-medium">Profile</th>
-            <th className="font-medium">Command</th>
-            <th className="font-medium">Agent</th>
-            <th className="font-medium">Status</th>
-            <th className="pr-[1rem] text-right font-medium">Took</th>
-            <th className="pr-[1.3rem] font-medium">Error code</th>
+            <th className="font-medium">{m.tool}</th>
+            <th className="font-medium">{m.profile}</th>
+            <th className="font-medium">{m.command}</th>
+            <th className="font-medium">{m.agent}</th>
+            <th className="font-medium">{m.status}</th>
+            <th className="pr-[1rem] text-right font-medium">{m.took}</th>
+            <th className="pr-[1.3rem] font-medium">{m.errorCode}</th>
           </tr>
         </thead>
         {sections ? (
           sections.map((c) => (
             <tbody
               key={c.key || "none"}
-              aria-label={`${conversationTitle(c)}${c.session ? `, session ${shortSession(c.session)}` : ""}`}
+              aria-label={m.conversationLabel(conversationTitle(m, c), c.session ? shortSession(c.session) : null)}
             >
               <ConversationRow conversation={c} now={now} />
               {c.runs.map(row)}
@@ -313,7 +317,7 @@ export function RunsTable({
               <tr key={i} className="h-[2.6rem] border-line border-b">
                 <td colSpan={9} className="px-[1.3rem]">
                   {i === 0 ? (
-                    <Skeleton className="h-[1.3rem] w-full" label="Loading runs" />
+                    <Skeleton className="h-[1.3rem] w-full" label={m.loadingRuns} />
                   ) : (
                     <Skeleton className="h-[1.3rem] w-full" />
                   )}

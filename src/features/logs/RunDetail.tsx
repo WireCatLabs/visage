@@ -11,8 +11,8 @@ import {
   orderRecord,
   type Run,
   stepOf,
-  viaName,
 } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import type { RunEvent } from "@/platform/runs-schemas"
 import { CopyField } from "@/ui/CopyField"
 import { cx } from "@/ui/cx"
@@ -23,7 +23,8 @@ import { Skeleton } from "@/ui/Skeleton"
 import { TextButton } from "@/ui/TextButton"
 import { ReportThis } from "../report/ReportThis"
 import { CopyValue, type FieldOf, JsonTree } from "./JsonTree"
-import { toolName } from "./names"
+import { logsMessages } from "./messages"
+import { type LogsWords, toolName, viaName } from "./names"
 import { RunFailure } from "./RunFailure"
 import type { Detail } from "./store"
 
@@ -41,35 +42,18 @@ const runField: FieldOf = (path) => {
 const eventField: FieldOf = (path) =>
   path.length === 1 ? ({ operation: "operations", error_code: "codes" }[path[0] as string] ?? null) : null
 
-// What cli-core's log events mean (cli-core src/runs/log-events.ts), worded for the owner.
-const EVENT_MEANINGS: Record<string, string> = {
-  "provider.request": "A request went to the service",
-  "provider.response": "The service answered the request, or it failed",
-  "client.warning": "The tool noticed something unexpected and went on",
-  "cache.answered": "Answered from what the tool already kept, without asking the service",
-  "command.crashed": "The command failed on a bug in the tool",
-  "send.recorded": "A message the tool sent, and how it ended",
-  "job.start": "A background job started",
-  "job.exit": "A background job ended",
-  "schedule.start": "A scheduled run started",
-  "schedule.exit": "A scheduled run ended",
-  "agent.action": "One action an AI agent asked the tool for",
-  "events.dropped": "The run had more steps than the tool keeps; it counted the rest without keeping them",
-}
-
-function noSteps(run: Run, service: string): string {
+function noSteps(m: LogsWords, run: Run, service: string): string {
   const n = typeof run.requests === "number" ? run.requests : null
-  if (run.status === "success")
-    return "The run succeeded, and for a success the tool keeps only this summary, not its steps."
-  if (n === 0) return `The tool stopped before contacting ${service}, so there are no steps to show.`
-  if (n !== null)
-    return `The tool made ${n} ${n === 1 ? "request" : "requests"} to ${service} but did not log them as steps.`
-  return "The tool logged no steps for this run."
+  if (run.status === "success") return m.succeededSummary
+  if (n === 0) return m.stoppedBefore(service)
+  if (n !== null) return m.requestsNotLogged(n, service)
+  return m.noStepsLogged
 }
 
 type Props = { run: Run; detail: Detail | undefined; onFilter: Filter; onGroup: (field: string) => void }
 
 export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
+  const m = useMessages(logsMessages)
   const { tool: _, cli_command: __, conversation: ___, ...summary } = run
   const item = detail?.item ?? null
   const { events = [], ...rest } = item ?? { ...summary, events: undefined }
@@ -97,53 +81,50 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
       )}
       <div className="flex flex-wrap items-center gap-x-[1.2rem] gap-y-2">
         <div className="min-w-[16rem] flex-1">
-          <CopyField value={run.run_id} label="Copy run id" />
+          <CopyField value={run.run_id} label={m.copyRunId} />
         </div>
         <Facts run={run} />
       </div>
       {line && <CommandLine run={run} line={line} onFilter={onFilter} />}
 
-      <section aria-label="Steps" className="flex flex-col gap-[0.5rem]">
+      <section aria-label={m.steps} className="flex flex-col gap-[0.5rem]">
         <div>
           <h4 className="text-[0.9rem] font-medium text-ink-dim">
-            Steps{item ? ` · ${item.event_count ?? events.length}` : ""}
-            {typeof run.events_dropped === "number" && run.events_dropped > 0
-              ? `, ${run.events_dropped} more not kept`
-              : ""}
+            {m.stepsHeading(
+              item ? (item.event_count ?? events.length) : null,
+              typeof run.events_dropped === "number" && run.events_dropped > 0 ? run.events_dropped : null,
+            )}
           </h4>
-          <p className="text-[0.9rem] text-ink-dim">
-            Each request the tool sent to {service} (→) and its answer (←), plus notable moments: a warning, an answer
-            from what it already kept, a crash. A retry and the wait before it are marked.
-          </p>
+          <p className="text-[0.9rem] text-ink-dim">{m.stepsHelp(service)}</p>
         </div>
-        {detail?.state === "loading" && <Skeleton className="h-[4.5rem] w-full" label="Reading this run" />}
+        {detail?.state === "loading" && <Skeleton className="h-[4.5rem] w-full" label={m.readingRun} />}
         {detail?.state === "error" && (
           <ErrorNotice
             action={<ReportThis what="Reading a run's details" tool={run.tool} error={detail.error ?? ""} />}
           >
-            Could not read this run: {detail.error}
+            {m.couldNotReadRun(detail.error ?? "")}
           </ErrorNotice>
         )}
         {detail?.state === "ready" &&
           (events.length === 0 ? (
             <p className="text-[0.95rem] text-ink-soft">
-              {noSteps(run, service)} The record below is everything the tool kept about this run.
+              {noSteps(m, run, service)} {m.recordBelow}
             </p>
           ) : (
             <Events events={events} onFilter={onFilter} onGroup={onGroup} />
           ))}
       </section>
 
-      <section aria-label="Run record" className="flex flex-col gap-[0.5rem]">
+      <section aria-label={m.runRecord} className="flex flex-col gap-[0.5rem]">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-[0.9rem] font-medium text-ink-dim">Run record</h4>
+          <h4 className="text-[0.9rem] font-medium text-ink-dim">{m.runRecord}</h4>
           <span className="flex items-center gap-1 text-[0.9rem] text-ink-dim">
-            Copy JSON
-            <CopyValue value={json} label="Copy the run as JSON" />
+            {m.copyJson}
+            <CopyValue value={json} label={m.copyRunJson} />
           </span>
         </div>
         <div className="overflow-x-auto rounded-[0.45rem] border border-line bg-app py-[0.6rem] pr-[0.6rem] pl-[1.5rem]">
-          <JsonTree value={record} fieldOf={runField} onFilter={onFilter} onGroup={onGroup} label="Run record" />
+          <JsonTree value={record} fieldOf={runField} onFilter={onFilter} onGroup={onGroup} label={m.runRecord} />
         </div>
       </section>
     </div>
@@ -151,52 +132,52 @@ export function RunDetail({ run, detail, onFilter, onGroup }: Props) {
 }
 
 function CommandLine({ run, line, onFilter }: { run: Run; line: string; onFilter: Filter }) {
+  const m = useMessages(logsMessages)
   const agent = agentOf(run)
   const client = clientOf(run)
-  const via = typeof run.via === "string" && run.via !== "cli" ? viaName(run.via) : null
+  const via = typeof run.via === "string" && run.via !== "cli" ? viaName(m, run.via) : null
   return (
-    <section aria-label="Command line" className="flex flex-col gap-[0.4rem]">
-      <h4 className="text-[0.9rem] font-medium text-ink-dim">Command line</h4>
-      <CopyField value={line} label="Copy the command line" />
+    <section aria-label={m.commandLine} className="flex flex-col gap-[0.4rem]">
+      <h4 className="text-[0.9rem] font-medium text-ink-dim">{m.commandLine}</h4>
+      <CopyField value={line} label={m.copyCommandLine} />
       <p className="text-[0.9rem] text-ink-dim">
-        {agent ? (
+        {agent && (
           <>
-            Started by{" "}
-            <button
-              type="button"
-              onClick={() => onFilter("agent", agent.kind, false)}
-              className="font-medium text-ink-soft hover:text-brand"
-            >
-              {agent.kind === "mcp-client" && client ? client.name : agentName(agent.kind)}
-            </button>
-            {client && agent.kind !== "mcp-client" && <> through {client.name}</>}
-            {via && <> ({via})</>}
-            {agent.session && (
-              <>
-                {" "}
-                in session{" "}
+            {m.startedBy({
+              agent: (
+                <button
+                  type="button"
+                  onClick={() => onFilter("agent", agent.kind, false)}
+                  className="font-medium text-ink-soft hover:text-brand"
+                >
+                  {agent.kind === "mcp-client" && client ? client.name : agentName(agent.kind, m.mcpApp)}
+                </button>
+              ),
+              client: client && agent.kind !== "mcp-client" ? client.name : null,
+              via,
+              session: agent.session && (
                 <TextButton
                   onClick={() => onFilter("session_id", agent.session as string, false)}
-                  title="Show only this session's runs"
+                  title={m.onlyThisSession}
                   className="selectable font-mono text-ink-soft hover:text-brand"
                 >
                   {agent.session}
                 </TextButton>
-              </>
-            )}
-            .{" "}
+              ),
+            })}{" "}
           </>
-        ) : null}
-        The tool masked every value that could be message text or personal data.
+        )}
+        {m.masked}
       </p>
     </section>
   )
 }
 
 function Facts({ run }: { run: Run }) {
+  const m = useMessages(logsMessages)
   const facts = [
     run.cli_version ? `${findTool(run.tool)?.bin ?? run.tool} ${String(run.cli_version)}` : null,
-    typeof run.requests === "number" ? `${run.requests} ${run.requests === 1 ? "request" : "requests"}` : null,
+    typeof run.requests === "number" ? m.requests(run.requests) : null,
     run.duration_ms !== undefined ? formatDuration(run.duration_ms) : null,
     [run.runtime, run.platform, run.arch].filter(Boolean).join(" · ") || null,
   ].filter(Boolean)
@@ -225,6 +206,7 @@ const clock = (iso: unknown) => {
 
 function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: string) => void }) {
   const { events, onFilter, onGroup } = props
+  const m = useMessages(logsMessages)
   const [open, setOpen] = useState<number | null>(null)
   return (
     <div className="overflow-x-auto rounded-[0.45rem] border border-line bg-app">
@@ -239,12 +221,12 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
         </colgroup>
         <thead>
           <tr className="text-left text-[0.9rem] text-ink-dim">
-            <th className="sr-only">Details</th>
-            <th className="py-[0.4rem] font-medium">Time</th>
-            <th className="font-medium">Step</th>
-            <th className="font-medium">Details</th>
-            <th className="font-medium">Outcome</th>
-            <th className="pr-[0.8rem] text-right font-medium">Took</th>
+            <th className="sr-only">{m.details}</th>
+            <th className="py-[0.4rem] font-medium">{m.time}</th>
+            <th className="font-medium">{m.step}</th>
+            <th className="font-medium">{m.details}</th>
+            <th className="font-medium">{m.outcome}</th>
+            <th className="pr-[0.8rem] text-right font-medium">{m.took}</th>
           </tr>
         </thead>
         <tbody>
@@ -262,7 +244,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
                     <button
                       type="button"
                       aria-expanded={isOpen}
-                      aria-label={`Step ${i + 1} details`}
+                      aria-label={m.stepDetails(i + 1)}
                       onClick={(ev) => {
                         ev.stopPropagation()
                         setOpen(isOpen ? null : i)
@@ -292,7 +274,7 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
                         fieldOf={eventField}
                         onFilter={onFilter}
                         onGroup={onGroup}
-                        label={`Step ${i + 1}`}
+                        label={m.stepN(i + 1)}
                       />
                     </td>
                   </tr>
@@ -309,12 +291,13 @@ function Events(props: { events: RunEvent[]; onFilter: Filter; onGroup: (field: 
 const ARROW = { request: "→", response: "←" } as const
 
 function StepCells({ event }: { event: RunEvent }) {
+  const m = useMessages(logsMessages)
   const step = stepOf(event)
   if (step.kind === "dropped")
     return (
       <>
-        <td className="truncate pr-[0.8rem] font-sans text-ink-soft" title={EVENT_MEANINGS["events.dropped"]}>
-          {step.dropped ?? "Some"} more {step.dropped === 1 ? "step" : "steps"} not kept
+        <td className="truncate pr-[0.8rem] font-sans text-ink-soft" title={m.events["events.dropped"]}>
+          {m.droppedSteps(step.dropped)}
         </td>
         <td />
       </>
@@ -322,7 +305,7 @@ function StepCells({ event }: { event: RunEvent }) {
   const arrow = step.kind === "request" || step.kind === "response" ? ARROW[step.kind] : null
   return (
     <>
-      <td className="truncate pr-[0.8rem]" title={EVENT_MEANINGS[String(event.event)] ?? step.name}>
+      <td className="truncate pr-[0.8rem]" title={m.events[String(event.event)] ?? step.name}>
         <span className={cx("inline-flex min-w-0 items-center gap-[0.4rem]", step.wire && "pl-[1.1rem]")}>
           <Lamp tone={severityTone(event.severity)} size="sm" label={String(event.severity ?? "info")} />
           {arrow && (
@@ -336,8 +319,8 @@ function StepCells({ event }: { event: RunEvent }) {
       </td>
       <td className="truncate pr-[0.8rem] text-ink-soft">
         <span className="inline-flex min-w-0 items-center gap-[0.4rem]">
-          {step.retry !== null && <Pill tone="warn">retry {step.retry - 1}</Pill>}
-          {step.waitMs !== null && <Pill tone="warn">waited {formatDuration(step.waitMs)}</Pill>}
+          {step.retry !== null && <Pill tone="warn">{m.retry(step.retry - 1)}</Pill>}
+          {step.waitMs !== null && <Pill tone="warn">{m.waited(formatDuration(step.waitMs))}</Pill>}
           {step.counts && <span className="truncate">{step.counts}</span>}
         </span>
       </td>
