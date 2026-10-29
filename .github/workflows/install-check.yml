@@ -1,0 +1,125 @@
+name: Install check
+
+# Installs a published release the way a user would, on a clean runner of each OS, and checks that the app starts.
+# It is the only check of the macOS and Windows installers: nobody here has those machines.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release to install (empty = latest)
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag="${INPUT_TAG:-$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  windows:
+    needs: tag
+    runs-on: windows-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --pattern "*_x64-setup.exe" --dir dl
+          $setup = (Get-ChildItem dl -Filter *-setup.exe)[0].FullName
+          Write-Output "Signature: $((Get-AuthenticodeSignature $setup).Status)"
+          Start-Process $setup -ArgumentList "/S" -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\WireCat", "$env:ProgramFiles\WireCat" -Filter *.exe -ErrorAction SilentlyContinue |
+            Where-Object Name -NotLike "uninstall*" | Select-Object -First 1
+          if (-not $exe) { throw "The installer put no app in LOCALAPPDATA\WireCat or Program Files\WireCat." }
+          Write-Output "Installed: $($exe.FullName)"
+          $app = Start-Process $exe.FullName -PassThru
+          Start-Sleep -Seconds 20
+          if ($app.HasExited) { throw "The app quit within 20 s, exit code $($app.ExitCode)." }
+          Stop-Process -Id $app.Id
+          $uninstall = Join-Path $exe.DirectoryName "uninstall.exe"
+          Start-Process $uninstall -ArgumentList "/S" -Wait
+          # The uninstaller relaunches itself from a temp copy, so -Wait returns before it is done.
+          for ($i = 0; $i -lt 30 -and (Test-Path $exe.FullName); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $exe.FullName) { throw "The uninstaller left $($exe.FullName)." }
+
+  macos:
+    needs: tag
+    runs-on: macos-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.dmg" --dir dl
+          mount="$(hdiutil attach -nobrowse dl/*.dmg | awk -F'\t' '/\/Volumes\// {print $NF}')"
+          mkdir -p ~/Applications
+          cp -R "$mount"/*.app ~/Applications/
+          hdiutil detach "$mount"
+          app="$(ls -d ~/Applications/*.app | head -1)"
+          lipo -archs "$app"/Contents/MacOS/*
+          # Reports what Gatekeeper tells a user who double-clicks it; unsigned builds are expected to be rejected.
+          spctl --assess --type execute -vv "$app" || true
+          "$app"/Contents/MacOS/* &
+          pid=$!
+          sleep 20
+          kill -0 "$pid" || { echo "::error::The app quit within 20 s."; exit 1; }
+          kill "$pid"
+
+  linux:
+    needs: tag
+    runs-on: ubuntu-22.04
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.deb" --pattern "*.AppImage" --dir dl
+          gh release download v0.1.0 --repo "$GITHUB_REPOSITORY" --pattern "*.deb" --dir old
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb
+          # A copy of the first release, whose package was still called wire-cat, must give way to the new one.
+          sudo apt-get install -y -q ./old/*.deb
+          sudo apt-get install -y -q ./dl/*.deb
+          dpkg-query -W -f '${Package} ${Version} ${Status}\n' wirecat wire-cat || true
+          bin="$(dpkg -L "$(dpkg-deb -f dl/*.deb Package)" | grep '^/usr/bin/' | head -1)"
+          grep -H '^Name=' /usr/share/applications/*.desktop | grep -i wirecat
+          check() {
+            xvfb-run -a "$@" &
+            pid=$!
+            sleep 20
+            kill -0 "$pid" || { echo "::error::$1 quit within 20 s."; exit 1; }
+            kill "$pid"
+          }
+          check "$bin"
+          chmod +x dl/*.AppImage
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          check "$(ls dl/*.AppImage)"
+
+  fedora:
+    needs: tag
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: |
+          dnf install -y -q gh
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.rpm" --dir dl
+          dnf install -y -q ./dl/*.rpm
+          rpm -qi "$(rpm -qp --qf '%{NAME}' dl/*.rpm)"
+          rpm -ql "$(rpm -qp --qf '%{NAME}' dl/*.rpm)" | grep -E '^/usr/bin/|\.desktop$'

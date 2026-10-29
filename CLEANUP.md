@@ -82,3 +82,4 @@
 - `.claude/worktrees/i18n-config` and branch `i18n-config`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
 - `.claude/worktrees/i18n-onboarding` and branch `i18n-onboarding`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
 - `.claude/worktrees/i18n-signin` and branch `i18n-signin`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
+- `.claude/worktrees/release-main` (main checked out to run bin/tag-release for v0.1.0) — no longer needed after the release; 2026-10-29
