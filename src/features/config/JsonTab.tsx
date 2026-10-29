@@ -1,12 +1,17 @@
 import { AlignLeft, Check, LoaderCircle, Undo2, X } from "lucide-react"
 import { type ReactNode, useMemo } from "react"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
+import { cx } from "@/ui/cx"
 import { Skeleton } from "@/ui/Skeleton"
 import { lineOf } from "./diff"
 import { JsonEditor } from "./JsonEditor"
+import { type ConfigText, configMessages } from "./messages"
+import { reasonText } from "./reason"
 import { documentText, type Step, useConfig } from "./store"
 
 export function JsonActions({ dirty }: { dirty: boolean }) {
+  const m = useMessages(configMessages).editor
   const st = useConfig()
   return (
     <div className="flex items-center gap-2 py-2">
@@ -17,7 +22,7 @@ export function JsonActions({ dirty }: { dirty: boolean }) {
         disabled={st.draft === null || st.jsonError !== null || st.saving}
         icon={<AlignLeft className="size-3.5" aria-hidden />}
       >
-        Format
+        {m.format}
       </Button>
       <Button
         size="sm"
@@ -26,7 +31,7 @@ export function JsonActions({ dirty }: { dirty: boolean }) {
         disabled={st.draft === null || st.saving}
         icon={<Undo2 className="size-3.5" aria-hidden />}
       >
-        Revert
+        {m.revert}
       </Button>
       <Button
         size="sm"
@@ -34,32 +39,34 @@ export function JsonActions({ dirty }: { dirty: boolean }) {
         onClick={st.saveDraft}
         disabled={!dirty || st.saving || st.jsonError !== null}
       >
-        {st.saving ? "Saving…" : "Save"}
+        {st.saving ? m.saving : m.save}
       </Button>
     </div>
   )
 }
 
 export function JsonTab() {
+  const all = useMessages(configMessages)
+  const m = all.editor
   const st = useConfig()
   const text = st.draft ?? documentText(st)
   const marks = useMemo(() => {
     const m = new Map<number, string>()
-    if (st.jsonError) m.set(st.jsonError.line, st.jsonError.message)
+    if (st.jsonError) m.set(st.jsonError.line, reasonText(all, st.jsonError.message))
     for (const p of st.problems) {
       const line = lineOf(text, p.key)
-      if (line) m.set(line, p.message)
+      if (line) m.set(line, reasonText(all, p.message))
     }
     return m
-  }, [st.jsonError, st.problems, text])
+  }, [st.jsonError, st.problems, text, all])
 
   return (
     <div>
       {st.settings === null ? (
-        <Skeleton className="h-[min(60vh,34rem)] min-h-[16rem] w-full rounded-none" label="Reading settings" />
+        <Skeleton className="h-[min(60vh,34rem)] min-h-[16rem] w-full rounded-none" label={all.reading} />
       ) : (
         <JsonEditor
-          label="Settings as JSON"
+          label={m.label}
           value={text}
           onChange={st.edit}
           onSave={() => {
@@ -71,21 +78,19 @@ export function JsonTab() {
       )}
       <div aria-live="polite" className="border-line border-t empty:hidden">
         {st.jsonError && (
-          <Message tone="bad" where={`Line ${st.jsonError.line}`}>
-            {st.jsonError.message}
+          <Message tone="bad" where={m.line(st.jsonError.line)}>
+            {reasonText(all, st.jsonError.message)}
           </Message>
         )}
         {st.problems.map((p) => (
           <Message key={p.key} tone="bad" where={p.key}>
-            {p.message}
+            {reasonText(all, p.message)}
           </Message>
         ))}
-        {st.steps.length > 0 && <Progress steps={st.steps} />}
+        {st.steps.length > 0 && <Progress steps={st.steps} m={m} />}
       </div>
       <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.9rem] text-ink-dim">
-        Saving runs one <span className="font-mono">config set</span> or <span className="font-mono">config unset</span>{" "}
-        per changed setting and stops at the first one the tool refuses. Masked values (•••) and locked settings cannot
-        be changed here.
+        {m.note(<code className="font-mono">config set</code>, <code className="font-mono">config unset</code>)}
       </p>
     </div>
   )
@@ -103,28 +108,41 @@ function Message({ tone, where, children }: { tone: "bad"; where: string; childr
   )
 }
 
-const STEP_LABEL: Record<Step["state"], string> = {
-  waiting: "Waiting",
-  running: "Saving",
-  done: "Saved",
-  failed: "Refused",
-  skipped: "Not tried",
-}
-
-function Progress({ steps }: { steps: Step[] }) {
+function Progress({ steps, m }: { steps: Step[]; m: ConfigText["editor"] }) {
+  const longest = longestOf(Object.values(m.steps))
   return (
-    <ol aria-label="Save progress" className="flex flex-col gap-1 px-[1.3rem] py-3">
+    <ol aria-label={m.progress} className="flex flex-col gap-1 px-[1.3rem] py-3">
       {steps.map((s) => (
         <li key={`${s.op.kind}-${s.op.key}`} className="flex min-w-0 items-center gap-2.5 text-[0.9rem]">
           <StepIcon state={s.state} />
-          <span className="w-[4.6rem] shrink-0 text-ink-soft">{STEP_LABEL[s.state]}</span>
-          <span className="selectable truncate font-mono text-ink">
+          <Sized longest={longest} className="shrink-0 text-ink-soft">
+            {m.steps[s.state]}
+          </Sized>
+          <code className="selectable truncate font-mono text-ink">
             {s.op.kind === "set" ? `set ${s.op.key} ${s.op.value}` : `unset ${s.op.key}`}
             {s.op.defaults && " --defaults"}
-          </span>
+          </code>
         </li>
       ))}
     </ol>
+  )
+}
+
+const longestOf = (labels: string[]) => labels.reduce((a, b) => (b.length > a.length ? b : a), "")
+
+/** Takes the room of its longest possible label, so a change of state never moves the column; nothing is duplicated
+ * in the text a reader or a test finds. */
+function Sized({ longest, className, children }: { longest: string; className: string; children: ReactNode }) {
+  return (
+    <span
+      data-longest={longest}
+      className={cx(
+        "grid whitespace-nowrap after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-longest)]",
+        className,
+      )}
+    >
+      <span className="col-start-1 row-start-1">{children}</span>
+    </span>
   )
 }
 

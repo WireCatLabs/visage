@@ -16,6 +16,8 @@ import { ToolIcon } from "../tools/ToolIcon"
 import { CategoriesEditor, CategoriesPlaceholder } from "./CategoriesEditor"
 import { Choice, Choices } from "./Choices"
 import { JsonActions, JsonTab } from "./JsonTab"
+import { configMessages } from "./messages"
+import { reasonText, reportText } from "./reason"
 import { SettingsList, SettingsPlaceholder } from "./SettingsList"
 import { isCategory, sharedCandidates } from "./scope"
 import {
@@ -40,6 +42,7 @@ type Switch = { kind: "tool"; id: string } | { kind: "shared" } | { kind: "targe
 
 export function ConfigPage() {
   const sm = useMessages(settingsMessages)
+  const m = useMessages(configMessages)
   const st = useConfig()
   const installs = useTools((s) => s.installs)
   const [pending, setPending] = useState<Switch | null>(null)
@@ -90,10 +93,10 @@ export function ConfigPage() {
             checked={shared}
             disabled={candidates.length === 0}
             onSelect={() => request({ kind: "shared" })}
-            title={candidates.length === 0 ? "Install Telegram, MAX or WhatsApp to change shared settings" : undefined}
+            title={candidates.length === 0 ? m.sharedNeedsTool : undefined}
           >
             <Monogram className="size-4" />
-            WireCat (shared)
+            {m.shared}
           </Choice>
           <span aria-hidden className="mx-1 h-5 w-px bg-line-strong" />
           {configurable.map((t) => {
@@ -105,7 +108,7 @@ export function ConfigPage() {
                 checked={!shared && st.tool === t.id}
                 disabled={missing}
                 onSelect={() => request({ kind: "tool", id: t.id })}
-                title={missing ? `${t.name} is not installed` : undefined}
+                title={missing ? m.notInstalled(t.name) : undefined}
               >
                 <ToolIcon id={t.id} className="size-4" />
                 {t.name}
@@ -124,25 +127,25 @@ export function ConfigPage() {
         <ScopeLine />
       </div>
 
-      {st.settings?.notice && <Banner tone="warn">{st.settings.notice}</Banner>}
+      {st.settings?.notice && <Banner tone="warn">{m.fromProfile(st.settings.notice.profile)}</Banner>}
       {st.error && (
-        <ErrorNotice action={<ReportThis what="Reading settings" tool={st.tool} error={st.error} />}>
-          {st.error}
+        <ErrorNotice action={<ReportThis what="Reading settings" tool={st.tool} error={reportText(st.error)} />}>
+          {reasonText(m, st.error)}
         </ErrorNotice>
       )}
 
       {(tool || shared) && (st.target || st.profiles === undefined) && !st.error && (
-        <Panel label={shared ? "Shared WireCat settings" : `${tool?.name} settings`} dirty={dirty} />
+        <Panel toolName={tool?.name ?? ""} dirty={dirty} />
       )}
 
       <Dialog
         open={pending !== null}
-        title="Discard unsaved JSON changes?"
+        title={m.discard.title}
         onClose={() => setPending(null)}
         actions={
           <>
             <Button variant="ghost" onClick={() => setPending(null)} autoFocus>
-              Keep editing
+              {m.discard.keep}
             </Button>
             <Button
               variant="danger"
@@ -152,12 +155,12 @@ export function ConfigPage() {
                 if (s) go(s)
               }}
             >
-              Discard changes
+              {m.discard.confirm}
             </Button>
           </>
         }
       >
-        The JSON tab has changes that are not saved. Switching drops them; nothing is written to the file.
+        {m.discard.body}
       </Dialog>
     </div>
   )
@@ -165,6 +168,7 @@ export function ConfigPage() {
 
 function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (t: Target) => void }) {
   const { toolName, defaults, onSelect } = props
+  const m = useMessages(configMessages)
   const profiles = useConfig((s) => s.profiles)
   const error = useConfig((s) => s.profilesError)
   const toolId = useConfig((s) => s.tool)
@@ -173,12 +177,12 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
 
   if (profiles === undefined) {
     return (
-      <Choices label="Profile">
-        <Skeleton className="h-8 w-[5.5rem] rounded-[0.35rem]" label="Reading profiles" />
+      <Choices label={m.profile}>
+        <Skeleton className="h-8 w-[5.5rem] rounded-[0.35rem]" label={m.readingProfiles} />
         <Skeleton className="h-8 w-[4.5rem] rounded-[0.35rem]" />
         {defaults && (
           <Choice group="profile" checked={false} disabled onSelect={() => undefined}>
-            Defaults (all profiles)
+            {m.defaults}
           </Choice>
         )}
       </Choices>
@@ -187,15 +191,14 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
   if (profiles !== null && profiles.length === 0 && !defaults) {
     return (
       <p className="text-[0.95rem] text-ink-soft">
-        {error ? `${error}. ` : `There are no ${toolName} profiles yet. `}
-        Set one up in Tools, under {toolName}, then come back here.
+        {error ? `${error}. ${m.profilesFailed(toolName)}` : m.noProfiles(toolName)}
         {error && <ReportThis what={`Listing ${toolName} profiles`} tool={toolId} error={error} />}
       </p>
     )
   }
   return (
     <div className="flex flex-col gap-2">
-      <Choices label="Profile">
+      <Choices label={m.profile}>
         {(profiles ?? []).map((p) => (
           <Choice
             key={p.name}
@@ -208,22 +211,19 @@ function ProfilePicker(props: { toolName: string; defaults: boolean; onSelect: (
         ))}
         {defaults && (
           <Choice group="profile" checked={current === DEFAULTS} onSelect={() => onSelect({ profile: null })}>
-            Defaults (all profiles)
+            {m.defaults}
           </Choice>
         )}
       </Choices>
-      {profiles?.length === 0 && (
-        <p className="text-[0.9rem] text-ink-dim">
-          {error ?? `No ${toolName} profiles yet: set one up in Tools to change a profile's own settings.`}
-        </p>
-      )}
-      {current === null && <p className="text-[0.9rem] text-ink-dim">Choose a profile to see its settings.</p>}
+      {profiles?.length === 0 && <p className="text-[0.9rem] text-ink-dim">{error ?? m.noProfilesHint(toolName)}</p>}
+      {current === null && <p className="text-[0.9rem] text-ink-dim">{m.chooseProfile}</p>}
     </div>
   )
 }
 
 /** One line under the pickers saying what the panel below changes. */
 function ScopeLine() {
+  const m = useMessages(configMessages)
   const view = useConfig((s) => s.view)
   const id = useConfig((s) => s.tool)
   const target = useConfig((s) => s.target)
@@ -235,46 +235,41 @@ function ScopeLine() {
   if (view === "shared" && !tool) {
     text = (
       <>
-        Settings every WireCat tool reads, not tied to one tool or profile: a change here applies to all of them.{" "}
-        <Skeleton chars={22} />
+        {m.sharedScope} <Skeleton chars={22} />
       </>
     )
   } else if (view === "shared") {
     const version = id ? installs[id]?.[0]?.version : null
     text = (
       <>
-        Settings every WireCat tool reads, not tied to one tool or profile: a change here applies to all of them.
+        {m.sharedScope}
         {tool && (
           <>
             {" "}
-            Read through{" "}
-            <span className="font-mono">
-              {tool.bin}
-              {version ? ` ${version}` : ""}
-            </span>
-            .
+            {m.readThrough(
+              <span className="font-mono">
+                {tool.bin}
+                {version ? ` ${version}` : ""}
+              </span>,
+            )}
           </>
         )}
       </>
     )
   } else if (tool && src && !src.perProfile) {
-    text = `${tool.name} keeps one settings file for every profile.`
+    text = m.oneFile(tool.name)
   } else if (tool && target?.profile) {
-    text = (
-      <>
-        Only {tool.name} profile <span className="font-mono">{target.profile}</span>. Settings shared by every tool are
-        under WireCat (shared).
-      </>
-    )
+    text = m.onlyProfile(tool.name, <span className="font-mono">{target.profile}</span>)
   } else if (tool && target) {
-    text = `What every ${tool.name} profile gets unless it sets its own. Settings shared by every tool are under WireCat (shared).`
+    text = m.defaultsScope(tool.name)
   } else if (tool && profiles === undefined) {
     text = <Skeleton chars={96} />
   }
   return text && <p className="max-w-[80ch] text-[0.95rem] text-ink-soft">{text}</p>
 }
 
-function Panel({ label, dirty }: { label: string; dirty: boolean }) {
+function Panel({ toolName, dirty }: { toolName: string; dirty: boolean }) {
+  const m = useMessages(configMessages)
   const st = useConfig()
   const src = sourceOf(st.tool)
   const tabsId = useId()
@@ -304,26 +299,23 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
     remember((l) => ({ ...l, shapes: { ...l.shapes, [shapeKey]: next } }))
   }, [loaded, others, categories.length, shapeKey])
 
-  const where = shared
-    ? "every tool and profile"
+  const label = shared
+    ? m.panel.shared
     : isDefaultsView(src, st.target)
-      ? "the defaults every profile gets"
+      ? m.panel.defaults(toolName)
       : st.target?.profile
-        ? `profile ${st.target.profile}`
-        : "every profile"
+        ? m.panel.profile(toolName, st.target.profile)
+        : m.panel.all(toolName)
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "settings", label: "Settings" },
-    { id: "json", label: "JSON" },
+    { id: "settings", label: m.tabSettings },
+    { id: "json", label: m.tabJson },
   ]
 
   return (
-    <section
-      aria-label={`${label} for ${where}`}
-      className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app"
-    >
+    <section aria-label={label} className="overflow-hidden rounded-[0.2rem] border border-line-strong bg-app">
       <div className="flex flex-wrap items-center justify-between gap-3 border-line border-b px-[1.3rem]">
-        <div role="tablist" aria-label="View" className="flex gap-5">
+        <div role="tablist" aria-label={m.tabs} className="flex gap-5">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -341,7 +333,7 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
               {t.label}
               {t.id === "json" && dirty && (
                 <span className="ml-1.5 text-brand">
-                  ●<span className="sr-only"> unsaved</span>
+                  ●<span className="sr-only"> {m.unsaved}</span>
                 </span>
               )}
               <span
@@ -356,13 +348,13 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
         </div>
         {st.tab === "settings" ? (
           <label className="relative flex items-center py-2">
-            <span className="sr-only">Search settings</span>
+            <span className="sr-only">{m.search}</span>
             <Search className="pointer-events-none absolute left-2.5 size-3.5 text-ink-dim" aria-hidden />
             <input
               type="search"
               value={st.query}
               onChange={(e) => st.setQuery(e.target.value)}
-              placeholder="Search settings"
+              placeholder={m.search}
               className="h-8 w-[15rem] rounded-[0.35rem] border border-line-strong bg-app pr-2.5 pl-8 text-[0.95rem] text-ink placeholder:text-ink-dim focus-visible:border-brand"
             />
           </label>
@@ -380,14 +372,12 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
               <SettingsPlaceholder count={shape.rows} />
             </>
           ) : (
-            <SettingsPlaceholder count={shape.rows} label="Reading settings" />
+            <SettingsPlaceholder count={shape.rows} label={m.reading} />
           )
         ) : st.tab === "settings" ? (
           <>
             {dirty && (
-              <p className="border-line border-b bg-warn/10 px-[1.3rem] py-2.5 text-[0.95rem]">
-                The JSON tab has unsaved changes. Save or revert them there before changing settings here.
-              </p>
+              <p className="border-line border-b bg-warn/10 px-[1.3rem] py-2.5 text-[0.95rem]">{m.jsonDirty}</p>
             )}
             {shared && (
               <CategoriesEditor
@@ -406,7 +396,7 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
       </div>
       {(st.settings ? st.settings.configFile : shape.file) && (
         <p className="border-line border-t px-[1.3rem] py-2.5 text-[0.9rem] text-ink-dim">
-          File: <span className="selectable font-mono">{st.settings?.configFile ?? <Skeleton chars={28} />}</span>
+          {m.file(<span className="selectable font-mono">{st.settings?.configFile ?? <Skeleton chars={28} />}</span>)}
         </p>
       )}
     </section>
@@ -414,9 +404,10 @@ function Panel({ label, dirty }: { label: string; dirty: boolean }) {
 }
 
 function OthersHeading() {
+  const m = useMessages(configMessages)
   return (
     <h3 className="border-line border-b px-[1.3rem] pt-4 pb-2.5 text-[1.08rem] font-semibold leading-tight">
-      Other shared settings
+      {m.otherShared}
     </h3>
   )
 }

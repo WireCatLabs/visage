@@ -77,7 +77,7 @@ describe("turning an edited document into config set / unset calls", () => {
       { kind: "set", key: "permissions.files", value: '"full"', defaults: false },
       { kind: "set", key: "picture_search", value: "true", defaults: false },
     ])
-    expect(result.problems).toEqual([{ key: "max_text_chars", message: expect.stringMatching(/cannot remove/) }])
+    expect(result.problems).toEqual([{ key: "max_text_chars", message: { code: "cannotUnset" } }])
   })
 
   it("ignores removing a built-in default, since there is nothing in the file to remove", () => {
@@ -93,7 +93,7 @@ describe("turning an edited document into config set / unset calls", () => {
 describe("values on the command line", () => {
   it("joins lists with commas and refuses objects for text tools", () => {
     expect(toArgument(["send", "reaction"], false)).toBe("send,reaction")
-    expect(toArgument({ a: 1 }, false)).toBeInstanceOf(Error)
+    expect(toArgument({ a: 1 }, false)).toEqual({ code: "valueShape" })
     expect(toArgument({ a: 1 }, true)).toBe('{"a":1}')
   })
 })

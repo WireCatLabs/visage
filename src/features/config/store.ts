@@ -4,13 +4,16 @@ import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 import type { SettingRow, Settings } from "@/platform/settings-schemas"
 import { change, format, type Op, type Problem, parse, plan, toDocument } from "./diff"
+import { type Reason, told } from "./reason"
 import { rowsFor, sharedDocument, sharedPlan, type View } from "./scope"
 
 /** `profile: null` is the defaults every profile gets (or the one file of a tool without per-profile settings). */
 export type Target = { profile: string | null }
 export type Tab = "settings" | "json"
 export type Step = { op: Op; state: "waiting" | "running" | "done" | "failed" | "skipped"; message?: string }
-type RowState = { state: "saving" } | { state: "failed"; message: string }
+type RowState = { state: "saving" } | { state: "failed"; message: Reason }
+/** Rust says a profile supplies some values of the defaults view; only the profile's name is kept, to translate. */
+export type Shown = Omit<Settings, "notice"> & { notice: { profile: string | null } | null }
 
 type ConfigState = {
   view: View
@@ -20,14 +23,14 @@ type ConfigState = {
   profiles: Profile[] | null | undefined
   profilesError: string | null
   target: Target | null
-  settings: Settings | null
+  settings: Shown | null
   loading: boolean
-  error: string | null
+  error: Reason | null
   tab: Tab
   query: string
   /** The JSON tab's text; null until the owner types in it. */
   draft: string | null
-  jsonError: { message: string; line: number } | null
+  jsonError: { message: Reason; line: number } | null
   problems: Problem[]
   steps: Step[]
   saving: boolean
@@ -70,6 +73,12 @@ export function remember(f: (last: Last) => Last) {
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+class NoTool extends Error {}
+const reasonOf = (e: unknown): Reason => (e instanceof NoTool ? { code: "noTool" } : told(message(e)))
+
+// Rust writes "… from a profile (work), not …"; the sentence is translated here, so only the name is taken from it.
+const noticeOf = (s: Settings): Shown["notice"] =>
+  s.notice === null ? null : { profile: /\(([^)]+)\)/.exec(s.notice)?.[1] ?? null }
 
 export const sourceOf = (id: string | null): SettingsSource | null => (id ? (findTool(id)?.settings ?? null) : null)
 export const isDefaultsView = (src: SettingsSource | null, target: Target | null) =>
@@ -121,16 +130,17 @@ export const useConfig = create<ConfigState>((set, get) => {
       const shown = await platform.settingsShow(tool, target.profile)
       const rows = rowsFor(shown.rows, view)
       // The shared view reads through one tool; its own file and profile notice are not what is shown.
-      const settings = view === "shared" ? { rows, configFile: null, notice: null } : { ...shown, rows }
+      const settings: Shown =
+        view === "shared" ? { rows, configFile: null, notice: null } : { ...shown, rows, notice: noticeOf(shown) }
       if (mine === generation) set({ settings, loading: false })
     } catch (e) {
-      if (mine === generation) set({ settings: null, error: message(e), loading: false })
+      if (mine === generation) set({ settings: null, error: told(message(e)), loading: false })
     }
   }
 
   const run = (op: Op) => {
     const { tool, target } = get()
-    if (!tool || !target) return Promise.reject(new Error("Choose a tool and a profile first."))
+    if (!tool || !target) return Promise.reject(new NoTool())
     return op.kind === "set"
       ? platform.settingsSet(tool, target.profile, op.defaults, op.key, op.value)
       : platform.settingsUnset(tool, target.profile, op.defaults, op.key)
@@ -148,7 +158,7 @@ export const useConfig = create<ConfigState>((set, get) => {
       await load()
       setRow(null)
     } catch (e) {
-      setRow({ state: "failed", message: message(e) })
+      setRow({ state: "failed", message: reasonOf(e) })
     }
   }
 
@@ -178,7 +188,7 @@ export const useConfig = create<ConfigState>((set, get) => {
       const mine = ++generation
       const target = { profile: null }
       set({ view: "shared", tool: null, target, profiles: null, profilesError: null, loading: true, ...fresh })
-      let failure: string | null = null
+      let failure: Reason | null = null
       for (const id of candidates) {
         const src = sourceOf(id)
         if (!src || (src.perProfile && !src.defaults)) continue
@@ -190,16 +200,10 @@ export const useConfig = create<ConfigState>((set, get) => {
           set({ tool: id, settings: { rows, configFile: null, notice: null }, loading: false })
           return
         } catch (e) {
-          failure ??= message(e)
+          failure ??= told(message(e))
         }
       }
-      if (mine === generation)
-        set({
-          loading: false,
-          error:
-            failure ??
-            "None of the installed tools reports shared settings. Update Telegram, MAX or WhatsApp in Tools.",
-        })
+      if (mine === generation) set({ loading: false, error: failure ?? { code: "noShared" } })
     },
 
     async chooseTool(id) {
@@ -285,8 +289,8 @@ export const useConfig = create<ConfigState>((set, get) => {
           await run(step.op)
           update(i, { state: "done" })
         } catch (e) {
-          failed = { key: step.op.key, message: message(e) }
-          update(i, { state: "failed", message: failed.message })
+          failed = { key: step.op.key, message: reasonOf(e) }
+          update(i, { state: "failed", message: message(e) })
         }
       }
       await load()

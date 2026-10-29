@@ -55,8 +55,8 @@ describe("category values", () => {
   it("joins meaning and words the way config set takes them", () => {
     expect(categoryValue(" flights ", "flight,  hotel ,")).toBe("flights | flight, hotel")
     expect(categoryValue("flights", "")).toBe("flights")
-    expect(categoryValue("a | b", "")).toBeInstanceOf(Error)
-    expect(categoryValue("  ", "x")).toBeInstanceOf(Error)
+    expect(categoryValue("a | b", "")).toEqual({ code: "meaningPipe" })
+    expect(categoryValue("  ", "x")).toEqual({ code: "meaningMissing" })
   })
 })
 

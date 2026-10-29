@@ -1,10 +1,11 @@
 import type { SettingsSource } from "@/domain/catalog"
 import type { SettingRow } from "@/platform/settings-schemas"
+import { type Reason, told } from "./reason"
 
 export type Op =
   | { kind: "set"; key: string; value: string; defaults: boolean }
   | { kind: "unset"; key: string; defaults: boolean }
-export type Problem = { key: string; message: string }
+export type Problem = { key: string; message: Reason }
 export type Plan = { ops: Op[]; problems: Problem[] }
 
 const SETTING_NAME = /^[A-Za-z0-9._-]{1,128}$/
@@ -17,12 +18,12 @@ export const toDocument = (rows: readonly SettingRow[]): Record<string, unknown>
 export const format = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 
 /** What `config set` takes on its command line: JSON for tools that parse JSON, plain words for the rest. */
-export function toArgument(value: unknown, jsonValues: boolean): string | Error {
+export function toArgument(value: unknown, jsonValues: boolean): string | Reason {
   if (jsonValues) return JSON.stringify(value)
   if (typeof value === "string") return value
   if (typeof value === "number" || typeof value === "boolean") return String(value)
   if (Array.isArray(value) && value.every((v) => typeof v === "string" || typeof v === "number")) return value.join(",")
-  return new Error("Give a word, a number, true or false, or a list.")
+  return { code: "valueShape" }
 }
 
 /** `config set --defaults` changes what every profile gets, except store-wide settings, which refuse the flag. */
@@ -41,21 +42,21 @@ export function change(
     if (same(row.value, value)) return null
     return {
       key,
-      message: row.locked ?? "This value is hidden because it may hold a secret, so it cannot be edited here.",
+      message: row.locked ? told(row.locked) : { code: "hidden" },
     }
   }
-  if (!SETTING_NAME.test(key) || key.startsWith("-")) return { key, message: "Not a setting name." }
+  if (!SETTING_NAME.test(key) || key.startsWith("-")) return { key, message: { code: "notName" } }
   const defaults = defaultsFor(src, defaultsView, row)
   if (value === null || value === undefined) {
     if (!row || row.value === null) return null
     if (row.resettable) return { kind: "unset", key, defaults }
     const own = ["store", "file", defaultsView ? "defaults" : "profile"].includes(row.origin)
     // An inherited or built-in value is not in this layer, so there is nothing to remove.
-    return own && !src.unset ? { key, message: "This tool cannot remove a setting. Give it a value instead." } : null
+    return own && !src.unset ? { key, message: { code: "cannotUnset" } } : null
   }
   if (row && same(row.value, value)) return null
   const argument = toArgument(value, src.jsonValues)
-  if (argument instanceof Error) return { key, message: argument.message }
+  if (typeof argument !== "string") return { key, message: argument }
   return { kind: "set", key, value: argument, defaults }
 }
 
@@ -78,7 +79,7 @@ export function plan(
   for (const row of rows) {
     if (row.key in edited) continue
     if (isReadOnly(row)) {
-      problems.push({ key: row.key, message: "This setting is read-only here, so it cannot be removed." })
+      problems.push({ key: row.key, message: { code: "readOnly" } })
       continue
     }
     add(change(src, defaultsView, row, row.key, null))
@@ -86,7 +87,7 @@ export function plan(
   return { ops, problems }
 }
 
-export type Parsed = { ok: true; value: Record<string, unknown> } | { ok: false; message: string; line: number }
+export type Parsed = { ok: true; value: Record<string, unknown> } | { ok: false; message: Reason; line: number }
 
 /** Where JSON text stops being valid: V8's parse errors often carry no position. -1 when it is valid. */
 export function breakOffset(text: string): number {
@@ -160,13 +161,13 @@ export function parse(text: string): Parsed {
     return {
       ok: false,
       message: near
-        ? `Not valid JSON from ${near.length > 28 ? `${near.slice(0, 28)}…` : near}. Is a comma or a quote missing?`
-        : "Not valid JSON: something is missing at the end.",
+        ? { code: "notJson", near: near.length > 28 ? `${near.slice(0, 28)}…` : near }
+        : { code: "jsonEnd" },
       line: text.slice(0, at).split("\n").length,
     }
   }
   if (typeof value !== "object" || value === null || Array.isArray(value))
-    return { ok: false, message: 'The settings are one JSON object: { "name": value, … }', line: 1 }
+    return { ok: false, message: { code: "notObject" }, line: 1 }
   return { ok: true, value: value as Record<string, unknown> }
 }
 

@@ -2,6 +2,7 @@ import type { SettingsSource } from "@/domain/catalog"
 import { tools } from "@/domain/catalog"
 import type { SettingRow } from "@/platform/settings-schemas"
 import { isReadOnly, type Op, type Plan, type Problem, plan } from "./diff"
+import type { Reason } from "./reason"
 
 export type View = "tool" | "shared"
 
@@ -57,10 +58,10 @@ export function toCategory(row: SettingRow): Category {
 }
 
 /** What `config set` takes back: the tool splits on the first "|", so the meaning cannot hold one. */
-export function categoryValue(meaning: string, words: string): string | Error {
+export function categoryValue(meaning: string, words: string): string | Reason {
   const m = meaning.trim()
-  if (!m) return new Error("Say what the category is for.")
-  if (m.includes("|")) return new Error('The meaning cannot contain "|".')
+  if (!m) return { code: "meaningMissing" }
+  if (m.includes("|")) return { code: "meaningPipe" }
   const w = words
     .split(",")
     .map((x) => x.trim())
@@ -84,7 +85,7 @@ export function categoryPlan(rows: readonly SettingRow[], edited: unknown): Plan
   const ops: Op[] = []
   const problems: Problem[] = []
   if (edited === null || typeof edited !== "object" || Array.isArray(edited)) {
-    return { ops, problems: [{ key: SECTION, message: 'Categories are one object: { "name": "meaning | words" }' }] }
+    return { ops, problems: [{ key: SECTION, message: { code: "categoriesShape" } }] }
   }
   const byName = new Map(rows.map((r) => [categoryName(r), r]))
   const given = edited as Record<string, unknown>
@@ -93,19 +94,18 @@ export function categoryPlan(rows: readonly SettingRow[], edited: unknown): Plan
     const row = byName.get(name)
     if (value === null) continue
     if (!NAME.test(name)) {
-      problems.push({ key: name, message: "A category name is one lower-case word: letters, digits and -." })
+      problems.push({ key: name, message: { code: "categoryName" } })
     } else if (typeof value !== "string") {
-      problems.push({ key: name, message: 'A category is one text: "meaning | trigger words".' })
+      problems.push({ key: name, message: { code: "categoryText" } })
     } else if (row && isReadOnly(row)) {
-      if (value !== row.value)
-        problems.push({ key: name, message: "This category is hidden here; change it in a terminal." })
+      if (value !== row.value) problems.push({ key: name, message: { code: "categoryHidden" } })
     } else if (value !== row?.value) {
       ops.push({ kind: "set", key, value, defaults: false })
     }
   }
   for (const [name, row] of byName) {
     if (given[name] !== undefined && given[name] !== null) continue
-    if (name === FALLBACK) problems.push({ key: name, message: "other stays: tasks that match no category go there." })
+    if (name === FALLBACK) problems.push({ key: name, message: { code: "fallback" } })
     else ops.push({ kind: "unset", key: row.key, defaults: false })
   }
   return { ops, problems }
@@ -130,10 +130,10 @@ export function sharedPlan(rows: readonly SettingRow[], edited: Record<string, u
     if (given !== undefined)
       cats.problems.push({
         key: SECTION,
-        message: "The tool could not read the categories, so they cannot be changed.",
+        message: { code: "categoriesUnread" },
       })
   } else if (given === undefined) {
-    cats.problems.push({ key: SECTION, message: "Keep task_categories; remove categories inside it one by one." })
+    cats.problems.push({ key: SECTION, message: { code: "keepSection" } })
   } else {
     cats = categoryPlan(categories, given)
   }

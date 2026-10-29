@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { useTools } from "../tools/store"
 import { ConfigPage } from "./ConfigPage"
@@ -141,5 +142,22 @@ describe("Config", () => {
     expect(await screen.findByText(/Removed/)).toBeInTheDocument()
     expect(within(list).queryByText("garden")).not.toBeInTheDocument()
     expect(within(list).queryByRole("button", { name: "Remove other" })).not.toBeInTheDocument()
+  }, 15000)
+
+  it("turns an error already on screen into Russian when the language changes", async () => {
+    const user = userEvent.setup()
+    render(<ConfigPage />)
+    await user.click(screen.getByRole("radio", { name: /Telegram/ }))
+    await user.click(await screen.findByRole("radio", { name: "personal" }))
+    await user.click(await screen.findByRole("tab", { name: "JSON" }))
+    fireEvent.change(await screen.findByRole("textbox", { name: "Settings as JSON" }), {
+      target: { value: "{ broken" },
+    })
+    expect(screen.getByText(/Not valid JSON from broken/)).toBeInTheDocument()
+
+    act(() => useLanguage.setState({ choice: "ru" }))
+    expect(screen.getByText("JSON не разбирается начиная с broken. Не пропущена ли запятая или кавычка?")).toBeVisible()
+    expect(screen.getByRole("tab", { name: "Настройки" })).toBeInTheDocument()
+    expect(screen.getByText("Строка 1")).toBeInTheDocument()
   }, 15000)
 })
