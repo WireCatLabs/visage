@@ -70,6 +70,5 @@
 - /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/pack — TASK-31 scratch package builds, 2026-10-27
 - `.claude/worktrees/fix-agents-flash-focus` (ветка fix/agents-flash-focus) — worktree TASK-36, всё в feat/desktop-mvp. 2026-10-27
 - `.claude/worktrees/sel-flicker` (ветка fix/select-flicker) — worktree BUG-23 и UX-16, всё в feat/desktop-mvp (fast-forward); своего Rust target нет. 2026-10-29
-||||||| parent of e6f5a5e (chore(release): one-word steps for the owner; check job can read the draft)
 - `.claude/worktrees/first-release/src-tauri/target` (1.3 GB) — сборка clippy TASK-39; не нужна, следующая сборка идёт в общий `src-tauri/target`. 2026-10-29
 - `.claude/worktrees/first-release` (ветка chore/first-release) — worktree TASK-39, всё в feat/desktop-mvp. 2026-10-29
