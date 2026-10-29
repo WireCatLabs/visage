@@ -46,10 +46,10 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-256-cbc -out d
 
 ## 2. Make the request file
 
-Put your Apple ID e-mail in place of `you@example.com`:
+Put your Apple ID e-mail in place of `leemour@gmail.com`:
 
 ```sh
-openssl req -new -key developer-id.key -out developer-id.certSigningRequest -subj "/emailAddress=you@example.com/CN=WireCat"
+openssl req -new -key developer-id.key -out developer-id.certSigningRequest -subj "/emailAddress=leemour@gmail.com/CN=WireCat"
 ```
 
 - It asks for the key passphrase from step 1.
@@ -62,14 +62,16 @@ openssl req -new -key developer-id.key -out developer-id.certSigningRequest -sub
 Sign in as the **Account Holder** of the developer account. Only the Account Holder can make this certificate.
 
 1. Open <https://developer.apple.com/account/resources/certificates/add>.
-2. In the **Software** section, select **Developer ID**, then click **Continue**.
-3. Select **Developer ID Application** ("A certificate used to sign a Mac app"). Do not select "Developer ID
-   Installer". Click **Continue**.
-4. If the page shows a **Profile Type** choice, I think it is **G2 Sub-CA**, the current one. I have not seen this
-   page myself.
-5. Click **Choose File** and select `~/.config/wirecat-signing/developer-id.certSigningRequest`. If the file dialog
+2. The page "Create a New Certificate" lists the kinds under **Software**. Select the last one, **Developer ID
+   Application** ("This certificate is used to code sign your app for distribution outside of the Mac App Store
+   Connect"). Then click **Continue** at the top right.
+   - Not **Apple Distribution** or **Mac App Distribution**: those are for the App Store.
+   - Not **Developer ID Installer**: that one signs `.pkg` installers, and WireCat ships a `.dmg`.
+3. If the next page shows a **Profile Type** choice, I think it is **G2 Sub-CA**, the current one. I have not seen
+   this page myself.
+4. Click **Choose File** and select `~/.config/wirecat-signing/developer-id.certSigningRequest`. If the file dialog
    hides folders that start with a dot, press **Ctrl+H**, or type the path into the dialog. Click **Continue**.
-6. Click **Download**. Your browser saves a file like `~/Downloads/developerID_application.cer`.
+5. Click **Download**. Your browser saves a file like `~/Downloads/developerID_application.cer`.
 
 - **You get:** the certificate. It says "this public key belongs to your team". It is not secret.
 - I have not tested whether Apple accepts a request made with `openssl` instead of a Mac. If it shows an error, send

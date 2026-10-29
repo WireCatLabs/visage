@@ -60,11 +60,11 @@ bin/make-apple-certificate
 ### Step 2. Get the certificate from Apple
 
 1. Open [Certificates, Identifiers & Profiles → Certificates → +](https://developer.apple.com/account/resources/certificates/add).
-2. Under **Software**, choose **Developer ID**, then **Continue**.
-3. Choose **Developer ID Application**. Do not choose "Developer ID Installer" or "Apple Distribution"; the script
-   rejects other kinds.
-4. If Apple asks for a profile type, I think the right one is **G2 Sub-CA**. I have not checked this.
-5. Upload the request file from step 1, then **Continue**, then **Download**.
+2. Under **Software**, select the last kind, **Developer ID Application**, then **Continue** at the top right. Not
+   "Apple Distribution", "Mac App Distribution" (both App Store) or "Developer ID Installer" (`.pkg` installers);
+   the script rejects other kinds.
+3. If Apple asks for a profile type, I think the right one is **G2 Sub-CA**. I have not checked this.
+4. Upload the request file from step 1, then **Continue**, then **Download**.
 
 - **You get:** a file like `~/Downloads/developerID_application.cer`.
 - It is public, not secret. You can download it again from the same page, so you do not need to keep it.
