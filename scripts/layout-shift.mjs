@@ -2,7 +2,7 @@
 //   pnpm build && pnpm preview --port 1478 --strictPort      (the dev server adds a shift of its own as CSS loads)
 //   node scripts/layout-shift.mjs [page…] --port 1478 [--slow 1] [--width 1536] [--height 1024] [--dark]
 //                                 [--sources 5] [--shots ms,ms,…] [--out dir] [--budget 0.01] [--grow 8]
-// Pages: tools tools-manage agents agents-revisit storage logs settings settings-telegram onboarding-<step>
+// Pages: tools tools-manage agents agents-revisit storage logs settings settings-telegram onboarding-<step> report
 // (default: all).
 // Needs a local Chrome.
 // Prints the Cumulative Layout Shift (CLS: the sum of every shift's score, 0 = nothing moved) per page, and the
@@ -58,11 +58,16 @@ const PAGES = {
   "onboarding-install": { query: "?onboarding=install" },
   "onboarding-agents": { query: "?onboarding=agents" },
   "onboarding-signin": { query: "?onboarding=signin" },
+  report: {
+    query: "?onboarding=off&section=tools",
+    clicks: ['button:has-text("Report a problem")'],
+    watch: "dialog[open]",
+  },
 }
 const pages = args.length ? args : Object.keys(PAGES)
 
 // Runs in the page before any app code: records every shift and names the elements that moved.
-function observe() {
+function observe(watch) {
   const describe = (node) => {
     if (!(node instanceof Element)) return node?.nodeName ?? "?"
     const tag = node.tagName.toLowerCase()
@@ -75,10 +80,11 @@ function observe() {
     return `${tag}${data}${cls ? `.${cls}` : ""}${text ? ` "${text}"` : ""}`
   }
   window.__shifts = []
-  // The page's visible height every frame, from the moment it is first drawn; `main > *` is the open page.
+  // The page's visible height every frame, from the moment it is first drawn; `main > *` is the open page, or the
+  // page's own `watch` element, such as an open dialog.
   window.__heights = []
   const sample = () => {
-    const page = document.querySelector("main > *")
+    const page = document.querySelector(watch)
     if (page) {
       const box = page.getBoundingClientRect()
       const h = Math.round(Math.max(0, Math.min(box.bottom, window.innerHeight) - box.top))
@@ -147,7 +153,7 @@ for (const name of pages) {
     reducedMotion: "reduce",
   })
   page.on("pageerror", (e) => console.error(`${name}: page error:`, e.message))
-  await page.addInitScript(observe)
+  await page.addInitScript(observe, spec.watch ?? "main > *")
   await page.goto(`http://localhost:${port}/${spec.query}&slow=${slow}`)
   let started = Date.now()
   for (const selector of spec.clicks ?? []) {
