@@ -1,7 +1,8 @@
 import { Bot, HardDrive, LogIn, RefreshCw, Terminal } from "lucide-react"
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import { type CatalogTool, findTool, ownerId, samePackage, signsInHere, tools } from "@/domain/catalog"
-import { STEPS as INSTALL_STEPS, toolStatus } from "@/domain/status"
+import { toolStatus } from "@/domain/status"
+import { formatList, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
@@ -17,8 +18,11 @@ import { NodeNotice } from "../system/NodeNotice"
 import { useSystem } from "../system/store"
 import { openConnect } from "../tools/go"
 import { FinishInTerminal, ManualSetup, NewProfile, useProfiles } from "../tools/Health"
+import { toolsMessages } from "../tools/messages"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
+import { toolText } from "../tools/tool-text"
+import { onboardingMessages } from "./messages"
 import { useOnboarding } from "./store"
 
 const rack = "overflow-hidden rounded-[0.2rem] border border-line-strong bg-app"
@@ -37,27 +41,22 @@ function Fact({ icon, title, children }: { icon: ReactNode; title: string; child
 }
 
 export function Welcome() {
+  const m = useMessages(onboardingMessages).welcome
   const icon = "size-[1.5rem]"
   return (
     <>
-      <ul aria-label="What WireCat does" className={rack}>
-        <Fact
-          icon={<HardDrive className={icon} strokeWidth={1.6} aria-hidden />}
-          title="Everything stays on this computer"
-        >
-          The tools keep your messages, mail, meetings and files in storage on this computer, not in a WireCat cloud.
+      <ul aria-label={m.list} className={rack}>
+        <Fact icon={<HardDrive className={icon} strokeWidth={1.6} aria-hidden />} title={m.localTitle}>
+          {m.local}
         </Fact>
-        <Fact
-          icon={<Terminal className={icon} strokeWidth={1.6} aria-hidden />}
-          title="Open tools you could run yourself"
-        >
-          Each integration is a WireCat command-line tool from npm. This app installs them and runs their own commands.
+        <Fact icon={<Terminal className={icon} strokeWidth={1.6} aria-hidden />} title={m.openTitle}>
+          {m.open}
         </Fact>
-        <Fact icon={<Bot className={icon} strokeWidth={1.6} aria-hidden />} title="Your agent does the rest">
-          Claude Code, Codex and other agents use the tools to search and act on your data when you ask them to.
+        <Fact icon={<Bot className={icon} strokeWidth={1.6} aria-hidden />} title={m.agentTitle}>
+          {m.agent}
         </Fact>
       </ul>
-      <p className="text-[0.95rem] text-ink-soft">Setup takes a few minutes. You can skip any step.</p>
+      <p className="text-[0.95rem] text-ink-soft">{m.time}</p>
     </>
   )
 }
@@ -65,17 +64,20 @@ export function Welcome() {
 export function Computer() {
   const r = useSystem((s) => s.readiness)
   const refreshing = useTools((s) => s.refreshing)
-  const items: { label: string; value: string; tone: LampTone; note?: string | null | undefined }[] = [
-    { label: "System", value: r ? r.os : "…", tone: r ? "ok" : "idle" },
+  const m = useMessages(onboardingMessages).computer
+  const items: { key: string; label: string; value: string; tone: LampTone; note?: string | null | undefined }[] = [
+    { key: "system", label: m.system, value: r ? r.os : "…", tone: r ? "ok" : "idle" },
     {
+      key: "node",
       label: "Node.js",
-      value: !r ? "…" : (r.node.version ?? "Not found"),
+      value: !r ? "…" : (r.node.version ?? m.notFound),
       tone: !r ? "idle" : r.node.ok ? "ok" : "bad",
       note: r?.node.version ? r.node.problem : null,
     },
     {
+      key: "npm",
       label: "npm",
-      value: !r ? "…" : (r.npm.version ?? "Not found"),
+      value: !r ? "…" : (r.npm.version ?? m.notFound),
       tone: !r ? "idle" : r.npm.ok ? "ok" : "bad",
       note: r?.npm.version ? r.npm.problem : null,
     },
@@ -84,11 +86,11 @@ export function Computer() {
 
   return (
     <>
-      <ul aria-label="Your computer" className={rack}>
+      <ul aria-label={m.list} className={rack}>
         {items.map((i) => (
-          <li key={i.label} className={row}>
+          <li key={i.key} className={row}>
             <Lamp tone={i.tone} />
-            <span className="w-[7rem] shrink-0 font-medium">{i.label}</span>
+            <span className="min-w-[7rem] shrink-0 font-medium">{i.label}</span>
             <span className="selectable min-w-0 flex-1 truncate font-mono text-[1.02rem] tabular-nums">{i.value}</span>
             {i.note && <span className="truncate text-[0.9rem] text-bad">{i.note}</span>}
           </li>
@@ -97,7 +99,7 @@ export function Computer() {
       <NodeNotice />
       <div className="flex flex-wrap items-center gap-4">
         <p aria-live="polite" className="flex-1 text-[0.95rem] text-ink-soft">
-          {!r ? "Checking this computer…" : ready ? "Ready to install WireCat tools." : null}
+          {!r ? m.checkingComputer : ready ? m.ready : null}
         </p>
         <Button
           size="sm"
@@ -106,7 +108,7 @@ export function Computer() {
           onClick={() => useTools.getState().refresh(true)}
           icon={<RefreshCw className={cx("size-4", refreshing && "animate-spin")} aria-hidden />}
         >
-          <StableText value={refreshing ? "Checking…" : "Check again"} variants={["Checking…", "Check again"]} />
+          <StableText value={refreshing ? m.checking : m.again} variants={[m.checking, m.again]} />
         </Button>
       </div>
     </>
@@ -119,10 +121,12 @@ export function Choose() {
   const chosen = useOnboarding((s) => s.chosen)
   const installs = useTools((s) => s.installs)
   const toggle = useOnboarding((s) => s.toggle)
+  const tm = useMessages(toolsMessages)
+  const m = useMessages(onboardingMessages).choose
 
   return (
     <fieldset className="min-w-0">
-      <legend className="sr-only">Tools to install</legend>
+      <legend className="sr-only">{m.legend}</legend>
       <ul className={cx(rack, "grid sm:grid-cols-2")}>
         {tools.map((t) => {
           const copies = installs[t.id]
@@ -136,10 +140,10 @@ export function Choose() {
                 <span className="flex flex-wrap items-baseline gap-x-[0.5rem]">
                   <span className="text-[1.02rem] font-semibold">{t.name}</span>
                   <span className="font-mono text-[0.9rem] text-ink-soft">{t.bin}</span>
-                  {t.partOf && <Pill>Part of {findTool(t.partOf)?.name ?? t.partOf}</Pill>}
-                  {installed && <Pill tone="brand">installed</Pill>}
+                  {t.partOf && <Pill>{m.partOf(findTool(t.partOf)?.name ?? t.partOf)}</Pill>}
+                  {installed && <Pill tone="brand">{m.installed}</Pill>}
                 </span>
-                <span className="mt-0.5 block text-[0.9rem] leading-snug text-ink-soft">{t.tagline}</span>
+                <span className="mt-0.5 block text-[0.9rem] leading-snug text-ink-soft">{toolText(tm, t).tagline}</span>
               </span>
             </>
           )
@@ -184,33 +188,33 @@ function Progress({ tool }: { tool: CatalogTool }) {
   const session = useTools((s) => s.sessions[ownerId(tool.id)])
   const status = toolStatus(installs, undefined, session)
   const outcome = session?.outcome
+  const m = useMessages(onboardingMessages).install
+  const tm = useMessages(toolsMessages).install
+  const version = (v: string) => <span className="font-mono tabular-nums">{v}</span>
 
   let tone: LampTone = "idle"
-  let text: ReactNode = "Not installed"
-  if (status.kind === "checking") text = "Checking…"
+  let text: ReactNode = m.notInstalled
+  if (status.kind === "checking") text = m.checking
   else if (session && !outcome) {
     tone = session.step === "queued" ? "idle" : "busy"
-    text =
-      session.step === "queued"
-        ? "Waiting for its turn"
-        : `${INSTALL_STEPS.install.find((s) => s.step === session.step)?.label ?? "Installing"}…`
+    text = session.step === "queued" ? m.queued : m.step(tm.steps.install[session.step] ?? m.installing)
   } else if (outcome?.event === "failed") {
     tone = "bad"
-    text = <span className="text-bad">{outcome.message}</span>
+    const message =
+      outcome.reason === "cancelled"
+        ? tm.cancelled.install
+        : outcome.reason === "timeout"
+          ? tm.timedOut.install
+          : outcome.reason === "network"
+            ? tm.network
+            : outcome.message
+    text = <span className="text-bad">{message}</span>
   } else if (outcome?.event === "done") {
     tone = "ok"
-    text = (
-      <>
-        Installed <span className="font-mono tabular-nums">{outcome.version}</span>
-      </>
-    )
+    text = m.installed(version(outcome.version))
   } else if (status.kind === "ready" || status.kind === "outdated") {
     tone = "ok"
-    text = (
-      <>
-        Already installed <span className="font-mono tabular-nums">{status.version}</span>
-      </>
-    )
+    text = m.already(version(status.version))
   }
 
   return (
@@ -231,7 +235,7 @@ function Progress({ tool }: { tool: CatalogTool }) {
       )}
       {outcome?.event === "failed" && (
         <Button size="sm" onClick={() => useTools.getState().install(tool.id)}>
-          Try again
+          {m.tryAgain}
         </Button>
       )}
     </li>
@@ -243,13 +247,14 @@ export function Install() {
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
   const pending = useTools((s) => chosen.some((id) => !s.installs[id]?.length && !s.sessions[ownerId(id)]))
   const list = tools.filter((t) => chosen.includes(t.id))
+  const m = useMessages(onboardingMessages).install
 
   if (list.length === 0) {
     return (
       <div className="flex flex-wrap items-center gap-4">
-        <p className="flex-1 text-[0.95rem] text-ink-soft">No tools are chosen, so there is nothing to install.</p>
+        <p className="flex-1 text-[0.95rem] text-ink-soft">{m.none}</p>
         <Button size="sm" onClick={() => useOnboarding.getState().go("choose")}>
-          Choose tools
+          {m.choose}
         </Button>
       </div>
     )
@@ -258,7 +263,7 @@ export function Install() {
   return (
     <>
       <NodeNotice />
-      <ul aria-label="Installing" className={rack}>
+      <ul aria-label={m.list} className={rack}>
         {list.map((t) => (
           <Progress key={t.id} tool={t} />
         ))}
@@ -266,13 +271,11 @@ export function Install() {
       {pending && nodeReady && (
         <div>
           <Button size="sm" onClick={installChosen}>
-            Install the rest
+            {m.rest}
           </Button>
         </div>
       )}
-      <p className="text-[0.95rem] text-ink-soft">
-        Installs keep going if you move on. Each one is also shown on the Tools page, with its full log.
-      </p>
+      <p className="text-[0.95rem] text-ink-soft">{m.note}</p>
     </>
   )
 }
@@ -290,21 +293,19 @@ function useSetupTools() {
  */
 export function Agents({ matrix }: { matrix?: ReactNode }) {
   const list = useSetupTools().filter((t) => t.skill)
+  const m = useMessages(onboardingMessages).agents
   if (matrix) return <>{matrix}</>
   return (
     <div className={cx(rack, "flex items-start gap-[0.9rem] px-[1.3rem] py-[1.1rem]")}>
       <Bot className="mt-[0.1rem] size-[1.5rem] shrink-0 text-brand" strokeWidth={1.6} aria-hidden />
       <div className="flex min-w-0 flex-col gap-[0.7rem]">
-        <h3 className="text-[1.08rem] font-semibold leading-tight">How a tool adds its skill</h3>
-        <p className="max-w-[65ch] text-[0.95rem] leading-relaxed text-ink-soft">
-          Some tools offer to add their skill while you sign in, in the next step: the terminal asks which agent should
-          get it. Any tool can also add its own skill from a terminal, for Claude Code, Codex and Gemini CLI.
-        </p>
+        <h3 className="text-[1.08rem] font-semibold leading-tight">{m.title}</h3>
+        <p className="max-w-[65ch] text-[0.95rem] leading-relaxed text-ink-soft">{m.text}</p>
         {list.length > 0 && (
-          <ul aria-label="Skill commands" className="flex flex-col gap-1">
+          <ul aria-label={m.list} className="flex flex-col gap-1">
             {list.map((t) => (
               <li key={t.id} className="flex items-baseline gap-3 text-[0.95rem]">
-                <span className="w-[7.5rem] shrink-0 text-ink-soft">{t.name}</span>
+                <span className="min-w-[7.5rem] shrink-0 text-ink-soft">{t.name}</span>
                 <code className="selectable font-mono text-[0.9rem] text-ink">{t.bin} skill install</code>
               </li>
             ))}
@@ -325,12 +326,13 @@ function ProfileState({
   onSignIn: (() => void) | undefined
   here: boolean
 }) {
+  const m = useMessages(onboardingMessages).signIn
   const name = <span className="font-mono font-medium text-ink">{profile.name}</span>
   if (!onSignIn) {
     return (
       <li className="flex min-h-8 items-center gap-x-[0.6rem]">
         <Lamp size="sm" tone="ok" />
-        <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">Account {name} is added</span>
+        <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">{m.added(name)}</span>
       </li>
     )
   }
@@ -338,13 +340,11 @@ function ProfileState({
     <li className="flex min-h-8 flex-wrap items-center gap-x-[0.6rem] gap-y-1">
       <Lamp size="sm" tone={profile.signedIn ? "ok" : "idle"} />
       <span className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
-        {profile.signedIn === true ? (
-          <>Signed in as profile {name}</>
-        ) : profile.signedIn === false ? (
-          <>Profile {name} is not signed in</>
-        ) : (
-          <>Profile {name}: sign-in not reported</>
-        )}
+        {profile.signedIn === true
+          ? m.signedIn(name)
+          : profile.signedIn === false
+            ? m.signedOut(name)
+            : m.unknown(name)}
       </span>
       {profile.signedIn !== true && (
         <Button
@@ -353,7 +353,7 @@ function ProfileState({
           onClick={onSignIn}
           icon={here ? <LogIn className="size-4" aria-hidden /> : <Terminal className="size-4" aria-hidden />}
         >
-          {here ? "Sign in" : "Open terminal to sign in"}
+          {here ? m.signIn : m.inTerminal}
         </Button>
       )}
     </li>
@@ -364,12 +364,15 @@ const signInBlock = "flex flex-col gap-[0.9rem] border-line border-b px-[1.3rem]
 const accountsArea = "flex flex-col gap-[0.9rem] sm:pl-[2.4rem]"
 
 function SignInHeader({ tool }: { tool: CatalogTool }) {
+  const m = useMessages(onboardingMessages).signIn
   return (
     <div className="flex items-start gap-[0.9rem]">
       <ToolIcon id={tool.id} className="mt-[0.05rem] size-[1.5rem] shrink-0 text-ink" />
       <div className="min-w-0">
         <h3 className="text-[1.08rem] font-semibold leading-tight">{tool.name}</h3>
-        {tool.signIn && <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-soft">{tool.signIn.gives}</p>}
+        {tool.signIn && (
+          <p className="mt-1 text-[0.95rem] leading-relaxed text-ink-soft">{m.gives[tool.id] ?? tool.signIn.gives}</p>
+        )}
       </div>
     </div>
   )
@@ -377,9 +380,10 @@ function SignInHeader({ tool }: { tool: CatalogTool }) {
 
 /** One account line and the "Add another account" line: the usual shape once the accounts are read. */
 function AccountsSkeleton({ tool }: { tool: CatalogTool }) {
+  const m = useMessages(onboardingMessages).signIn
   return (
     <>
-      <Skeleton className="h-8 w-full" label={`Reading ${tool.name} accounts`} />
+      <Skeleton className="h-8 w-full" label={m.reading(tool.name)} />
       <Skeleton className="h-8 w-[10.5rem]" />
     </>
   )
@@ -401,6 +405,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
   const [waiting, setWaiting] = useState(false)
   const [adding, setAdding] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
+  const m = useMessages(onboardingMessages).signIn
   const manual = !tool.setup
   const count = profiles?.length ?? 0
   const seen = useRef(count)
@@ -431,12 +436,12 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             inline
             action={<ReportThis what={`Listing ${tool.name} accounts`} tool={tool.id} error={error} />}
           >
-            Could not list the accounts: {error}
+            {m.listFailed(error)}
           </ErrorNotice>
         ) : profiles === undefined ? (
           <AccountsSkeleton tool={tool} />
         ) : (
-          <ul aria-label={`${tool.name} accounts`} className="flex flex-col gap-1">
+          <ul aria-label={m.accounts(tool.name)} className="flex flex-col gap-1">
             {count > 0 ? (
               profiles?.map((p) => (
                 <ProfileState
@@ -449,9 +454,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             ) : (
               <li className="flex min-h-8 items-center gap-x-[0.6rem]">
                 <Lamp size="sm" tone="idle" />
-                <span className="text-[0.95rem] font-medium text-ink">
-                  No account yet. Add one so your agent can use {tool.name}.
-                </span>
+                <span className="text-[0.95rem] font-medium text-ink">{m.noAccount(tool.name)}</span>
               </li>
             )}
           </ul>
@@ -469,8 +472,8 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
           <>
             {tool.signIn && (
               <p className="max-w-[65ch] text-[0.9rem] leading-relaxed text-ink-soft">
-                <span className="font-medium text-ink">{manual ? "What it needs: " : "It will ask for: "}</span>
-                {tool.signIn.asks}
+                <span className="font-medium text-ink">{manual ? m.needs : m.willAsk}</span>
+                {m.asks[tool.id] ?? tool.signIn.asks}
                 {tool.signIn.guide && !manual && (
                   <>
                     {" "}
@@ -482,7 +485,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
                       }}
                       className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
                     >
-                      How to make it
+                      {m.guide}
                     </a>
                   </>
                 )}
@@ -491,12 +494,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
             {manual ? (
               <ManualSetup tool={tool} onCheck={reload} checking={loading} />
             ) : (
-              <NewProfile
-                tool={tool}
-                label={count ? "Name for another account" : "Name for this account"}
-                onCheck={reload}
-                checking={loading}
-              />
+              <NewProfile tool={tool} label={count ? m.nameAnother : m.nameThis} onCheck={reload} checking={loading} />
             )}
           </>
         ) : profiles === undefined && !error ? null : (
@@ -507,7 +505,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
               className={count ? "-ml-3" : undefined}
               onClick={() => setAdding(true)}
             >
-              {count ? "Add another account" : "Add an account"}
+              {count ? m.addAnother : m.add}
             </Button>
           </div>
         )}
@@ -519,6 +517,7 @@ function SignInRow({ tool }: { tool: CatalogTool }) {
 export function SignIn() {
   const installs = useTools((s) => s.installs)
   const failed = useTools((s) => s.error !== null)
+  const m = useMessages(onboardingMessages).signIn
   const list = useSetupTools()
   const detected = Object.keys(installs).length > 0
   const signsIn = (t: CatalogTool) => Boolean(t.setup || t.signIn?.command)
@@ -529,9 +528,9 @@ export function SignIn() {
   // Until the tools are found, the chosen ones stand in: they are the ones just installed.
   if (!detected && !failed) {
     const chosen = list.filter(signsIn)
-    if (chosen.length === 0) return <Skeleton className="h-24 w-full" label="Looking for installed tools" />
+    if (chosen.length === 0) return <Skeleton className="h-24 w-full" label={m.looking} />
     return (
-      <ul aria-label="Tools to sign in to" className={rack}>
+      <ul aria-label={m.list} className={rack}>
         {chosen.map((t) => (
           <PendingSignInRow key={t.id} tool={t} />
         ))}
@@ -542,22 +541,23 @@ export function SignIn() {
   return (
     <>
       {ready.length > 0 ? (
-        <ul aria-label="Tools to sign in to" className={rack}>
+        <ul aria-label={m.list} className={rack}>
           {ready.map((t) => (
             <SignInRow key={t.id} tool={t} />
           ))}
         </ul>
       ) : (
-        <p className="text-[0.95rem] text-ink-soft">No installed tool needs a sign-in yet.</p>
+        <p className="text-[0.95rem] text-ink-soft">{m.noneNeeded}</p>
       )}
       {waiting.length > 0 && (
         <p className="text-[0.95rem] text-ink-soft">
-          {waiting.map((t) => t.name).join(", ")} can sign in once installed: open it on the Tools page and choose
-          Manage.
+          {m.later(waiting.length, formatList(waiting.map((t) => t.name)))}
         </p>
       )}
       {noSignIn.length > 0 && (
-        <p className="text-[0.95rem] text-ink-soft">{noSignIn.map((t) => t.name).join(", ")} needs no sign-in.</p>
+        <p className="text-[0.95rem] text-ink-soft">
+          {m.noSignIn(noSignIn.length, formatList(noSignIn.map((t) => t.name)))}
+        </p>
       )}
     </>
   )
@@ -575,6 +575,7 @@ export function Done() {
   const installs = useTools((s) => s.installs)
   const list = tools.filter((t) => chosen.includes(t.id))
   const browserReady = list.find((t) => t.mcpServer && installs[t.id]?.[0]?.version)
+  const m = useMessages(onboardingMessages).done
   // Rule 9: after the goal, the next things worth doing, each one leaving the setup for the page that does it.
   const go = (then: () => void) => {
     leave()
@@ -584,7 +585,7 @@ export function Done() {
   return (
     <div className="flex flex-col gap-[1.5rem]">
       {list.length > 0 && (
-        <ul aria-label="Your tools" className={rack}>
+        <ul aria-label={m.list} className={rack}>
           {list.map((t) => {
             const version = installs[t.id]?.[0]?.version
             return (
@@ -593,23 +594,21 @@ export function Done() {
                 <ToolIcon id={t.id} className="size-[1.5rem] shrink-0 text-ink" />
                 <span className="flex-1 font-semibold">{t.name}</span>
                 <span className={cx("font-mono text-[1.02rem] tabular-nums", version ? "text-ink" : "text-ink-soft")}>
-                  {version ?? "Not installed"}
+                  {version ?? m.notInstalled}
                 </span>
               </li>
             )
           })}
         </ul>
       )}
-      <section aria-label="What next" className="flex flex-col gap-2">
-        <h2 className="text-[1.05rem] font-semibold">What next</h2>
+      <section aria-label={m.next} className="flex flex-col gap-2">
+        <h2 className="text-[1.05rem] font-semibold">{m.next}</h2>
         <div className="flex flex-wrap gap-2">
           {browserReady && (
-            <Button onClick={() => go(() => openConnect(browserReady.id))}>
-              Let ChatGPT or Claude use {browserReady.name}
-            </Button>
+            <Button onClick={() => go(() => openConnect(browserReady.id))}>{m.connect(browserReady.name)}</Button>
           )}
           <Button variant="ghost" onClick={() => go(() => useNav.getState().go("agents"))}>
-            See which agents use them
+            {m.agents}
           </Button>
         </div>
       </section>

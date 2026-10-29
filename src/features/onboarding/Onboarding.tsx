@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 import { type ComponentType, useEffect, useId, useRef } from "react"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
@@ -7,47 +8,18 @@ import { reducedMotion } from "@/ui/motion"
 import { AgentsMatrix } from "../agents/AgentsMatrix"
 import { useSystem } from "../system/store"
 import { useTools } from "../tools/store"
+import { onboardingMessages } from "./messages"
 import { Agents, Choose, Computer, Done, Install, installChosen, leave, SignIn, Welcome } from "./steps"
 import { STEPS, type StepId, useOnboarding } from "./store"
 
-type Page = { title: string; lead: string; body: ComponentType }
-
-const pages: Record<StepId, Page> = {
-  welcome: {
-    title: "Welcome to WireCat",
-    lead: "Connect your AI agent (Claude Code, Codex and others) to your own messages, mail, meetings and files.",
-    body: Welcome,
-  },
-  computer: {
-    title: "Your computer",
-    lead: "WireCat tools run on Node.js and install with npm. WireCat Desktop itself runs without them.",
-    body: Computer,
-  },
-  choose: {
-    title: "Choose tools",
-    lead: "Pick the services your agent should reach. You can add or remove tools later.",
-    body: Choose,
-  },
-  install: {
-    title: "Install",
-    lead: "Each tool is installed from npm and checked that it starts. One runs at a time.",
-    body: Install,
-  },
-  agents: {
-    title: "Connect agents",
-    lead: "Your agent learns to use each tool from a skill: a short guide to the tool's commands and when to use them.",
-    body: AgentsStep,
-  },
-  signin: {
-    title: "Sign in",
-    lead: "Signing in connects a tool to your account, so your agent can reach it. Each tool runs its own sign-in in a terminal window; you come back here when it is done.",
-    body: SignIn,
-  },
-  done: {
-    title: "You are set up",
-    lead: "The tools below are installed on this computer. Help, the question mark at the top, has a short tour of the window.",
-    body: Done,
-  },
+const bodies: Record<StepId, ComponentType> = {
+  welcome: Welcome,
+  computer: Computer,
+  choose: Choose,
+  install: Install,
+  agents: AgentsStep,
+  signin: SignIn,
+  done: Done,
 }
 
 function AgentsStep() {
@@ -60,6 +32,7 @@ const indexOf = (id: StepId) => STEPS.findIndex((s) => s.id === id)
 /** The setup steps take the sidebar's place while the flow is open. */
 export function SetupSteps({ onExit }: { onExit: () => void }) {
   const step = useOnboarding((s) => s.step)
+  const m = useMessages(onboardingMessages)
   const current = indexOf(step)
   return (
     <aside
@@ -69,7 +42,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
       <div className="flex h-[7rem] items-center px-[1.5rem] pb-[0.6rem]" data-tauri-drag-region>
         <Logo className="flex h-[2.3rem] items-center gap-[0.75rem] [&>svg:last-child]:h-[40%]" />
       </div>
-      <nav aria-label="Setup steps">
+      <nav aria-label={m.flow.stepsNav}>
         <ol className="flex flex-col gap-[0.15rem]">
           {STEPS.map((s, i) => {
             const here = i === current
@@ -80,7 +53,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
                   aria-current={here ? "step" : undefined}
                   onClick={() => useOnboarding.getState().go(s.id)}
                   className={cx(
-                    "relative flex h-[2.3rem] w-full items-center gap-[0.75rem] px-[1.5rem] text-left text-[0.95rem]",
+                    "relative flex min-h-[2.3rem] w-full items-center gap-[0.75rem] px-[1.5rem] py-[0.3rem] text-left text-[0.95rem] leading-tight",
                     here ? "font-semibold text-ink" : "text-ink-soft hover:text-ink",
                   )}
                 >
@@ -104,7 +77,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
                   >
                     {i < current ? <Check className="size-3" strokeWidth={3} /> : i + 1}
                   </span>
-                  {s.label}
+                  {m.steps[s.id]}
                 </button>
               </li>
             )
@@ -122,9 +95,9 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
             onExit()
           }}
         >
-          Set up later
+          {m.flow.later}
         </Button>
-        <p className="px-[0.75rem] text-[0.85rem] leading-snug text-ink-dim">Finish later from the sidebar.</p>
+        <p className="px-[0.75rem] text-[0.85rem] leading-snug text-ink-dim">{m.flow.laterNote}</p>
       </div>
     </aside>
   )
@@ -133,6 +106,7 @@ export function SetupSteps({ onExit }: { onExit: () => void }) {
 export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () => void }) {
   const step = useOnboarding((s) => s.step)
   const chosen = useOnboarding((s) => s.chosen)
+  const m = useMessages(onboardingMessages)
   const nodeReady = useSystem((s) => s.readiness?.node.ok ?? false)
   const installs = useTools((s) => s.installs)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -154,8 +128,8 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
   }, [step])
 
   const i = indexOf(step)
-  const page = pages[step]
-  const Body = page.body
+  const page = m.pages[step]
+  const Body = bodies[step]
   const next = (id?: StepId) => go(id ?? STEPS[Math.min(i + 1, STEPS.length - 1)]?.id ?? "done")
   const toInstall = chosen.filter((id) => !installs[id]?.length).length
 
@@ -167,17 +141,21 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
   }
 
   let primary: { label: string; run: () => void }
-  if (step === "welcome") primary = { label: "Get started", run: () => next() }
+  if (step === "welcome") primary = { label: m.flow.getStarted, run: () => next() }
   else if (step === "choose" && toInstall > 0 && nodeReady) {
     primary = {
-      label: `Install ${toInstall} ${toInstall === 1 ? "tool" : "tools"}`,
+      label: m.flow.installTools(toInstall),
       run: () => {
         installChosen()
         next()
       },
     }
-  } else if (step === "done") primary = { label: "Open Tools", run: () => close(false) }
-  else primary = { label: "Continue", run: () => next(step === "choose" && chosen.length === 0 ? "agents" : undefined) }
+  } else if (step === "done") primary = { label: m.flow.openTools, run: () => close(false) }
+  else
+    primary = {
+      label: m.flow.continue,
+      run: () => next(step === "choose" && chosen.length === 0 ? "agents" : undefined),
+    }
 
   const skip = step === "welcome" || step === "done" ? null : () => next(step === "choose" ? "agents" : undefined)
 
@@ -218,16 +196,16 @@ export function Onboarding({ onExit, onTour }: { onExit: () => void; onTour: () 
           <div className="sticky bottom-0 mt-auto flex items-center gap-2 border-line border-t bg-wall pt-[1.2rem] pb-[2.2rem]">
             {i > 0 && (
               <Button variant="ghost" onClick={() => go(STEPS[i - 1]?.id ?? "welcome")}>
-                Back
+                {m.flow.back}
               </Button>
             )}
             <span className="flex-1" />
             {skip && (
               <Button variant="ghost" onClick={skip}>
-                Skip
+                {m.flow.skip}
               </Button>
             )}
-            {step === "done" && <Button onClick={() => close(true)}>Take the tour</Button>}
+            {step === "done" && <Button onClick={() => close(true)}>{m.flow.tour}</Button>}
             <Button variant="primary" size="lg" onClick={primary.run}>
               {primary.label}
             </Button>

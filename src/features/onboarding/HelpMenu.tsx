@@ -1,6 +1,8 @@
 import { CircleHelp, Compass, Info, Sparkles } from "lucide-react"
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react"
+import { useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
+import { onboardingMessages } from "./messages"
 
 type Props = { onTour: () => void; onWelcome: () => void; onAbout: () => void }
 
@@ -16,6 +18,7 @@ export function HelpMenu({ onTour, onWelcome, onAbout }: Props) {
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const listId = useId()
+  const m = useMessages(onboardingMessages).help
 
   const items = () => [...(root.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]") ?? [])]
 
@@ -63,8 +66,8 @@ export function HelpMenu({ onTour, onWelcome, onAbout }: Props) {
         ref={trigger}
         type="button"
         data-tour="help"
-        aria-label="Help"
-        title="Help"
+        aria-label={m.help}
+        title={m.help}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -85,23 +88,23 @@ export function HelpMenu({ onTour, onWelcome, onAbout }: Props) {
         <div
           id={listId}
           role="menu"
-          aria-label="Help"
+          aria-label={m.help}
           tabIndex={-1}
           onKeyDown={onMenuKey}
           className="absolute top-[calc(100%-0.3rem)] right-0 z-30 flex w-max min-w-[14rem] flex-col rounded-[0.6rem] border border-line bg-app p-[0.3rem] shadow-panel motion-safe:animate-[select-in_120ms_var(--ease-out-quart)]"
         >
           <button type="button" role="menuitem" className={item} onClick={pick(onTour)}>
             <Compass className={icon} strokeWidth={1.8} aria-hidden />
-            Take the tour
+            {m.tour}
           </button>
           <button type="button" role="menuitem" className={item} onClick={pick(onWelcome)}>
             <Sparkles className={icon} strokeWidth={1.8} aria-hidden />
-            Show the welcome again
+            {m.welcome}
           </button>
           <hr className="mx-[0.4rem] my-[0.3rem] border-line" />
           <button type="button" role="menuitem" className={item} onClick={pick(onAbout)}>
             <Info className={icon} strokeWidth={1.8} aria-hidden />
-            About WireCat
+            {m.about}
           </button>
         </div>
       )}

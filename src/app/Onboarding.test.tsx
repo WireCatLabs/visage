@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
+import { useLanguage } from "@/i18n"
 import { App } from "./App"
 
 const stored = () => JSON.parse(localStorage.getItem("wirecat.onboarding") ?? "{}").state?.status
@@ -10,6 +11,18 @@ describe("First start", () => {
   beforeEach(() => {
     localStorage.clear()
     useOnboarding.setState({ status: "new", open: true, step: "welcome", chosen: [] })
+  })
+
+  // Before the install test below: the mock keeps Google Drive installed from then on.
+  it("speaks Russian when the language is switched", async () => {
+    const user = userEvent.setup()
+    useLanguage.setState({ choice: "ru" })
+    useOnboarding.setState({ step: "choose" })
+    render(<App />)
+
+    expect(screen.getByRole("heading", { level: 1, name: "Выберите инструменты" })).toBeInTheDocument()
+    await user.click(await screen.findByRole("checkbox", { name: /Google Drive/ }))
+    expect(await screen.findByRole("button", { name: "Установить 1 инструмент" })).toBeInTheDocument()
   })
 
   it("installs the chosen tool, then lands on Tools and is not shown again", async () => {

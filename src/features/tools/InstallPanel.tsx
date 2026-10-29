@@ -19,7 +19,7 @@ export const packageNamesOf = (id: string) => formatList(samePackage(id).map((t)
 
 function stepStates(session: InstallSession, m: Words): { label: string; state: StepState }[] {
   const labels = m.steps[session.operation]
-  const steps = STEPS[session.operation].map((s) => ({ step: s.step, label: labels[s.step] ?? s.label }))
+  const steps = STEPS[session.operation].map((s) => ({ step: s.step, label: labels[s.step] ?? s.step }))
   const failed = session.outcome?.event === "failed"
   if (session.step === "queued" && !session.outcome) return steps.map((s) => ({ label: s.label, state: "todo" }))
   const finished = session.outcome?.event === "done" || session.outcome?.event === "removed"

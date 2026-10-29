@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest"
 // Folders and files whose text is not in catalogs yet. Each conversion removes its lines; the list ends empty.
 const PENDING = [
   "src/features/about",
-  "src/features/onboarding",
   "src/features/report",
   "src/features/signin",
   "src/features/system",

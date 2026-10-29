@@ -2,13 +2,13 @@ import { create } from "zustand"
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware"
 
 export const STEPS = [
-  { id: "welcome", label: "Welcome" },
-  { id: "computer", label: "Your computer" },
-  { id: "choose", label: "Choose tools" },
-  { id: "install", label: "Install" },
-  { id: "agents", label: "Agents" },
-  { id: "signin", label: "Sign in" },
-  { id: "done", label: "Done" },
+  { id: "welcome" },
+  { id: "computer" },
+  { id: "choose" },
+  { id: "install" },
+  { id: "agents" },
+  { id: "signin" },
+  { id: "done" },
 ] as const
 
 export type StepId = (typeof STEPS)[number]["id"]

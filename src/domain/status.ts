@@ -67,17 +67,8 @@ export function isNewer(candidate: string, current: string): boolean {
   return false
 }
 
-export const STEPS: Record<Operation, readonly { step: InstallStep | "done"; label: string }[]> = {
-  install: [
-    { step: "check", label: "Checking requirements" },
-    { step: "install", label: "Installing" },
-    { step: "verify", label: "Verifying" },
-    { step: "done", label: "Done" },
-  ],
-  uninstall: [
-    { step: "check", label: "Finding copies" },
-    { step: "remove", label: "Removing" },
-    { step: "verify", label: "Verifying" },
-    { step: "done", label: "Done" },
-  ],
+// Labels for each step are in src/features/tools/messages.tsx, keyed by step.
+export const STEPS: Record<Operation, readonly { step: InstallStep | "done" }[]> = {
+  install: [{ step: "check" }, { step: "install" }, { step: "verify" }, { step: "done" }],
+  uninstall: [{ step: "check" }, { step: "remove" }, { step: "verify" }, { step: "done" }],
 }
