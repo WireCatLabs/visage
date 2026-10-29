@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
 import { useUpdate } from "@/features/update/store"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { App } from "./App"
 
@@ -84,5 +85,15 @@ describe("App update", () => {
     await user.click(within(dialog).getByRole("button", { name: "Download from GitHub" }))
     expect(open).toHaveBeenCalledWith("https://github.com/WireCatLabs/wirecat-desktop/releases/latest")
     expect(install).not.toHaveBeenCalled()
+  })
+
+  it("offers the update in the chosen language", async () => {
+    vi.spyOn(platform, "checkUpdate").mockResolvedValue(offer)
+    useLanguage.setState({ choice: "ru" })
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole("button", { name: "Обновить до 0.2.0" }))
+    const dialog = await screen.findByRole("dialog", { name: "Вышел WireCat 0.2.0" })
+    expect(within(dialog).getByRole("button", { name: "Установить и перезапустить" })).toBeEnabled()
   })
 })

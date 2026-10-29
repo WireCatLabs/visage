@@ -34,7 +34,6 @@ const PENDING = [
   "src/features/tools/ToolsIntro",
   "src/features/tools/ToolsPage",
   "src/features/tools/UpgradeWarning",
-  "src/features/update",
 ]
 
 // Names and words that are the same in every language: products, tools, and what a reader types.

@@ -1,14 +1,17 @@
 import { Download, ExternalLink } from "lucide-react"
 import { formatBytes } from "@/domain/format"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { AutoHeight } from "@/ui/AutoHeight"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { ErrorNotice } from "@/ui/ErrorNotice"
+import { updateMessages } from "./messages"
 import { RELEASES_URL, useUpdate } from "./store"
 
 /** Shown only once an update is found; it sits left of "Report a problem", so nothing already there moves. */
 export function UpdateButton() {
+  const m = useMessages(updateMessages)
   const update = useUpdate((s) => s.update)
   const phase = useUpdate((s) => s.phase)
   if (!update) return null
@@ -20,19 +23,20 @@ export function UpdateButton() {
       icon={<Download className="size-4" strokeWidth={1.8} aria-hidden />}
       onClick={() => useUpdate.getState().show()}
     >
-      {phase === "downloading" ? "Updating…" : `Update to ${update.version}`}
+      {phase === "downloading" ? m.updating : m.updateTo(update.version)}
     </Button>
   )
 }
 
 function Progress() {
+  const m = useMessages(updateMessages)
   const progress = useUpdate((s) => s.progress)
   const share = progress?.total ? Math.min(1, progress.downloaded / progress.total) : null
   return (
     <div className="flex flex-col gap-2">
       <span
         role="progressbar"
-        aria-label="Downloading the update"
+        aria-label={m.downloadingLabel}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={share === null ? undefined : Math.round(share * 100)}
@@ -44,15 +48,14 @@ function Progress() {
         />
       </span>
       <p className="text-[0.9rem] text-ink-soft">
-        {progress?.total
-          ? `${formatBytes(progress.downloaded)} of ${formatBytes(progress.total)}`
-          : "Downloading the update…"}
+        {progress?.total ? m.downloaded(formatBytes(progress.downloaded), formatBytes(progress.total)) : m.downloading}
       </p>
     </div>
   )
 }
 
 export function UpdateDialog() {
+  const m = useMessages(updateMessages)
   const { update, open, phase, error } = useUpdate()
   if (!update) return null
   const busy = phase === "downloading" || phase === "restarting"
@@ -61,7 +64,7 @@ export function UpdateDialog() {
   const actions = update.manual ? (
     <>
       <Button variant="ghost" onClick={() => useUpdate.getState().close()}>
-        Later
+        {m.later}
       </Button>
       <Button
         variant="primary"
@@ -69,16 +72,16 @@ export function UpdateDialog() {
         icon={<ExternalLink className="size-4" aria-hidden />}
         onClick={download}
       >
-        Download from GitHub
+        {m.downloadFromGitHub}
       </Button>
     </>
   ) : (
     <>
       <Button variant="ghost" onClick={() => useUpdate.getState().close()}>
-        {busy ? "Hide" : "Later"}
+        {busy ? m.hide : m.later}
       </Button>
       <Button variant="primary" data-autofocus disabled={busy} onClick={() => useUpdate.getState().install()}>
-        {phase === "failed" ? "Try again" : "Install and restart"}
+        {phase === "failed" ? m.tryAgain : m.install}
       </Button>
     </>
   )
@@ -86,16 +89,12 @@ export function UpdateDialog() {
   return (
     <Dialog
       open={open}
-      title={`WireCat ${update.version} is available`}
+      title={m.available(update.version)}
       onClose={() => useUpdate.getState().close()}
       actions={actions}
     >
       <div className="flex flex-col gap-4">
-        <p className="text-ink-soft">
-          {update.manual
-            ? "This copy was installed from a Linux package, so it cannot update itself. Download the new package from GitHub and install it the same way."
-            : "WireCat downloads the update, installs it and opens again. Your tools, profiles and data stay as they are."}
-        </p>
+        <p className="text-ink-soft">{update.manual ? m.manual : m.auto}</p>
         {update.notes && (
           <div className="selectable max-h-[12rem] overflow-y-auto whitespace-pre-line rounded-[0.2rem] border border-line bg-app-2 px-4 py-3 text-[0.9rem]">
             {update.notes}
@@ -103,17 +102,17 @@ export function UpdateDialog() {
         )}
         <AutoHeight swap={update.manual ? "manual" : phase}>
           {phase === "downloading" && <Progress />}
-          {phase === "restarting" && <p className="text-[0.9rem] text-ink-soft">Installed. WireCat is restarting…</p>}
+          {phase === "restarting" && <p className="text-[0.9rem] text-ink-soft">{m.restarting}</p>}
           {phase === "failed" && (
             <ErrorNotice
-              detail="Try again, or download the installer from GitHub."
+              detail={m.failedDetail}
               action={
                 <Button size="sm" onClick={download}>
-                  Open GitHub
+                  {m.openGitHub}
                 </Button>
               }
             >
-              {error ?? "The update could not be installed."}
+              {error ?? m.failed}
             </ErrorNotice>
           )}
         </AutoHeight>
