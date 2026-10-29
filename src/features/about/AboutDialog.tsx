@@ -1,6 +1,7 @@
 import { Check, Copy, ExternalLink } from "lucide-react"
 import { Fragment, useEffect, useState } from "react"
 import { tools } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
@@ -8,17 +9,20 @@ import { Monogram } from "@/ui/Logo"
 import { useReport } from "../report/store"
 import { useSystem } from "../system/store"
 import { useTools } from "../tools/store"
+import { aboutMessages } from "./messages"
 
 const AUTHOR = "Viacheslav Ptsarev"
 const COPYRIGHT_YEAR = 2026
 const REPO = "https://github.com/WireCatLabs/wirecat-desktop"
+const PRODUCT = "WireCat Desktop"
+const LICENSE = "Apache License 2.0"
 
 const links = [
-  { label: "Website", href: "https://wirecat.dev" },
-  { label: "Documentation", href: "https://wirecat.dev/en/docs" },
-  { label: "Source code", href: REPO },
-  { label: "Privacy policy", href: "https://wirecat.dev/en/privacy" },
-]
+  { label: "website", href: "https://wirecat.dev" },
+  { label: "docs", href: "https://wirecat.dev/en/docs" },
+  { label: "source", href: REPO },
+  { label: "privacy", href: "https://wirecat.dev/en/privacy" },
+] as const
 
 type System = { os: string; arch: string } | null
 
@@ -31,6 +35,7 @@ function versionLine(system: System) {
 }
 
 export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const m = useMessages(aboutMessages)
   const readiness = useSystem((s) => s.readiness)
   const installs = useTools((s) => s.installs)
   const installed = tools.flatMap((t) => {
@@ -46,11 +51,11 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Dialog
       open={open}
-      title="About WireCat"
+      title={m.title}
       onClose={onClose}
       actions={
         <Button variant="ghost" data-autofocus onClick={onClose}>
-          Close
+          {m.close}
         </Button>
       }
     >
@@ -58,20 +63,17 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="flex items-start gap-4">
           <Monogram className="size-[3rem] shrink-0" />
           <div className="flex flex-col gap-1">
-            <p className="text-[1.05rem] font-semibold text-ink">WireCat Desktop</p>
-            <p>
-              Gives your AI agents access to your messengers, mail and drive through command-line tools that run on this
-              computer. Your data stays here.
-            </p>
+            <p className="text-[1.05rem] font-semibold text-ink">{PRODUCT}</p>
+            <p>{m.summary}</p>
           </div>
         </div>
 
-        <section aria-label="Version" className="rounded-[0.45rem] border border-line bg-app-2 px-4 py-3">
+        <section aria-label={m.version} className="rounded-[0.45rem] border border-line bg-app-2 px-4 py-3">
           <div className="flex items-start gap-3">
             <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[0.875rem]">
-              <Fact term="Version">{__APP_VERSION__}</Fact>
-              {build && <Fact term="Build">{build}</Fact>}
-              {readiness && <Fact term="System">{`${readiness.os} ${readiness.arch}`}</Fact>}
+              <Fact term={m.version}>{__APP_VERSION__}</Fact>
+              {build && <Fact term={m.build}>{build}</Fact>}
+              {readiness && <Fact term={m.system}>{`${readiness.os} ${readiness.arch}`}</Fact>}
             </dl>
             <CopyButton text={versionLine(readiness)} />
           </div>
@@ -89,11 +91,11 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
           )}
         </section>
 
-        <nav aria-label="WireCat links">
+        <nav aria-label={m.links}>
           <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5">
             {links.map((l) => (
               <li key={l.href}>
-                <LinkButton href={l.href}>{l.label}</LinkButton>
+                <LinkButton href={l.href}>{m[l.label]}</LinkButton>
               </li>
             ))}
             <li>
@@ -102,16 +104,16 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
                 onClick={report}
                 className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
               >
-                Report a problem
+                {m.report}
               </button>
             </li>
           </ul>
         </nav>
 
         <p className="border-line border-t pt-4 text-[0.875rem] text-ink-dim">
-          Made by {AUTHOR} · © {COPYRIGHT_YEAR}
+          {m.madeBy(AUTHOR, COPYRIGHT_YEAR)}
           <br />
-          Free and open source under the <LinkButton href={`${REPO}/blob/main/LICENSE`}>Apache License 2.0</LinkButton>
+          {m.license(<LinkButton href={`${REPO}/blob/main/LICENSE`}>{LICENSE}</LinkButton>)}
         </p>
       </div>
     </Dialog>
@@ -128,6 +130,7 @@ function Fact({ term, children }: { term: string; children: string }) {
 }
 
 function CopyButton({ text }: { text: string }) {
+  const m = useMessages(aboutMessages)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -136,12 +139,12 @@ function CopyButton({ text }: { text: string }) {
     return () => clearTimeout(t)
   }, [copied])
 
-  const label = copied ? "Copied" : "Copy version details"
+  const label = copied ? m.copied : m.copy
   return (
     <button
       type="button"
       aria-label={label}
-      title={`Copy “${text}” for a bug report`}
+      title={m.copyTitle(text)}
       onClick={async () => {
         await navigator.clipboard.writeText(text)
         setCopied(true)
@@ -150,7 +153,7 @@ function CopyButton({ text }: { text: string }) {
     >
       {copied ? <Check className="size-4 text-ok" aria-hidden /> : <Copy className="size-4" aria-hidden />}
       <span className="sr-only" aria-live="polite">
-        {copied ? "Copied to the clipboard" : ""}
+        {copied ? m.copiedAnnounce : ""}
       </span>
     </button>
   )

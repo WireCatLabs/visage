@@ -1,7 +1,9 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { AboutDialog } from "@/features/about/AboutDialog"
 import { useOnboarding } from "@/features/onboarding/store"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { App } from "./App"
 
@@ -66,5 +68,13 @@ describe("About WireCat", () => {
     await user.keyboard("{Escape}")
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     expect(help).toHaveFocus()
+  })
+
+  it("speaks Russian when the language is Russian", async () => {
+    useLanguage.setState({ choice: "ru" })
+    render(<AboutDialog open onClose={() => undefined} />)
+    const dialog = screen.getByRole("dialog", { name: "О WireCat" })
+    expect(within(dialog).getByRole("button", { name: "Политика конфиденциальности" })).toBeInTheDocument()
+    expect(within(dialog).getByText(/Свободное ПО с открытым исходным кодом по лицензии/)).toBeInTheDocument()
   })
 })
