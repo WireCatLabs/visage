@@ -126,7 +126,7 @@ function AskBody({ ask, name, bin }: { ask: Ask; name: string; bin: string }) {
         </p>
         <p>
           {how}. A profile that sets <code className="font-mono">record</code> itself keeps its own choice; change that
-          on the Config page. Runs that already ended are not recovered.
+          on the Settings page. Runs that already ended are not recovered.
         </p>
       </div>
     )

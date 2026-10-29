@@ -8,6 +8,7 @@ import { useOnboarding } from "@/features/onboarding/store"
 import { Tour, useTour } from "@/features/onboarding/Tour"
 import { ReportDialog } from "@/features/report/ReportDialog"
 import { useReport } from "@/features/report/store"
+import { useApplyScale, useScaleKeys } from "@/features/settings/scale"
 import { SignInDialog } from "@/features/signin/SignInDialog"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
@@ -24,6 +25,8 @@ import { useApplyTheme } from "./theme"
 
 export function App() {
   useApplyTheme()
+  useApplyScale()
+  useScaleKeys()
   const active = useNav((s) => s.active)
   const setActive = useNav((s) => s.go)
   const onboarding = useOnboarding((s) => s.open)

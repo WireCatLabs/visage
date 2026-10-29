@@ -8,6 +8,7 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Monogram } from "@/ui/Logo"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
+import { AppPreferences } from "../settings/AppPreferences"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { CategoriesEditor, CategoriesPlaceholder } from "./CategoriesEditor"
@@ -67,15 +68,23 @@ export function ConfigPage() {
   return (
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div>
-        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Config</h1>
+        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Settings</h1>
         <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
-          Settings read from the tools and saved through their own <code className="font-mono">config set</code>, so
-          every value is checked by the tool before it is written.
+          How WireCat looks on this computer, and the settings of each tool.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <Choices label="Settings">
+      <AppPreferences />
+
+      <div className="flex flex-col gap-4 border-t border-line pt-[1.5rem]">
+        <div>
+          <h2 className="text-[1.05rem] font-semibold">Tools</h2>
+          <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
+            Read from the tools and saved through their own <code className="font-mono">config set</code>, so every
+            value is checked by the tool before it is written.
+          </p>
+        </div>
+        <Choices label="Tool">
           <Choice
             group="tool"
             checked={shared}

@@ -2,7 +2,8 @@
 //   pnpm build && pnpm preview --port 1478 --strictPort      (the dev server adds a shift of its own as CSS loads)
 //   node scripts/layout-shift.mjs [page…] --port 1478 [--slow 1] [--width 1536] [--height 1024] [--dark]
 //                                 [--sources 5] [--shots ms,ms,…] [--out dir] [--budget 0.01] [--grow 8]
-// Pages: tools tools-manage agents agents-revisit storage logs config config-telegram onboarding-<step> (default: all).
+// Pages: tools tools-manage agents agents-revisit storage logs settings settings-telegram onboarding-<step>
+// (default: all).
 // Needs a local Chrome.
 // Prints the Cumulative Layout Shift (CLS: the sum of every shift's score, 0 = nothing moved) per page, and the
 // elements that moved most, with when and how far. CLS misses a block growing at the bottom (nothing below it
@@ -34,7 +35,7 @@ const growBudget = Number(flag("grow", 8))
 const dark = args.includes("--dark") ? args.splice(args.indexOf("--dark"), 1) && true : false
 
 // A page opens from a query; `clicks` then go through to a state behind it, each after the page before has settled.
-// Only what happens after the last step is scored, so `config` measures Config, not the Tools page it starts on.
+// Only what happens after the last step is scored, so `settings` measures Settings, not the Tools page it starts on.
 const nav = (label) => `nav button:has-text("${label}")`
 const PAGES = {
   tools: { query: "?onboarding=off&section=tools" },
@@ -47,8 +48,11 @@ const PAGES = {
   "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("Tools"), nav("Agents")] },
   storage: { query: "?onboarding=off&section=storage" },
   logs: { query: "?onboarding=off&section=logs" },
-  config: { query: "?onboarding=off&section=tools", clicks: [nav("Config")] },
-  "config-telegram": { query: "?onboarding=off&section=tools", clicks: [nav("Config"), 'label:has-text("Telegram")'] },
+  settings: { query: "?onboarding=off&section=tools", clicks: [nav("Settings")] },
+  "settings-telegram": {
+    query: "?onboarding=off&section=tools",
+    clicks: [nav("Settings"), 'label:has-text("Telegram")'],
+  },
   "onboarding-computer": { query: "?onboarding=computer" },
   "onboarding-choose": { query: "?onboarding=choose" },
   "onboarding-install": { query: "?onboarding=install" },
