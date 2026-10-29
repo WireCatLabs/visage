@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { platform } from "@/platform/bridge"
-import { reducedMotion } from "@/ui/motion"
+import { keepRoom, reducedMotion } from "@/ui/motion"
 
 /** The owner's interface size, in percent of the default. */
 export const MIN_SCALE = 80
@@ -47,9 +47,16 @@ function holdPlace() {
         ? document.elementFromPoint(box.left + box.width / 2, box.top + 1)
         : null
   if (!anchor || !main.contains(anchor)) return () => undefined
-  const offset = anchor.getBoundingClientRect().top - box.top
+  // On screen, not within the page: the top bar and the readiness strip above the page grow too.
+  const top = anchor.getBoundingClientRect().top
+  // A short page has no room to scroll the growth away; it gets that room until the reader scrolls back up.
+  keepRoom(anchor)
+  const page = main.firstElementChild
   return () => {
-    main.scrollTop += anchor.getBoundingClientRect().top - main.getBoundingClientRect().top - offset
+    const drift = anchor.getBoundingClientRect().top - top
+    const need = main.scrollTop + drift + main.clientHeight
+    if (drift > 0 && page instanceof HTMLElement && need > page.offsetHeight) page.style.minHeight = `${need}px`
+    main.scrollTop += drift
   }
 }
 
