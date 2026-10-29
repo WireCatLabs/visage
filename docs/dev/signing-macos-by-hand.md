@@ -91,11 +91,12 @@ openssl x509 -in developer-id.pem -noout -subject -issuer -enddate
 Apple sends the certificate as binary data (DER). `developer-id.pem` is the same certificate as text, which the next
 commands read. The last command shows:
 
-- `subject=`: it has `CN=Developer ID Application: <your name> (<TEAM ID>)` and `OU=<TEAM ID>`. If it says
-  `Developer ID Installer` (or anything else), you picked the wrong kind in step 3: repeat step 3 and choose **Developer ID Application**. Apple accepts each request file only once ("The uploaded
-  CSR file has already been used"), so first repeat steps 1 and 2 to make a new key and request, and revoke the wrong
-  certificate under All Certificates → the certificate → **Revoke**. Write the team ID down: it is 10 letters and digits, and it
-  is not secret. You need it in step 6.
+- `subject=`: it has `CN=Developer ID Application: <your name> (<TEAM ID>)` and `OU=<TEAM ID>`. Write the team ID
+  down: it is 10 letters and digits, and it is not secret. You need it in step 6.
+- If it says `Developer ID Installer` (or anything else), you picked the wrong kind in step 3. Apple accepts each
+  request file only once ("The uploaded CSR file has already been used"), so repeat steps 1 and 2 for a new key and
+  request, then step 3 with **Developer ID Application**. Revoke the wrong certificate under All Certificates → the
+  certificate → **Revoke**.
 - The name is the one the developer account is enrolled under: your legal name for an individual account, the
   company's name for an organization. Anyone who inspects the app's signature can read it.
 - `issuer=`: which Apple certificate signed yours. If it has `OU=G2`, use the G2 file in step 4c.
