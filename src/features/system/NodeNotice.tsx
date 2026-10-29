@@ -2,6 +2,7 @@ import { Download, ExternalLink } from "lucide-react"
 import { useEffect, useId, useState } from "react"
 import { requirements } from "@/domain/catalog"
 import { formatBytes } from "@/domain/format"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { Readiness } from "@/platform/schemas"
 import { Button } from "@/ui/Button"
@@ -11,20 +12,19 @@ import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Stepper, type StepState } from "@/ui/Stepper"
 import { ReportThis } from "../report/ReportThis"
 import { ManagedNode } from "./ManagedNode"
+import { systemMessages } from "./messages"
 import { type NodeStep, useNode } from "./node-store"
 import { useSystem } from "./store"
 
-const STEPS: readonly { id: NodeStep; label: string }[] = [
-  { id: "check", label: "Check" },
-  { id: "download", label: "Download" },
-  { id: "verify", label: "Verify" },
-  { id: "unpack", label: "Unpack" },
-]
+const STEPS: readonly NodeStep[] = ["check", "download", "verify", "unpack"]
+
+const NODEJS_ORG = "nodejs.org"
 
 /** Asks for Node.js when the tools cannot be installed, and offers to set it up in the user's own folder. */
 export function NodeNotice() {
   const r = useSystem((s) => s.readiness)
   const path = useNode((s) => s.path)
+  const m = useMessages(systemMessages)
   const managedActive = r?.managed?.active ?? false
 
   useEffect(() => {
@@ -36,14 +36,9 @@ export function NodeNotice() {
     // Once it is on PATH there is nothing left to ask; the readiness strip still opens it.
     if (!path || path.added) return null
     return (
-      <section
-        aria-label="Node.js for WireCat tools"
-        className="rounded-[0.2rem] border border-line-strong bg-app px-5 py-4"
-      >
-        <p className="font-semibold">WireCat set up Node.js {r.managed?.version} for its tools</p>
-        <p className="mt-0.5 max-w-[70ch] text-[0.95rem] text-ink-soft">
-          Tools install and run with it here. Add it to PATH so they also work in a terminal.
-        </p>
+      <section aria-label={m.nodeForTools} className="rounded-[0.2rem] border border-line-strong bg-app px-5 py-4">
+        <p className="font-semibold">{m.managedTitle(r.managed?.version ?? "")}</p>
+        <p className="mt-0.5 max-w-[70ch] text-[0.95rem] text-ink-soft">{m.managedBody}</p>
         <div className="mt-4">
           <ManagedNode compact />
         </div>
@@ -61,24 +56,19 @@ function NeedsNode({ r }: { r: Readiness }) {
   const failure = useNode((s) => s.failure)
   const [manual, setManual] = useState(false)
   const manualId = useId()
+  const m = useMessages(systemMessages)
 
   useEffect(() => {
     useNode.getState().loadOffer()
   }, [])
 
   const admin = r.node.ok
-  const title = admin
-    ? "npm needs administrator rights to install tools"
-    : !r.node.version
-      ? "Node.js is needed to install WireCat tools"
-      : `Node.js ${r.node.version} is too old for WireCat tools`
-  const body = admin
-    ? `npm installs into ${r.npmPrefix}, a system folder. WireCat can set up its own Node.js in your user folder instead; your current one stays as it is.`
-    : `WireCat Desktop runs without it, but its tools need ${requirements.nodeLabel}. WireCat can set it up in your user folder, without administrator rights.`
+  const title = admin ? m.adminTitle : !r.node.version ? m.missingTitle : m.oldTitle(r.node.version)
+  const body = admin ? m.adminBody(r.npmPrefix ?? "") : m.needBody(requirements.nodeLabel)
 
   return (
     <section
-      aria-label="Node.js for WireCat tools"
+      aria-label={m.nodeForTools}
       className="flex flex-col gap-4 rounded-[0.2rem] border border-warn/40 bg-warn/10 px-5 py-4"
     >
       <div>
@@ -95,23 +85,23 @@ function NeedsNode({ r }: { r: Readiness }) {
             onClick={() => useNode.getState().setup()}
             icon={<Download className="size-4" aria-hidden />}
           >
-            Set up Node.js for me
+            {m.setUp}
           </Button>
           <Button aria-expanded={manual} aria-controls={manualId} onClick={() => setManual((m) => !m)}>
-            I'll install it myself
+            {m.installMyself}
           </Button>
           <p className="min-w-0 text-[0.875rem] text-ink-soft">
-            {offer ? (
-              <>
-                <span className="selectable font-mono tabular-nums text-ink">Node.js {offer.version}</span>
-                {offer.bytes ? <span className="font-mono tabular-nums"> · {formatBytes(offer.bytes)}</span> : null}{" "}
-                from nodejs.org, checked against its published checksums.
-              </>
-            ) : offerError ? (
-              "The latest LTS from nodejs.org, checked against its published checksums."
-            ) : (
-              "Asking nodejs.org for the latest LTS…"
-            )}
+            {offer
+              ? m.offer(
+                  <>
+                    <span className="selectable font-mono tabular-nums text-ink">{`Node.js ${offer.version}`}</span>
+                    {offer.bytes ? <span className="font-mono tabular-nums"> · {formatBytes(offer.bytes)}</span> : null}
+                  </>,
+                  NODEJS_ORG,
+                )
+              : offerError
+                ? m.offerUnknown(NODEJS_ORG)
+                : m.asking(NODEJS_ORG)}
           </p>
         </div>
       )}
@@ -130,13 +120,14 @@ function Progress() {
   const received = useNode((s) => s.received)
   const total = useNode((s) => s.total)
   const offer = useNode((s) => s.offer)
+  const m = useMessages(systemMessages)
 
-  const current = STEPS.findIndex((s) => s.id === step)
-  const steps = STEPS.map((s, i) => {
+  const current = step ? STEPS.indexOf(step) : -1
+  const steps = STEPS.map((id, i) => {
     let state: StepState = "todo"
     if (i < current) state = "done"
     else if (i === current) state = failure ? "failed" : "active"
-    return { label: s.label, state }
+    return { label: m.steps[id], state }
   })
   const pct = total ? Math.min(100, Math.round((received / total) * 100)) : null
 
@@ -147,7 +138,7 @@ function Progress() {
         <div className="flex items-center gap-4">
           <div
             role="progressbar"
-            aria-label="Downloading Node.js"
+            aria-label={m.downloading}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={pct ?? undefined}
@@ -159,16 +150,15 @@ function Progress() {
             />
           </div>
           <span className="shrink-0 font-mono text-[0.875rem] tabular-nums text-ink-soft">
-            {formatBytes(received)}
-            {total ? ` of ${formatBytes(total)}` : ""}
+            {total ? m.ofTotal(formatBytes(received), formatBytes(total)) : formatBytes(received)}
           </span>
         </div>
       )}
       {running && step !== "download" && (
         <p aria-live="polite" className="text-[0.95rem] text-ink-soft">
-          {step === "check" && "Asking nodejs.org for the latest LTS…"}
-          {step === "verify" && "Comparing the download with the checksum nodejs.org publishes…"}
-          {step === "unpack" && `Unpacking into ${offer?.dir ?? "your user folder"}…`}
+          {step === "check" && m.asking(NODEJS_ORG)}
+          {step === "verify" && m.verifying(NODEJS_ORG)}
+          {step === "unpack" && (offer?.dir ? m.unpackInto(offer.dir) : m.unpackHome)}
         </p>
       )}
       {failure && (
@@ -186,11 +176,11 @@ function Progress() {
       <div className="flex justify-end gap-2">
         {running ? (
           <Button size="sm" onClick={() => useNode.getState().cancel()}>
-            Cancel
+            {m.cancel}
           </Button>
         ) : (
           <Button size="sm" onClick={() => useNode.getState().setup()}>
-            Try again
+            {m.tryAgain}
           </Button>
         )}
       </div>
@@ -198,36 +188,27 @@ function Progress() {
   )
 }
 
-const HOW: Record<typeof platform.os, string> = {
-  linux:
-    "Use nvm or fnm, or your distribution's NodeSource package; the version in the default repositories is often too old.",
-  macos: "Use the macOS installer from nodejs.org, Homebrew (brew install node), or nvm.",
-  windows: "Use the Windows installer from nodejs.org, or winget install OpenJS.NodeJS.LTS.",
-}
-
 function Manual({ admin }: { admin: boolean }) {
+  const m = useMessages(systemMessages)
   if (admin) {
     return (
       <>
         <p className="max-w-[70ch] text-[0.95rem] text-ink-soft">
-          Point npm at a folder in your home, then add that folder's <span className="font-mono">bin</span> to your PATH
-          and check again.
+          {m.adminManual(<code className="font-mono">bin</code>)}
         </p>
-        <CopyField value="npm config set prefix ~/.npm-global" label="Copy the command" />
+        <CopyField value="npm config set prefix ~/.npm-global" label={m.copyCommand} />
       </>
     )
   }
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <p className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">
-        Install {requirements.nodeLabel}. {HOW[platform.os]} Then check again.
-      </p>
+      <p className="min-w-0 flex-1 text-[0.95rem] text-ink-soft">{m.install[platform.os](requirements.nodeLabel)}</p>
       <Button
         size="sm"
         onClick={() => platform.openUrl(requirements.nodeDownload)}
         icon={<ExternalLink className="size-4" aria-hidden />}
       >
-        nodejs.org
+        {NODEJS_ORG}
       </Button>
     </div>
   )
