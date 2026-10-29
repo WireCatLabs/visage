@@ -3,6 +3,7 @@ import { platform } from "@/platform/bridge"
 import type { AppUpdate, UpdateProgress } from "@/platform/types"
 
 export const RELEASES_URL = "https://github.com/WireCatLabs/wirecat-desktop/releases/latest"
+export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 
 type Phase = "available" | "downloading" | "restarting" | "failed"
 
@@ -19,6 +20,7 @@ type UpdateState = {
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+let checking = false
 
 export const useUpdate = create<UpdateState>((set, get) => ({
   update: null,
@@ -28,9 +30,17 @@ export const useUpdate = create<UpdateState>((set, get) => ({
   error: null,
 
   async check() {
-    // Offline, GitHub down or no release yet: nothing to offer, and nothing worth interrupting the user for.
-    const update = await platform.checkUpdate().catch(() => null)
-    if (update) set({ update })
+    // While the dialog is open or an install runs, a newer offer would change what the user is looking at.
+    const busy = () => get().open || get().phase !== "available"
+    if (checking || busy()) return
+    checking = true
+    try {
+      // Offline, GitHub down or no release yet: nothing to offer, and nothing worth interrupting the user for.
+      const update = await platform.checkUpdate().catch(() => null)
+      if (update && !busy() && update.version !== get().update?.version) set({ update })
+    } finally {
+      checking = false
+    }
   },
 
   show: () => set({ open: true }),

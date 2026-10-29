@@ -41,7 +41,9 @@ Builds use [tauri-action](https://github.com/tauri-apps/tauri-action) v1.0.0, pi
 [Tauri updater plugin](https://v2.tauri.app/plugin/updater/) plus the
 [process plugin](https://v2.tauri.app/plugin/process/) for the restart.
 
-- The app checks once at start. A found update shows an "Update to x.y.z" button in the top bar; its dialog shows the
+- The app checks at start and every 6 hours while it stays open (owner, NEED-133 A). No check runs while the update
+  dialog is open or an install is under way, so the offer never changes under the user; a later check that finds
+  nothing keeps the earlier offer. A found update shows an "Update to x.y.z" button in the top bar; its dialog shows the
   notes, and nothing downloads until the user presses Install and restart (rule 9). On Windows the installer closes
   the app itself ([updater docs, Windows](https://v2.tauri.app/plugin/updater/)); `installMode` is `passive`.
 - **The key comes before the first tag.** Each copy trusts only the public key it was built with

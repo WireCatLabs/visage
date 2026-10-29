@@ -211,8 +211,10 @@ function createTauri(): Platform {
     settingsUnset: (id, profile, defaults, setting) => invoke("settings_unset", { id, profile, defaults, setting }),
     permissionsShow: (id, profile) => call(PermissionsSchema, "permissions_show", { id, profile }),
     checkUpdate: async () => {
-      found = await check()
-      if (!found) return null
+      // A later check that finds nothing keeps the update already offered installable.
+      const next = await check()
+      if (!next) return null
+      found = next
       const manual = !(await invoke<boolean>("update_self_installs"))
       return { version: found.version, notes: found.body?.trim() || null, manual }
     },

@@ -12,7 +12,7 @@ import { useApplyScale, useScaleKeys } from "@/features/settings/scale"
 import { SignInDialog } from "@/features/signin/SignInDialog"
 import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
-import { useUpdate } from "@/features/update/store"
+import { CHECK_EVERY_MS, useUpdate } from "@/features/update/store"
 import { UpdateButton, UpdateDialog } from "@/features/update/UpdateDialog"
 import { useApplyLang, useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
@@ -45,7 +45,10 @@ export function App() {
   const toTools = () => setActive("tools")
   const [about, setAbout] = useState(false)
   useEffect(() => {
-    useUpdate.getState().check()
+    const check = () => useUpdate.getState().check()
+    check()
+    const timer = setInterval(check, CHECK_EVERY_MS)
+    return () => clearInterval(timer)
   }, [])
 
   return (

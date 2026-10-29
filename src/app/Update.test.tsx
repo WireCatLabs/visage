@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useOnboarding } from "@/features/onboarding/store"
-import { useUpdate } from "@/features/update/store"
+import { CHECK_EVERY_MS, useUpdate } from "@/features/update/store"
 import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { App } from "./App"
@@ -85,6 +85,49 @@ describe("App update", () => {
     await user.click(within(dialog).getByRole("button", { name: "Download from GitHub" }))
     expect(open).toHaveBeenCalledWith("https://github.com/WireCatLabs/wirecat-desktop/releases/latest")
     expect(install).not.toHaveBeenCalled()
+  })
+
+  describe("while the app stays open", () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] }))
+    afterEach(() => vi.useRealTimers())
+
+    it("checks again every 6 hours, and stops when the app closes", async () => {
+      const check = vi.spyOn(platform, "checkUpdate").mockResolvedValueOnce(null).mockResolvedValue(offer)
+      const { unmount } = render(<App />)
+      await screen.findByText("Node.js 24.19.0")
+      expect(check).toHaveBeenCalledOnce()
+      expect(screen.queryByRole("button", { name: "Update to 0.2.0" })).not.toBeInTheDocument()
+
+      await vi.advanceTimersByTimeAsync(CHECK_EVERY_MS)
+      expect(await screen.findByRole("button", { name: "Update to 0.2.0" })).toBeInTheDocument()
+      expect(check).toHaveBeenCalledTimes(2)
+
+      unmount()
+      await vi.advanceTimersByTimeAsync(CHECK_EVERY_MS)
+      expect(check).toHaveBeenCalledTimes(2)
+    })
+
+    it("does not check or change the offer while an install runs", async () => {
+      const check = vi
+        .spyOn(platform, "checkUpdate")
+        .mockResolvedValueOnce(offer)
+        .mockResolvedValue({
+          ...offer,
+          version: "0.3.0",
+        })
+      vi.spyOn(platform, "installUpdate").mockReturnValue(new Promise(() => {}))
+      const user = userEvent.setup()
+      render(<App />)
+
+      await user.click(await screen.findByRole("button", { name: "Update to 0.2.0" }))
+      const dialog = await screen.findByRole("dialog", { name: "WireCat 0.2.0 is available" })
+      await user.click(within(dialog).getByRole("button", { name: "Install and restart" }))
+      await within(dialog).findByRole("progressbar", { name: "Downloading the update" })
+
+      await vi.advanceTimersByTimeAsync(CHECK_EVERY_MS)
+      expect(check).toHaveBeenCalledOnce()
+      expect(screen.getByRole("dialog", { name: "WireCat 0.2.0 is available" })).toBeInTheDocument()
+    })
   })
 
   it("offers the update in the chosen language", async () => {
