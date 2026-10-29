@@ -91,10 +91,15 @@ openssl x509 -in developer-id.pem -noout -subject -issuer -enddate
 Apple sends the certificate as binary data (DER). `developer-id.pem` is the same certificate as text, which the next
 commands read. The last command shows:
 
-- `subject=`: it has `CN=Developer ID Application: <your name> (<TEAM ID>)` and `OU=<TEAM ID>`. Write the team ID
-  down: it is 10 letters and digits, and it is not secret. You need it in step 6.
+- `subject=`: it has `CN=Developer ID Application: <your name> (<TEAM ID>)` and `OU=<TEAM ID>`. If it says
+  `Developer ID Installer` (or anything else), you picked the wrong kind in step 3: repeat step 3 with the same
+  request file and choose **Developer ID Application**. Write the team ID down: it is 10 letters and digits, and it
+  is not secret. You need it in step 6.
+- The name is the one the developer account is enrolled under: your legal name for an individual account, the
+  company's name for an organization. Anyone who inspects the app's signature can read it.
 - `issuer=`: which Apple certificate signed yours. If it has `OU=G2`, use the G2 file in step 4c.
-- `notAfter=`: when it expires, about five years from today.
+- `notAfter=`: when it expires (a certificate made on 2026-10-29 said 2027-11-28). Put a reminder a month before:
+  after that date, releases cannot be signed until you repeat this guide. Apps signed before then keep opening.
 
 ### 4b. Check that the certificate fits your key
 
