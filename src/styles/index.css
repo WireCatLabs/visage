@@ -133,7 +133,6 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
-  user-select: none;
   cursor: default;
 }
 
@@ -152,6 +151,20 @@ body {
 }
 
 @layer base {
+  /* Content selects with the mouse; the window's chrome and controls do not. WebKitGTK knows only the prefixed
+     property, and the dev server does not add the prefix, so every user-select here is written twice. */
+  [data-tauri-drag-region],
+  button,
+  summary,
+  label,
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   button:not(:disabled),
   a[href],
   summary,
@@ -173,6 +186,7 @@ body {
 }
 
 .selectable {
+  -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }

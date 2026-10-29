@@ -393,7 +393,7 @@ Rule 9 (CLAUDE.md) uses five shared pieces, never ad hoc CSS:
 - **Do** say state with the five lamp tones and plain words beside them, never with colour alone.
 - **Do** set versions, commands, paths and sizes in mono with tabular figures.
 - **Do** write sizes in rem so they follow the fluid root size.
-- **Do** keep text not selectable by default and add `.selectable` to paths, commands, logs and error output so they can be copied.
+- **Do** let content select with the mouse (text, logs, paths, errors) and keep chrome from selecting: buttons, labels, tabs, menus, the title bar and sidebar (`@layer base` in `index.css`). Text inside a `<button>` can never be selected in WebKit, so a clickable row whose text is worth copying is a `div role="button"` that ignores the click ending a drag (`selectsTextIn`). `.selectable` lets content inside chrome select. Write every `user-select` with its `-webkit-` twin: WebKitGTK reads only that, and the dev server does not add it.
 - **Do** use `warn-ink` for amber text and `warn` for lamps, icons and tints.
 
 ### Don't:
