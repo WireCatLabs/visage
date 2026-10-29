@@ -39,7 +39,7 @@ const en = {
   seeAttached: "See what is attached",
   seeIssue: "See the public issue",
   attached: ({ runs, tools, logLines, errors }: Attached) =>
-    [
+    `${[
       plural("en", runs, { one: "# failed run", other: "# failed runs" }) + (tools ? ` from ${tools}` : ""),
       logLines ? `the ${logLines}-line install log` : "",
       errors
@@ -47,7 +47,7 @@ const en = {
         : "",
     ]
       .filter(Boolean)
-      .join(", and ") + ".",
+      .join(", and ")}.`,
   notAvailable: "Not available: this computer’s details could not be read.",
   collecting: "Collecting versions and recent errors…",
   done: "Done",
@@ -107,7 +107,7 @@ const ru: typeof en = {
   seeAttached: "Посмотреть, что прикладывается",
   seeIssue: "Посмотреть открытое обсуждение",
   attached: ({ runs, tools, logLines, errors }) =>
-    [
+    `${[
       ruPlural("ru", runs, "# неудачный запуск", "# неудачных запуска", "# неудачных запусков") +
         (tools ? ` (${tools})` : ""),
       logLines ? `журнал установки (${ruPlural("ru", logLines, "# строка", "# строки", "# строк")})` : "",
@@ -122,7 +122,7 @@ const ru: typeof en = {
         : "",
     ]
       .filter(Boolean)
-      .join(", ") + ".",
+      .join(", ")}.`,
   notAvailable: "Недоступно: не удалось прочитать сведения об этом компьютере.",
   collecting: "Собираем версии и недавние ошибки…",
   done: "Готово",
@@ -179,7 +179,7 @@ const es: typeof en = {
   seeAttached: "Ver qué se adjunta",
   seeIssue: "Ver la incidencia pública",
   attached: ({ runs, tools, logLines, errors }) =>
-    [
+    `${[
       plural("es", runs, { one: "# ejecución fallida", other: "# ejecuciones fallidas" }) +
         (tools ? ` de ${tools}` : ""),
       logLines ? `el registro de instalación de ${logLines} líneas` : "",
@@ -191,7 +191,7 @@ const es: typeof en = {
         : "",
     ]
       .filter(Boolean)
-      .join(", y ") + ".",
+      .join(", y ")}.`,
   notAvailable: "No disponible: no se han podido leer los datos de este ordenador.",
   collecting: "Recopilando versiones y errores recientes…",
   done: "Listo",
