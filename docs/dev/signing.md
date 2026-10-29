@@ -40,6 +40,9 @@ You need `gh` logged in (`gh auth status`). The scripts never print a secret.
 
 ## macOS: the Apple certificate
 
+To do it by hand and see every command, follow [signing-macos-by-hand.md](signing-macos-by-hand.md) instead of
+steps 1 and 4 below.
+
 You need the paid Apple Developer account (you have it) and its **Account Holder** login. Only the Account Holder can
 make this kind of certificate.
 
