@@ -10,7 +10,9 @@ import {
   useRef,
   useState,
 } from "react"
+import { useMessages } from "@/i18n"
 import { cx } from "./cx"
+import { uiMessages } from "./messages"
 
 export type SelectOption<T extends string> = { value: T; label: string; icon?: ReactNode; disabled?: boolean }
 export type SelectGroup<T extends string> = { label: string; options: readonly SelectOption<T>[] }
@@ -51,13 +53,14 @@ export function Select<T extends string>({
   value,
   onChange,
   options,
-  placeholder = "Choose…",
+  placeholder,
   size = "md",
   disabled = false,
   className,
   id,
   ...aria
 }: Props<T>) {
+  const m = useMessages(uiMessages)
   const flat = options.flatMap((item) => (isGroup(item) ? item.options : [item]))
   const selected = flat.find((o) => o.value === value)
   const [open, setOpen] = useState(false)
@@ -255,7 +258,7 @@ export function Select<T extends string>({
           <span className="grid size-4 shrink-0 place-items-center text-ink-soft">{selected.icon}</span>
         )}
         <span className={cx("min-w-0 flex-1 truncate", selected ? "text-ink" : "text-ink-dim")}>
-          {selected?.label ?? placeholder}
+          {selected?.label ?? placeholder ?? m.choose}
         </span>
         <ChevronDown
           className={cx(

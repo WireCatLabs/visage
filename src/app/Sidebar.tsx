@@ -1,19 +1,21 @@
 import { ListChecks, Monitor, Moon, Sun } from "lucide-react"
 import { useOnboarding } from "@/features/onboarding/store"
+import { useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
 import { Logo } from "@/ui/Logo"
 import { Pill } from "@/ui/Pill"
 import { Segmented } from "@/ui/Segmented"
+import { appMessages } from "./messages"
 import { type Section, sections } from "./sections"
 import { type ThemeChoice, useTheme } from "./theme"
 
-const themeOptions = [
-  { value: "light", label: "Light theme", icon: <Sun className="size-4" aria-hidden /> },
-  { value: "system", label: "Match the system", icon: <Monitor className="size-4" aria-hidden /> },
-  { value: "dark", label: "Dark theme", icon: <Moon className="size-4" aria-hidden /> },
-] as const satisfies readonly { value: ThemeChoice; label: string; icon: React.ReactNode }[]
-
 export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
+  const m = useMessages(appMessages)
+  const themeOptions = [
+    { value: "light", label: m.themeLight, icon: <Sun className="size-4" aria-hidden /> },
+    { value: "system", label: m.themeSystem, icon: <Monitor className="size-4" aria-hidden /> },
+    { value: "dark", label: m.themeDark, icon: <Moon className="size-4" aria-hidden /> },
+  ] as const satisfies readonly { value: ThemeChoice; label: string; icon: React.ReactNode }[]
   const theme = useTheme()
   const postponed = useOnboarding((s) => s.status === "later")
   return (
@@ -24,14 +26,14 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
       <div className="flex h-[7rem] items-center px-[1.5rem] pb-[0.6rem]" data-tauri-drag-region>
         <Logo className="flex h-[2.3rem] items-center gap-[0.75rem] [&>svg:last-child]:h-[40%]" />
       </div>
-      <nav aria-label="Sections" className="flex flex-col gap-[0.3rem]">
+      <nav aria-label={m.sectionsNav} className="flex flex-col gap-[0.3rem]">
         {sections
           .filter((s) => !s.group)
           .map((s) => (
             <NavItem key={s.id} section={s} active={active} onSelect={onSelect} />
           ))}
       </nav>
-      <nav aria-label="Data and settings" className="mt-auto flex flex-col gap-[0.3rem] pb-[0.8rem]">
+      <nav aria-label={m.systemNav} className="mt-auto flex flex-col gap-[0.3rem] pb-[0.8rem]">
         {sections
           .filter((s) => s.group === "system")
           .map((s) => (
@@ -45,12 +47,12 @@ export function Sidebar({ active, onSelect }: { active: string; onSelect: (id: s
           className="mx-[1rem] mb-[1rem] flex items-center gap-[0.7rem] rounded-[0.4rem] border border-line-strong bg-app px-[0.8rem] py-[0.6rem] text-left text-[0.95rem] text-ink hover:border-brand/50"
         >
           <ListChecks className="size-[1.1rem] shrink-0 text-brand" strokeWidth={1.8} aria-hidden />
-          Finish setup
+          {m.finishSetup}
         </button>
       )}
       <div className="flex items-center justify-between border-line border-t px-[1.4rem] pt-[1rem] pb-[1.6rem]">
         <span className="text-[0.95rem] text-ink-dim">{__APP_VERSION__}</span>
-        <Segmented label="Theme" value={theme.choice} options={themeOptions} onChange={theme.set} />
+        <Segmented label={m.theme} value={theme.choice} options={themeOptions} onChange={theme.set} />
       </div>
     </aside>
   )
@@ -65,6 +67,7 @@ function NavItem({
   active: string
   onSelect: (id: string) => void
 }) {
+  const m = useMessages(appMessages)
   const ready = Boolean(s.page)
   const current = s.id === active
   return (
@@ -92,8 +95,8 @@ function NavItem({
         strokeWidth={1.6}
         aria-hidden
       />
-      <span className="flex-1">{s.label}</span>
-      {!ready && <Pill>Soon</Pill>}
+      <span className="flex-1">{m.nav[s.id]}</span>
+      {!ready && <Pill>{m.soon}</Pill>}
     </button>
   )
 }

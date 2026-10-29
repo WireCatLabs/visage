@@ -3,7 +3,9 @@ import { Component, type ErrorInfo, type ReactNode } from "react"
 import { recordError } from "@/features/report/errors"
 import { ReportDialog } from "@/features/report/ReportDialog"
 import { ReportThis } from "@/features/report/ReportThis"
+import { messagesOf } from "@/i18n"
 import { Button } from "@/ui/Button"
+import { appMessages } from "./messages"
 
 type Props = { children: ReactNode; scope: "page" | "app" }
 type State = { error: Error | null; componentStack: string | null }
@@ -25,17 +27,12 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error, componentStack } = this.state
     if (!error) return this.props.children
     const page = this.props.scope === "page"
+    const m = messagesOf(appMessages)
     return (
       <div role="alert" className="grid h-full place-items-center p-10">
         <div className="max-w-lg">
-          <h1 className="font-display text-2xl font-extrabold">
-            {page ? "Something broke on this page" : "Something broke in WireCat"}
-          </h1>
-          <p className="mt-3 text-ink-soft">
-            {page
-              ? "This page hit an error it could not recover from. The rest of WireCat still works. Reload to try again."
-              : "The window hit an error it could not recover from. Reload to try again."}
-          </p>
+          <h1 className="font-display text-2xl font-extrabold">{page ? m.pageBroke : m.appBroke}</h1>
+          <p className="mt-3 text-ink-soft">{page ? m.pageBrokeText : m.appBrokeText}</p>
           <pre className="selectable mt-4 overflow-auto whitespace-pre-wrap rounded-md bg-app-3 p-3 font-mono text-sm">
             {error.name}: {error.message}
           </pre>
@@ -45,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
               icon={<RotateCcw className="size-4" aria-hidden />}
               onClick={() => window.location.reload()}
             >
-              Reload
+              {m.reload}
             </Button>
             <ReportThis
               what={page ? "Showing this page" : "Showing the window"}

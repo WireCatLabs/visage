@@ -1,6 +1,7 @@
 import { Search } from "lucide-react"
 import { type ReactNode, useEffect, useId, useMemo, useState } from "react"
 import { findTool, tools } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Dialog } from "@/ui/Dialog"
@@ -9,6 +10,7 @@ import { Monogram } from "@/ui/Logo"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { AppPreferences } from "../settings/AppPreferences"
+import { settingsMessages } from "../settings/messages"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { CategoriesEditor, CategoriesPlaceholder } from "./CategoriesEditor"
@@ -37,6 +39,7 @@ const SHARED_SHAPE: Shape = { rows: 4, categories: 5, file: false }
 type Switch = { kind: "tool"; id: string } | { kind: "shared" } | { kind: "target"; target: Target }
 
 export function ConfigPage() {
+  const sm = useMessages(settingsMessages)
   const st = useConfig()
   const installs = useTools((s) => s.installs)
   const [pending, setPending] = useState<Switch | null>(null)
@@ -68,23 +71,20 @@ export function ConfigPage() {
   return (
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
       <div>
-        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Settings</h1>
-        <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">
-          How WireCat looks on this computer, and the settings of each tool.
-        </p>
+        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">{sm.title}</h1>
+        <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">{sm.intro}</p>
       </div>
 
       <AppPreferences />
 
       <div className="flex flex-col gap-4 border-t border-line pt-[1.5rem]">
         <div>
-          <h2 className="text-[1.05rem] font-semibold">Tools</h2>
+          <h2 className="text-[1.05rem] font-semibold">{sm.tools}</h2>
           <p className="mt-1 max-w-[70ch] text-[0.95rem] text-ink-soft">
-            Read from the tools and saved through their own <code className="font-mono">config set</code>, so every
-            value is checked by the tool before it is written.
+            {sm.toolsIntro(<code className="font-mono">config set</code>)}
           </p>
         </div>
-        <Choices label="Tool">
+        <Choices label={sm.tool}>
           <Choice
             group="tool"
             checked={shared}

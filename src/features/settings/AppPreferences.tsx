@@ -1,22 +1,28 @@
 import { RotateCcw } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
+import { ENDONYMS, LANGS, type LangChoice, systemLang, useLanguage, useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
+import { Select } from "@/ui/Select"
+import { settingsMessages } from "./messages"
 import { DEFAULT_SCALE, MAX_SCALE, MIN_SCALE, SCALE_STEP, useScale } from "./scale"
 
 /** WireCat's own preferences, above the tools' settings on the Settings page. */
 export function AppPreferences() {
+  const m = useMessages(settingsMessages)
   return (
     <section aria-labelledby="app-preferences" className="flex flex-col gap-4">
       <h2 id="app-preferences" className="text-[1.05rem] font-semibold">
-        WireCat
+        {m.app}
       </h2>
       <ScaleSetting />
+      <LanguageSetting />
     </section>
   )
 }
 
 function ScaleSetting() {
+  const m = useMessages(settingsMessages)
   const percent = useScale((s) => s.percent)
   const set = useScale((s) => s.set)
   const [shown, setShown] = useState(percent)
@@ -41,11 +47,9 @@ function ScaleSetting() {
     <div className="flex flex-col gap-3">
       <div>
         <label htmlFor={id} className="font-medium">
-          Interface size
+          {m.size}
         </label>
-        <p className="mt-1 max-w-[60ch] text-[0.9rem] text-ink-soft">
-          Text and everything around it. {mod} + and {mod} − change it anywhere in the app, {mod} 0 resets it.
-        </p>
+        <p className="mt-1 max-w-[60ch] text-[0.9rem] text-ink-soft">{m.sizeHelp(mod)}</p>
       </div>
       <div className="flex items-center gap-3">
         <input
@@ -70,9 +74,41 @@ function ScaleSetting() {
           disabled={percent === DEFAULT_SCALE}
           onClick={() => set(DEFAULT_SCALE)}
         >
-          Reset to default
+          {m.reset}
         </Button>
       </div>
+    </div>
+  )
+}
+
+function LanguageSetting() {
+  const m = useMessages(settingsMessages)
+  const choice = useLanguage((s) => s.choice)
+  const set = useLanguage((s) => s.set)
+  const id = useId()
+  const help = useId()
+  const options = [
+    { value: "system" as const, label: m.system(ENDONYMS[systemLang()]) },
+    ...LANGS.map((lang) => ({ value: lang, label: ENDONYMS[lang] })),
+  ]
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <h3 id={id} className="font-medium">
+          {m.language}
+        </h3>
+        <p id={help} className="mt-1 max-w-[60ch] text-[0.9rem] text-ink-soft">
+          {m.languageHelp}
+        </p>
+      </div>
+      <Select<LangChoice>
+        value={choice}
+        onChange={set}
+        options={options}
+        aria-labelledby={id}
+        aria-describedby={help}
+        className="w-[16rem]"
+      />
     </div>
   )
 }

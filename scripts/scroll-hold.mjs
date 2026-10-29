@@ -20,7 +20,7 @@ const executablePath = [process.env.CHROME_PATH, "/usr/bin/google-chrome", "/usr
   (p) => p && existsSync(p),
 )
 const browser = await chromium.launch({ executablePath, headless: true })
-const page = await browser.newPage({ viewport: { width, height } })
+const page = await browser.newPage({ viewport: { width, height }, locale: "en-US" })
 await page.goto(`http://localhost:${port}/?onboarding=off&section=tools`)
 await page.waitForSelector('ul[aria-label="WireCat tools"] button:text-is("Manage")')
 await page.waitForTimeout(800)

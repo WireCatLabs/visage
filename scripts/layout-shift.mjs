@@ -1,6 +1,7 @@
 // Layout shift of every page while it loads, on the browser build (mock platform).
 //   pnpm build && pnpm preview --port 1478 --strictPort      (the dev server adds a shift of its own as CSS loads)
-//   node scripts/layout-shift.mjs [page…] --port 1478 [--slow 1] [--width 1536] [--height 1024] [--dark]
+//   node scripts/layout-shift.mjs [page…] --port 1478 [--lang en|ru|es] [--slow 1] [--width 1536] [--height 1024]
+//                                 [--dark]
 //                                 [--sources 5] [--shots ms,ms,…] [--out dir] [--budget 0.01] [--grow 8]
 // Pages: tools tools-manage agents agents-revisit storage logs settings settings-telegram onboarding-<step> report
 // (default: all).
@@ -32,11 +33,13 @@ const shots = flag("shots", "").split(",").filter(Boolean).map(Number)
 const out = flag("out", join(tmpdir(), "layout-shift"))
 const budget = Number(flag("budget", 0.01))
 const growBudget = Number(flag("grow", 8))
+// The interface language; pages that click a button by its English text need the default, en.
+const lang = flag("lang", "en")
 const dark = args.includes("--dark") ? args.splice(args.indexOf("--dark"), 1) && true : false
 
 // A page opens from a query; `clicks` then go through to a state behind it, each after the page before has settled.
 // Only what happens after the last step is scored, so `settings` measures Settings, not the Tools page it starts on.
-const nav = (label) => `nav button:has-text("${label}")`
+const nav = (id) => `nav button[data-tour="nav-${id}"]`
 const PAGES = {
   tools: { query: "?onboarding=off&section=tools" },
   "tools-manage": { query: "?onboarding=off&section=tools", clicks: ['button:has-text("Manage") >> nth=0'] },
@@ -45,13 +48,13 @@ const PAGES = {
     clicks: ['button:has-text("Manage") >> nth=0', 'button:has-text("Connect an AI app")'],
   },
   agents: { query: "?onboarding=off&section=agents" },
-  "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("Tools"), nav("Agents")] },
+  "agents-revisit": { query: "?onboarding=off&section=agents", clicks: [nav("tools"), nav("agents")] },
   storage: { query: "?onboarding=off&section=storage" },
   logs: { query: "?onboarding=off&section=logs" },
-  settings: { query: "?onboarding=off&section=tools", clicks: [nav("Settings")] },
+  settings: { query: "?onboarding=off&section=tools", clicks: [nav("settings")] },
   "settings-telegram": {
     query: "?onboarding=off&section=tools",
-    clicks: [nav("Settings"), 'label:has-text("Telegram")'],
+    clicks: [nav("settings"), 'label:has-text("Telegram")'],
   },
   "onboarding-computer": { query: "?onboarding=computer" },
   "onboarding-choose": { query: "?onboarding=choose" },
@@ -151,8 +154,13 @@ for (const name of pages) {
     viewport: { width, height },
     colorScheme: dark ? "dark" : "light",
     reducedMotion: "reduce",
+    locale: "en-US",
   })
   page.on("pageerror", (e) => console.error(`${name}: page error:`, e.message))
+  await page.addInitScript(
+    (l) => localStorage.setItem("wirecat.language", JSON.stringify({ state: { choice: l } })),
+    lang,
+  )
   await page.addInitScript(observe, spec.watch ?? "main > *")
   await page.goto(`http://localhost:${port}/${spec.query}&slow=${slow}`)
   let started = Date.now()

@@ -8,7 +8,6 @@ import { ToolsPage } from "@/features/tools/ToolsPage"
 
 export type Section = {
   id: string
-  label: string
   icon: ComponentType<SVGProps<SVGSVGElement>>
   /** Absent while the section is announced but not built yet. */
   page?: ComponentType
@@ -18,11 +17,11 @@ export type Section = {
 
 // A new area of the app (accounts, memory, people, projects…) is one entry here and one folder in features/.
 export const sections: readonly Section[] = [
-  { id: "tools", label: "Tools", icon: Wrench, page: ToolsPage },
-  { id: "agents", label: "Agents", icon: Bot, page: AgentsPage },
-  { id: "accounts", label: "Accounts", icon: UserRound },
-  { id: "memory", label: "Memory", icon: Brain },
-  { id: "storage", label: "Storage", icon: HardDrive, page: StoragePage, group: "system" },
-  { id: "logs", label: "Logs", icon: ScrollText, page: LogsPage, group: "system" },
-  { id: "settings", label: "Settings", icon: Settings, page: ConfigPage, group: "system" },
+  { id: "tools", icon: Wrench, page: ToolsPage },
+  { id: "agents", icon: Bot, page: AgentsPage },
+  { id: "accounts", icon: UserRound },
+  { id: "memory", icon: Brain },
+  { id: "storage", icon: HardDrive, page: StoragePage, group: "system" },
+  { id: "logs", icon: ScrollText, page: LogsPage, group: "system" },
+  { id: "settings", icon: Settings, page: ConfigPage, group: "system" },
 ]

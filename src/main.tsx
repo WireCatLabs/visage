@@ -17,7 +17,8 @@ trackInputMode()
 // (19 px on Logs). The fonts ship with the app, so the wait is a few milliseconds; the cap keeps a broken font
 // from holding the window blank.
 const FONTS = ["Onest Variable", "Unbounded Variable", "JetBrains Mono Variable"]
-const fonts = Promise.all(FONTS.map((f) => document.fonts.load(`1em "${f}"`)))
+// The sample text loads the Latin and Cyrillic files: each is its own unicode-range, fetched only when asked for.
+const fonts = Promise.all(FONTS.map((f) => document.fonts.load(`1em "${f}"`, "AaÑñЖж")))
 const cap = new Promise((done) => setTimeout(done, 500))
 
 Promise.race([fonts, cap])

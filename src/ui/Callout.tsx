@@ -1,6 +1,8 @@
 import { X } from "lucide-react"
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react"
+import { useMessages } from "@/i18n"
 import { Button } from "./Button"
+import { uiMessages } from "./messages"
 
 type Props = {
   anchor: Element | null
@@ -48,6 +50,7 @@ function place(target: Box | null, size: { w: number; h: number }, side: "bottom
  * beside it. It does not trap focus or block the page, so the owner can still click what it points at.
  */
 export function Callout({ anchor, side = "bottom", title, children, index, count, onBack, onNext, onClose }: Props) {
+  const m = useMessages(uiMessages)
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
   const [target, setTarget] = useState<Box | null>(() => measure(anchor))
@@ -128,7 +131,7 @@ export function Callout({ anchor, side = "bottom", title, children, index, count
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close the tour"
+            aria-label={m.closeTour}
             className="-mt-1 -mr-1 grid size-7 shrink-0 place-items-center rounded-[0.35rem] text-ink-dim hover:bg-app-3 hover:text-ink"
           >
             <X className="size-4" aria-hidden />
@@ -137,15 +140,15 @@ export function Callout({ anchor, side = "bottom", title, children, index, count
         <div className="text-[0.95rem] leading-relaxed text-ink-soft">{children}</div>
         <div className="mt-2 flex items-center gap-2">
           <span className="flex-1 font-mono text-[0.85rem] text-ink-dim tabular-nums">
-            {index + 1} of {count}
+            {m.stepOf(index + 1, count)}
           </span>
           {index > 0 && (
             <Button size="sm" variant="ghost" onClick={onBack}>
-              Back
+              {m.back}
             </Button>
           )}
           <Button data-primary size="sm" variant="primary" onClick={last ? onClose : onNext}>
-            {last ? "Done" : "Next"}
+            {last ? m.done : m.next}
           </Button>
         </div>
       </div>

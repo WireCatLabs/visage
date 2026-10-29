@@ -1,9 +1,12 @@
 import { Check, X } from "lucide-react"
+import { useMessages } from "@/i18n"
 import { cx } from "./cx"
+import { uiMessages } from "./messages"
 
 export type StepState = "done" | "active" | "failed" | "todo"
 
 export function Stepper({ steps }: { steps: readonly { label: string; state: StepState }[] }) {
+  const m = useMessages(uiMessages)
   return (
     <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s, i) => (
@@ -39,11 +42,11 @@ export function Stepper({ steps }: { steps: readonly { label: string; state: Ste
             {s.label}
             <span className="sr-only">
               {s.state === "done"
-                ? ", done"
+                ? m.stepDone
                 : s.state === "active"
-                  ? ", in progress"
+                  ? m.stepActive
                   : s.state === "failed"
-                    ? ", failed"
+                    ? m.stepFailed
                     : ""}
             </span>
           </span>

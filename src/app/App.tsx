@@ -14,9 +14,11 @@ import { ReadinessStrip } from "@/features/system/ReadinessStrip"
 import { ClearDataOffer } from "@/features/tools/ClearDataOffer"
 import { useUpdate } from "@/features/update/store"
 import { UpdateButton, UpdateDialog } from "@/features/update/UpdateDialog"
+import { useApplyLang, useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { useSectionHistory } from "./history"
+import { appMessages } from "./messages"
 import { Sidebar } from "./Sidebar"
 import { CrashScenario } from "./scenarios"
 import { sections } from "./sections"
@@ -25,6 +27,8 @@ import { useApplyTheme } from "./theme"
 
 export function App() {
   useApplyTheme()
+  useApplyLang()
+  const m = useMessages(appMessages)
   useApplyScale()
   useScaleKeys()
   const active = useNav((s) => s.active)
@@ -55,11 +59,11 @@ export function App() {
               <Button
                 variant="ghost"
                 size="sm"
-                title="Tell the WireCat team what went wrong"
+                title={m.reportProblemTitle}
                 icon={<Bug className="size-4" strokeWidth={1.8} aria-hidden />}
                 onClick={() => useReport.getState().start()}
               >
-                Report a problem
+                {m.reportProblem}
               </Button>
               <HelpMenu
                 onTour={startTour}
