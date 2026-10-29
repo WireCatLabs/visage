@@ -1,9 +1,11 @@
 import { Terminal } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { findTool, signInMethods } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
+import { type SigninMessages, signinMessages } from "./messages"
 import { Stage } from "./Stages"
 import { NEEDS_UPDATE, type Phase, receivingHistory, running, useSignIn } from "./store"
 
@@ -13,6 +15,7 @@ import { NEEDS_UPDATE, type Phase, receivingHistory, running, useSignIn } from "
  */
 export function SignInDialog() {
   const s = useSignIn()
+  const m = useMessages(signinMessages)
   const tool = s.tool ? findTool(s.tool) : undefined
   const name = tool?.name ?? s.tool ?? ""
   const body = useRef<HTMLDivElement>(null)
@@ -24,11 +27,9 @@ export function SignInDialog() {
   }, [ended])
 
   return (
-    <Dialog open={s.tool !== null} wide title={`Sign in to ${name}`} onClose={s.close} actions={<Actions />}>
+    <Dialog open={s.tool !== null} wide title={m.title(name)} onClose={s.close} actions={<Actions />}>
       <div ref={body} className="flex flex-col gap-3">
-        <p>
-          Signs <code className="font-mono text-ink">{s.profile}</code> in to {name} on this computer.
-        </p>
+        <p>{m.intro(<code className="font-mono text-ink">{s.profile}</code>, name)}</p>
         {s.notes.length > 0 && (
           <p className="selectable rounded-[0.2rem] border border-warn/40 bg-warn/10 px-3 py-2 text-[0.9rem] leading-snug text-ink">
             {s.notes.join(" ")}
@@ -36,41 +37,53 @@ export function SignInDialog() {
         )}
         <Stage name={name} />
         <p role="status" className="sr-only">
-          {announcement(s.phase, s.codes, s.progress?.step === "waiting", s.stopping, s.need?.prompt)}
+          {announcement(m.announce, s.phase, s.codes, s.progress?.step === "waiting", s.stopping, s.need?.prompt)}
         </p>
       </div>
     </Dialog>
   )
 }
 
-function announcement(phase: Phase, codes: number, slow: boolean, stopping: boolean, prompt?: string) {
-  if (stopping) return "Stopping the sign-in."
-  if (phase === "scan") return codes === 1 ? "The QR code is ready to scan." : ""
-  if (phase === "pair") return "A code to type on the phone is ready."
-  if (phase === "browser") return "Continue in the browser."
-  if (phase === "answer") return prompt ? `The sign-in asks for the ${prompt}.` : ""
-  if (phase === "progress") return slow ? "Still waiting." : "Working."
-  if (phase === "done") return "Signed in. Press Done to close."
+function announcement(
+  m: SigninMessages["announce"],
+  phase: Phase,
+  codes: number,
+  slow: boolean,
+  stopping: boolean,
+  prompt?: string,
+) {
+  if (stopping) return m.stopping
+  if (phase === "scan") return codes === 1 ? m.qrReady : ""
+  if (phase === "pair") return m.pairReady
+  if (phase === "browser") return m.browser
+  if (phase === "answer") return prompt ? m.asks(prompt) : ""
+  if (phase === "progress") return slow ? m.slow : m.working
+  if (phase === "done") return m.done
   return ""
 }
 
 function Actions() {
   const s = useSignIn()
+  const m = useMessages(signinMessages)
   const { stop, close, start, tool, profile, onFinish, phase, stopping, method } = s
   const entry = tool ? findTool(tool) : undefined
   const others = entry ? signInMethods(entry).filter((m) => m.id !== method) : []
   if (running(phase)) {
     return (
       <>
-        {others.map((m) =>
+        {others.map((method) =>
           tool && profile && phase !== "progress" ? (
-            <Button key={m.id} variant="ghost" onClick={() => start(tool, profile, onFinish ?? undefined, m.id)}>
-              Use {m.label.toLowerCase()} instead
+            <Button
+              key={method.id}
+              variant="ghost"
+              onClick={() => start(tool, profile, onFinish ?? undefined, method.id)}
+            >
+              {m.switchTo(method.id, method.label)}
             </Button>
           ) : null,
         )}
         <Button variant="secondary" onClick={stop} disabled={stopping}>
-          {stopping ? "Stopping…" : receivingHistory(s) ? "Stop and keep what came" : "Cancel"}
+          {stopping ? m.stopping : receivingHistory(s) ? m.stopKeep : m.cancel}
         </Button>
       </>
     )
@@ -81,7 +94,7 @@ function Actions() {
     return (
       <>
         <Button variant="ghost" onClick={close}>
-          Close
+          {m.close}
         </Button>
         {terminal && (
           <Button
@@ -92,7 +105,7 @@ function Actions() {
               close()
             }}
           >
-            Open terminal
+            {m.openTerminal}
           </Button>
         )}
         <Button
@@ -100,14 +113,14 @@ function Actions() {
           onClick={() => tool && profile && start(tool, profile, onFinish ?? undefined, method ?? undefined)}
           data-autofocus
         >
-          Try again
+          {m.tryAgain}
         </Button>
       </>
     )
   }
   return (
     <Button variant="primary" onClick={close} data-autofocus>
-      Done
+      {m.done}
     </Button>
   )
 }

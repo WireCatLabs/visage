@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { findTool } from "@/domain/catalog"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { MOCK_CODES } from "@/platform/mock-qr"
 import type { SignInEvent } from "@/platform/signin-schemas"
@@ -210,5 +211,29 @@ describe("answering what the tool asks", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Open terminal" }))
     expect(openSetup).toHaveBeenCalledWith("max", "personal")
     expect(screen.queryByRole("dialog")).toBeNull()
+  })
+})
+
+describe("in Russian", () => {
+  it("names the dialog and counts what came from the phone in Russian forms", async () => {
+    useLanguage.setState({ choice: "ru" })
+    render(<SignInDialog />)
+    act(() => useSignIn.getState().start("wa", "personal"))
+    const dialog = await screen.findByRole("dialog", { name: "Вход в WhatsApp" })
+    await vi.waitFor(() => expect(platform.signIn).toHaveBeenCalled())
+
+    send({ event: "done", alreadyLinked: false, received: { chats: 4, messages: 21, people: 5 } })
+    expect(within(dialog).getByText("Получено с телефона: 4 чата, 21 сообщение и 5 человек.")).toBeInTheDocument()
+    expect(within(dialog).getByRole("button", { name: "Готово" })).toBeInTheDocument()
+  })
+
+  it("translates a failure the tool reports with a code", async () => {
+    useLanguage.setState({ choice: "ru" })
+    render(<SignInDialog />)
+    act(() => useSignIn.getState().start("max", "personal"))
+    const dialog = await screen.findByRole("dialog")
+    await vi.waitFor(() => expect(platform.signIn).toHaveBeenCalled())
+    send({ event: "failed", code: "needs_update", message: "This version cannot sign in here yet." })
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Эта версия пока не умеет входить здесь.")
   })
 })

@@ -4,7 +4,7 @@ import { parseSync } from "vite"
 import { describe, expect, it } from "vitest"
 
 // Folders and files whose text is not in catalogs yet. Each conversion removes its lines; the list ends empty.
-const PENDING = ["src/features/about", "src/features/signin", "src/features/system"]
+const PENDING: string[] = []
 
 // Names and words that are the same in every language: products, tools, and what a reader types.
 const KEEP = new Set([

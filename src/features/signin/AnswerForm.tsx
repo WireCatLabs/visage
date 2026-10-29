@@ -1,6 +1,8 @@
 import { Eye, EyeOff } from "lucide-react"
 import { type FormEvent, useEffect, useId, useRef, useState } from "react"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
+import { signinMessages } from "./messages"
 import type { Need } from "./store"
 
 const FIELD =
@@ -27,6 +29,7 @@ type Props = {
  */
 export function AnswerForm({ need, sent, onAnswer }: Props) {
   const id = useId()
+  const m = useMessages(signinMessages)
   const input = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState("")
   const [shown, setShown] = useState(false)
@@ -79,8 +82,8 @@ export function AnswerForm({ need, sent, onAnswer }: Props) {
             type="button"
             onClick={() => setShown((s) => !s)}
             aria-pressed={shown}
-            aria-label={`Show ${label.toLowerCase()}`}
-            title={shown ? "Hide" : "Show"}
+            aria-label={m.show(label)}
+            title={shown ? m.hide : m.showShort}
             className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-[0.35rem] text-ink-dim hover:text-ink"
           >
             {shown ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
@@ -88,18 +91,10 @@ export function AnswerForm({ need, sent, onAnswer }: Props) {
         )}
       </div>
       <p id={`${id}-hint`} className="min-h-[1.3rem] text-[0.9rem] text-ink-soft">
-        {error ? (
-          <span className="text-bad">{error}</span>
-        ) : sent ? (
-          "Sent. Waiting for the next step…"
-        ) : need.hint ? (
-          `Hint: ${need.hint}`
-        ) : (
-          "Goes straight to the tool on this computer; WireCat keeps no copy."
-        )}
+        {error ? <span className="text-bad">{error}</span> : sent ? m.sent : need.hint ? m.hint(need.hint) : m.private}
       </p>
       <Button type="submit" variant="primary" disabled={sent || !value.trim()} className="self-start">
-        Continue
+        {m.continue}
       </Button>
     </form>
   )

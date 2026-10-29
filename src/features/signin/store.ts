@@ -14,6 +14,9 @@ type Failed = Of<"failed">
 /** `signin_steps.rs`: the tool does not know the flag the app passes. */
 export const NEEDS_UPDATE = "needs_update"
 
+/** The tool stopped without a `done` or `failed` event; the English message still goes to the bug report. */
+export const ENDED = "ended"
+
 /** What the dialog shows: the step the tool reached last. */
 export type Phase = "starting" | "scan" | "pair" | "browser" | "answer" | "progress" | "done" | "failed"
 
@@ -123,7 +126,7 @@ export const useSignIn = create<SignInState>()((set, get) => {
       started.then(
         () => {
           if (mine() && running(get().phase))
-            apply({ event: "failed", message: "The sign-in ended without saying how.", code: null })
+            apply({ event: "failed", message: "The sign-in ended without saying how.", code: ENDED })
         },
         (e) => mine() && apply({ event: "failed", message: message(e), code: null }),
       )

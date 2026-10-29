@@ -2,6 +2,7 @@ import { CheckCircle2, ExternalLink, LoaderCircle } from "lucide-react"
 import { type FormEvent, useEffect, useId, useState } from "react"
 import { findTool } from "@/domain/catalog"
 import { qrModules, qrPath } from "@/domain/qr"
+import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { Button } from "@/ui/Button"
 import { ErrorNotice } from "@/ui/ErrorNotice"
@@ -10,7 +11,8 @@ import { useOnboarding } from "../onboarding/store"
 import { ReportThis } from "../report/ReportThis"
 import { openConnect, openTool } from "../tools/go"
 import { AnswerForm } from "./AnswerForm"
-import { type OpenUrl, type Pairing, type Qr, receivingHistory, useSignIn } from "./store"
+import { signinMessages } from "./messages"
+import { ENDED, NEEDS_UPDATE, type OpenUrl, type Pairing, type Qr, receivingHistory, useSignIn } from "./store"
 
 const STAGE = "flex min-h-[19rem] flex-col items-center justify-center gap-3 text-center"
 
@@ -18,11 +20,12 @@ const sentence = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}${/[.!
 
 export function Stage({ name }: { name: string }) {
   const s = useSignIn()
+  const m = useMessages(signinMessages)
   if (s.phase === "starting") {
     return (
       <div className={STAGE}>
-        <Skeleton className="size-[17rem]" label="Starting the sign-in" />
-        <p className="text-[0.9rem]">Asking {name} how to sign in…</p>
+        <Skeleton className="size-[17rem]" label={m.starting} />
+        <p className="text-[0.9rem]">{m.asking(name)}</p>
       </div>
     )
   }
@@ -42,7 +45,7 @@ export function Stage({ name }: { name: string }) {
         <BrowserLink url={s.url} />
         <p className="flex items-center gap-2 text-[0.9rem] text-ink-soft">
           <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden />
-          Waiting for you to finish in the browser…
+          {m.waitingBrowser}
         </p>
       </div>
     )
@@ -56,15 +59,13 @@ export function Stage({ name }: { name: string }) {
         <p className="font-medium text-ink">
           {history
             ? slow
-              ? "Still waiting for the phone's history."
-              : "Linked. Receiving your chat history from the phone."
-            : sentence(s.progress?.message ?? "Working")}
+              ? m.historySlow
+              : m.historyLinked
+            : s.progress?.message
+              ? sentence(s.progress.message)
+              : m.working}
         </p>
-        {history && (
-          <p className="max-w-[24rem] text-[0.9rem]">
-            Keep {name} open on the phone; it can take a minute. Stopping now keeps what has arrived.
-          </p>
-        )}
+        {history && <p className="max-w-[24rem] text-[0.9rem]">{m.keepOpen(name)}</p>}
       </div>
     )
   }
@@ -74,14 +75,9 @@ export function Stage({ name }: { name: string }) {
       <div className={STAGE}>
         <CheckCircle2 className="size-8 text-ok" aria-hidden />
         <p className="font-medium text-ink">
-          {alreadyLinked ? `${name} was already signed in as ${s.profile}.` : `${name} is signed in as ${s.profile}.`}
+          {alreadyLinked ? m.alreadySignedIn(name, s.profile ?? "") : m.signedIn(name, s.profile ?? "")}
         </p>
-        {received && (
-          <p className="text-[0.9rem] tabular-nums">
-            Received {count(received.chats, "chat")}, {count(received.messages, "message")} and{" "}
-            {count(received.people, "person", "people")} from the phone.
-          </p>
-        )}
+        {received && <p className="text-[0.9rem] tabular-nums">{m.received(received)}</p>}
         <NextAfterSignIn />
       </div>
     )
@@ -103,7 +99,7 @@ export function Stage({ name }: { name: string }) {
               />
             }
           >
-            {s.failure.message}
+            {s.failure.code === NEEDS_UPDATE ? m.needsUpdate : s.failure.code === ENDED ? m.ended : s.failure.message}
           </ErrorNotice>
         )}
       </div>
@@ -112,10 +108,9 @@ export function Stage({ name }: { name: string }) {
   return <div className={STAGE} />
 }
 
-const count = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en")} ${n === 1 ? one : many}`
-
 /** The tool has usually opened the page itself; the button opens it again. */
 function BrowserLink({ url, compact = false }: { url: OpenUrl; compact?: boolean }) {
+  const m = useMessages(signinMessages)
   const host = new URL(url.url).host
   return (
     <div
@@ -124,7 +119,7 @@ function BrowserLink({ url, compact = false }: { url: OpenUrl; compact?: boolean
       }
     >
       <p className={compact ? "text-[0.9rem] text-ink-soft" : "text-[0.95rem] text-ink"}>
-        {url.purpose ? sentence(url.purpose) : `Continue on ${host}.`}
+        {url.purpose ? sentence(url.purpose) : m.continueOn(host)}
       </p>
       <Button
         variant={compact ? "secondary" : "primary"}
@@ -133,16 +128,17 @@ function BrowserLink({ url, compact = false }: { url: OpenUrl; compact?: boolean
         icon={<ExternalLink className="size-4" aria-hidden />}
         onClick={() => platform.openUrl(url.url)}
       >
-        Open {host}
+        {m.openHost(host)}
       </Button>
     </div>
   )
 }
 
 function PairStage({ pairing }: { pairing: Pairing }) {
+  const m = useMessages(signinMessages)
   return (
     <div className={STAGE}>
-      <p className="text-[0.9rem]">Type this code on the phone{pairing.place ? `: ${pairing.place}` : ""}.</p>
+      <p className="text-[0.9rem]">{pairing.place ? m.typeCodeAt(pairing.place) : m.typeCode}</p>
       <p className="selectable font-mono text-[2.2rem] font-semibold tracking-[0.18em] text-ink tabular-nums">
         {pairing.code}
       </p>
@@ -152,18 +148,15 @@ function PairStage({ pairing }: { pairing: Pairing }) {
 }
 
 function ScanStage({ qr }: { qr: Qr }) {
+  const m = useMessages(signinMessages)
   const scan = qr.scan ? `${qr.scan.charAt(0).toUpperCase()}${qr.scan.slice(1)}.` : null
   return (
     <div className="flex min-h-[19rem] flex-wrap items-center justify-center gap-x-5 gap-y-3">
       <QrImage text={qr.text} />
       <div className="flex min-w-[11rem] flex-1 flex-col gap-2 text-[0.9rem]">
         {scan && <p className="font-medium text-ink">{scan}</p>}
-        <p>Point the phone's camera at this code.</p>
-        {qr.expiresAt ? (
-          <ExpiresIn at={qr.expiresAt} />
-        ) : (
-          <p className="text-ink-dim">The code changes every few seconds; the new one appears here by itself.</p>
-        )}
+        <p>{m.pointCamera}</p>
+        {qr.expiresAt ? <ExpiresIn at={qr.expiresAt} /> : <p className="text-ink-dim">{m.codeChanges}</p>}
       </div>
     </div>
   )
@@ -174,12 +167,13 @@ function ScanStage({ qr }: { qr: Qr }) {
  * camera reads an inverted code badly.
  */
 function QrImage({ text }: { text: string }) {
+  const m = useMessages(signinMessages)
   const dark = qrModules(text)
   if (!dark) {
     return (
       <pre
         role="img"
-        aria-label="QR code to scan with your phone"
+        aria-label={m.qrLabel}
         className="rounded-[0.35rem] bg-black p-2 font-mono text-[0.5rem] leading-none text-white"
       >
         {text}
@@ -190,7 +184,7 @@ function QrImage({ text }: { text: string }) {
   return (
     <svg
       role="img"
-      aria-label="QR code to scan with your phone"
+      aria-label={m.qrLabel}
       viewBox={`0 0 ${size} ${size}`}
       shapeRendering="crispEdges"
       className="size-[17rem] shrink-0 rounded-[0.35rem] border border-line"
@@ -202,6 +196,7 @@ function QrImage({ text }: { text: string }) {
 }
 
 function ExpiresIn({ at }: { at: string }) {
+  const m = useMessages(signinMessages)
   const left = () => Math.max(0, Math.round((Date.parse(at) - Date.now()) / 1000))
   const [seconds, setSeconds] = useState(left)
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new code restarts the count
@@ -210,16 +205,13 @@ function ExpiresIn({ at }: { at: string }) {
     const timer = setInterval(() => setSeconds(left()), 1000)
     return () => clearInterval(timer)
   }, [at])
-  return (
-    <p className="text-ink-dim tabular-nums">
-      {seconds > 0 ? `This code expires in ${seconds} s.` : "This code has expired; a new one is on its way."}
-    </p>
-  )
+  return <p className="text-ink-dim tabular-nums">{seconds > 0 ? m.expiresIn(seconds) : m.expired}</p>
 }
 
 /** Zoom signs in with an app of the owner's own; its Public Client ID is saved with zm's own `config set`. */
 function ClientIdForm() {
   const id = useId()
+  const m = useMessages(signinMessages)
   const { tool, profile, start, onFinish } = useSignIn()
   const guide = tool ? findTool(tool)?.signIn?.guide : undefined
   const [value, setValue] = useState("")
@@ -242,9 +234,7 @@ function ClientIdForm() {
 
   return (
     <form onSubmit={submit} className="mx-auto flex w-full max-w-[26rem] flex-col gap-2">
-      <p className="text-[0.95rem] text-ink">
-        Zoom signs in through an app of your own, made once in the Zoom App Marketplace. Paste its Public Client ID.
-      </p>
+      <p className="text-[0.95rem] text-ink">{m.clientIdIntro}</p>
       {guide && (
         <Button
           variant="ghost"
@@ -253,11 +243,11 @@ function ClientIdForm() {
           icon={<ExternalLink className="size-4" aria-hidden />}
           onClick={() => platform.openUrl(guide)}
         >
-          How to make the app
+          {m.howToMakeApp}
         </Button>
       )}
       <label htmlFor={id} className="mt-1 text-[0.9rem] font-medium text-ink">
-        Public Client ID
+        {m.clientId}
       </label>
       <input
         id={id}
@@ -270,7 +260,7 @@ function ClientIdForm() {
       />
       <p className="min-h-[1.3rem] text-[0.9rem] text-bad">{error}</p>
       <Button type="submit" variant="primary" disabled={saving || !value.trim()} className="self-start">
-        {saving ? "Saving…" : "Save and sign in"}
+        {saving ? m.saving : m.saveAndSignIn}
       </Button>
     </form>
   )
@@ -281,10 +271,11 @@ function NextAfterSignIn() {
   const tool = useSignIn((s) => (s.tool ? findTool(s.tool) : undefined))
   const close = useSignIn((s) => s.close)
   const onboarding = useOnboarding((s) => s.open)
+  const m = useMessages(signinMessages)
   if (!tool || onboarding) return null
   return (
     <div className="mt-2 flex flex-col items-center gap-2">
-      {tool.mcpServer && <p className="text-[0.9rem]">Next, ChatGPT or Claude in the browser can use it too.</p>}
+      {tool.mcpServer && <p className="text-[0.9rem]">{m.nextConnect}</p>}
       <div className="flex flex-wrap justify-center gap-2">
         {tool.mcpServer && (
           <Button
@@ -294,7 +285,7 @@ function NextAfterSignIn() {
               openConnect(tool.id)
             }}
           >
-            Connect an AI app
+            {m.connectApp}
           </Button>
         )}
         <Button
@@ -305,7 +296,7 @@ function NextAfterSignIn() {
             openTool(tool.id)
           }}
         >
-          Open {tool.name}
+          {m.openTool(tool.name)}
         </Button>
       </div>
     </div>
