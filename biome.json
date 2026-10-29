@@ -11,7 +11,8 @@
       "!src-tauri/target",
       "!src-tauri/gen",
       "!other",
-      "!.impeccable"
+      "!.impeccable",
+      "!.worktrees"
     ]
   },
   "css": {
