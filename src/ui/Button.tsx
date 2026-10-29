@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react"
 import { cx } from "./cx"
 
 type Variant = "primary" | "secondary" | "ghost" | "danger"
-type Size = "md" | "sm"
+type Size = "lg" | "md" | "sm"
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand text-brand-ink hover:bg-brand-hover border-transparent",
@@ -12,7 +12,8 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  md: "h-[2.75rem] px-[1.35rem] text-[1rem] rounded-[0.4rem]",
+  lg: "h-[2.9rem] px-[1.6rem] text-[1.02rem] rounded-[0.45rem]",
+  md: "h-[2.4rem] px-[1.1rem] text-[0.95rem] rounded-[0.4rem]",
   sm: "h-8 px-3 text-[0.875rem] rounded-[0.35rem]",
 }
 

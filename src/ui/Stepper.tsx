@@ -1,9 +1,12 @@
 import { Check, X } from "lucide-react"
+import { useMessages } from "@/i18n"
 import { cx } from "./cx"
+import { uiMessages } from "./messages"
 
 export type StepState = "done" | "active" | "failed" | "todo"
 
 export function Stepper({ steps }: { steps: readonly { label: string; state: StepState }[] }) {
+  const m = useMessages(uiMessages)
   return (
     <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s, i) => (
@@ -20,9 +23,9 @@ export function Stepper({ steps }: { steps: readonly { label: string; state: Ste
           <span
             className={cx(
               "relative z-10 grid size-[1.6rem] place-items-center rounded-full transition-colors duration-300",
-              s.state === "done" && "bg-ok text-white",
-              s.state === "active" && "bg-brand animate-[lamp-pulse_1.4s_ease-in-out_infinite]",
-              s.state === "failed" && "bg-bad text-white",
+              s.state === "done" && "bg-ok text-on-status",
+              s.state === "active" && "step-pulse bg-brand",
+              s.state === "failed" && "bg-bad text-on-status",
               s.state === "todo" && "scale-[0.62] bg-idle",
             )}
           >
@@ -39,11 +42,11 @@ export function Stepper({ steps }: { steps: readonly { label: string; state: Ste
             {s.label}
             <span className="sr-only">
               {s.state === "done"
-                ? ", done"
+                ? m.stepDone
                 : s.state === "active"
-                  ? ", in progress"
+                  ? m.stepActive
                   : s.state === "failed"
-                    ? ", failed"
+                    ? m.stepFailed
                     : ""}
             </span>
           </span>

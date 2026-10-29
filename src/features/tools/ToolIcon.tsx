@@ -1,4 +1,4 @@
-import { MessageCircle, MessagesSquare, NotebookText, Send, Video } from "lucide-react"
+import { Mail, MessageCircle, MessagesSquare, NotebookText, Send, Video } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
 
 function DriveIcon(props: SVGProps<SVGSVGElement>) {
@@ -26,6 +26,7 @@ const icons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   zm: Video,
   drive: DriveIcon,
   memo: NotebookText,
+  email: Mail,
 }
 
 export function ToolIcon({ id, className }: { id: string; className?: string }) {

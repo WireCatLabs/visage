@@ -5,7 +5,12 @@ use std::process::{Command, Stdio};
 /// Setup flows (QR codes, phone codes, browser sign-in) belong to the CLI, so we open them
 /// in the user's terminal instead of re-implementing them.
 pub fn open(bin: &Path, args: &[String]) -> Result<(), String> {
-    let line = format!("{} {}", quote(&bin.to_string_lossy()), args.join(" "));
+    let mut line = format!("{} {}", quote(&bin.to_string_lossy()), args.join(" "));
+    // The new terminal reads the user's own PATH, where an older Node may come first; a tool installed with
+    // WireCat's Node.js would then start under it and fail. `env` works the same from sh, zsh and fish.
+    if cfg!(unix) && crate::node::in_use().is_some() {
+        line = format!("env PATH={} {line}", quote(&paths::search_path().to_string_lossy()));
+    }
     launch(&line).map_err(|_| {
         format!(
             "Could not open a terminal. Run this yourself: {} {}",
@@ -13,6 +18,12 @@ pub fn open(bin: &Path, args: &[String]) -> Result<(), String> {
             args.join(" ")
         )
     })
+}
+
+/// A fixed line from `tailscale::terminal_line`: Tailscale's own install command. It asks for the password itself;
+/// the app runs no `sudo`.
+pub fn open_line(line: &str) -> Result<(), String> {
+    launch(line).map_err(|_| format!("Could not open a terminal. Run this yourself: {line}"))
 }
 
 /// Arguments are validated catalog words and profile names; only the binary path can hold spaces.
@@ -73,10 +84,13 @@ fn launch(line: &str) -> std::io::Result<()> {
         .map(|_| ())
 }
 
+// `start` reads its first quoted argument as the window title, and cmd does not understand Rust's
+// backslash-escaped quotes, so the command line is passed raw.
 #[cfg(windows)]
 fn launch(line: &str) -> std::io::Result<()> {
+    use std::os::windows::process::CommandExt;
     Command::new("cmd")
-        .args(["/c", "start", "WireCat", "cmd", "/k", line])
+        .raw_arg(format!("/c start \"WireCat\" cmd /k {line}"))
         .env("PATH", paths::search_path())
         .spawn()
         .map(|_| ())

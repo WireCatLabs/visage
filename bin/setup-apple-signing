@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# One-off (TASK-39): hands the release workflow what it needs to sign and notarize the macOS app.
+#   bin/setup-apple-signing ~/Downloads/developer-id.p12
+# The .p12 is the "Developer ID Application" certificate with its private key, exported from Keychain Access.
+# The app-specific password is made at https://account.apple.com → Sign-In and Security → App-Specific Passwords.
+# Sets the repository secrets APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_ID, APPLE_PASSWORD and
+# APPLE_TEAM_ID; nothing secret is printed. The next release tag is signed without a workflow change.
+set -euo pipefail
+
+repo="WireCatLabs/wirecat-desktop"
+
+p12="${1:-}"
+if [ -z "$p12" ] || [ ! -f "$p12" ]; then
+  echo "Usage: bin/setup-apple-signing <path to the Developer ID Application .p12>" >&2
+  exit 1
+fi
+for program in gh openssl base64; do
+  command -v "$program" >/dev/null || { echo "$program is missing." >&2; exit 1; }
+done
+gh auth status >/dev/null 2>&1 || { echo "Log in first: gh auth login" >&2; exit 1; }
+
+read -rsp "Password of the .p12 file: " P12_PASSWORD
+echo
+export P12_PASSWORD
+
+# Keychain Access exports with older ciphers that OpenSSL 3 reads only with -legacy.
+subject=""
+for legacy in "" "-legacy"; do
+  # shellcheck disable=SC2086
+  if subject="$(openssl pkcs12 $legacy -in "$p12" -passin env:P12_PASSWORD -nokeys -clcerts 2>/dev/null |
+    openssl x509 -noout -subject -nameopt multiline 2>/dev/null)" && [ -n "$subject" ]; then
+    break
+  fi
+done
+if [ -z "$subject" ]; then
+  echo "Could not open the .p12 with that password." >&2
+  exit 1
+fi
+name="$(sed -n 's/^ *commonName *= *//p' <<<"$subject")"
+team="$(sed -n 's/^ *organizationalUnitName *= *//p' <<<"$subject" | head -n 1)"
+case "$name" in
+  "Developer ID Application:"*) ;;
+  *)
+    echo "This is \"$name\", not a Developer ID Application certificate; apps outside the App Store need that one." >&2
+    exit 1
+    ;;
+esac
+if [ -z "$team" ]; then
+  echo "The certificate names no team." >&2
+  exit 1
+fi
+echo "Certificate: $name"
+
+read -rp "Apple ID (the e-mail of the developer account): " apple_id
+read -rsp "App-specific password for $apple_id: " app_password
+echo
+if [ -z "$apple_id" ] || [ -z "$app_password" ]; then
+  echo "Both the Apple ID and the app-specific password are needed." >&2
+  exit 1
+fi
+
+base64 -w 0 <"$p12" | gh secret set APPLE_CERTIFICATE --repo "$repo" >/dev/null
+printf '%s' "$P12_PASSWORD" | gh secret set APPLE_CERTIFICATE_PASSWORD --repo "$repo" >/dev/null
+printf '%s' "$apple_id" | gh secret set APPLE_ID --repo "$repo" >/dev/null
+printf '%s' "$app_password" | gh secret set APPLE_PASSWORD --repo "$repo" >/dev/null
+printf '%s' "$team" | gh secret set APPLE_TEAM_ID --repo "$repo" >/dev/null
+unset P12_PASSWORD app_password
+
+echo "Set APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID ($team) on $repo."
+echo "The next release build signs and notarizes the macOS app."

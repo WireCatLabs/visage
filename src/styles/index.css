@@ -23,8 +23,10 @@
   --brand-soft: #e8e9fd;
   --ok: #1f9a55;
   --warn: #d08a12;
+  --warn-ink: #8a5a00;
   --bad: #cf4a2f;
   --idle: #a9b5ae;
+  --on-status: #ffffff;
   --shadow: 0 1px 2px rgb(24 40 34 / 6%), 0 8px 24px rgb(24 40 34 / 5%);
 }
 
@@ -45,8 +47,10 @@
   --brand-soft: #262a52;
   --ok: #5cc98a;
   --warn: #e6b04a;
+  --warn-ink: #e6b04a;
   --bad: #f07a5f;
   --idle: #4c5659;
+  --on-status: #0d1512;
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
 }
 
@@ -66,8 +70,10 @@
   --color-brand-soft: var(--brand-soft);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
   --color-bad: var(--bad);
   --color-idle: var(--idle);
+  --color-on-status: var(--on-status);
   --font-display: "Unbounded Variable", "Unbounded", system-ui, sans-serif;
   --font-sans: "Onest Variable", "Onest", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -75,15 +81,48 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* The interface scales with the window, as a native app's content does at different display sizes. */
+/* The interface scales with the window, as a native app's content does at different display sizes. `--ui-scale` is
+   the owner's own size from Settings, multiplied outside the clamp so it still applies at the window's limits. */
 html {
-  font-size: clamp(13.5px, 0.6rem + 0.45vw, 16.5px);
+  font-size: calc(clamp(13px, 0.5rem + 0.52vw, 18px) * var(--ui-scale, 1));
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* WebKit (the Linux and macOS webviews) styles scrollbars only through these; without explicit hover and active
+   colours its dragged thumb falls back to black, which vanishes in dark mode. */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink-dim) 55%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ink-dim) 80%, transparent);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--ink-soft);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ink-dim) 60%, transparent) transparent;
+  }
 }
 
 body {
@@ -94,7 +133,6 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
-  user-select: none;
   cursor: default;
 }
 
@@ -107,7 +145,48 @@ body {
   outline-offset: 2px;
 }
 
+/* A guide's step heading takes focus so a screen reader starts there; it is not a control, so no ring. */
+.step-heading:focus-visible {
+  outline: none;
+}
+
+@layer base {
+  /* Content selects with the mouse; the window's chrome and controls do not. WebKitGTK knows only the prefixed
+     property, and the dev server does not add the prefix, so every user-select here is written twice. */
+  [data-tauri-drag-region],
+  button,
+  summary,
+  label,
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button:not(:disabled),
+  a[href],
+  summary,
+  [role="button"],
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  /* A default fade for anything interactive; components that set their own transition keep it. */
+  button,
+  a[href],
+  summary,
+  input,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out-quart);
+  }
+}
+
 .selectable {
+  -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }
@@ -133,6 +212,51 @@ body {
   }
 }
 
+/* A stepper's running step: a wider ring than the lamp's, so a slow step still reads as working. */
+@keyframes step-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+}
+
+.step-pulse {
+  animation: step-pulse 1.6s var(--ease-out-quart) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-pulse {
+    animation: none;
+    box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--brand) 30%, transparent);
+  }
+}
+
+/* A bar for work whose share done the tool does not say: a third of the track slides across. */
+@keyframes slide-across {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.bar-indeterminate {
+  width: 33%;
+  animation: slide-across 1.4s var(--ease-out-quart) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-indeterminate {
+    width: 100%;
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: -200% 0;
@@ -142,9 +266,138 @@ body {
   }
 }
 
-.skeleton {
+.skeleton,
+.skeleton-text::before {
   background: linear-gradient(90deg, var(--app-3) 0%, var(--app-2) 50%, var(--app-3) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
   border-radius: 6px;
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* Loading without layout shift: docs/dev/ARCHITECTURE.md. The text form keeps its line's height and draws the bar
+   inside it. */
+.skeleton-text {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+}
+.skeleton-text::before {
+  content: "";
+  position: absolute;
+  inset: 0.22em 0;
+}
+
+.stable-text {
+  display: inline-grid;
+}
+.stable-text > * {
+  grid-area: 1 / 1;
+}
+.stable-text > [data-text] {
+  visibility: hidden;
+}
+.stable-text > [data-text]::before {
+  content: attr(data-text);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Content that replaces a placeholder fades in where the placeholder was, instead of popping. */
+.reveal {
+  animation: reveal 180ms var(--ease-out-quart);
+}
+
+/* A guide's next step slides in from where the reader's eye already is; reduced motion makes it instant above. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+}
+
+.step-in {
+  animation: step-in 260ms var(--ease-out-quart);
+}
+
+/* A scrollbar that appears once content outgrows the window would narrow the page by its width and re-wrap every
+   line. Reserve its gutter up front; WebKit before Safari 18.2 lacks the property, so it gets an always-on track,
+   which is invisible because the track is transparent. */
+main {
+  scrollbar-gutter: stable;
+}
+@supports not (scrollbar-gutter: stable) {
+  main {
+    overflow-y: scroll;
+  }
+}
+
+/* Dialogs rise in and fade out (src/ui/Dialog.tsx), so the owner sees where they came from and went. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.985);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.99);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+dialog[open] {
+  animation: dialog-in 200ms var(--ease-out-quart);
+}
+dialog[open]::backdrop {
+  animation: backdrop-in 200ms var(--ease-out-quart);
+}
+dialog[data-closing] {
+  animation: dialog-out 150ms var(--ease-out-quart) forwards;
+}
+dialog[data-closing]::backdrop {
+  animation: backdrop-out 150ms var(--ease-out-quart) forwards;
+}
+
+/* Crossfade: the old view fades out over the new one, so the area is never empty between them. */
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.fade-out {
+  animation: fade-out 200ms var(--ease-out-quart) forwards;
+}
+
+.fade-in {
+  animation: reveal 200ms var(--ease-out-quart);
+}
+
+/* Rings are for keyboard users. After a click the browser can still match :focus-visible (a button clicked once a key
+   was pressed, focus moved by code), so `trackInputMode` hides them until the next navigation key. A text field keeps
+   its ring: it is the only sign of where typing goes. Unlayered, so it beats the Tailwind ring utilities. */
+:root[data-input="pointer"] :focus-visible:not(textarea, input:not([type="checkbox"], [type="radio"])),
+:root[data-input="pointer"] :focus-visible ~ *,
+:root[data-input="pointer"] :has(:focus-visible) {
+  outline: none;
 }

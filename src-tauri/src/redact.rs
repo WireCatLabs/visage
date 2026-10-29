@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 fn sensitive_key() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r"(?i)token|secret|password|passwd|cookie|credential|api_?key|auth_key|session_string|phone|e?mail|address|account|^name$|first_name|last_name|username|viewer_id|device_id|user_id|zoomuser")
+        Regex::new(r"(?i)token|secret|password|passwd|cookie|credential|api_?key|auth_key|session_string|phone|e?mail|address|account|^name$|first_name|last_name|username|viewer_id|device_id|user_id|zoomuser|client_id|principal|proxy|base_url")
             .unwrap()
     })
 }
@@ -15,8 +15,9 @@ fn sensitive_text() -> &'static [(Regex, &'static str)] {
     R.get_or_init(|| {
         vec![
             (Regex::new(r"[\w.+-]+@[\w-]+\.[\w.-]+").unwrap(), "[email]"),
-            (Regex::new(r"\+?\d[\d\s-]{8,}\d").unwrap(), "[number]"),
+            (Regex::new(r"\+\d[\d\s-]{7,}\d").unwrap(), "[number]"),
             (Regex::new(r"\b\d{6,}:[\w-]{30,}\b").unwrap(), "[bot token]"),
+            (Regex::new(r"\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com").unwrap(), "[client id]"),
         ]
     })
 }
@@ -64,7 +65,8 @@ mod tests {
             "items": [{"profile": "personal", "account": "+34 600 000 000", "name": "Ann"}],
             "token": {"present": true, "from": "keyring"},
             "mail": {"accounts": [{"address": "a@b.com"}]},
-            "note": "write to a@b.com"
+            "note": "write to a@b.com, or call +34 600 000 000",
+            "expires_at": "2026-10-25T03:12:00Z"
         });
         super::json(&mut v);
         assert_eq!(v["items"][0]["profile"], "personal");
@@ -72,6 +74,31 @@ mod tests {
         assert_eq!(v["items"][0]["name"], "•••");
         assert_eq!(v["token"]["present"], true);
         assert_eq!(v["mail"]["accounts"][0]["address"], "•••");
-        assert_eq!(v["note"], "write to [email]");
+        assert_eq!(v["note"], "write to [email], or call [number]");
+        assert_eq!(v["expires_at"], "2026-10-25T03:12:00Z");
+    }
+
+    #[test]
+    fn masks_settings_that_may_carry_credentials() {
+        let mut v = json!({
+            "proxy": "http://user:pw@host:8080",
+            "embedding_base_url": "https://key@example.test/v1",
+            "client_id": "abc123",
+            "principal": "someone",
+            "limit": 20
+        });
+        super::json(&mut v);
+        for key in ["proxy", "embedding_base_url", "client_id", "principal"] {
+            assert_eq!(v[key], "•••", "{key}");
+        }
+        assert_eq!(v["limit"], 20);
+    }
+
+    #[test]
+    fn masks_google_client_ids_in_file_names() {
+        assert_eq!(
+            super::text("client_secret_1234567-abc9def.apps.googleusercontent.com.json"),
+            "client_secret_[client id].json"
+        );
     }
 }

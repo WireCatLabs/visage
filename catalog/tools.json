@@ -7,6 +7,7 @@
     {
       "id": "tg",
       "name": "Telegram",
+      "tagline": "Your Telegram account, for the terminal and AI agents",
       "bin": "tg",
       "package": "@wirecat/tg-cli",
       "summary": "A Telegram client for the terminal and for AI agents, on your own account.",
@@ -17,11 +18,105 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "mcpServer": {
+        "port": 8765,
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "revoke", "--json"],
+        "config": ["mcp", "config", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
+      },
+      "sync": {
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "120m", "--record", "--json"],
+        "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "messages",
+        "note": null
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": ["store", "tables", "list", "--json"],
+      "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
+      "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
+      "storage": {
+        "app": "tg-cli",
+        "env": "TG"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
+      },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "topics", "label": "Topics" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" }
+        ]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your Telegram chats, and send messages when you ask.",
+        "asks": "The first time, your phone number and the code Telegram sends, to register your own Telegram app. Then a QR code to scan in Telegram: Settings → Devices → Link Desktop Device.",
+        "methods": [
+          {
+            "id": "qr",
+            "label": "QR code",
+            "words": ["{profile}", "session", "start", "qr", "--json", "--answer-stdin"]
+          },
+          {
+            "id": "phone",
+            "label": "Phone number",
+            "words": ["{profile}", "session", "start", "phone", "--json", "--answer-stdin"]
+          }
+        ]
+      }
     },
     {
       "id": "max",
       "name": "MAX",
+      "tagline": "MAX bots and your personal account, from the terminal",
       "bin": "max",
       "package": "@wirecat/max-cli",
       "summary": "MAX Messenger from the terminal: bots through the official Bot API, and your personal account.",
@@ -32,11 +127,99 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "mcpServer": {
+        "port": 8766,
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "revoke", "--json"],
+        "config": ["mcp", "config", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
+      },
+      "sync": {
+        "run": ["{profile}", "messages", "sync", "--all", "--timeout", "120m", "--record", "--json"],
+        "last": ["runs", "list", "command:\"messages sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "messages",
+        "note": null
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": ["store", "tables", "list", "--json"],
+      "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
+      "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
+      "storage": {
+        "app": "max-cli",
+        "env": "MAX"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
+      },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" }
+        ]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your MAX chats, and send messages when you ask.",
+        "asks": "A QR code to scan with the MAX app on your phone.",
+        "methods": [
+          {
+            "id": "qr",
+            "label": "QR code",
+            "words": ["{profile}", "session", "start", "qr", "--json", "--answer-stdin"]
+          }
+        ]
+      }
     },
     {
       "id": "wa",
       "name": "WhatsApp",
+      "tagline": "Your WhatsApp account as a linked device",
       "bin": "wa",
       "package": "@wirecat/whatsapp-cli",
       "summary": "Your WhatsApp account from the terminal, as a linked device, for agents and scripts.",
@@ -47,11 +230,93 @@
         "shape": "items"
       },
       "doctor": ["{profile}", "doctor", "--json"],
-      "setup": ["{profile}", "setup"]
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": ["{profile}", "setup"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": {
+        "check": ["{profile}", "mcp", "check", "--json"],
+        "add": ["{profile}", "mcp", "add", "{client}", "--json"]
+      },
+      "mcpServer": {
+        "port": 8768,
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "revoke", "--json"],
+        "config": ["mcp", "config", "--json"]
+      },
+      "tasks": {
+        "list": [
+          "{profile}",
+          "tasks",
+          "list",
+          "state:open",
+          "--limit",
+          "1000",
+          "--json=id,key,claimed_by,claimed_until"
+        ],
+        "release": ["{profile}", "tasks", "release", "{task}", "--holder", "owner", "--json"]
+      },
+      "sync": {
+        "run": null,
+        "last": null,
+        "lastShape": "runs",
+        "what": "messages",
+        "note": "WhatsApp sends new messages while `wa {profile} serve` runs; there is no sync to start."
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": ["store", "tables", "list", "--json"],
+      "storeTableSizes": ["store", "tables", "list", "--full", "--json"],
+      "storeCheck": ["store", "check", "--json"],
+      "storeBackup": ["store", "backup", "{file}", "--json"],
+      "storeBackupEncrypted": ["store", "backup", "--encrypt", "{file}", "--json"],
+      "storeResetPreview": ["store", "reset", "--dry-run", "--json"],
+      "storeReset": ["store", "reset", "--no-backup", "--yes", "--json"],
+      "storage": {
+        "app": "whatsapp-cli",
+        "env": "WA"
+      },
+      "settings": {
+        "show": ["{profile}", "config", "show", "--json"],
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": ["{profile}", "config", "unset", "--json"],
+        "shape": "rows",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": false,
+        "keys": null,
+        "readOnly": ["default_profile"]
+      },
+      "permissions": {
+        "commands": ["{profile}", "commands", "--json"],
+        "groups": [
+          { "key": "messages", "label": "Messages" },
+          { "key": "reactions", "label": "Reactions" },
+          { "key": "polls", "label": "Polls" },
+          { "key": "chats", "label": "Chats and groups" },
+          { "key": "contacts", "label": "Contacts" },
+          { "key": "account", "label": "Account" },
+          { "key": "attachments", "label": "Files" },
+          { "key": "tasks", "label": "Tasks" }
+        ]
+      },
+      "signIn": {
+        "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",
+        "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device.",
+        "methods": [{ "id": "qr", "label": "QR code", "words": ["{profile}", "session", "start", "qr", "--json"] }]
+      }
     },
     {
       "id": "zm",
       "name": "Zoom",
+      "tagline": "Zoom transcripts and recordings, searchable",
       "bin": "zm",
       "package": "@wirecat/zoom-cli",
       "summary": "Keep Zoom transcripts and recordings, search meeting evidence and give your agent context for the next call.",
@@ -62,11 +327,71 @@
         "shape": "item.profiles"
       },
       "doctor": ["{profile}", "session", "status", "--json"],
-      "setup": ["{profile}", "session", "start"]
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": ["{profile}", "session", "start"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": null,
+      "mcpServer": null,
+      "tasks": null,
+      "sync": {
+        "run": ["{profile}", "meetings", "sync", "--record", "--json"],
+        "last": ["runs", "list", "command:\"meetings sync\" status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "meetings",
+        "note": null
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": null,
+      "storeTableSizes": null,
+      "storeCheck": null,
+      "storeBackup": null,
+      "storeBackupEncrypted": null,
+      "storeResetPreview": null,
+      "storeReset": null,
+      "storage": {
+        "app": "zm",
+        "env": "ZM"
+      },
+      "settings": {
+        "show": ["config", "show", "--json"],
+        "set": ["config", "set", "--json"],
+        "unset": null,
+        "shape": "flat",
+        "perProfile": false,
+        "defaults": false,
+        "jsonValues": false,
+        "keys": {
+          "client_id": "zoom.client_id",
+          "source": "source",
+          "files_folder": "files.folder",
+          "files_timezone": "files.timezone"
+        },
+        "readOnly": []
+      },
+      "signIn": {
+        "gives": "Lets your agent find your Zoom meetings and read their transcripts and summaries.",
+        "asks": "Your browser opens Zoom to approve access. Zoom first needs an app of your own, made once in the Zoom App Marketplace.",
+        "guide": "https://github.com/WireCatLabs/zoom-cli/blob/main/docs/zoom-app.md",
+        "methods": [
+          {
+            "id": "browser",
+            "label": "Browser",
+            "words": ["{profile}", "session", "start", "--json", "--answer-stdin"]
+          }
+        ]
+      }
     },
     {
       "id": "drive",
       "name": "Google Drive",
+      "tagline": "Google Drive folders as local, searchable text",
       "bin": "drive",
       "package": "@wirecat/drive-cli",
       "summary": "Import selected Google folders, search documents locally and keep tags, notes and source-backed memories.",
@@ -77,19 +402,169 @@
         "shape": "item.items"
       },
       "doctor": ["{profile}", "status", "--json"],
-      "setup": ["{profile}", "session", "start"]
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": ["{profile}", "session", "start"],
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}", "--json"],
+        "show": ["skill", "show", "--json"]
+      },
+      "mcp": null,
+      "mcpServer": {
+        "port": 8769,
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "revoke", "--json"],
+        "config": null
+      },
+      "tasks": null,
+      "sync": {
+        "run": ["{profile}", "sync", "--record", "--json"],
+        "last": ["{profile}", "status", "--json"],
+        "lastShape": "driveStatus",
+        "what": "files",
+        "note": null
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": null,
+      "storeTableSizes": null,
+      "storeCheck": null,
+      "storeBackup": null,
+      "storeBackupEncrypted": null,
+      "storeResetPreview": null,
+      "storeReset": null,
+      "storage": {
+        "app": "drive-cli",
+        "env": "DRIVE"
+      },
+      "settings": {
+        "show": ["config", "show", "--json"],
+        "set": ["{profile}", "config", "set", "--json"],
+        "unset": null,
+        "shape": "profiles",
+        "perProfile": true,
+        "defaults": true,
+        "jsonValues": true,
+        "keys": null,
+        "readOnly": ["principal", "roots", "mirrors", "storage"]
+      },
+      "signIn": {
+        "gives": "Lets your agent find and read your Google Drive files. It cannot change them.",
+        "asks": "Your browser opens Google: choose the account and allow read-only access to Drive.",
+        "methods": [{ "id": "browser", "label": "Browser", "words": ["{profile}", "session", "start", "--json"] }]
+      }
     },
     {
       "id": "memo",
       "name": "Memo",
+      "tagline": "Notes, people and memories in one place for your agent",
       "bin": "memo",
       "package": "@wirecat/cli-memo",
-      "summary": "Your notes, mail and messages in one place for your AI agent: search, tags, people and memories, on your computer.",
+      "summary": "Your notes and messages in one place for your AI agent: search, tags, people and memories, on your computer. Mail comes in through Email, which is part of Memo.",
       "docs": "https://wirecat.dev/en/docs/memo",
       "repo": "https://github.com/WireCatLabs/cli-memo",
       "profiles": null,
       "doctor": ["doctor", "--json"],
-      "setup": null
+      "runs": {
+        "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
+        "show": ["runs", "show", "{run}", "--json"]
+      },
+      "setup": null,
+      "skill": {
+        "status": ["skill", "status", "--json"],
+        "install": ["skill", "install", "--for", "{target}"],
+        "show": ["skill", "show"],
+        "doctorSkills": ["doctor", "--json"]
+      },
+      "mcp": null,
+      "mcpServer": {
+        "port": 8767,
+        "start": ["mcp", "server", "start", "--port", "{port}", "--public-url", "{url}", "--json"],
+        "stop": ["mcp", "server", "stop", "--json"],
+        "status": ["mcp", "server", "status", "--json"],
+        "revoke": ["mcp", "revoke", "--json"],
+        "config": null
+      },
+      "tasks": null,
+      "sync": {
+        "run": ["sync", "--record", "--json"],
+        "last": ["runs", "list", "command:sync status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "notes and mail",
+        "note": null
+      },
+      "storeInfo": ["store", "info", "--json"],
+      "storeTables": null,
+      "storeTableSizes": null,
+      "storeCheck": null,
+      "storeBackup": null,
+      "storeBackupEncrypted": null,
+      "storeResetPreview": null,
+      "storeReset": null,
+      "storage": {
+        "app": "cli-memo",
+        "env": "MEMO"
+      },
+      "settings": null,
+      "signIn": null
+    },
+    {
+      "id": "email",
+      "name": "Email",
+      "partOf": "memo",
+      "commandPrefix": "mail",
+      "tagline": "Your mail, searchable with your notes and messages",
+      "bin": "memo",
+      "package": "@wirecat/cli-memo",
+      "summary": "Gmail and other IMAP mail in Memo's local store, read through Himalaya: search it with your notes and messages and see how far each import is. Importing never changes your mailbox, and Memo never sends mail.",
+      "docs": "https://wirecat.dev/en/docs/email",
+      "repo": "https://github.com/WireCatLabs/cli-memo",
+      "profiles": {
+        "args": ["doctor", "--json"],
+        "shape": "item.mail.accounts"
+      },
+      "doctor": ["mail", "check", "{profile}", "--json"],
+      "runs": null,
+      "setup": null,
+      "skill": null,
+      "mcp": null,
+      "mcpServer": null,
+      "tasks": null,
+      "sync": {
+        "run": ["sync", "--only", "mail", "--record", "--json"],
+        "last": ["runs", "list", "command:sync status:success", "--limit", "50", "--json"],
+        "lastShape": "runs",
+        "what": "mail",
+        "note": null
+      },
+      "storeInfo": null,
+      "storeTables": null,
+      "storeTableSizes": null,
+      "storeCheck": null,
+      "storeBackup": null,
+      "storeBackupEncrypted": null,
+      "storeResetPreview": null,
+      "storeReset": null,
+      "storage": {
+        "app": "cli-memo",
+        "env": "MEMO"
+      },
+      "settings": null,
+      "signIn": {
+        "gives": "Lets your agent search your mail together with your notes and messages. Memo reads the mailbox without changing it and never sends mail.",
+        "asks": "The account set up first in Himalaya, a mail program for the terminal; for Gmail, with an app password. Then the Himalaya account's name and its email address, given to Memo.",
+        "guide": "https://wirecat.dev/en/docs/email",
+        "command": "memo mail add <name> <address>"
+      }
     }
-  ]
+  ],
+  "sharedStorage": {
+    "app": "WireCat",
+    "env": "WIRECAT",
+    "label": "Shared storage"
+  }
 }

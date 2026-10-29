@@ -5,10 +5,10 @@ export function Pill({ children, tone = "neutral" }: { children: ReactNode; tone
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-[0.3rem] px-[0.45rem] py-[0.1rem] text-[0.8rem] font-medium",
+        "inline-flex items-center rounded-[0.3rem] px-[0.45rem] py-[0.1rem] text-[0.85rem] font-medium",
         tone === "neutral" && "bg-app-3 text-ink-soft",
         tone === "brand" && "bg-brand-soft text-brand",
-        tone === "warn" && "bg-warn/15 text-warn",
+        tone === "warn" && "bg-warn/15 text-warn-ink",
       )}
     >
       {children}

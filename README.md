@@ -17,6 +17,7 @@ app installs the same packages.
 | Zoom | `zm` | `@wirecat/zoom-cli` |
 | Google Drive | `drive` | `@wirecat/drive-cli` |
 | Memo | `memo` | `@wirecat/cli-memo` |
+| Email | `memo mail` | `@wirecat/cli-memo`, installed with Memo |
 
 ## Requirements
 

@@ -1,0 +1,864 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T07:03:53+00:00",
+  "title": "Design System: WireCat Desktop",
+  "extensions": {
+    "colorMeta": {
+      "light-wall": {
+        "role": "neutral",
+        "displayName": "Green-Tinted Wall (light)",
+        "theme": "light",
+        "cssVar": "--wall",
+        "oklch": "oklch(96.4% 0.004 157.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.004 157.2)",
+          "oklch(26.4% 0.004 157.2)",
+          "oklch(37.9% 0.004 157.2)",
+          "oklch(49.3% 0.004 157.2)",
+          "oklch(60.7% 0.004 157.2)",
+          "oklch(72.1% 0.004 157.2)",
+          "oklch(83.6% 0.004 157.2)",
+          "oklch(95.0% 0.004 157.2)"
+        ]
+      },
+      "light-app": {
+        "role": "neutral",
+        "displayName": "Rack White (light)",
+        "theme": "light",
+        "cssVar": "--app",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "oklch(15.0% 0.000 89.9)",
+          "oklch(26.4% 0.000 89.9)",
+          "oklch(37.9% 0.000 89.9)",
+          "oklch(49.3% 0.000 89.9)",
+          "oklch(60.7% 0.000 89.9)",
+          "oklch(72.1% 0.000 89.9)",
+          "oklch(83.6% 0.000 89.9)",
+          "oklch(95.0% 0.000 89.9)"
+        ]
+      },
+      "light-app-2": {
+        "role": "neutral",
+        "displayName": "Panel Wash (light)",
+        "theme": "light",
+        "cssVar": "--app-2",
+        "oklch": "oklch(97.7% 0.002 165.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.002 165.1)",
+          "oklch(26.4% 0.002 165.1)",
+          "oklch(37.9% 0.002 165.1)",
+          "oklch(49.3% 0.002 165.1)",
+          "oklch(60.7% 0.002 165.1)",
+          "oklch(72.1% 0.002 165.1)",
+          "oklch(83.6% 0.002 165.1)",
+          "oklch(95.0% 0.002 165.1)"
+        ]
+      },
+      "light-app-3": {
+        "role": "neutral",
+        "displayName": "Track Grey-Green (light)",
+        "theme": "light",
+        "cssVar": "--app-3",
+        "oklch": "oklch(93.6% 0.010 155.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.010 155.1)",
+          "oklch(26.4% 0.010 155.1)",
+          "oklch(37.9% 0.010 155.1)",
+          "oklch(49.3% 0.010 155.1)",
+          "oklch(60.7% 0.010 155.1)",
+          "oklch(72.1% 0.010 155.1)",
+          "oklch(83.6% 0.010 155.1)",
+          "oklch(95.0% 0.010 155.1)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Hairline (light)",
+        "theme": "light",
+        "cssVar": "--line",
+        "oklch": "oklch(89.5% 0.013 157.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.013 157.0)",
+          "oklch(26.4% 0.013 157.0)",
+          "oklch(37.9% 0.013 157.0)",
+          "oklch(49.3% 0.013 157.0)",
+          "oklch(60.7% 0.013 157.0)",
+          "oklch(72.1% 0.013 157.0)",
+          "oklch(83.6% 0.013 157.0)",
+          "oklch(95.0% 0.013 157.0)"
+        ]
+      },
+      "light-line-strong": {
+        "role": "neutral",
+        "displayName": "Rack Frame (light)",
+        "theme": "light",
+        "cssVar": "--line-strong",
+        "oklch": "oklch(86.8% 0.016 154.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.016 154.4)",
+          "oklch(26.4% 0.016 154.4)",
+          "oklch(37.9% 0.016 154.4)",
+          "oklch(49.3% 0.016 154.4)",
+          "oklch(60.7% 0.016 154.4)",
+          "oklch(72.1% 0.016 154.4)",
+          "oklch(83.6% 0.016 154.4)",
+          "oklch(95.0% 0.016 154.4)"
+        ]
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Deep Pine Ink (light)",
+        "theme": "light",
+        "cssVar": "--ink",
+        "oklch": "oklch(26.0% 0.024 169.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.024 169.0)",
+          "oklch(26.4% 0.024 169.0)",
+          "oklch(37.9% 0.024 169.0)",
+          "oklch(49.3% 0.024 169.0)",
+          "oklch(60.7% 0.024 169.0)",
+          "oklch(72.1% 0.024 169.0)",
+          "oklch(83.6% 0.024 169.0)",
+          "oklch(95.0% 0.024 169.0)"
+        ]
+      },
+      "light-ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink (light)",
+        "theme": "light",
+        "cssVar": "--ink-soft",
+        "oklch": "oklch(46.4% 0.026 163.6)",
+        "tonalRamp": [
+          "oklch(15.0% 0.026 163.6)",
+          "oklch(26.4% 0.026 163.6)",
+          "oklch(37.9% 0.026 163.6)",
+          "oklch(49.3% 0.026 163.6)",
+          "oklch(60.7% 0.026 163.6)",
+          "oklch(72.1% 0.026 163.6)",
+          "oklch(83.6% 0.026 163.6)",
+          "oklch(95.0% 0.026 163.6)"
+        ]
+      },
+      "light-ink-dim": {
+        "role": "neutral",
+        "displayName": "Dim Ink (light)",
+        "theme": "light",
+        "cssVar": "--ink-dim",
+        "oklch": "oklch(54.2% 0.025 159.6)",
+        "tonalRamp": [
+          "oklch(15.0% 0.025 159.6)",
+          "oklch(26.4% 0.025 159.6)",
+          "oklch(37.9% 0.025 159.6)",
+          "oklch(49.3% 0.025 159.6)",
+          "oklch(60.7% 0.025 159.6)",
+          "oklch(72.1% 0.025 159.6)",
+          "oklch(83.6% 0.025 159.6)",
+          "oklch(95.0% 0.025 159.6)"
+        ]
+      },
+      "light-brand": {
+        "role": "primary",
+        "displayName": "WireCat Purple (light)",
+        "theme": "light",
+        "cssVar": "--brand",
+        "oklch": "oklch(53.8% 0.230 273.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.230 273.4)",
+          "oklch(26.4% 0.230 273.4)",
+          "oklch(37.9% 0.230 273.4)",
+          "oklch(49.3% 0.230 273.4)",
+          "oklch(60.7% 0.230 273.4)",
+          "oklch(72.1% 0.230 273.4)",
+          "oklch(83.6% 0.230 273.4)",
+          "oklch(95.0% 0.230 273.4)"
+        ]
+      },
+      "light-brand-hover": {
+        "role": "primary",
+        "displayName": "Pressed Purple (light)",
+        "theme": "light",
+        "cssVar": "--brand-hover",
+        "oklch": "oklch(48.3% 0.228 271.8)",
+        "tonalRamp": [
+          "oklch(15.0% 0.228 271.8)",
+          "oklch(26.4% 0.228 271.8)",
+          "oklch(37.9% 0.228 271.8)",
+          "oklch(49.3% 0.228 271.8)",
+          "oklch(60.7% 0.228 271.8)",
+          "oklch(72.1% 0.228 271.8)",
+          "oklch(83.6% 0.228 271.8)",
+          "oklch(95.0% 0.228 271.8)"
+        ]
+      },
+      "light-brand-soft": {
+        "role": "primary",
+        "displayName": "Purple Wash (light)",
+        "theme": "light",
+        "cssVar": "--brand-soft",
+        "oklch": "oklch(93.9% 0.027 283.6)",
+        "tonalRamp": [
+          "oklch(15.0% 0.027 283.6)",
+          "oklch(26.4% 0.027 283.6)",
+          "oklch(37.9% 0.027 283.6)",
+          "oklch(49.3% 0.027 283.6)",
+          "oklch(60.7% 0.027 283.6)",
+          "oklch(72.1% 0.027 283.6)",
+          "oklch(83.6% 0.027 283.6)",
+          "oklch(95.0% 0.027 283.6)"
+        ]
+      },
+      "light-ok": {
+        "role": "status",
+        "displayName": "Ready Green (light)",
+        "theme": "light",
+        "cssVar": "--ok",
+        "oklch": "oklch(60.6% 0.146 152.8)",
+        "tonalRamp": [
+          "oklch(15.0% 0.146 152.8)",
+          "oklch(26.4% 0.146 152.8)",
+          "oklch(37.9% 0.146 152.8)",
+          "oklch(49.3% 0.146 152.8)",
+          "oklch(60.7% 0.146 152.8)",
+          "oklch(72.1% 0.146 152.8)",
+          "oklch(83.6% 0.146 152.8)",
+          "oklch(95.0% 0.146 152.8)"
+        ]
+      },
+      "light-warn": {
+        "role": "status",
+        "displayName": "Update Amber (light)",
+        "theme": "light",
+        "cssVar": "--warn",
+        "oklch": "oklch(68.8% 0.143 72.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.143 72.4)",
+          "oklch(26.4% 0.143 72.4)",
+          "oklch(37.9% 0.143 72.4)",
+          "oklch(49.3% 0.143 72.4)",
+          "oklch(60.7% 0.143 72.4)",
+          "oklch(72.1% 0.143 72.4)",
+          "oklch(83.6% 0.143 72.4)",
+          "oklch(95.0% 0.143 72.4)"
+        ]
+      },
+      "light-warn-ink": {
+        "role": "status",
+        "displayName": "Amber Ink (light)",
+        "theme": "light",
+        "cssVar": "--warn-ink",
+        "oklch": "oklch(50.8% 0.108 73.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.108 73.3)",
+          "oklch(26.4% 0.108 73.3)",
+          "oklch(37.9% 0.108 73.3)",
+          "oklch(49.3% 0.108 73.3)",
+          "oklch(60.7% 0.108 73.3)",
+          "oklch(72.1% 0.108 73.3)",
+          "oklch(83.6% 0.108 73.3)",
+          "oklch(95.0% 0.108 73.3)"
+        ]
+      },
+      "light-bad": {
+        "role": "status",
+        "displayName": "Fault Red (light)",
+        "theme": "light",
+        "cssVar": "--bad",
+        "oklch": "oklch(58.8% 0.173 33.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.173 33.3)",
+          "oklch(26.4% 0.173 33.3)",
+          "oklch(37.9% 0.173 33.3)",
+          "oklch(49.3% 0.173 33.3)",
+          "oklch(60.7% 0.173 33.3)",
+          "oklch(72.1% 0.173 33.3)",
+          "oklch(83.6% 0.173 33.3)",
+          "oklch(95.0% 0.173 33.3)"
+        ]
+      },
+      "light-idle": {
+        "role": "status",
+        "displayName": "Idle Grey (light)",
+        "theme": "light",
+        "cssVar": "--idle",
+        "oklch": "oklch(76.2% 0.017 160.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.017 160.5)",
+          "oklch(26.4% 0.017 160.5)",
+          "oklch(37.9% 0.017 160.5)",
+          "oklch(49.3% 0.017 160.5)",
+          "oklch(60.7% 0.017 160.5)",
+          "oklch(72.1% 0.017 160.5)",
+          "oklch(83.6% 0.017 160.5)",
+          "oklch(95.0% 0.017 160.5)"
+        ]
+      },
+      "brand-ink": {
+        "role": "primary",
+        "displayName": "On Purple",
+        "theme": "both",
+        "cssVar": "--brand-ink",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "oklch(15.0% 0.000 89.9)",
+          "oklch(26.4% 0.000 89.9)",
+          "oklch(37.9% 0.000 89.9)",
+          "oklch(49.3% 0.000 89.9)",
+          "oklch(60.7% 0.000 89.9)",
+          "oklch(72.1% 0.000 89.9)",
+          "oklch(83.6% 0.000 89.9)",
+          "oklch(95.0% 0.000 89.9)"
+        ]
+      },
+      "dark-wall": {
+        "role": "neutral",
+        "displayName": "Green-Tinted Wall (dark)",
+        "theme": "dark",
+        "cssVar": "--wall",
+        "oklch": "oklch(20.1% 0.006 214.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.006 214.5)",
+          "oklch(26.4% 0.006 214.5)",
+          "oklch(37.9% 0.006 214.5)",
+          "oklch(49.3% 0.006 214.5)",
+          "oklch(60.7% 0.006 214.5)",
+          "oklch(72.1% 0.006 214.5)",
+          "oklch(83.6% 0.006 214.5)",
+          "oklch(95.0% 0.006 214.5)"
+        ]
+      },
+      "dark-app": {
+        "role": "neutral",
+        "displayName": "Rack White (dark)",
+        "theme": "dark",
+        "cssVar": "--app",
+        "oklch": "oklch(22.3% 0.007 229.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.007 229.2)",
+          "oklch(26.4% 0.007 229.2)",
+          "oklch(37.9% 0.007 229.2)",
+          "oklch(49.3% 0.007 229.2)",
+          "oklch(60.7% 0.007 229.2)",
+          "oklch(72.1% 0.007 229.2)",
+          "oklch(83.6% 0.007 229.2)",
+          "oklch(95.0% 0.007 229.2)"
+        ]
+      },
+      "dark-app-2": {
+        "role": "neutral",
+        "displayName": "Panel Wash (dark)",
+        "theme": "dark",
+        "cssVar": "--app-2",
+        "oklch": "oklch(24.1% 0.008 240.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.008 240.2)",
+          "oklch(26.4% 0.008 240.2)",
+          "oklch(37.9% 0.008 240.2)",
+          "oklch(49.3% 0.008 240.2)",
+          "oklch(60.7% 0.008 240.2)",
+          "oklch(72.1% 0.008 240.2)",
+          "oklch(83.6% 0.008 240.2)",
+          "oklch(95.0% 0.008 240.2)"
+        ]
+      },
+      "dark-app-3": {
+        "role": "neutral",
+        "displayName": "Track Grey-Green (dark)",
+        "theme": "dark",
+        "cssVar": "--app-3",
+        "oklch": "oklch(27.6% 0.010 229.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.010 229.3)",
+          "oklch(26.4% 0.010 229.3)",
+          "oklch(37.9% 0.010 229.3)",
+          "oklch(49.3% 0.010 229.3)",
+          "oklch(60.7% 0.010 229.3)",
+          "oklch(72.1% 0.010 229.3)",
+          "oklch(83.6% 0.010 229.3)",
+          "oklch(95.0% 0.010 229.3)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "theme": "dark",
+        "cssVar": "--line",
+        "oklch": "oklch(28.9% 0.011 237.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.011 237.0)",
+          "oklch(26.4% 0.011 237.0)",
+          "oklch(37.9% 0.011 237.0)",
+          "oklch(49.3% 0.011 237.0)",
+          "oklch(60.7% 0.011 237.0)",
+          "oklch(72.1% 0.011 237.0)",
+          "oklch(83.6% 0.011 237.0)",
+          "oklch(95.0% 0.011 237.0)"
+        ]
+      },
+      "dark-line-strong": {
+        "role": "neutral",
+        "displayName": "Rack Frame (dark)",
+        "theme": "dark",
+        "cssVar": "--line-strong",
+        "oklch": "oklch(33.1% 0.013 229.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.013 229.3)",
+          "oklch(26.4% 0.013 229.3)",
+          "oklch(37.9% 0.013 229.3)",
+          "oklch(49.3% 0.013 229.3)",
+          "oklch(60.7% 0.013 229.3)",
+          "oklch(72.1% 0.013 229.3)",
+          "oklch(83.6% 0.013 229.3)",
+          "oklch(95.0% 0.013 229.3)"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Deep Pine Ink (dark)",
+        "theme": "dark",
+        "cssVar": "--ink",
+        "oklch": "oklch(94.5% 0.006 170.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.006 170.4)",
+          "oklch(26.4% 0.006 170.4)",
+          "oklch(37.9% 0.006 170.4)",
+          "oklch(49.3% 0.006 170.4)",
+          "oklch(60.7% 0.006 170.4)",
+          "oklch(72.1% 0.006 170.4)",
+          "oklch(83.6% 0.006 170.4)",
+          "oklch(95.0% 0.006 170.4)"
+        ]
+      },
+      "dark-ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink (dark)",
+        "theme": "dark",
+        "cssVar": "--ink-soft",
+        "oklch": "oklch(75.2% 0.012 176.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.012 176.2)",
+          "oklch(26.4% 0.012 176.2)",
+          "oklch(37.9% 0.012 176.2)",
+          "oklch(49.3% 0.012 176.2)",
+          "oklch(60.7% 0.012 176.2)",
+          "oklch(72.1% 0.012 176.2)",
+          "oklch(83.6% 0.012 176.2)",
+          "oklch(95.0% 0.012 176.2)"
+        ]
+      },
+      "dark-ink-dim": {
+        "role": "neutral",
+        "displayName": "Dim Ink (dark)",
+        "theme": "dark",
+        "cssVar": "--ink-dim",
+        "oklch": "oklch(65.0% 0.014 172.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 172.1)",
+          "oklch(26.4% 0.014 172.1)",
+          "oklch(37.9% 0.014 172.1)",
+          "oklch(49.3% 0.014 172.1)",
+          "oklch(60.7% 0.014 172.1)",
+          "oklch(72.1% 0.014 172.1)",
+          "oklch(83.6% 0.014 172.1)",
+          "oklch(95.0% 0.014 172.1)"
+        ]
+      },
+      "dark-brand": {
+        "role": "primary",
+        "displayName": "WireCat Purple (dark)",
+        "theme": "dark",
+        "cssVar": "--brand",
+        "oklch": "oklch(62.2% 0.206 276.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.206 276.5)",
+          "oklch(26.4% 0.206 276.5)",
+          "oklch(37.9% 0.206 276.5)",
+          "oklch(49.3% 0.206 276.5)",
+          "oklch(60.7% 0.206 276.5)",
+          "oklch(72.1% 0.206 276.5)",
+          "oklch(83.6% 0.206 276.5)",
+          "oklch(95.0% 0.206 276.5)"
+        ]
+      },
+      "dark-brand-hover": {
+        "role": "primary",
+        "displayName": "Pressed Purple (dark)",
+        "theme": "dark",
+        "cssVar": "--brand-hover",
+        "oklch": "oklch(67.5% 0.174 278.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.174 278.5)",
+          "oklch(26.4% 0.174 278.5)",
+          "oklch(37.9% 0.174 278.5)",
+          "oklch(49.3% 0.174 278.5)",
+          "oklch(60.7% 0.174 278.5)",
+          "oklch(72.1% 0.174 278.5)",
+          "oklch(83.6% 0.174 278.5)",
+          "oklch(95.0% 0.174 278.5)"
+        ]
+      },
+      "dark-brand-soft": {
+        "role": "primary",
+        "displayName": "Purple Wash (dark)",
+        "theme": "dark",
+        "cssVar": "--brand-soft",
+        "oklch": "oklch(30.3% 0.072 276.9)",
+        "tonalRamp": [
+          "oklch(15.0% 0.072 276.9)",
+          "oklch(26.4% 0.072 276.9)",
+          "oklch(37.9% 0.072 276.9)",
+          "oklch(49.3% 0.072 276.9)",
+          "oklch(60.7% 0.072 276.9)",
+          "oklch(72.1% 0.072 276.9)",
+          "oklch(83.6% 0.072 276.9)",
+          "oklch(95.0% 0.072 276.9)"
+        ]
+      },
+      "dark-ok": {
+        "role": "status",
+        "displayName": "Ready Green (dark)",
+        "theme": "dark",
+        "cssVar": "--ok",
+        "oklch": "oklch(75.5% 0.137 155.7)",
+        "tonalRamp": [
+          "oklch(15.0% 0.137 155.7)",
+          "oklch(26.4% 0.137 155.7)",
+          "oklch(37.9% 0.137 155.7)",
+          "oklch(49.3% 0.137 155.7)",
+          "oklch(60.7% 0.137 155.7)",
+          "oklch(72.1% 0.137 155.7)",
+          "oklch(83.6% 0.137 155.7)",
+          "oklch(95.0% 0.137 155.7)"
+        ]
+      },
+      "dark-warn": {
+        "role": "status",
+        "displayName": "Update Amber (dark)",
+        "theme": "dark",
+        "cssVar": "--warn",
+        "oklch": "oklch(78.9% 0.133 80.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.133 80.4)",
+          "oklch(26.4% 0.133 80.4)",
+          "oklch(37.9% 0.133 80.4)",
+          "oklch(49.3% 0.133 80.4)",
+          "oklch(60.7% 0.133 80.4)",
+          "oklch(72.1% 0.133 80.4)",
+          "oklch(83.6% 0.133 80.4)",
+          "oklch(95.0% 0.133 80.4)"
+        ]
+      },
+      "dark-warn-ink": {
+        "role": "status",
+        "displayName": "Amber Ink (dark)",
+        "theme": "dark",
+        "cssVar": "--warn-ink",
+        "oklch": "oklch(78.9% 0.133 80.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.133 80.4)",
+          "oklch(26.4% 0.133 80.4)",
+          "oklch(37.9% 0.133 80.4)",
+          "oklch(49.3% 0.133 80.4)",
+          "oklch(60.7% 0.133 80.4)",
+          "oklch(72.1% 0.133 80.4)",
+          "oklch(83.6% 0.133 80.4)",
+          "oklch(95.0% 0.133 80.4)"
+        ]
+      },
+      "dark-bad": {
+        "role": "status",
+        "displayName": "Fault Red (dark)",
+        "theme": "dark",
+        "cssVar": "--bad",
+        "oklch": "oklch(70.9% 0.151 34.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.151 34.1)",
+          "oklch(26.4% 0.151 34.1)",
+          "oklch(37.9% 0.151 34.1)",
+          "oklch(49.3% 0.151 34.1)",
+          "oklch(60.7% 0.151 34.1)",
+          "oklch(72.1% 0.151 34.1)",
+          "oklch(83.6% 0.151 34.1)",
+          "oklch(95.0% 0.151 34.1)"
+        ]
+      },
+      "dark-idle": {
+        "role": "status",
+        "displayName": "Idle Grey (dark)",
+        "theme": "dark",
+        "cssVar": "--idle",
+        "oklch": "oklch(44.5% 0.014 217.7)",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 217.7)",
+          "oklch(26.4% 0.014 217.7)",
+          "oklch(37.9% 0.014 217.7)",
+          "oklch(49.3% 0.014 217.7)",
+          "oklch(60.7% 0.014 217.7)",
+          "oklch(72.1% 0.014 217.7)",
+          "oklch(83.6% 0.014 217.7)",
+          "oklch(95.0% 0.014 217.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page title only (Tools, Storage, the error screen)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Dialog titles."
+      },
+      "title": {
+        "displayName": "Row title",
+        "purpose": "Tool name in a rack row; purple on row hover."
+      },
+      "nav": {
+        "displayName": "Nav",
+        "purpose": "Sidebar sections; semibold when current."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Taglines, notices and panel prose; prose capped at 70ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Panel sub-headings in ink-dim, sentence case."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Button labels; 0.875rem in the small size."
+      },
+      "mono-value": {
+        "displayName": "Mono value",
+        "purpose": "Versions, readiness values, byte counts, with tabular figures."
+      },
+      "mono-small": {
+        "displayName": "Mono small",
+        "purpose": "Paths, folder lists, the raw log, the profile-name input."
+      }
+    },
+    "rootFontSize": {
+      "value": "clamp(11.5px, 0.5rem + 0.35vw, 13.5px)",
+      "purpose": "The whole interface scales with the window; all sizes are rem."
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "0 1px 2px rgb(24 40 34 / 6%), 0 8px 24px rgb(24 40 34 / 5%)",
+        "dark": "0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%)",
+        "purpose": "Dialogs and the selected theme segment only. The rack, rows, banners and buttons are flat."
+      }
+    ],
+    "focus": {
+      "value": "outline: 2px solid var(--brand); outline-offset: 2px",
+      "purpose": "Global :focus-visible ring."
+    },
+    "motion": [
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "The one easing for every transition."
+      },
+      {
+        "name": "duration-quick",
+        "value": "150ms",
+        "purpose": "Hover, press, segmented and link colour."
+      },
+      {
+        "name": "duration-state",
+        "value": "300ms",
+        "purpose": "Lamp tone change, row panel expand (grid rows 0fr to 1fr)."
+      },
+      {
+        "name": "duration-track",
+        "value": "500ms",
+        "purpose": "Stepper track filling between steps."
+      },
+      {
+        "name": "lamp-pulse",
+        "value": "1.4s ease-in-out infinite",
+        "purpose": "Busy lamp and active step: a purple ring expanding to 5px and fading."
+      },
+      {
+        "name": "shimmer",
+        "value": "1.6s linear infinite",
+        "purpose": "Skeleton placeholders while checking."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation and transition durations 0.01ms",
+        "purpose": "Applied globally under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Details panel splits into two columns."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "purpose": "Sidebar widens to 13.5rem; rack row columns and gaps widen; icons grow to 1.75rem."
+      },
+      {
+        "name": "window-min",
+        "value": "960x640",
+        "purpose": "Minimum window size (src-tauri/tauri.conf.json)."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action in a row: Install, Update to x, Get Node.js, Done.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Install</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.4rem; padding: 0 1.1rem; border: 1px solid transparent; border-radius: 0.4rem; font-family: var(--font-sans, 'Onest', system-ui, sans-serif); font-size: 0.95rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1), border-color 150ms cubic-bezier(0.25,1,0.5,1), color 150ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-btn-primary { background: var(--brand); color: var(--brand-ink); } .ds-btn-primary:hover { background: var(--brand-hover); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined row action: Manage, Cancel, Try again. Keeps a 7.6rem minimum in the rack.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Manage</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.4rem; padding: 0 1.1rem; border: 1px solid transparent; border-radius: 0.4rem; font-family: var(--font-sans, 'Onest', system-ui, sans-serif); font-size: 0.95rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1), border-color 150ms cubic-bezier(0.25,1,0.5,1), color 150ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-btn-secondary { min-width: 7.6rem; background: var(--app); color: var(--ink); border-color: var(--line-strong); } .ds-btn-secondary:hover { background: var(--app-2); border-color: color-mix(in srgb, var(--ink-dim) 60%, transparent); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "The safe, quiet choice: Keep it, Close, Check, Sign in.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Keep it</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.4rem; padding: 0 1.1rem; border: 1px solid transparent; border-radius: 0.4rem; font-family: var(--font-sans, 'Onest', system-ui, sans-serif); font-size: 0.95rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1), border-color 150ms cubic-bezier(0.25,1,0.5,1), color 150ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-btn-ghost { background: transparent; color: var(--ink-soft); } .ds-btn-ghost:hover { background: var(--app-3); color: var(--ink); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Outlined, never filled: Fix, Uninstall, Delete.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Uninstall</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.4rem; padding: 0 1.1rem; border: 1px solid transparent; border-radius: 0.4rem; font-family: var(--font-sans, 'Onest', system-ui, sans-serif); font-size: 0.95rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1), border-color 150ms cubic-bezier(0.25,1,0.5,1), color 150ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-btn-danger { background: var(--app); color: var(--bad); border-color: var(--line-strong); } .ds-btn-danger:hover { border-color: color-mix(in srgb, var(--bad) 60%, transparent); }"
+    },
+    {
+      "name": "Status Lamps",
+      "kind": "custom",
+      "refersTo": "lamp",
+      "description": "The five tones that carry all state: ok, warn, bad, idle (hollow), busy (pulsing purple).",
+      "html": "<div class=\"ds-lamps\"><span class=\"ds-lamp ds-lamp-ok\" role=\"img\" aria-label=\"Installed and up to date\"></span><span class=\"ds-lamp ds-lamp-warn\" role=\"img\" aria-label=\"Update available\"></span><span class=\"ds-lamp ds-lamp-bad\" role=\"img\" aria-label=\"Installed, but it does not start\"></span><span class=\"ds-lamp ds-lamp-idle\" role=\"img\" aria-label=\"Not installed\"></span><span class=\"ds-lamp ds-lamp-busy\" role=\"img\" aria-label=\"Installing\"></span></div>",
+      "css": ".ds-lamps { display: flex; gap: 1rem; align-items: center; } .ds-lamp { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 9999px; transition: background-color 300ms; } .ds-lamp-ok { background: var(--ok); } .ds-lamp-warn { background: var(--warn); } .ds-lamp-bad { background: var(--bad); } .ds-lamp-idle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--idle); } .ds-lamp-busy { background: var(--brand); animation: ds-lamp-pulse 1.4s ease-in-out infinite; } @keyframes ds-lamp-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 45%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 0%, transparent); } } @media (prefers-reduced-motion: reduce) { .ds-lamp-busy { animation: none; } }"
+    },
+    {
+      "name": "Rack Row",
+      "kind": "card",
+      "refersTo": "rack-row",
+      "description": "One module row in the flat rack: lamp, icon, name and command, version in mono, one action.",
+      "html": "<ul class=\"ds-rack\"><li class=\"ds-row\"><span class=\"ds-lamp-warn\"></span><svg class=\"ds-row-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/></svg><button class=\"ds-row-name\"><span class=\"ds-row-title\">WhatsApp <span class=\"ds-row-bin\">wa</span></span><span class=\"ds-row-tagline\">Your WhatsApp account as a linked device</span></button><span class=\"ds-row-version\">0.6.0</span><button class=\"ds-row-action\">Update to 0.7.0</button></li><li class=\"ds-row\"><span class=\"ds-lamp-ok\"></span><svg class=\"ds-row-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg><button class=\"ds-row-name\"><span class=\"ds-row-title\">Telegram <span class=\"ds-row-bin\">tg</span></span><span class=\"ds-row-tagline\">Your Telegram account, for the terminal and AI agents</span></button><span class=\"ds-row-version\">0.88.0</span><button class=\"ds-row-action ds-row-action-secondary\">Manage</button></li></ul>",
+      "css": ".ds-rack { list-style: none; margin: 0; padding: 0; overflow: hidden; background: var(--app); border: 1px solid var(--line-strong); border-radius: 0.2rem; font-family: 'Onest Variable', 'Onest', system-ui, sans-serif; color: var(--ink); } .ds-row { display: grid; grid-template-columns: 1.2rem 1.8rem minmax(0,1fr) 6.6rem 8.6rem; align-items: center; column-gap: 0.9rem; min-height: 4.5rem; padding: 0 1.3rem; border-bottom: 1px solid var(--line); } .ds-row:last-child { border-bottom: 0; } .ds-lamp-ok, .ds-lamp-warn { width: 1.4rem; height: 1.4rem; border-radius: 9999px; } .ds-lamp-ok { background: var(--ok); } .ds-lamp-warn { background: var(--warn); } .ds-row-icon { width: 1.6rem; height: 1.6rem; color: var(--ink); } .ds-row-name { all: unset; cursor: pointer; min-width: 0; padding: 1rem 0; display: flex; flex-direction: column; gap: 0.25rem; } .ds-row-name:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-row-title { font-size: 1.08rem; font-weight: 600; line-height: 1.25; transition: color 150ms; } .ds-row-name:hover .ds-row-title { color: var(--brand); } .ds-row-bin { font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 0.95rem; font-weight: 400; color: var(--ink-soft); margin-left: 0.6rem; } .ds-row-tagline { font-size: 0.95rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-row-version { font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 1.02rem; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-row-action { justify-self: end; height: 2.4rem; padding: 0 1.1rem; border-radius: 0.4rem; border: 1px solid transparent; background: var(--brand); color: var(--brand-ink); font-family: 'Onest Variable', 'Onest', system-ui, sans-serif; font-size: 1rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms; } .ds-row-action:hover { background: var(--brand-hover); } .ds-row-action:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-row-action-secondary { min-width: 7.6rem; background: var(--app); color: var(--ink); border-color: var(--line-strong); } .ds-row-action-secondary:hover { background: var(--app-2); }"
+    },
+    {
+      "name": "Pills",
+      "kind": "chip",
+      "refersTo": "pill-neutral",
+      "description": "Small tags: neutral (Soon), brand (runs first, signed in), warn (not used).",
+      "html": "<span class=\"ds-pill\">Soon</span> <span class=\"ds-pill ds-pill-brand\">runs first</span> <span class=\"ds-pill ds-pill-warn\">not used</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; border-radius: 0.3rem; font-family: 'Onest Variable', 'Onest', system-ui, sans-serif; font-size: 0.8rem; font-weight: 500; background: var(--app-3); color: var(--ink-soft); } .ds-pill-brand { background: var(--brand-soft); color: var(--brand); } .ds-pill-warn { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn-ink); }"
+    },
+    {
+      "name": "Theme Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "Light / system / dark switch in the sidebar footer; the selected thumb is one of two places that cast a shadow.",
+      "html": "<fieldset class=\"ds-seg\"><legend class=\"ds-sr\">Theme</legend><label><input type=\"radio\" name=\"ds-theme\" class=\"ds-sr\"><span class=\"ds-seg-opt\" title=\"Light theme\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4\"/></svg></span></label><label><input type=\"radio\" name=\"ds-theme\" class=\"ds-sr\" checked><span class=\"ds-seg-opt\" title=\"Match the system\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/></svg></span></label><label><input type=\"radio\" name=\"ds-theme\" class=\"ds-sr\"><span class=\"ds-seg-opt\" title=\"Dark theme\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></span></label></fieldset>",
+      "css": ".ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .ds-seg { display: inline-flex; margin: 0; border: 0; padding: 3px; border-radius: 0.45rem; background: var(--app-3); } .ds-seg label { position: relative; } .ds-seg-opt { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 0.35rem; color: var(--ink-dim); cursor: pointer; transition: color 150ms; } .ds-seg-opt:hover { color: var(--ink); } .ds-seg input:checked + .ds-seg-opt { background: var(--app); color: var(--ink); box-shadow: var(--shadow); } .ds-seg input:focus-visible + .ds-seg-opt { outline: 2px solid var(--brand); }"
+    },
+    {
+      "name": "Copy Field",
+      "kind": "input",
+      "refersTo": "copy-field",
+      "description": "A copyable command in mono, used for the terminal install command and fallback setup commands.",
+      "html": "<div class=\"ds-copy\"><code class=\"ds-copy-value\">npm install -g @wirecat/tg-cli</code><button class=\"ds-copy-btn\" aria-label=\"Copy the install command\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg></button></div>",
+      "css": ".ds-copy { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.25rem 0.25rem 0.75rem; border: 1px solid var(--line); border-radius: 0.4rem; background: var(--app-2); } .ds-copy-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 0.875rem; color: var(--ink); user-select: text; } .ds-copy-btn { display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: 0.3rem; background: transparent; color: var(--ink-dim); cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-copy-btn:hover { background: var(--app-3); color: var(--ink); } .ds-copy-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Profile Name Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Small text field: mono value, Onest placeholder, red border when invalid.",
+      "html": "<input class=\"ds-input\" placeholder=\"New profile, e.g. personal\" spellcheck=\"false\">",
+      "css": ".ds-input { height: 2rem; min-width: 14rem; padding: 0 0.625rem; border: 1px solid var(--line-strong); border-radius: 0.35rem; background: var(--app); color: var(--ink); font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 0.875rem; } .ds-input::placeholder { font-family: 'Onest Variable', 'Onest', system-ui, sans-serif; color: var(--ink-dim); } .ds-input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-input[aria-invalid='true'] { border-color: var(--bad); }"
+    },
+    {
+      "name": "Sidebar Section",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Section navigation on the wall: purple bar and icon for the current section, dimmed 'Soon' items stay visible.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item\" aria-current=\"page\"><span class=\"ds-nav-bar\"></span><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z\"/></svg>Tools</button><button class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 12H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z\"/></svg>Storage</button><button class=\"ds-nav-item\" disabled><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/></svg><span class=\"ds-nav-label\">Accounts</span><span class=\"ds-nav-soon\">Soon</span></button></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 0.3rem; width: 12rem; padding: 1rem 0; background: var(--wall); font-family: 'Onest Variable', 'Onest', system-ui, sans-serif; } .ds-nav-item { position: relative; display: flex; align-items: center; gap: 0.8rem; height: 2.6rem; padding: 0 1.5rem; border: 0; background: none; text-align: left; font: inherit; font-size: 1rem; color: var(--ink-soft); cursor: pointer; transition: color 150ms; } .ds-nav-item svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; } .ds-nav-item:hover { color: var(--ink); } .ds-nav-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; } .ds-nav-item[aria-current='page'] { font-weight: 600; color: var(--ink); } .ds-nav-item[aria-current='page'] svg { color: var(--brand); } .ds-nav-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; border-radius: 0 9999px 9999px 0; background: var(--brand); } .ds-nav-item:disabled { cursor: default; color: color-mix(in srgb, var(--ink-dim) 80%, transparent); } .ds-nav-label { flex: 1; } .ds-nav-soon { padding: 0.1rem 0.45rem; border-radius: 0.3rem; font-size: 0.8rem; font-weight: 500; background: var(--app-3); color: var(--ink-soft); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Patch Rack",
+    "overview": "**Creative North Star: \"The Patch Rack\"**\n\nThe machine is a patch rack. Each tool is one module row: a status lamp, an icon, the name and command, the installed version, and one action. The window shows readiness first, the user scans six rows, acts on the one that is not green, and watches it verify inline under its row. The design refuses the card grid and the sidebar-plus-detail split.\n\nThe world is the WireCat brand from wirecat.dev, made into a desktop tool. A green-tinted wall carries one white rack panel with hairline row dividers. Round lamps carry state. Versions, commands and paths are set in mono, because they are what the machine reports. Purple is the brand and the \"do something\" colour, so it appears on the logo, the active section marker, text links and at most one primary action per row. Unbounded is the page title and nothing else; Onest does the rest.\n\nThe interface scales with the window, as a native app's content does on different displays: the root font size is fluid and every size is in rem. The surface is flat and quiet. Depth exists only where something floats above the page (a dialog) or is picked out of a group (the selected theme option).\n\nThese words come from the surface's direction contract ([the Tools surface brief](.impeccable/surfaces/src-features-tools-toolspage-tsx.md)); they were not re-confirmed with the owner for this file.",
+    "keyCharacteristics": [
+      "One flat rack panel per page: hairline frame, 0.2rem corners, no shadow, rows split by hairlines.",
+      "Five lamp tones carry all tool and system state.",
+      "Mono with tabular figures for every machine-reported value.",
+      "Purple is rare and always means brand, link or the one primary action.",
+      "Unbounded only for page titles; Onest for everything else.",
+      "Light and dark themes share one set of semantic tokens; the whole surface switches together."
+    ],
+    "rules": [
+      {
+        "name": "The Amber Ink Rule",
+        "body": "`warn` is for lamps, icons and tint fills; any amber text uses `warn-ink`. Light-mode `warn` is too pale to read as text on white.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Purple Action Rule",
+        "body": "A rack row and the panel open under it carry at most one primary (filled purple) button: Install, Update to x, or the panel's Done. Manage, Fix and Cancel are outlined. Dialogs have no primary at all; they pair a ghost \"Keep it\" with an outlined danger action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Theme Rule",
+        "body": "Bind every colour through the semantic tokens (`bg-app`, `text-ink-soft`, `border-line`); never a raw hex in a component, so both themes switch together.",
+        "section": "colors"
+      },
+      {
+        "name": "The Display-Once Rule",
+        "body": "Unbounded appears only in the page `h1`. Row names, dialog titles and section labels stay in Onest.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Truth Rule",
+        "body": "A value the machine reports (version, command, path, size, OS) is set in JetBrains Mono with tabular figures; words the app writes are set in Onest.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Rack Rule",
+        "body": "The rack is a hairline frame (`line-strong`, 0.2rem corners) on the wall, with no shadow. Only something that floats over the page or is lifted out of a group gets the panel shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put a tool, a storage area or any list of machine things in the rack: one flat panel, one row per thing, hairlines between rows.",
+      "Do give every row exactly one action, and make it primary only when it installs or updates something.",
+      "Do say state with the five lamp tones and plain words beside them, never with colour alone.",
+      "Do set versions, commands, paths and sizes in mono with tabular figures.",
+      "Do write sizes in rem so they follow the fluid root size.",
+      "Do keep text not selectable by default and add `.selectable` to paths, commands, logs and error output so they can be copied.",
+      "Do use `warn-ink` for amber text and `warn` for lamps, icons and tints."
+    ],
+    "donts": [
+      "Don't turn the rack into a card grid or a sidebar-plus-detail split; details open under their row.",
+      "Don't add a shadow to the rack, a row, a banner or a button. The panel shadow belongs to dialogs and the selected segmented option.",
+      "Don't use Unbounded below the page title.",
+      "Don't fill a button red. Danger actions are outlined; the only red fill is the window close control on hover.",
+      "Don't put two purple buttons in one row or one dialog.",
+      "Don't nest cards, add gradients, or add decoration that does no work (a WireCat brand commitment in [PRODUCT.md](PRODUCT.md)).",
+      "Don't use uppercase labels or kickers; labels are sentence case in `ink-dim`."
+    ]
+  }
+}

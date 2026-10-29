@@ -49,8 +49,8 @@ jobs:
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
 
+  # Runs on pull requests too: Linux is the only system tried by hand, so this is the macOS and Windows check.
   bundle:
-    if: github.event_name == 'push'
     needs: [web, rust]
     strategy:
       fail-fast: false

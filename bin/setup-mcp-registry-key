@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# One-off (NEED-29 A): the key that proves to the official MCP Registry that WireCat owns the dev.wirecat/* names.
+# Adds the public DNS record with the cf CLI (prints it to add by hand if that fails); the private key goes to the OS keyring and the WireCatLabs org secret
+# MCP_REGISTRY_PRIVATE_KEY, and is never printed.
+set -euo pipefail
+
+domain="wirecat.dev"
+service="wirecat"
+account="mcp-registry"
+secret="MCP_REGISTRY_PRIVATE_KEY"
+cf_account="95adf467c9937e5fdca37a0cb07fa70a"
+cf_zone="cd4fe2aa51552930fc37ffdeda25ae11"
+
+if secret-tool lookup service "$service" account "$account" >/dev/null 2>&1; then
+  echo "A key is already in the keyring (service $service, account $account). Remove it first to make a new one." >&2
+  exit 1
+fi
+
+dir="$(mktemp -d "${XDG_RUNTIME_DIR:-$HOME}/mcp-key.XXXXXX")"
+chmod 700 "$dir"
+trap 'rm -rf "$dir"' EXIT
+
+openssl genpkey -algorithm Ed25519 -out "$dir/key.pem" 2>/dev/null
+public="$(openssl pkey -in "$dir/key.pem" -pubout -outform DER | tail -c 32 | base64)"
+private="$(openssl pkey -in "$dir/key.pem" -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
+
+printf '%s' "$private" | secret-tool store --label "MCP Registry key for $domain" service "$service" account "$account"
+printf '%s' "$private" | gh secret set "$secret" --org WireCatLabs --visibility all >/dev/null
+unset private
+
+echo "Saved the private key to the keyring and to the WireCatLabs org secret $secret."
+echo
+
+record="v=MCPv1; k=ed25519; p=$public"
+# The zone lives in the "ModelRow leemour" Cloudflare account; cf refuses to guess when a login sees several.
+body="$(jq -nc --arg name "$domain" --arg content "\"$record\"" '{type: "TXT", name: $name, content: $content, ttl: 1}')"
+if CLOUDFLARE_ACCOUNT_ID="$cf_account" cf dns records create -z "$cf_zone" -q --body "$body" >/dev/null 2>&1; then
+  echo "Added the TXT record to $domain in Cloudflare."
+else
+  echo "Could not add the DNS record with the cf CLI. Add it by hand (wirecat.dev → DNS → Records → Add record):"
+  echo "  Type:    TXT"
+  echo "  Name:    @"
+  echo "  Content: $record"
+fi
+echo
+echo "Check it with:  dig +short TXT $domain"
+echo "Copy the private key for your password manager:  secret-tool lookup service $service account $account | wl-copy"

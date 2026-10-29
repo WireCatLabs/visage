@@ -1,19 +1,22 @@
 use crate::catalog::Tool;
-use crate::{paths, redact, run, system, tools};
+use crate::{node, paths, redact, run, system, tools};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::ipc::Channel;
 
+const PNPM_WIRECAT_NOW: &str = "--config.minimum-release-age-exclude=@wirecat/*";
 const INSTALL_TIMEOUT: Duration = Duration::from_mins(15);
 
 #[derive(Serialize, Clone)]
-#[serde(rename_all = "camelCase", tag = "event")]
+// `rename_all` renames only the variants; the fields need `rename_all_fields` to reach the interface as camelCase.
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
 pub enum InstallEvent {
     Step { step: Step },
     Log { line: String, stderr: bool },
     Done { version: String, path: String, shadowed_by: Option<String> },
+    Removed,
     Failed { reason: Reason, message: String, hint: Option<String> },
 }
 
@@ -22,6 +25,7 @@ pub enum InstallEvent {
 pub enum Step {
     Check,
     Install,
+    Remove,
     Verify,
 }
 
@@ -41,17 +45,20 @@ pub enum Reason {
 pub struct Running(Mutex<HashSet<String>>);
 
 impl Running {
-    fn start(&self, id: &str) -> bool {
+    pub fn start(&self, id: &str) -> bool {
         self.0.lock().unwrap().insert(id.to_string())
     }
-    fn finish(&self, id: &str) {
+    pub fn finish(&self, id: &str) {
         self.0.lock().unwrap().remove(id);
     }
-    fn is_running(&self, id: &str) -> bool {
+    pub fn is_running(&self, id: &str) -> bool {
         self.0.lock().unwrap().contains(id)
     }
     pub fn cancel(&self, id: &str) {
         self.finish(id);
+    }
+    pub fn any_starting_with(&self, prefix: &str) -> bool {
+        self.0.lock().unwrap().iter().any(|k| k.starts_with(prefix))
     }
 }
 
@@ -60,10 +67,22 @@ struct Failure(Reason, String, Option<String>);
 /// Installs a new tool with npm, or updates an existing one with the manager that owns it,
 /// so an update never leaves a second copy that shadows the first.
 pub fn install(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
-    if !running.start(&tool.id) {
+    guarded(tool, running, events, install_steps);
+}
+
+/// Removes every copy of the tool, each with the manager that installed it. Data stays; see `storage.rs`.
+pub fn uninstall(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
+    guarded(tool, running, events, uninstall_steps);
+}
+
+type Steps = fn(&Tool, &Running, &Channel<InstallEvent>) -> Result<InstallEvent, Failure>;
+
+fn guarded(tool: &Tool, running: &Running, events: &Channel<InstallEvent>, steps: Steps) {
+    // npm replaces the program under a running sync, which then fails halfway.
+    if running.any_starting_with(&crate::sync::package_prefix(&tool.id)) || !running.start(&tool.id) {
         let _ = events.send(InstallEvent::Failed {
             reason: Reason::Failed,
-            message: "This tool is already being installed.".into(),
+            message: "Another operation on this tool is running, such as a sync. Stop it first.".into(),
             hint: None,
         });
         return;
@@ -76,7 +95,7 @@ pub fn install(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) {
     });
 }
 
-fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
+fn install_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
     let send = |e| {
         let _ = events.send(e);
     };
@@ -86,14 +105,21 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
         return Err(Failure(
             Reason::Requirements,
             format!("Node.js {}.", ready.node.problem.as_deref().unwrap_or("is missing")),
-            Some("Install Node.js 22.16 or newer (24 recommended), then check again.".into()),
+            Some(
+                "Let WireCat set up Node.js for you, or install Node.js 22.16 or newer (24 recommended) yourself."
+                    .into(),
+            ),
         ));
     }
-    let existing = tools::detect(tool).installs.into_iter().next();
+    let existing = tools::detect(tool, false).installs.into_iter().next();
     let manager = existing.as_ref().map_or("npm", |i| i.manager);
-    let spec = format!("{}@latest", tool.package);
+    // The exact version, not `@latest`: a manager that still holds new releases back then fails loudly instead of
+    // quietly installing an older one.
+    let wanted = tools::latest_version(&tool.package);
+    let spec = format!("{}@{}", tool.package, wanted.as_deref().unwrap_or("latest"));
     let (program, args): (&str, Vec<&str>) = match manager {
-        "pnpm" => ("pnpm", vec!["add", "--global", &spec]),
+        // pnpm 11+ waits a day before installing a new release; WireCat's own packages are exempt (owner, NEED-26).
+        "pnpm" => ("pnpm", vec!["add", "--global", &spec, PNPM_WIRECAT_NOW]),
         "bun" => ("bun", vec!["add", "--global", &spec]),
         _ => ("npm", vec!["install", "--global", &spec, "--no-fund", "--no-audit"]),
     };
@@ -108,14 +134,110 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
         return Err(Failure(
             Reason::Permission,
             format!("npm installs into {}, which needs administrator rights.", ready.npm_prefix.unwrap_or_default()),
-            Some("Point npm at a folder in your home: npm config set prefix ~/.npm-global, add ~/.npm-global/bin to PATH, then try again.".into()),
+            Some("Let WireCat set up its own Node.js in your home folder, or point npm at one: npm config set prefix ~/.npm-global.".into()),
         ));
     }
 
     send(InstallEvent::Step { step: Step::Install });
-    send(InstallEvent::Log { line: format!("$ {program} {}", args.join(" ")), stderr: false });
+    run_manager(&program_path, &args, tool, running, events, "Installation")?;
+
+    send(InstallEvent::Step { step: Step::Verify });
+    let extra: Vec<_> = system::npm_prefix().map(|p| system::npm_bin_dir(&p)).into_iter().collect();
+    paths::refresh(&extra);
+    let state = tools::detect(tool, true);
+    let first = state.installs.first().ok_or_else(|| {
+        Failure(
+            Reason::Verify,
+            format!("The install finished, but `{}` is not on your PATH.", tool.bin),
+            Some(path_hint(&extra)),
+        )
+    })?;
+    let version = first.version.clone().ok_or_else(|| {
+        Failure(
+            Reason::Verify,
+            format!("`{} --version` did not run: {}", tool.bin, first.problem.clone().unwrap_or_default()),
+            None,
+        )
+    })?;
+    let ours = state.installs.iter().find(|i| i.manager == manager).unwrap_or(first);
+    if let (Some(wanted), Some(got)) = (wanted.as_deref(), ours.version.as_deref())
+        && wanted != got
+    {
+        return Err(Failure(
+            Reason::Verify,
+            format!("{manager} installed {} {got}, not {wanted}.", tool.bin),
+            Some(format!(
+                "{manager} may hold back new releases for a while. Try again later, or run `{manager} add --global {}@{wanted}` yourself.",
+                tool.package
+            )),
+        ));
+    }
+    let shadowed_by = (ours.path != first.path).then(|| first.path.clone());
+    Ok(InstallEvent::Done { version, path: ours.path.clone(), shadowed_by })
+}
+
+fn uninstall_steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Result<InstallEvent, Failure> {
+    let _ = events.send(InstallEvent::Step { step: Step::Check });
+    let mut plan = Vec::new();
+    for copy in paths::find_all(&tool.bin) {
+        let manager = paths::manager_for(&copy);
+        let (program, args): (&str, Vec<&str>) = match manager {
+            "pnpm" => ("pnpm", vec!["remove", "--global", &tool.package]),
+            "bun" => ("bun", vec!["remove", "--global", &tool.package]),
+            "volta" => ("volta", vec!["uninstall", &tool.package]),
+            _ => ("npm", vec!["uninstall", "--global", &tool.package]),
+        };
+        // An nvm copy belongs to the npm of that Node version, which sits beside it.
+        let beside = copy.parent().and_then(|dir| which::which_in(program, Some(dir), std::env::temp_dir()).ok());
+        let path = beside.or_else(|| paths::find(program)).ok_or_else(|| {
+            Failure(
+                Reason::Requirements,
+                format!("{program} was not found, so {} cannot be removed.", paths::tilde(&copy.to_string_lossy())),
+                None,
+            )
+        })?;
+        plan.push((path, args));
+    }
+
+    let _ = events.send(InstallEvent::Step { step: Step::Remove });
+    for (program, args) in &plan {
+        run_manager(program, args, tool, running, events, "Uninstalling")?;
+    }
+
+    let _ = events.send(InstallEvent::Step { step: Step::Verify });
+    paths::refresh(&[]);
+    if let Some(left) = paths::find(&tool.bin) {
+        return Err(Failure(
+            Reason::Verify,
+            format!("`{}` is still at {}.", tool.bin, paths::tilde(&left.to_string_lossy())),
+            Some("It was not installed by npm or pnpm. Remove it the way you installed it.".into()),
+        ));
+    }
+    Ok(InstallEvent::Removed)
+}
+
+/// Runs npm, pnpm, bun or volta with streamed, masked output; `what` names the operation in errors.
+fn run_manager(
+    program: &std::path::Path,
+    args: &[&str],
+    tool: &Tool,
+    running: &Running,
+    events: &Channel<InstallEvent>,
+    what: &str,
+) -> Result<(), Failure> {
+    let send = |e| {
+        let _ = events.send(e);
+    };
+    let name = program.file_stem().unwrap_or_default().to_string_lossy().to_string();
+    send(InstallEvent::Log { line: format!("$ {name} {}", args.join(" ")), stderr: false });
     let mut tail: Vec<String> = Vec::new();
-    let cmd = run::command(&program_path, &args, Some(&paths::search_path()));
+    let mut cmd = run::command(program, args, Some(&paths::search_path()));
+    if let Some(home) = paths::pnpm_home() {
+        cmd.env("PNPM_HOME", home);
+    }
+    if let Some(runtime) = node::owner_of(program) {
+        cmd.env("npm_config_prefix", runtime);
+    }
     let code = run::stream(
         cmd,
         INSTALL_TIMEOUT,
@@ -134,39 +256,15 @@ fn steps(tool: &Tool, running: &Running, events: &Channel<InstallEvent>) -> Resu
         },
     )
     .map_err(|e| match e {
-        run::RunError::Cancelled => Failure(Reason::Cancelled, "Installation cancelled.".into(), None),
+        run::RunError::Cancelled => Failure(Reason::Cancelled, format!("{what} cancelled."), None),
         run::RunError::TimedOut => Failure(
             Reason::Timeout,
-            "Installation took longer than 15 minutes and was stopped.".into(),
+            format!("{what} took longer than 15 minutes and was stopped."),
             Some("Check your connection and try again.".into()),
         ),
         other => Failure(Reason::Failed, other.to_string(), None),
     })?;
-    if code != Some(0) {
-        return Err(classify(&tail.join("\n"), program));
-    }
-
-    send(InstallEvent::Step { step: Step::Verify });
-    let extra: Vec<_> = system::npm_prefix().map(|p| system::npm_bin_dir(&p)).into_iter().collect();
-    paths::refresh(&extra);
-    let state = tools::detect(tool);
-    let first = state.installs.first().ok_or_else(|| {
-        Failure(
-            Reason::Verify,
-            format!("The install finished, but `{}` is not on your PATH.", tool.bin),
-            Some(path_hint(&extra)),
-        )
-    })?;
-    let version = first.version.clone().ok_or_else(|| {
-        Failure(
-            Reason::Verify,
-            format!("`{} --version` did not run: {}", tool.bin, first.problem.clone().unwrap_or_default()),
-            None,
-        )
-    })?;
-    let ours = state.installs.iter().find(|i| i.manager == manager).unwrap_or(first);
-    let shadowed_by = (ours.path != first.path).then(|| first.path.clone());
-    Ok(InstallEvent::Done { version, path: ours.path.clone(), shadowed_by })
+    if code == Some(0) { Ok(()) } else { Err(classify(&tail.join("\n"), &name)) }
 }
 
 fn classify(log: &str, program: &str) -> Failure {
@@ -207,6 +305,14 @@ fn path_hint(extra: &[std::path::PathBuf]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn events_reach_the_interface_in_camel_case() {
+        let done = InstallEvent::Done { version: "0.91.0".into(), path: "~/bin/tg".into(), shadowed_by: None };
+        let json = serde_json::to_value(&done).unwrap();
+        assert_eq!(json["event"], "done");
+        assert!(json.get("shadowedBy").is_some(), "{json}");
+    }
 
     #[test]
     fn classifies_npm_failures() {

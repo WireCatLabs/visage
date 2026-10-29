@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# One-off: brings both installed copies of memo to 0.103.0, the release that reads the archive's schema 33,
+# so the memo-import service syncs again (journal FIND-9). The service runs the nvm copy.
+set -euo pipefail
+
+nvm_bin="$HOME/.nvm/versions/node/v24.19.0/bin"
+PATH="$nvm_bin:$PATH" npm install -g @wirecat/cli-memo@0.103.0 --no-fund --no-audit
+echo "nvm copy: $("$nvm_bin/memo" --version)"
+
+if command -v pnpm >/dev/null && [ -x "$HOME/.local/share/pnpm/bin/memo" ]; then
+  pnpm add -g @wirecat/cli-memo@0.103.0
+  echo "pnpm copy: $("$HOME/.local/share/pnpm/bin/memo" --version)"
+fi
+
+systemctl --user start memo-import.service
+sleep 5
+journalctl --user -u memo-import.service -n 5 --no-pager -o cat

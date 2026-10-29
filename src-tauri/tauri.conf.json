@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "WireCat",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "dev.wirecat.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "WireCat",
-        "width": 1280,
-        "height": 840,
+        "width": 1120,
+        "height": 760,
         "minWidth": 960,
         "minHeight": 640,
         "center": true,
@@ -25,6 +25,15 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRGMDMyNEM4MENENENEREYKUldUZnpkUU15Q1FEVHlER25XWE9WKzBuUUVuZGpwL2pRRXZnQUxVSUZPdnF0bkVUYWQ4T2k4OGEK",
+      "endpoints": ["https://github.com/WireCatLabs/wirecat-desktop/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {

@@ -11,6 +11,10 @@
         const dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
         document.documentElement.dataset.theme = dark ? "dark" : "light"
       } catch {}
+      try {
+        const percent = Number(JSON.parse(localStorage.getItem("wirecat.scale") || "{}").state?.percent)
+        if (percent >= 80 && percent <= 150) document.documentElement.style.setProperty("--ui-scale", String(percent / 100))
+      } catch {}
     </script>
   </head>
   <body>

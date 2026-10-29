@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# One-off: Hermes's chat gateway runs commands in `bash -l`, which reads ~/.profile, not ~/.zshrc, so it does not
+# find tg, max, wa or drive in pnpm's global folder. Adds that folder to ~/.profile once and restarts the gateway.
+set -euo pipefail
+
+line='export PATH="$HOME/.local/share/pnpm/bin:$PATH"'
+if grep -qxF "$line" "$HOME/.profile" 2>/dev/null; then
+  echo "~/.profile already adds pnpm's folder."
+else
+  printf '\n# WireCat tools installed with pnpm, for programs that start a login bash (Hermes gateway)\n%s\n' "$line" >> "$HOME/.profile"
+  echo "Added pnpm's folder to ~/.profile."
+fi
+
+hermes gateway restart
+echo "Check: bash -lc 'command -v tg max wa drive'"
+bash -lc 'command -v tg max wa drive' || true

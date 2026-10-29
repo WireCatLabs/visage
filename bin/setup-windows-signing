@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# One-off (TASK-39): hands the release workflow what it needs to sign the Windows installer with Certum SimplySign.
+#   bin/setup-windows-signing
+# Asks for the SimplySign login (an e-mail) and the TOTP seed: the otpauth:// link inside the SimplySign activation QR
+# code, or its base32 secret. Where to get it: docs/dev/plans/2026-10-29-first-release.md, "Windows (Certum)".
+# Creates the GitHub environment "release", open only to v* tags, and stores CERTUM_EMAIL and CERTUM_OTP there.
+# Nothing secret is printed. The next release tag is signed without a workflow change.
+set -euo pipefail
+
+repo="WireCatLabs/wirecat-desktop"
+env_name="release"
+
+for program in gh jq python3; do
+  command -v "$program" >/dev/null || { echo "$program is missing." >&2; exit 1; }
+done
+gh auth status >/dev/null 2>&1 || { echo "Log in first: gh auth login" >&2; exit 1; }
+
+read -rp "SimplySign login (e-mail): " email
+read -rsp "TOTP seed (otpauth:// link or base32 secret): " CERTUM_OTP
+echo
+if [ -z "$email" ] || [ -z "$CERTUM_OTP" ]; then
+  echo "Both the login and the seed are needed." >&2
+  exit 1
+fi
+read -rsp "The 6-digit code your SimplySign app shows now: " CODE
+echo
+export CERTUM_OTP CODE
+
+# Certum's TOTP is SHA-256, 6 digits, 30 s unless the otpauth link says otherwise. The code is only compared here.
+if ! python3 -I - <<'PY'
+import base64, hashlib, hmac, os, struct, sys, time, urllib.parse
+
+seed = os.environ["CERTUM_OTP"].strip()
+algo, digits, period = "sha256", 6, 30
+if seed.startswith("otpauth://"):
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(seed).query)
+    secret = query.get("secret", [""])[0]
+    algo = query.get("algorithm", [algo])[0].lower()
+    digits = int(query.get("digits", [digits])[0])
+    period = int(query.get("period", [period])[0])
+else:
+    secret = seed
+secret = "".join(secret.split()).upper().rstrip("=")
+try:
+    key = base64.b32decode(secret + "=" * (-len(secret) % 8))
+except Exception:
+    sys.exit("The seed is not a valid base32 secret or otpauth link.")
+if not key or algo not in ("sha1", "sha256", "sha512"):
+    sys.exit("The seed is empty or names an unknown algorithm.")
+
+def code(step):
+    mac = hmac.new(key, struct.pack(">Q", step), getattr(hashlib, algo)).digest()
+    offset = mac[-1] & 0x0F
+    number = struct.unpack(">I", mac[offset:offset + 4])[0] & 0x7FFFFFFF
+    return str(number % 10**digits).zfill(digits)
+
+now = int(time.time()) // period
+if os.environ["CODE"].strip() not in {code(now + d) for d in (-1, 0, 1)}:
+    sys.exit("That code does not match the seed. Check the seed, or type the next code the app shows.")
+PY
+then
+  exit 1
+fi
+echo "The seed matches the app."
+
+# The environment admits only v* tags, so a branch or a pull request can never read the seed.
+jq -n '{deployment_branch_policy: {protected_branches: false, custom_branch_policies: true}}' |
+  gh api -X PUT "repos/$repo/environments/$env_name" --input - >/dev/null
+if ! gh api "repos/$repo/environments/$env_name/deployment-branch-policies" \
+  --jq '.branch_policies[] | select(.type == "tag" and .name == "v*")' | grep -q .; then
+  gh api -X POST "repos/$repo/environments/$env_name/deployment-branch-policies" \
+    -f name='v*' -f type=tag >/dev/null
+fi
+
+printf '%s' "$email" | gh secret set CERTUM_EMAIL --repo "$repo" --env "$env_name" >/dev/null
+printf '%s' "$CERTUM_OTP" | gh secret set CERTUM_OTP --repo "$repo" --env "$env_name" >/dev/null
+unset CERTUM_OTP CODE
+
+echo "Set CERTUM_EMAIL and CERTUM_OTP in the \"$env_name\" environment of $repo, open only to v* tags."
+echo "The next release build signs the Windows installer."

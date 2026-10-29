@@ -1,10 +1,43 @@
 import { describe, expect, it } from "vitest"
-import { doctorCommand, findTool, isValidProfile, setupCommand, tools } from "./catalog"
+import {
+  doctorCommand,
+  findTool,
+  isValidProfile,
+  ownerId,
+  removeCommand,
+  runTool,
+  samePackage,
+  setupCommand,
+  tools,
+} from "./catalog"
 
 describe("catalog", () => {
-  it("lists the six tools with unique ids and binaries", () => {
-    expect(tools.map((t) => t.id)).toEqual(["tg", "max", "wa", "zm", "drive", "memo"])
-    expect(new Set(tools.map((t) => t.bin)).size).toBe(tools.length)
+  it("lists the tools with unique ids, and a binary of their own unless part of another", () => {
+    expect(tools.map((t) => t.id)).toEqual(["tg", "max", "wa", "zm", "drive", "memo", "email"])
+    const owners = tools.filter((t) => !t.partOf)
+    expect(new Set(owners.map((t) => t.bin)).size).toBe(owners.length)
+  })
+
+  it("installs a part through the tool that owns its package", () => {
+    expect(ownerId("email")).toBe("memo")
+    expect(ownerId("memo")).toBe("memo")
+    expect(ownerId("tg")).toBe("tg")
+    expect(samePackage("email").map((t) => t.id)).toEqual(["memo", "email"])
+    expect(samePackage("tg").map((t) => t.id)).toEqual(["tg"])
+    for (const part of tools.filter((t) => t.partOf)) {
+      const owner = findTool(ownerId(part.id))
+      expect(owner && !owner.partOf).toBe(true)
+      expect([part.bin, part.package]).toEqual([owner?.bin, owner?.package])
+    }
+  })
+
+  it("files memo's mail runs under Email and the rest under Memo", () => {
+    expect(runTool("memo", "mail inspect")).toBe("email")
+    expect(runTool("memo", "sync")).toBe("memo")
+    expect(runTool("memo", "mailbox")).toBe("memo")
+    expect(runTool("memo", "mcp mail inspect")).toBe("email")
+    expect(runTool("memo", "mcp")).toBe("memo")
+    expect(runTool("tg", "mail x")).toBe("tg")
   })
 
   it("fills the profile into setup and doctor commands", () => {
@@ -19,5 +52,14 @@ describe("catalog", () => {
     expect(isValidProfile("--json")).toBe(false)
     expect(isValidProfile("a b")).toBe(false)
     expect(isValidProfile("x;rm")).toBe(false)
+  })
+
+  it("removes one copy with the program that installed it", () => {
+    const pkg = "@wirecat/zoom-cli"
+    expect(removeCommand("pnpm", pkg, "~/.local/share/pnpm/bin/zm")).toBe(`pnpm remove --global ${pkg}`)
+    expect(removeCommand("npm", pkg, "~/.nvm/versions/node/v24.19.0/bin/zm")).toBe(
+      `nvm exec v24.19.0 npm uninstall --global ${pkg}`,
+    )
+    expect(removeCommand("npm", pkg, "/usr/local/bin/zm")).toBe(`npm uninstall --global ${pkg}`)
   })
 })

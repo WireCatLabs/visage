@@ -23,13 +23,21 @@ describe("toolStatus", () => {
 
   it("offers an update only when npm reports a newer version", () => {
     expect(toolStatus([install("0.6.0")], "0.7.0")).toEqual({ kind: "outdated", version: "0.6.0", latest: "0.7.0" })
-    expect(toolStatus([install("0.7.0")], "0.7.0")).toEqual({ kind: "ready", version: "0.7.0" })
-    expect(toolStatus([install("0.7.0")], null)).toEqual({ kind: "ready", version: "0.7.0" })
+    expect(toolStatus([install("0.7.0")], "0.7.0")).toEqual({ kind: "ready", version: "0.7.0", checkingUpdates: false })
+    expect(toolStatus([install("0.7.0")], null)).toEqual({ kind: "ready", version: "0.7.0", checkingUpdates: false })
+  })
+
+  it("does not call a tool up to date before npm answers", () => {
+    expect(toolStatus([install("0.6.0")], undefined)).toEqual({
+      kind: "ready",
+      version: "0.6.0",
+      checkingUpdates: true,
+    })
   })
 
   it("follows a running install over what is on disk", () => {
-    const session = { step: "install" as const, log: [], outcome: null }
-    expect(toolStatus([], "1.0.0", session)).toEqual({ kind: "installing", step: "install" })
+    const session = { operation: "install" as const, step: "install" as const, log: [], outcome: null }
+    expect(toolStatus([], "1.0.0", session)).toEqual({ kind: "working", operation: "install", step: "install" })
   })
 })
 
