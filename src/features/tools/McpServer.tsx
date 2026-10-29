@@ -169,6 +169,7 @@ export function McpServer({ tool }: { tool: CatalogTool }) {
         <button
           ref={toggle}
           type="button"
+          data-tour="mcp-server"
           aria-expanded={open}
           aria-controls={`${headingId}-body`}
           onClick={() => setOpen((o) => !o)}

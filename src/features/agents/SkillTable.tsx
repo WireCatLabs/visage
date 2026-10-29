@@ -5,7 +5,7 @@ import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Lamp, type LampTone } from "@/ui/Lamp"
-import { Skeleton } from "@/ui/Skeleton"
+import { Skeleton, StableText } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { ToolIcon } from "../tools/ToolIcon"
 import { openManage } from "./AgentDetails"
@@ -39,7 +39,17 @@ export function rowTone(view: AgentView): LampTone {
 /** The agent's one primary action: install every missing or old skill. */
 export function AgentCta({ view, all }: { view: AgentView; all: AgentsView }) {
   const m = useMessages(agentsMessages)
-  if (view.skills.some((s) => s.cell.kind === "checking")) return <Skeleton className="h-8 w-[6.5rem]" />
+  // The button's own shape with its longer label invisible, so a longer language does not wrap the row when it arrives.
+  if (view.skills.some((s) => s.cell.kind === "checking"))
+    return (
+      <span
+        aria-hidden
+        className="skeleton inline-flex h-8 items-center gap-2 rounded-[0.35rem] border border-transparent px-3 text-[0.875rem] font-medium whitespace-nowrap"
+      >
+        <StableText className="invisible" value={m.installAll} variants={[m.installAll, m.updateAll]} />
+        <span className="invisible tabular-nums">0</span>
+      </span>
+    )
   if (view.todo.length === 0) return null
   return (
     <Button

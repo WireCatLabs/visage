@@ -62,6 +62,7 @@ export function App() {
               <Button
                 variant="ghost"
                 size="sm"
+                data-tour="report-problem"
                 title={m.reportProblemTitle}
                 icon={<Bug className="size-4" strokeWidth={1.8} aria-hidden />}
                 onClick={() => useReport.getState().start()}

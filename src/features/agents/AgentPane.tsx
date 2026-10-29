@@ -47,7 +47,8 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
   return (
     <div className="flex flex-col gap-5">
       <div className="flex min-h-[3.4rem] flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+        {/* Grows from zero, so a longer sentence wraps inside it instead of pushing the buttons to a new line. */}
+        <div className="min-w-[14rem] flex-1 basis-0">
           <h2 className="flex items-center gap-2 text-[1.3rem] font-semibold leading-tight">
             <AgentIcon id={view.agent.id} className="size-[1.3rem] shrink-0 text-ink-soft" />
             {view.agent.name}
