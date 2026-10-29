@@ -502,6 +502,9 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **FIND-90 · Сборка cli-docs вешала ПК (2026-10-29, агент):** на 24 ядрах сборка Next запускала 23 рабочих процесса и падала по памяти дважды; локально агент собирал с `experimental.cpus: 4`, не закоммичено. Также TERMINOLOGY.md в cli-docs устарел: говорит, что подписи приложения только на английском.
 - **IDEA-9 · Окно обновления может вести на wirecat.dev/download** вместо GitHub для .deb/.rpm (2026-10-29, агент).
 
+- **BUG-29 · Деплой cli-docs после #443 упал на `check-doc-versions`.** Шаблон «редакторских хвостов» ловит «use WireCat» в заголовке «Install and use WireCat Desktop»; сайт не обновился (https://github.com/WireCatLabs/cli-docs/actions/runs/40965848349). Заголовок → «Install and set up WireCat Desktop», cli-docs PR #449. `docs:check` целиком в #443 локально не гоняли.
+- **IDEA-10 · Раздел «Первый запуск» на странице загрузки устареет после подписанной 0.1.2.** Он говорит, что WireCat не подписан Apple, и ведёт через Open Anyway; убрать часть macOS после 0.1.2, Windows оставить до Certum.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**
