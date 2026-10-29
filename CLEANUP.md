@@ -73,3 +73,4 @@
 - `.claude/worktrees/first-release/src-tauri/target` (1.3 GB) — сборка clippy TASK-39; не нужна, следующая сборка идёт в общий `src-tauri/target`. 2026-10-29
 - `.claude/worktrees/first-release` (ветка chore/first-release) — worktree TASK-39, всё в feat/desktop-mvp. 2026-10-29
 - `.claude/worktrees/bug24` (ветка fix/bug-24-tool-row-loop) — worktree BUG-24, всё в feat/desktop-mvp; свой node_modules, Rust target общий. 2026-10-29
+- /var/tmp/claude/claude-1000/-home-leemour-Projects-AI-visage/46ea6dc8-e640-4df6-9eff-d9bea5b95964/scratchpad/{ssign,tauri,actionlint} — TASK-39: исходники ssign и tauri для чтения, бинарь actionlint. 2026-10-29

@@ -115,9 +115,10 @@ What it does with the secret, read in its source at that commit:
 2. When both `CERTUM_EMAIL` and `CERTUM_OTP` exist, the runner builds ssign from the pinned commit
    (`cargo install --locked --git … --rev`) and adds `--config src-tauri/tauri.windows-sign.conf.json`. Otherwise
    Windows is built unsigned, as before.
-3. That file sets Tauri's `bundle.windows.signCommand`. Tauri 2.12.4 runs it for the app `.exe`, the NSIS plugin DLLs,
-   the uninstaller and the installer (`crates/tauri-bundler/src/bundle/windows/nsis/mod.rs`), and makes the updater
-   `.sig` afterwards (`crates/tauri-cli/src/bundle.rs:230-232`), so the update signature covers the signed file.
+3. That file sets Tauri's `bundle.windows.signCommand`. Tauri 2.12.4 runs it for the app `.exe`
+   (`crates/tauri-bundler/src/bundle.rs:169`), the NSIS plugin DLLs, the uninstaller and the installer
+   (`bundle/windows/nsis/mod.rs:695`, `:734`, `:814`), and makes the updater `.sig` afterwards
+   (`crates/tauri-cli/src/bundle.rs:230-232`), so the update signature covers the signed file.
 4. The two secrets reach only the tauri-action step, and only on Windows. Every build script inside that step can
    still read them, the same exposure as the updater key.
 5. A last step fails the build unless Windows reports the installer's signature as `Valid`
