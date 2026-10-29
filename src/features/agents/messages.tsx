@@ -77,6 +77,7 @@ const en = {
     `Could not read the tasks of ${tool} (${profile}): ${error}`,
   heldByOthers: (n: number) => `Tasks held by others (${n})`,
   you: "You",
+  mcpApp: "MCP app",
   showInLogs: "Show in Logs",
   showNameInLogs: (name: string) => `Show ${name} in Logs`,
 
@@ -367,6 +368,7 @@ const ru: typeof en = {
   claimReadFailed: (tool, profile, error) => `Не удалось прочитать задачи ${tool} (${profile}): ${error}`,
   heldByOthers: (n) => `Задачи, занятые другими (${n})`,
   you: "Вы",
+  mcpApp: "MCP-приложение",
   showInLogs: "Показать в журнале",
   showNameInLogs: (name) => `Показать ${name} в журнале`,
 
@@ -654,6 +656,7 @@ const es: typeof en = {
   claimReadFailed: (tool, profile, error) => `No se pudieron leer las tareas de ${tool} (${profile}): ${error}`,
   heldByOthers: (n) => `Tareas que tienen otros (${n})`,
   you: "Tú",
+  mcpApp: "App MCP",
   showInLogs: "Ver en Registros",
   showNameInLogs: (name) => `Ver ${name} en Registros`,
 

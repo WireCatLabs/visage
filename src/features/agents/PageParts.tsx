@@ -107,7 +107,11 @@ export function Elsewhere({ view }: { view: AgentsView }) {
           <ul className={cx(box, "divide-y divide-line")}>
             {otherClaims.map((c) => {
               const who =
-                c.holder.type === "owner" ? m.you : c.holder.type === "agent" ? agentName(c.holder.kind) : c.holder.name
+                c.holder.type === "owner"
+                  ? m.you
+                  : c.holder.type === "agent"
+                    ? agentName(c.holder.kind, m.mcpApp)
+                    : c.holder.name
               return (
                 <ClaimRow key={pairKey(c.tool.id, c.profile) + c.claim.id} c={{ ...c, session: null }} holder={who} />
               )

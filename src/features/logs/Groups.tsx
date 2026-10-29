@@ -15,8 +15,8 @@ export function Groups({ field, groups, now, onPick }: Props) {
       <colgroup>
         <col />
         <col className="w-[30%]" />
-        <col className="w-[5.5rem]" />
-        <col className="w-[5.5rem]" />
+        <col className="w-[7rem]" />
+        <col className="w-[7rem]" />
         <col className="w-[9rem]" />
       </colgroup>
       <thead>

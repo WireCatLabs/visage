@@ -225,7 +225,13 @@ export function useAgentsView() {
               : { type: "found", id: agent.id, name: agent.name, view: viewOf(agent) },
         )),
     ...[...seen].map(
-      ([kind, n]): AgentEntry => ({ type: "seen", id: `seen:${kind}`, name: agentName(kind), kind, sessions: n }),
+      ([kind, n]): AgentEntry => ({
+        type: "seen",
+        id: `seen:${kind}`,
+        name: agentName(kind, m.mcpApp),
+        kind,
+        sessions: n,
+      }),
     ),
   ]
 
