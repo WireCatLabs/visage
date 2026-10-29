@@ -134,6 +134,9 @@ jobs:
   check:
     needs: [draft, build]
     runs-on: ubuntu-latest
+    # Only push access lists draft releases.
+    permissions:
+      contents: write
     steps:
       - env:
           GH_TOKEN: ${{ github.token }}

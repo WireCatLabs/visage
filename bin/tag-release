@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Tags main with v<package.json version> and pushes the tag; .github/workflows/release.yml then builds a draft release.
+# Refuses unless main is checked out, clean and up to date, and the updater key is in place (bin/setup-updater-key).
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+
+branch="$(git branch --show-current)"
+[ "$branch" = main ] || { echo "Check out main first (now on $branch)." >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "The working tree has changes. Commit or drop them first." >&2; exit 1; }
+git fetch -q origin main --tags
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main differs from origin/main. Pull or push first." >&2; exit 1; }
+
+version="$(jq -r .version package.json)"
+cargo_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n 1)"
+[ "$version" = "$cargo_version" ] || { echo "package.json says $version, src-tauri/Cargo.toml says $cargo_version." >&2; exit 1; }
+[ -n "$(jq -r '.plugins.updater.pubkey' src-tauri/tauri.conf.json)" ] || { echo "No updater key. Run bin/setup-updater-key first." >&2; exit 1; }
+
+tag="v$version"
+if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+  echo "$tag already exists. Bump the version in package.json and src-tauri/Cargo.toml." >&2
+  exit 1
+fi
+
+git tag -a "$tag" -m "WireCat $version"
+git push -q origin "$tag"
+echo "Pushed $tag. The draft release builds at https://github.com/WireCatLabs/wirecat-desktop/actions/workflows/release.yml"

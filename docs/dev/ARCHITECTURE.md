@@ -8,7 +8,7 @@ the machine and runs the tools. Nothing here duplicates what a CLI already does.
 ```text
 src/
   app/          shell: window frame, sidebar, sections, theme. May import everything below.
-  features/     one folder per area (tools/, agents/, system/, logs/, config/, settings/, storage/, onboarding/, report/, signin/).
+  features/     one folder per area (tools/, agents/, system/, logs/, config/, settings/, storage/, onboarding/, report/, signin/, update/).
   ui/           presentational parts: Button, Lamp, Stepper… Props in, events out.
   platform/     the only door to Rust. Validates every answer with valibot. Has a browser mock.
   domain/       plain TypeScript: catalog, tool status, doctor summaries. No React, no Tauri.
@@ -16,6 +16,7 @@ catalog/
   tools.json    the tool list, read by both TypeScript and Rust.
 src-tauri/src/
   lib.rs        Tauri commands: the whole native surface, one function each.
+                `update_self_installs`: whether this copy can replace itself (not a Linux .deb or .rpm).
   catalog.rs    the same tools.json, compiled in; profile validation.
   system.rs     OS, Node.js, npm, npm's global folder and whether it is writable.
   tools.rs      finding executables, versions, profiles, doctor runs.

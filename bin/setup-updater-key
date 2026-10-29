@@ -3,7 +3,7 @@
 # Every installed copy trusts only the public key it was built with, so a release built before this ran can never
 # update itself, and losing the private key means no copy already out there can be updated again.
 # The private key and its password go to the OS keyring and to the repository secrets the release workflow reads;
-# neither is ever printed. The public key goes into src-tauri/tauri.conf.json, which you then commit.
+# neither is ever printed. The public key goes into src-tauri/tauri.conf.json, committed and pushed on this branch.
 set -euo pipefail
 
 repo="WireCatLabs/wirecat-desktop"
@@ -48,8 +48,12 @@ cp "$dir/conf.json" "$conf"
 
 echo "Saved the updater private key and its password to the keyring (service $service, accounts updater-key and"
 echo "updater-key-password) and to the $repo secrets TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD."
-echo "Wrote the public key into src-tauri/tauri.conf.json. Commit it:"
-echo "  git add src-tauri/tauri.conf.json && git commit -m 'chore: updater public key'"
+if git -C "$root" commit -q -m "chore: updater public key" -- src-tauri/tauri.conf.json >/dev/null &&
+  git -C "$root" push -q >/dev/null 2>&1; then
+  echo "Committed and pushed the public key in src-tauri/tauri.conf.json."
+else
+  echo "Wrote the public key into src-tauri/tauri.conf.json, but could not commit and push it. Commit it by hand." >&2
+fi
 echo
 echo "Also keep a copy in your password manager; without it no installed WireCat can be updated again:"
 echo "  secret-tool lookup service $service account updater-key | wl-copy"

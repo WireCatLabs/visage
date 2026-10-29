@@ -97,12 +97,19 @@ SmartScreen warns on first run. The workflow has no Windows signing step: A need
 
 ## What the owner does
 
-1. `bin/setup-updater-key`, then commit and push `src-tauri/tauri.conf.json` (the public key). **Before the first tag.**
+1. `bin/setup-updater-key`. It also commits and pushes the public key. **Before the first tag.**
 2. Merge PR #1 into `main` once CI is green.
-3. Push the tag from `main`: `git tag v0.1.0 && git push origin v0.1.0`.
+3. `bin/tag-release` on `main`. It checks the branch, the versions and the key, then pushes `v0.1.0`.
 4. Check the draft (each installer, the notes, `check` green), then Publish.
 5. When ready: `bin/setup-apple-signing <file.p12>`. The next tag is signed.
-6. Windows signing: answer NEED-128, then path A.
+6. Windows signing: answer NEED-128 and NEED-129, then path A.
+
+## If the first run fails
+
+`release.yml` first runs on the real tag, so three things are untested until then: `--config` read from the repository
+root, `latest.json` written when uploading by `releaseId`, and `check`. The draft is private, so a failure is safe:
+delete the draft and the tag (`git push origin :refs/tags/v0.1.0`), fix, and run `bin/tag-release` again. A draft
+left over is reused.
 
 ## Risks
 
