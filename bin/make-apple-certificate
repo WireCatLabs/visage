@@ -3,7 +3,8 @@
 #   bin/make-apple-certificate              step 1: a private key and a request file to upload to Apple
 #   bin/make-apple-certificate <file.cer>   step 2: Apple's certificate + the key → a .p12,
 #                                           then bin/setup-apple-signing
-# The key never leaves this computer; the .p12 is kept beside it, readable by this user only.
+# The key never leaves this computer. Until step 2 it is a bare file readable by this user only; step 2 seals it
+# in a password-protected .p12 and deletes the bare copy.
 set -euo pipefail
 
 dir="${XDG_CONFIG_HOME:-$HOME/.config}/wirecat-signing"
@@ -62,5 +63,9 @@ if command -v secret-tool >/dev/null; then
     && echo "Its password is in the keyring: service wirecat, account apple-p12-password." \
     || echo "Could not save its password in the keyring; it is only in the GitHub secret now."
 fi
+
+# The .p12 holds the key under a password now; the bare key and the request would only be a second, open copy.
+rm -f "$key" "$csr" "$pem" "$ca"
+echo "Keep $p12 and its password in your password manager; GitHub secrets cannot be read back."
 
 exec "$(dirname "$0")/setup-apple-signing" "$p12"

@@ -74,9 +74,10 @@ secrets would fail the build. The next tag after the script is signed and notari
 
 Without a Mac, `bin/make-apple-certificate` does what Keychain Access would: it makes the key and the request file to
 upload (Certificates → + → Developer ID Application, Account Holder only), then turns the downloaded `.cer` into a
-`.p12` with Apple's intermediate certificate and runs `bin/setup-apple-signing`. The key and `.p12` stay in
-`~/.config/wirecat-signing/` (mode 700); the `.p12` password goes to the keyring (`service wirecat`, account
-`apple-p12-password`).
+`.p12` with Apple's intermediate certificate and runs `bin/setup-apple-signing`. Between the two steps the key is a
+bare file in `~/.config/wirecat-signing/` (mode 700); step 2 deletes it, so only the `.p12` remains, sealed with a
+random password kept in the keyring (`service wirecat`, account `apple-p12-password`). The owner keeps both in a
+password manager: GitHub secrets cannot be read back.
 
 ### Windows (Certum)
 
