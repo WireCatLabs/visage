@@ -12,7 +12,7 @@ pages say it; that is not a test. Nothing was created in any Cloudflare account.
 
 Same as Funnel (plan `2026-10-27-one-mcp-entry.md` section 10): one public name, a path per tool, no WireCat router.
 
-```
+```text
 https://wirecat.<user's domain>/tg/...                                  -> http://127.0.0.1:<tg port>
 https://wirecat.<user's domain>/.well-known/oauth-authorization-server/tg -> same port, path kept
 https://wirecat.<user's domain>/.well-known/oauth-protected-resource/tg   -> same port, path kept
