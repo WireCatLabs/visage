@@ -1,32 +1,28 @@
 import { type ReactNode, useEffect } from "react"
 import type { CatalogTool } from "@/domain/catalog"
 import { cellAction, type SkillCell, type SkillTarget, TARGET_FOLDER } from "@/domain/skills"
+import { formatList, type Lang, useMessages } from "@/i18n"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
-import { Lamp, type LampTone } from "@/ui/Lamp"
+import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { askSkillInstall } from "./actions"
 import { ConfirmCommand } from "./Confirm"
+import { agentsMessages } from "./messages"
+import { SKILL_TONE } from "./SkillTable"
 import { catalogTools, useSkillMatrix } from "./skill-matrix"
 import { useAgents } from "./store"
 
-const LOOK: Record<SkillCell["kind"], { tone: LampTone; word: string }> = {
-  checking: { tone: "idle", word: "Checking…" },
-  current: { tone: "ok", word: "Current" },
-  stale: { tone: "warn", word: "Old" },
-  unversioned: { tone: "warn", word: "No version" },
-  missing: { tone: "idle", word: "Not installed" },
-  unknown: { tone: "idle", word: "Unknown" },
-  unsupported: { tone: "idle", word: "Needs a newer version" },
-  failed: { tone: "bad", word: "Could not check" },
-}
-
-const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
+const names = (agents: readonly Agent[], lang?: Lang) =>
+  formatList(
+    agents.map((a) => a.name),
+    lang,
+  )
 
 /**
  * Tools down, the two places a skill is written across, headed by the agents found that read each.
@@ -35,6 +31,7 @@ const names = (agents: readonly Agent[]) => agents.map((a) => a.name).join(", ")
  */
 export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boolean; expected?: readonly string[] }) {
   const matrix = useSkillMatrix()
+  const m = useMessages(agentsMessages)
   const { detected, agents, found, notInstalled } = matrix
   // Hermes has its own target that no released tool writes yet; its pane on the Agents page says so. A column of
   // "needs a newer version" would only push the matrix past the onboarding step's width.
@@ -54,7 +51,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
   }, [detected, installedIds, load])
 
   const readers = (target: SkillTarget) => found?.filter((a) => a.reads.includes(target)) ?? []
-  const columnName = (target: SkillTarget) => names(readers(target)) || TARGET_FOLDER[target]
+  const columnName = (target: SkillTarget, lang?: Lang) => names(readers(target), lang) || TARGET_FOLDER[target]
   const pad = compact ? "px-[1rem] py-[0.7rem]" : "px-[1.3rem] py-[0.9rem]"
   const pending = catalogTools.filter((t) => expected.includes(t.id))
   const silent = rows.filter((r) => r.source === "none")
@@ -65,7 +62,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
   if (detected && rows.length === 0) {
     return (
       <p className="rounded-[0.2rem] border border-line-strong bg-app px-[1.3rem] py-5 text-[0.95rem] text-ink-soft">
-        No WireCat tool is installed yet. Each tool brings its own skill; install one on the Tools page first.
+        {m.noTool}
       </p>
     )
   }
@@ -73,21 +70,19 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
   return (
     <div className="flex flex-col gap-3">
       {compact && found !== null && found.length === 0 && (
-        <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">
-          No AI agent was found on this computer. Skills can still be written; an agent installed later reads them.
-        </p>
+        <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">{m.noAgent}</p>
       )}
       <div className="overflow-x-auto rounded-[0.2rem] border border-line-strong bg-app">
-        <table aria-label="Skills for agents" className="w-full border-collapse text-left">
+        <table aria-label={m.matrixLabel} className="w-full border-collapse text-left">
           <thead>
             <tr className="border-line border-b">
               <th scope="col" className={cx(pad, "text-[0.9rem] font-medium text-ink-dim")}>
-                Tool
+                {m.tool}
               </th>
               {targets.map((t) => (
                 <th key={t} scope="col" className={cx(pad, "w-[34%] align-bottom font-normal", compact && "w-[38%]")}>
                   {agents === null ? (
-                    <Skeleton className="h-5 w-32" label="Looking for agents" />
+                    <Skeleton className="h-5 w-32" label={m.lookingForAgents} />
                   ) : (
                     <span className="block text-[0.95rem] font-semibold text-ink">{columnName(t)}</span>
                   )}
@@ -112,7 +107,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
                         <div className="flex min-h-8 items-center">
                           <Skeleton
                             chars={12}
-                            {...(i === 0 && target === targets[0] ? { label: "Checking skills" } : {})}
+                            {...(i === 0 && target === targets[0] ? { label: m.checkingSkills } : {})}
                           />
                         </div>
                       </td>
@@ -124,7 +119,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
                     <tr key={i} className="border-line border-b last:border-b-0">
                       <td colSpan={targets.length + 1} className={pad}>
                         {i === 0 ? (
-                          <Skeleton className="h-8 w-full" label="Finding installed tools" />
+                          <Skeleton className="h-8 w-full" label={m.findingTools} />
                         ) : (
                           <Skeleton className="h-8 w-full" />
                         )}
@@ -144,7 +139,9 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
                             busy={c.busy}
                             failure={c.failure}
                             tool={r.tool.id}
-                            label={`${r.tool.name} skill for ${columnName(c.target)}`}
+                            toolName={r.tool.name}
+                            column={columnName(c.target)}
+                            report={`${r.tool.name} skill for ${columnName(c.target, "en")}`}
                             onInstall={(action) => askSkillInstall(r.tool.id, c.target, action, columnName(c.target))}
                           />
                         </td>
@@ -155,9 +152,7 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
         </table>
       </div>
       {detected && notInstalled.length > 0 && !compact && (
-        <p className="text-[0.9rem] text-ink-soft">
-          Not installed: {notInstalled.map((t) => t.name).join(", ")}. A skill comes with its tool.
-        </p>
+        <p className="text-[0.9rem] text-ink-soft">{m.notInstalledNote(notInstalled.map((t) => t.name))}</p>
       )}
       {silent.length === 0 && firstChecking && (
         // Old tools are the usual case, so their note's line is kept until every skill has answered.
@@ -168,17 +163,12 @@ export function AgentsMatrix({ compact = false, expected = [] }: { compact?: boo
       {silent.length > 0 && (
         // Last under the table, as it arrives last: inside a row it would push every row under it down.
         <p className={cx("leading-snug text-ink-soft", compact ? "text-[0.9rem]" : "text-[0.9rem]")}>
-          The installed {silent.map((r) => r.tool.name).join(" and ")} cannot report{" "}
-          {silent.length === 1 ? "its skill" : "their skills"}, so {silent.length === 1 ? "it shows" : "they show"} as
-          Unknown.{" "}
+          {m.silent(silent.map((r) => r.tool.name))}{" "}
           {silent.some((r) => r.newer)
             ? compact
-              ? "Updating on the Tools page fixes that."
-              : `Updating on the Tools page fixes that: ${silent
-                  .filter((r) => r.newer)
-                  .map((r) => `${r.tool.name} to ${r.newer}`)
-                  .join(", ")}.`
-            : "A coming release will."}
+              ? m.fixOnTools
+              : m.fixOnToolsTo(silent.flatMap((r) => (r.newer ? [m.toVersion(r.tool.name, r.newer)] : [])))
+            : m.comingRelease}
         </p>
       )}
       {compact && <ConfirmCommand />}
@@ -206,25 +196,31 @@ function Cell(props: {
   busy: boolean
   failure: string | null
   tool: string
-  label: string
-  onInstall: (action: string) => void
+  toolName: string
+  column: string
+  /** Names the failure in the bug report, which stays in English whatever the interface's language. */
+  report: string
+  onInstall: (action: "Install" | "Update") => void
 }) {
-  const { first, cell, busy, failure, tool, label, onInstall } = props
+  const { first, cell, busy, failure, tool, toolName, column, report, onInstall } = props
+  const m = useMessages(agentsMessages)
   if (cell.kind === "checking" && !busy)
     return (
       <div aria-live="polite">
         <div className="flex min-h-8 items-center">
-          <Skeleton chars={12} {...(first ? { label: "Checking skills" } : {})} />
+          <Skeleton chars={12} {...(first ? { label: m.checkingSkills } : {})} />
         </div>
       </div>
     )
-  const look = busy ? { tone: "busy" as const, word: "Writing…" } : LOOK[cell.kind]
+  const look = busy
+    ? { tone: "busy" as const, word: m.writing }
+    : { tone: SKILL_TONE[cell.kind], word: cell.kind === "unknown" ? m.unknown : m.state[cell.kind] }
   const action = cellAction(cell)
   const version = cell.kind === "current" || cell.kind === "stale" ? cell.installed : null
   return (
     <div aria-live="polite">
       <div className="flex min-h-8 items-center gap-2">
-        <Lamp size="sm" tone={look.tone} label={`${label}: ${look.word}`} />
+        <Lamp size="sm" tone={look.tone} label={m.skillState(toolName, column, look.word)} />
         <span className={cx("text-[0.95rem]", cell.kind === "stale" && !busy && "text-warn-ink")}>{look.word}</span>
         {version && <span className="selectable font-mono text-[0.9rem] text-ink-soft tabular-nums">{version}</span>}
         {action && (
@@ -233,9 +229,9 @@ function Cell(props: {
             className="ml-auto"
             disabled={busy}
             onClick={() => onInstall(action)}
-            aria-label={`${action} ${label}`}
+            aria-label={action === "Install" ? m.installSkill(toolName, column) : m.updateSkill(toolName, column)}
           >
-            {action}
+            {m.action[action]}
           </Button>
         )}
       </div>
@@ -243,7 +239,7 @@ function Cell(props: {
         <ErrorNotice
           inline
           className="mt-1"
-          action={<ReportThis what={`Checking the ${label}`} tool={tool} error={cell.message} />}
+          action={<ReportThis what={`Checking the ${report}`} tool={tool} error={cell.message} />}
         >
           {cell.message}
         </ErrorNotice>
@@ -252,7 +248,7 @@ function Cell(props: {
         <ErrorNotice
           inline
           className="mt-1"
-          action={<ReportThis what={`Writing the ${label}`} tool={tool} error={failure} />}
+          action={<ReportThis what={`Writing the ${report}`} tool={tool} error={failure} />}
         >
           {failure}
         </ErrorNotice>

@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { type Session, sessionQuery } from "@/domain/agents"
 import { formatWhen, shortSession } from "@/domain/runs"
 import { TARGET_FOLDER } from "@/domain/skills"
+import { useMessages } from "@/i18n"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { CopyField } from "@/ui/CopyField"
@@ -16,13 +17,13 @@ import { AdvancedMcp } from "./AdvancedMcp"
 import { ClaimRow } from "./ClaimRow"
 import { useConnect } from "./connect"
 import { installedCopies, useDisconnect } from "./DisconnectDialog"
+import { type AgentsMessages, agentsMessages } from "./messages"
 import { useAgents } from "./store"
-import { type AgentView, plural } from "./view"
+import type { AgentView } from "./view"
 
 const box = "rounded-[0.45rem] border border-line bg-app"
 
-const foundWords = (a: Agent) =>
-  a.foundBy === "program" ? "Program on PATH" : "Found by its settings folder; the program is not on PATH"
+const foundWords = (a: Agent, m: AgentsMessages) => (a.foundBy === "program" ? m.foundProgram : m.foundFolder)
 
 /** Opens the tool's Manage panel on Tools, where its profiles are signed in. */
 export function openManage(tool: string) {
@@ -33,6 +34,7 @@ export function openManage(tool: string) {
 /** Everything about one agent after its skills: other fixes, sessions, tasks, and MCP folded away. */
 export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): void }) {
   const { agent } = view
+  const m = useMessages(agentsMessages)
   const checking = useConnect((s) => s.checking[agent.id] === true)
   const skills = useAgents((s) => s.skills)
   const connected = installedCopies(view, skills).length > 0
@@ -40,10 +42,12 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[0.9rem] text-ink-soft">
-          {foundWords(agent)} · reads{" "}
-          <span className="selectable font-mono text-[0.85rem]">
-            {agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
-          </span>
+          {m.reads(
+            foundWords(agent, m),
+            <span className="selectable font-mono text-[0.85rem]">
+              {agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
+            </span>,
+          )}
         </p>
         <span className="flex items-center gap-1">
           <Button
@@ -51,9 +55,9 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
             variant="ghost"
             disabled={!connected}
             onClick={() => useDisconnect.getState().open(agent.id)}
-            aria-label={`Disconnect WireCat from ${agent.name}`}
+            aria-label={m.disconnectFrom(agent.name)}
           >
-            Disconnect
+            {m.disconnect}
           </Button>
           <Button
             size="sm"
@@ -62,23 +66,20 @@ export function AgentDetails({ view, onCheck }: { view: AgentView; onCheck(): vo
             onClick={onCheck}
             icon={<RefreshCw className={cx("size-[0.95rem]", checking && "animate-spin")} aria-hidden />}
           >
-            <StableText
-              value={checking ? "Checking…" : "Check this agent"}
-              variants={["Check this agent", "Checking…"]}
-            />
+            <StableText value={checking ? m.checking : m.checkThis} variants={[m.checkThis, m.checking]} />
           </Button>
         </span>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        <Section title="Also to fix">
+        <Section title={m.alsoFix}>
           <OtherFixes view={view} />
         </Section>
-        <Section title="Recent sessions">
+        <Section title={m.recentSessions}>
           <Sessions agent={agent} sessions={view.sessions} />
         </Section>
       </div>
       {view.claims.length > 0 && (
-        <Section title="Tasks it holds">
+        <Section title={m.tasksHeld}>
           <ul className={cx(box, "divide-y divide-line")}>
             {view.claims.map((c) => (
               <ClaimRow key={`${c.tool.id}/${c.profile}/${c.claim.id}`} c={c} holder={agent.name} />
@@ -103,12 +104,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 /** What is left once skills are dealt with: sign-in, PATH, permissions. Skill items live in the skills list. */
 function OtherFixes({ view }: { view: AgentView }) {
   const go = useNav((s) => s.go)
-  if (!view.items) return <Skeleton className="h-10 w-full" label="Checking" />
+  const m = useMessages(agentsMessages)
+  if (!view.items) return <Skeleton className="h-10 w-full" label={m.checkingLabel} />
   const shown = view.items.filter((i) => i.tone !== "ok" && !i.id.endsWith(":skill") && !i.id.startsWith("skill:"))
   if (shown.length === 0 && view.signedOut.length === 0)
-    return <p className="text-[0.9rem] text-ink-soft">Nothing else stops {view.agent.name}.</p>
+    return <p className="text-[0.9rem] text-ink-soft">{m.nothingElse(view.agent.name)}</p>
   return (
-    <ul className={cx(box, "divide-y divide-line")} aria-label={`Other things to fix for ${view.agent.name}`}>
+    <ul className={cx(box, "divide-y divide-line")} aria-label={m.otherFixes(view.agent.name)}>
       {shown.map((item) => (
         <li key={item.id} className="flex flex-col gap-2 px-4 py-2.5">
           <div className="flex items-start gap-2.5">
@@ -121,13 +123,13 @@ function OtherFixes({ view }: { view: AgentView }) {
             </div>
             {item.fix?.kind === "tools" && (
               <Button size="sm" variant="ghost" onClick={() => go("tools")}>
-                Open Tools
+                {m.openTools}
               </Button>
             )}
           </div>
           {item.fix?.kind === "command" && (
             <div className="pl-6">
-              <CopyField value={item.fix.command} label="Copy the command" />
+              <CopyField value={item.fix.command} label={m.copyCommand} />
             </div>
           )}
         </li>
@@ -139,14 +141,14 @@ function OtherFixes({ view }: { view: AgentView }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[0.95rem] text-ink">
-              {tool.name} profile <span className="font-medium">{profile}</span> is not signed in
+              {m.profileSignedOut(tool.name, <span className="font-medium">{profile}</span>)}
             </p>
             <p className="mt-0.5 max-w-[70ch] text-[0.9rem] text-ink-soft">
-              {view.agent.name} cannot use {tool.name} through this profile until it is signed in again.
+              {m.profileSignedOutDetail(view.agent.name, tool.name)}
             </p>
           </div>
-          <Button size="sm" onClick={() => openManage(tool.id)} aria-label={`Sign in to ${tool.name} (${profile})`}>
-            Sign in
+          <Button size="sm" onClick={() => openManage(tool.id)} aria-label={m.signInTo(tool.name, profile)}>
+            {m.signInButton}
           </Button>
         </li>
       ))}
@@ -156,9 +158,9 @@ function OtherFixes({ view }: { view: AgentView }) {
 
 function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Session[] | null }) {
   const go = useNav((s) => s.go)
-  if (sessions === null) return <Skeleton className="h-8 w-full" label="Reading run logs" />
-  if (sessions.length === 0)
-    return <p className="text-[0.9rem] text-ink-soft">The tools' run logs have no session from {agent.name}.</p>
+  const m = useMessages(agentsMessages)
+  if (sessions === null) return <Skeleton className="h-8 w-full" label={m.readingRunLogs} />
+  if (sessions.length === 0) return <p className="text-[0.9rem] text-ink-soft">{m.noSessions(agent.name)}</p>
   const open = (s: Session) => {
     const logs = useLogs.getState()
     logs.setQuery(sessionQuery(s))
@@ -171,20 +173,20 @@ function Sessions({ agent, sessions }: { agent: Agent; sessions: readonly Sessio
         <li key={s.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-[0.9rem]">
           <span className="w-[8.5rem] font-mono text-[0.9rem] tabular-nums">{formatWhen(s.last, new Date())}</span>
           <span className="selectable font-mono text-[0.9rem] text-ink-soft" title={s.session ?? undefined}>
-            {s.session ? shortSession(s.session) : "no session id"}
+            {s.session ? shortSession(s.session) : m.noSessionId}
           </span>
           <span>
-            {plural(s.runs, "command")}
-            {s.failed > 0 && <span className="text-bad"> · {s.failed} failed</span>}
+            {m.commandsRun(s.runs)}
+            {s.failed > 0 && <span className="text-bad"> · {m.failedCount(s.failed)}</span>}
           </span>
           <span className="min-w-0 flex-1 truncate text-ink-soft">{s.tools.join(", ")}</span>
           <Button size="sm" variant="ghost" onClick={() => open(s)}>
-            Show in Logs
+            {m.showInLogs}
           </Button>
         </li>
       ))}
       {sessions.length > 3 && (
-        <li className="px-4 py-2 text-[0.9rem] text-ink-soft">and {sessions.length - 3} older on the Logs page</li>
+        <li className="px-4 py-2 text-[0.9rem] text-ink-soft">{m.olderSessions(sessions.length - 3)}</li>
       )}
     </ul>
   )

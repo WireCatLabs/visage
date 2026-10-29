@@ -1,4 +1,5 @@
 import { TARGET_FOLDER } from "@/domain/skills"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Skeleton } from "@/ui/Skeleton"
 import { AgentDetails } from "./AgentDetails"
@@ -6,21 +7,20 @@ import { AgentIcon } from "./AgentIcon"
 import { ConnectDialog } from "./ConnectDialog"
 import { useConnectFlow } from "./connect-flow"
 import { DisconnectDialog } from "./DisconnectDialog"
+import { agentsMessages } from "./messages"
 import { SeenLink } from "./PageParts"
 import { AgentCta, SkillTable } from "./SkillTable"
-import { type AgentEntry, type AgentsView, plural, sharers, todoSentence } from "./view"
+import { type AgentEntry, type AgentsView, sharers, todoSentence } from "./view"
 
 /** The selected agent: its skills with one Install all, then what else stops it, its sessions, tasks and MCP. */
 export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: AgentsView }) {
+  const m = useMessages(agentsMessages)
   if (!entry || entry.type === "pending") return <PendingPane />
   if (entry.type === "seen")
     return (
       <div className="flex flex-col gap-3">
         <h2 className="text-[1.3rem] font-semibold text-ink-soft">{entry.name}</h2>
-        <p className="max-w-[70ch] text-[0.95rem] text-ink-soft">
-          The run logs name this agent ({plural(entry.sessions, "session")}), but WireCat does not detect it, so it
-          cannot say which skills it reads.
-        </p>
+        <p className="max-w-[70ch] text-[0.95rem] text-ink-soft">{m.seenBody(entry.sessions)}</p>
         <div>
           <SeenLink kind={entry.kind} name={entry.name} />
         </div>
@@ -34,13 +34,11 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
           {entry.name}
         </h2>
         <p className="max-w-[70ch] text-[0.95rem] text-ink-soft">
-          Not found on this computer. Once it is installed it reads skills from{" "}
-          <span className="selectable font-mono text-[0.9rem]">
-            {entry.agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
-          </span>
-          {entry.agent.reads.some((t) => t !== "hermes")
-            ? ", so the skills you install for the other agents reach it too."
-            : "."}
+          {(entry.agent.reads.some((t) => t !== "hermes") ? m.absentShared : m.absentAlone)(
+            <span className="selectable font-mono text-[0.9rem]">
+              {entry.agent.reads.map((t) => TARGET_FOLDER[t]).join(", ")}
+            </span>,
+          )}
         </p>
       </div>
     )
@@ -55,13 +53,7 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
             {view.agent.name}
           </h2>
           <p className="mt-1 text-[0.95rem] text-ink-soft">
-            {checking ? (
-              <Skeleton chars={34} />
-            ) : view.todo.length > 0 ? (
-              todoSentence(view)
-            ) : (
-              "Every skill it can see is current"
-            )}
+            {checking ? <Skeleton chars={34} /> : view.todo.length > 0 ? todoSentence(view, m) : m.allCurrent}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -70,9 +62,9 @@ export function AgentPane({ entry, all }: { entry: AgentEntry | null; all: Agent
             variant="secondary"
             disabled={all.anyBusy || !all.toolsKnown}
             onClick={() => useConnectFlow.getState().open(view.agent.id)}
-            aria-label={`Connect WireCat to ${view.agent.name}`}
+            aria-label={m.connectTo(view.agent.name)}
           >
-            Connect
+            {m.connect}
           </Button>
           <AgentCta view={view} all={all} />
         </div>

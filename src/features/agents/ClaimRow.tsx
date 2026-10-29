@@ -1,11 +1,13 @@
 import type { CatalogTool } from "@/domain/catalog"
 import { formatWhen, shortSession } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import type { Claim } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { ReportThis } from "../report/ReportThis"
 import { askRelease, releaseKey } from "./actions"
 import { useConnect } from "./connect"
+import { agentsMessages } from "./messages"
 
 export type AgentClaim = { tool: CatalogTool; profile: string; claim: Claim; session: string | null }
 
@@ -14,6 +16,7 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
   const key = releaseKey(c.tool.id, c.profile, task)
   const busy = useConnect((s) => s.busy[key] === true)
   const failure = useConnect((s) => s.failures[key])
+  const m = useMessages(agentsMessages)
   return (
     <li className="px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.9rem]">
@@ -26,16 +29,16 @@ export function ClaimRow({ c, holder }: { c: AgentClaim; holder: string }) {
             {shortSession(c.session)}
           </span>
         )}
-        {c.claim.until && <span className="text-ink-soft">until {formatWhen(c.claim.until, new Date())}</span>}
+        {c.claim.until && <span className="text-ink-soft">{m.until(formatWhen(c.claim.until, new Date()))}</span>}
         <Button
           size="sm"
           variant="danger"
           className="ml-auto"
           disabled={busy}
           onClick={() => askRelease(c.tool.id, c.profile, c.claim, holder)}
-          aria-label={`Release ${task}`}
+          aria-label={m.releaseTask(task)}
         >
-          {busy ? "Releasing…" : "Release"}
+          {busy ? m.releasing : m.release}
         </Button>
       </div>
       {failure && !busy && (

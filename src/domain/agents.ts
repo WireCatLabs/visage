@@ -142,6 +142,34 @@ export type CheckItem = { id: string; tone: Tone; title: string; detail: string;
 
 export type CheckTool = { id: string; name: string; bin: string; path: string | null }
 
+/** The sentences of the check, in the interface's language; the catalog is in `features/agents/messages.tsx`. */
+export type CheckWords = {
+  cannotFind: (agent: string, tools: readonly string[]) => string
+  hermesPath: string
+  openclawPath: string
+  notOnPath: (tool: string) => string
+  notOnPathWindows: (agent: string, bin: string, folder: string | null) => string
+  notOnPathShell: (agent: string, bin: string) => string
+  skillCurrent: (tool: string) => string
+  cannotReport: (tools: readonly string[]) => string
+  tooOld: string
+  cannotWrite: (tools: readonly string[], agent: string) => string
+  notReleased: (agent: string) => string
+  permissionsUnread: (tool: string, profile: string) => string
+  allowsAll: (tool: string, profile: string) => string
+  blocked: (tool: string, profile: string, blocked: number, total: number) => string
+  blockedDetail: (agent: string, tool: string) => string
+  permissionsLater: string
+  permissionsLaterDetail: string
+  skillOld: (tool: string, version: string) => string
+  skillOldDetail: (agent: string, folder: string) => string
+  skillUnversioned: (tool: string) => string
+  inFolder: (folder: string) => string
+  skillMissing: (tool: string) => string
+  skillMissingDetail: (agent: string, folder: string, bin: string) => string
+  skillUnchecked: (tool: string) => string
+}
+
 export type CheckInput = {
   agent: { id: string; name: string; reads: readonly SkillTarget[] }
   tools: readonly CheckTool[]
@@ -151,6 +179,7 @@ export type CheckInput = {
   skills: Readonly<Record<string, Partial<Record<SkillTarget, SkillCell>>>>
   /** A shell `export` line means nothing on Windows; the folder is named instead. */
   windows?: boolean
+  words: CheckWords
   /** `<tool>/<profile>` → commands its permissions block, from the tool's own `commands --json`; absent until Check. */
   access?: Readonly<Record<string, { blocked: number; total: number } | string>>
 }
@@ -158,7 +187,6 @@ export type CheckInput = {
 const dirOf = (path: string) => path.replace(/[\\/][^\\/]+$/, "")
 const folderOf = (path: string) => dirOf(path).replace(/^~(?=\/)/, "$HOME")
 const unique = (xs: readonly string[]) => [...new Set(xs)]
-const nameList = (tools: readonly { name: string }[]) => tools.map((t) => t.name).join(", ")
 
 /**
  * Agents that run commands with a PATH of their own, not a terminal's: what they miss and the one change that fixes
@@ -167,29 +195,26 @@ const nameList = (tools: readonly { name: string }[]) => tools.map((t) => t.name
 export function agentPathFix(
   agent: { id: string; name: string },
   missing: readonly CheckTool[],
+  words: CheckWords,
   windows = false,
 ): { title: string; detail: string; command: string | null } | null {
   if (windows || missing.length === 0) return null
   const dirs = unique(missing.flatMap((t) => (t.path ? [dirOf(t.path)] : [])))
-  const title = `${agent.name} cannot find ${nameList(missing)}`
+  const title = words.cannotFind(
+    agent.name,
+    missing.map((t) => t.name),
+  )
   if (agent.id === "hermes")
     return {
       title,
-      detail:
-        "Hermes runs each command in a bash login shell (bash -l) started from its gateway's PATH, so a folder " +
-        "added only in ~/.zshrc or ~/.bashrc is missing there. Add this line to ~/.profile, or to ~/.bash_profile " +
-        "if you have one, then restart Hermes (hermes gateway restart).",
+      detail: words.hermesPath,
       command:
         dirs.length > 0 ? `export PATH="${dirs.map((d) => d.replace(/^~(?=\/)/, "$HOME")).join(":")}:$PATH"` : null,
     }
   if (agent.id === "openclaw")
     return {
       title,
-      detail:
-        "OpenClaw runs commands with its gateway's PATH. Add the folders to tools.exec.pathPrepend with OpenClaw's " +
-        "own command below. It replaces the whole list and works only while the gateway is stopped: stop the " +
-        "gateway, add the folders that openclaw config get tools.exec.pathPrepend already lists, run it, then " +
-        "start the gateway again.",
+      detail: words.openclawPath,
       command:
         dirs.length > 0 ? `openclaw config set tools.exec.pathPrepend '${JSON.stringify(dirs)}' --strict-json` : null,
     }
@@ -199,13 +224,13 @@ export function agentPathFix(
 /** What stops this agent from using the tools, worst first, each with the one thing that fixes it. Agents here run
  * the commands through their skill, so MCP is never part of it. */
 export function buildCheck(input: CheckInput): CheckItem[] {
-  const { agent, tools, reach, skills, access } = input
+  const { agent, tools, reach, skills, access, words } = input
   const items: CheckItem[] = []
   const unreported: string[] = []
   const unsupported: string[] = []
 
   const unreachable = tools.filter((t) => reach && reach[t.id] === false)
-  const ownPath = agentPathFix(agent, unreachable, input.windows)
+  const ownPath = agentPathFix(agent, unreachable, words, input.windows)
   if (ownPath)
     items.push({
       id: "path:agent",
@@ -221,10 +246,10 @@ export function buildCheck(input: CheckInput): CheckItem[] {
       items.push({
         id: `${tool.id}:path`,
         tone: "bad",
-        title: `${tool.name} is not on a terminal's PATH`,
+        title: words.notOnPath(tool.name),
         detail: input.windows
-          ? `${agent.name} runs commands in a terminal, and a new terminal does not find ${tool.bin}. Add ${tool.path ? folderOf(tool.path) : "its folder"} to your user Path in Windows settings, then restart ${agent.name}.`
-          : `${agent.name} runs commands in a terminal, and a new terminal does not find ${tool.bin}. Add its folder to PATH in your shell profile, then restart ${agent.name}.`,
+          ? words.notOnPathWindows(agent.name, tool.bin, tool.path ? folderOf(tool.path) : null)
+          : words.notOnPathShell(agent.name, tool.bin),
         ...(tool.path && !input.windows
           ? { fix: { kind: "command", command: `export PATH="${folderOf(tool.path)}:$PATH"` } }
           : {}),
@@ -234,7 +259,7 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     const cells = agent.reads.map((target) => ({ target, cell: skills[tool.id]?.[target] }))
     const known = cells.filter((c): c is { target: SkillTarget; cell: SkillCell } => c.cell !== undefined)
     if (known.some((c) => c.cell.kind === "current")) {
-      items.push({ id: `${tool.id}:skill`, tone: "ok", title: `${tool.name} skill is current`, detail: "" })
+      items.push({ id: `${tool.id}:skill`, tone: "ok", title: words.skillCurrent(tool.name), detail: "" })
     } else {
       const worst =
         known.find((c) => c.cell.kind === "stale" || c.cell.kind === "unversioned") ??
@@ -243,7 +268,7 @@ export function buildCheck(input: CheckInput): CheckItem[] {
         known.find((c) => c.cell.kind === "unsupported")
       if (worst?.cell.kind === "unknown") unreported.push(tool.name)
       else if (worst?.cell.kind === "unsupported") unsupported.push(tool.name)
-      else if (worst) items.push(skillItem(tool, agent.name, worst.target, worst.cell))
+      else if (worst) items.push(skillItem(tool, agent.name, worst.target, worst.cell, words))
     }
   }
 
@@ -251,8 +276,8 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     items.push({
       id: "skill:unknown",
       tone: "idle",
-      title: `${unreported.join(", ")} cannot report ${unreported.length === 1 ? "its skill" : "their skills"}`,
-      detail: "These versions are too old to say which skill is installed. A newer version can.",
+      title: words.cannotReport(unreported),
+      detail: words.tooOld,
       fix: { kind: "tools" },
     })
   }
@@ -260,8 +285,8 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     items.push({
       id: "skill:unsupported",
       tone: "idle",
-      title: `${unsupported.join(", ")} cannot write a skill for ${agent.name} yet`,
-      detail: `The version that can is not released yet. Until then ${agent.name} does not know these tools' commands.`,
+      title: words.cannotWrite(unsupported, agent.name),
+      detail: words.notReleased(agent.name),
     })
   }
   const permissions = Object.entries(access ?? {})
@@ -271,15 +296,15 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     if (!tool) continue
     const id = `${key}:permissions`
     if (typeof a === "string") {
-      items.push({ id, tone: "idle", title: `${tool.name} (${profile}) permissions could not be read`, detail: a })
+      items.push({ id, tone: "idle", title: words.permissionsUnread(tool.name, profile ?? ""), detail: a })
     } else if (a.blocked === 0) {
-      items.push({ id, tone: "ok", title: `${tool.name} (${profile}) allows every command`, detail: "" })
+      items.push({ id, tone: "ok", title: words.allowsAll(tool.name, profile ?? ""), detail: "" })
     } else {
       items.push({
         id,
         tone: a.blocked === a.total ? "warn" : "idle",
-        title: `${tool.name} (${profile}): ${a.blocked} of ${a.total} commands are blocked`,
-        detail: `Its permissions stop ${agent.name} from running them. Change them in ${tool.name}'s Manage panel.`,
+        title: words.blocked(tool.name, profile ?? "", a.blocked, a.total),
+        detail: words.blockedDetail(agent.name, tool.name),
         fix: { kind: "tools" },
       })
     }
@@ -288,15 +313,21 @@ export function buildCheck(input: CheckInput): CheckItem[] {
     items.push({
       id: "permissions",
       tone: "idle",
-      title: "Permissions are read when you check this agent",
-      detail: "The check asks each tool which commands every profile allows.",
+      title: words.permissionsLater,
+      detail: words.permissionsLaterDetail,
     })
   }
   const rank: Record<Tone, number> = { bad: 0, warn: 1, idle: 2, ok: 3 }
   return items.sort((a, b) => rank[a.tone] - rank[b.tone])
 }
 
-function skillItem(tool: CheckTool, agentName: string, target: SkillTarget, cell: SkillCell): CheckItem {
+function skillItem(
+  tool: CheckTool,
+  agentName: string,
+  target: SkillTarget,
+  cell: SkillCell,
+  words: CheckWords,
+): CheckItem {
   const id = `${tool.id}:skill`
   const where = TARGET_FOLDER[target]
   const action = cellAction(cell)
@@ -307,23 +338,23 @@ function skillItem(tool: CheckTool, agentName: string, target: SkillTarget, cell
       return {
         ...base,
         tone: "warn",
-        title: `${tool.name} skill is old (${cell.installed})`,
-        detail: `${agentName} reads ${where}; an old skill may name commands that changed.`,
+        title: words.skillOld(tool.name, cell.installed),
+        detail: words.skillOldDetail(agentName, where),
       }
     case "unversioned":
-      return { ...base, tone: "warn", title: `${tool.name} skill has no version`, detail: `In ${where}.` }
+      return { ...base, tone: "warn", title: words.skillUnversioned(tool.name), detail: words.inFolder(where) }
     case "missing":
       return {
         ...base,
         tone: "warn",
-        title: `${tool.name} skill is not installed`,
-        detail: `${agentName} reads ${where}. Without the skill it does not know ${tool.bin}'s commands.`,
+        title: words.skillMissing(tool.name),
+        detail: words.skillMissingDetail(agentName, where, tool.bin),
       }
     default:
       return {
         ...base,
         tone: "bad",
-        title: `${tool.name} skill could not be checked`,
+        title: words.skillUnchecked(tool.name),
         detail: cell.kind === "failed" ? cell.message : "",
       }
   }

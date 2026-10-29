@@ -8,7 +8,21 @@ import { cellKey, useAgents } from "./store"
 
 export type StepState = "waiting" | "running" | "ok" | "warn" | "failed"
 
-export type Step = { key: string; label: string; state: StepState; detail: string | null; command: string | null }
+/** What a step says, kept as words to look up so a language switch also reaches steps already on screen. */
+export type StepText =
+  | { k: "skill"; tool: string }
+  | { k: "readOnly"; tool: string; profile: string }
+  | { k: "finds"; agent: string }
+  | { k: "findsAll"; agent: string }
+  | { k: "pathFix"; part: "title" | "detail"; missing: CheckTool[] }
+  | { k: "written" | "allBlocked" | "setUnknown" | "noPath" }
+  | { k: "stillAllowed"; n: number; tool: string }
+  | { k: "keptBlock"; groups: string[] }
+  | { k: "opened"; commands: string[]; tool: string }
+  /** What the tool or the system said, shown as it said it. */
+  | { k: "printed"; text: string }
+
+export type Step = { key: string; label: StepText; state: StepState; detail: StepText[]; command: string | null }
 
 /** What Connect runs, in order: each chosen tool's skill, then read only for each chosen profile, then the PATH. */
 export type ConnectPlan = {
@@ -17,8 +31,8 @@ export type ConnectPlan = {
   readOnly: { tool: string; name: string; profile: string; groups: string[] }[]
   /** The chosen tools, with where they are installed, for the PATH check. */
   tools: CheckTool[]
-  /** What to tell the owner when the agent does not find some of them. */
-  pathFix: (missing: CheckTool[]) => { title: string; detail: string; command: string | null }
+  /** The line that puts the missing tools on the agent's PATH, when there is one. */
+  pathCommand: (missing: CheckTool[]) => string | null
 }
 
 type Flow = {
@@ -71,21 +85,25 @@ export const useConnectFlow = create<Flow>((set, get) => {
 
     async run(plan) {
       const steps: Step[] = [
-        ...plan.installs.map((i) => ({
-          key: `skill:${i.tool}`,
-          label: `${i.name} skill`,
-          state: "waiting" as const,
-          detail: null,
-          command: null,
-        })),
-        ...plan.readOnly.map((r) => ({
-          key: `ro:${r.tool}/${r.profile}`,
-          label: `${r.name} (${r.profile}) read only`,
-          state: "waiting" as const,
-          detail: null,
-          command: null,
-        })),
-        { key: "path", label: `${plan.agent.name} finds the tools`, state: "waiting", detail: null, command: null },
+        ...plan.installs.map(
+          (i): Step => ({
+            key: `skill:${i.tool}`,
+            label: { k: "skill", tool: i.name },
+            state: "waiting",
+            detail: [],
+            command: null,
+          }),
+        ),
+        ...plan.readOnly.map(
+          (r): Step => ({
+            key: `ro:${r.tool}/${r.profile}`,
+            label: { k: "readOnly", tool: r.name, profile: r.profile },
+            state: "waiting",
+            detail: [],
+            command: null,
+          }),
+        ),
+        { key: "path", label: { k: "finds", agent: plan.agent.name }, state: "waiting", detail: [], command: null },
       ]
       set({ phase: "running", steps })
 
@@ -94,7 +112,12 @@ export const useConnectFlow = create<Flow>((set, get) => {
         update(key, { state: "running" })
         await useAgents.getState().install(i.tool, i.target)
         const failure = useAgents.getState().failures[cellKey(i.tool, i.target)]
-        update(key, failure ? { state: "failed", detail: failure } : { state: "ok", detail: "Written" })
+        update(
+          key,
+          failure
+            ? { state: "failed", detail: [{ k: "printed", text: failure }] }
+            : { state: "ok", detail: [{ k: "written" }] },
+        )
       }
 
       for (const r of plan.readOnly) {
@@ -115,38 +138,40 @@ export const useConnectFlow = create<Flow>((set, get) => {
           const wasOpen = new Set((before.commands ?? []).filter((c) => c.available).map((c) => c.path.join(" ")))
           const opened = (after.commands ?? []).filter((c) => c.available && !wasOpen.has(c.path.join(" ")))
           const writes = after.commands?.filter((c) => c.writes && c.available).length ?? null
-          const notes = [
-            kept.length > 0 ? `Kept Block on ${kept.join(", ")}.` : "",
-            opened.length > 0 && before.commands
-              ? `Now allowed and blocked before: ${opened.map((c) => c.path.join(" ")).join(", ")}. Block them again in ${r.name}'s Permissions on the Tools page.`
-              : "",
-          ].filter(Boolean)
-          const base =
+          const base: StepText =
             writes === 0
-              ? "Every command that changes something is blocked."
+              ? { k: "allBlocked" }
               : writes === null
-                ? "Set; this version cannot say which commands it now blocks."
-                : `Set, but ${writes} ${writes === 1 ? "command that changes things is" : "commands that change things are"} still allowed. Change them in ${r.name}'s Permissions on the Tools page.`
+                ? { k: "setUnknown" }
+                : { k: "stillAllowed", n: writes, tool: r.name }
+          const notes: StepText[] = [
+            ...(kept.length > 0 ? [{ k: "keptBlock" as const, groups: kept }] : []),
+            ...(opened.length > 0 && before.commands
+              ? [{ k: "opened" as const, commands: opened.map((c) => c.path.join(" ")), tool: r.name }]
+              : []),
+          ]
           update(key, {
             state: writes === 0 && opened.length === 0 ? "ok" : "warn",
-            detail: [base, ...notes].join(" "),
+            detail: [base, ...notes],
           })
         } catch (e) {
-          update(key, { state: "failed", detail: message(e) })
+          update(key, { state: "failed", detail: [{ k: "printed", text: message(e) }] })
         }
       }
 
       update("path", { state: "running" })
       const reach = await useConnect.getState().loadReach(plan.agent.id)
-      if (!reach) update("path", { state: "warn", detail: "WireCat could not read the PATH it runs commands with." })
+      if (!reach) update("path", { state: "warn", detail: [{ k: "noPath" }] })
       else {
         const missing = plan.tools.filter((t) => reach[t.id] === false)
-        if (missing.length === 0)
-          update("path", { state: "ok", detail: `${plan.agent.name} finds every tool you chose` })
-        else {
-          const fix = plan.pathFix(missing)
-          update("path", { state: "failed", label: fix.title, detail: fix.detail, command: fix.command })
-        }
+        if (missing.length === 0) update("path", { state: "ok", detail: [{ k: "findsAll", agent: plan.agent.name }] })
+        else
+          update("path", {
+            state: "failed",
+            label: { k: "pathFix", part: "title", missing },
+            detail: [{ k: "pathFix", part: "detail", missing }],
+            command: plan.pathCommand(missing),
+          })
       }
       set({ phase: "done" })
       useConnect.getState().check(plan.agent.id)

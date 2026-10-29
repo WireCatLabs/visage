@@ -1,11 +1,13 @@
 import { type KeyboardEvent, useRef } from "react"
 import { create } from "zustand"
+import { useMessages } from "@/i18n"
 import { cx } from "@/ui/cx"
 import { Lamp } from "@/ui/Lamp"
 import { Skeleton } from "@/ui/Skeleton"
 import { agentTabId } from "./actions"
+import { agentsMessages } from "./messages"
 import { rowTone } from "./SkillTable"
-import { type AgentEntry, plural } from "./view"
+import type { AgentEntry } from "./view"
 
 /** The agent the owner picked, kept for the app session so coming back to Agents shows the same one. */
 export const useAgentChoice = create<{ chosen: string | null; choose(id: string): void }>((set) => ({
@@ -36,6 +38,7 @@ const KEYS: Record<string, (i: number, n: number) => number> = {
 /** Every agent as a vertical tab list; arrows, Home and End move the selection, as in any tab list. */
 export function AgentList({ entries, selected }: { entries: readonly AgentEntry[]; selected: string | null }) {
   const choose = useAgentChoice((s) => s.choose)
+  const m = useMessages(agentsMessages)
   const tabs = useRef<(HTMLButtonElement | null)[]>([])
   const onKey = (event: KeyboardEvent, i: number) => {
     const move = KEYS[event.key]
@@ -47,7 +50,7 @@ export function AgentList({ entries, selected }: { entries: readonly AgentEntry[
     tabs.current[next]?.focus()
   }
   return (
-    <div role="tablist" aria-label="Agents" aria-orientation="vertical" className="flex flex-col @min-[52rem]:py-2">
+    <div role="tablist" aria-label={m.title} aria-orientation="vertical" className="flex flex-col @min-[52rem]:py-2">
       {entries.map((e, i) => {
         const on = e.id === selected
         return (
@@ -79,13 +82,9 @@ export function AgentList({ entries, selected }: { entries: readonly AgentEntry[
 }
 
 function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: boolean }) {
+  const m = useMessages(agentsMessages)
   if (entry.type !== "found") {
-    const note =
-      entry.type === "pending"
-        ? null
-        : entry.type === "absent"
-          ? "Not found"
-          : `Seen in runs · ${plural(entry.sessions, "session")}`
+    const note = entry.type === "pending" ? null : entry.type === "absent" ? m.notFound : m.seenInRuns(entry.sessions)
     return (
       <>
         <Lamp size="sm" tone="idle" />
@@ -99,7 +98,7 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
             {entry.name}
           </span>
           <span className="block truncate text-[0.9rem] text-ink-dim">
-            {note ?? <Skeleton chars={10} {...(first ? { label: "Looking for agents" } : {})} />}
+            {note ?? <Skeleton chars={10} {...(first ? { label: m.lookingForAgents } : {})} />}
           </span>
         </span>
       </>
@@ -107,7 +106,7 @@ function TabBody({ entry, on, first }: { entry: AgentEntry; on: boolean; first: 
   }
   const { view } = entry
   const checking = view.skills.some((s) => s.cell.kind === "checking")
-  const note = view.todo.length > 0 ? `${view.todo.length} to set up` : "Skills current"
+  const note = view.todo.length > 0 ? m.toSetUp(view.todo.length) : m.skillsCurrent
   return (
     <>
       <Lamp size="sm" tone={rowTone(view)} />

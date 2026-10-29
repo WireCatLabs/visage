@@ -5,6 +5,7 @@ import { useAgentChoice } from "@/features/agents/AgentList"
 import { useNav } from "@/features/nav"
 import { useOnboarding } from "@/features/onboarding/store"
 import { useTools } from "@/features/tools/store"
+import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { App } from "./App"
 
@@ -29,6 +30,23 @@ describe("Agents", () => {
     useOnboarding.setState({ status: "done", open: false })
     useAgentChoice.setState({ chosen: null })
   })
+
+  // First, while the mock still holds its starting skills.
+  it("speaks Russian, counts included, when the owner picks it", async () => {
+    useLanguage.setState({ choice: "ru" })
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole("button", { name: /Агенты/ }))
+    expect(screen.getByRole("heading", { name: "Агенты" })).toBeInTheDocument()
+    expect(await foundTab(/^Claude Code.*Настроить: 2/)).toBeInTheDocument()
+    expect(
+      await within(pane()).findByText(
+        "Для Claude Code нужно настроить 2 навыка: не хватает — 1, устарело — 1",
+        {},
+        wait,
+      ),
+    ).toBeInTheDocument()
+  }, 20000)
 
   it("lists every known agent, dims the ones not found and opens on the first one with skills to set up", async () => {
     await openAgents()
@@ -87,7 +105,7 @@ describe("Agents", () => {
     await user.click(await foundTab(/^Codex.*to set up/))
     await user.click(await within(pane()).findByRole("button", { name: /^Install all: .*Codex/ }, wait))
     const dialog = await screen.findByRole("dialog", { name: /^Install 3 skills for Codex\?/ })
-    expect(within(dialog).getByText(/Cursor, OpenClaw read the same folder/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Cursor and OpenClaw read the same folder/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole("button", { name: "Install all" }))
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), wait)
 
@@ -174,7 +192,7 @@ describe("Agents", () => {
       await within(pane()).findByText("Needs a newer Telegram to write a skill for Hermes Agent", {}, wait),
     ).toBeInTheDocument()
     const fixes = await within(pane()).findByRole("list", { name: "Other things to fix for Hermes Agent" }, wait)
-    expect(await within(fixes).findByText("Hermes Agent cannot find Telegram, MAX", {}, wait)).toBeInTheDocument()
+    expect(await within(fixes).findByText("Hermes Agent cannot find Telegram and MAX", {}, wait)).toBeInTheDocument()
     expect(within(fixes).getByText(/bash -l/)).toHaveTextContent("~/.profile")
     expect(within(fixes).getByText(`export PATH="$HOME/.local/share/pnpm/bin:$PATH"`)).toBeInTheDocument()
 
@@ -205,7 +223,7 @@ describe("Agents", () => {
 
     await user.click(within(pane()).getByRole("button", { name: "Connect WireCat to OpenClaw" }))
     const dialog = await screen.findByRole("dialog", { name: "Connect WireCat to OpenClaw" })
-    expect(await within(dialog).findByRole("note", {}, wait)).toHaveTextContent("answers in Discord, WhatsApp")
+    expect(await within(dialog).findByRole("note", {}, wait)).toHaveTextContent("answers in Discord and WhatsApp")
     expect(within(dialog).getByText("Choose a tool to see its profiles.")).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole("checkbox", { name: /Telegram/ }))
@@ -251,7 +269,7 @@ describe("Agents", () => {
     const dialog = await screen.findByRole("dialog", { name: "Disconnect WireCat from Codex" })
     expect(dialog).toHaveTextContent("no command that removes their skill yet")
     expect(within(dialog).getByText("~/.agents/skills/tg-cli")).toBeInTheDocument()
-    expect(dialog).toHaveTextContent(/Cursor, OpenClaw read ~\/\.agents\/skills too/)
+    expect(dialog).toHaveTextContent(/Cursor and OpenClaw read ~\/\.agents\/skills too/)
   }, 20000)
 
   it("releases a task the agent holds", async () => {

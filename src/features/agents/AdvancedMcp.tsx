@@ -1,5 +1,6 @@
 import { connections, serverName } from "@/domain/agents"
 import { tools as catalogTools } from "@/domain/catalog"
+import { useMessages } from "@/i18n"
 import type { Agent } from "@/platform/agents-schemas"
 import { Button } from "@/ui/Button"
 import { Disclosure } from "@/ui/Disclosure"
@@ -8,19 +9,18 @@ import { Skeleton } from "@/ui/Skeleton"
 import { ReportThis } from "../report/ReportThis"
 import { askMcpRemove, mcpKey } from "./actions"
 import { useConnect } from "./connect"
+import { agentsMessages } from "./messages"
 
 // Email shares memo's program, so one entry per program keeps a server from being listed twice.
 const PROGRAMS = catalogTools.filter((t) => !t.partOf)
 
 /** Read-only: agents here use the tools through their skill, so MCP is never offered, only cleaned up. */
 export function AdvancedMcp({ agent }: { agent: Agent }) {
+  const m = useMessages(agentsMessages)
   return (
-    <Disclosure summary="Advanced: MCP">
+    <Disclosure summary={m.advancedMcp}>
       <div className="flex flex-col gap-2 pl-[1.25rem]">
-        <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
-          For chat apps and agents on another computer. Agents on this computer use the tools directly through their
-          skill.
-        </p>
+        <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">{m.mcpIntro}</p>
         <Servers agent={agent} />
       </div>
     </Disclosure>
@@ -29,7 +29,8 @@ export function AdvancedMcp({ agent }: { agent: Agent }) {
 
 function Servers({ agent }: { agent: Agent }) {
   const servers = useConnect((s) => s.servers[agent.id])
-  if (!servers || servers.state === "loading") return <Skeleton className="h-8 w-full" label="Reading MCP servers" />
+  const m = useMessages(agentsMessages)
+  if (!servers || servers.state === "loading") return <Skeleton className="h-8 w-full" label={m.readingMcp} />
   if (servers.state === "error")
     return (
       <ErrorNotice inline action={<ReportThis what={`Reading ${agent.name} MCP servers`} error={servers.error} />}>
@@ -40,8 +41,7 @@ function Servers({ agent }: { agent: Agent }) {
   if (unread)
     return (
       <p className="max-w-[70ch] text-[0.9rem] text-ink-soft">
-        WireCat does not read {agent.name}'s MCP servers. See{" "}
-        <code className="selectable font-mono text-[0.85rem]">{unread}</code>.
+        {m.mcpUnread(agent.name, <code className="selectable font-mono text-[0.85rem]">{unread}</code>)}
       </p>
     )
   const rows = PROGRAMS.flatMap((tool) =>
@@ -50,9 +50,9 @@ function Servers({ agent }: { agent: Agent }) {
   return (
     <>
       {rows.length === 0 ? (
-        <p className="text-[0.9rem] text-ink-soft">{agent.name} has no WireCat MCP server registered.</p>
+        <p className="text-[0.9rem] text-ink-soft">{m.noMcp(agent.name)}</p>
       ) : (
-        <ul className="flex flex-col gap-1.5" aria-label={`WireCat MCP servers in ${agent.name}`}>
+        <ul className="flex flex-col gap-1.5" aria-label={m.mcpList(agent.name)}>
           {rows.map(({ tool, profile }) => (
             <ServerRow
               key={serverName(tool.bin, profile)}
@@ -67,7 +67,7 @@ function Servers({ agent }: { agent: Agent }) {
         </ul>
       )}
       <p className="text-[0.85rem] text-ink-dim">
-        Read from <span className="selectable font-mono">{source}</span>
+        {m.readFrom(<span className="selectable font-mono">{source}</span>)}
       </p>
     </>
   )
@@ -85,6 +85,7 @@ function ServerRow(props: {
   const key = mcpKey(agent.id, toolId, profile)
   const busy = useConnect((s) => s.busy[key] === true)
   const failure = useConnect((s) => s.failures[key])
+  const m = useMessages(agentsMessages)
   return (
     <li>
       <div className="flex min-h-8 flex-wrap items-center gap-2 text-[0.9rem]">
@@ -97,9 +98,9 @@ function ServerRow(props: {
             className="ml-auto"
             disabled={busy}
             onClick={() => askMcpRemove(toolId, profile, agent)}
-            aria-label={`Remove the ${name} MCP server from ${agent.name}`}
+            aria-label={m.removeServer(name, agent.name)}
           >
-            {busy ? "Removing…" : "Remove"}
+            {busy ? m.removing : m.remove}
           </Button>
         )}
       </div>

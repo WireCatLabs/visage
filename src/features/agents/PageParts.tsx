@@ -1,6 +1,7 @@
 import { RefreshCw } from "lucide-react"
 import { findTool } from "@/domain/catalog"
 import { agentName, termText } from "@/domain/runs"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { cx } from "@/ui/cx"
 import { Disclosure } from "@/ui/Disclosure"
@@ -13,17 +14,19 @@ import { openManage } from "./AgentDetails"
 import { ClaimRow } from "./ClaimRow"
 import { ConfirmCommand } from "./Confirm"
 import { pairKey } from "./connect"
+import { agentsMessages } from "./messages"
 import { SkillPreview } from "./SkillPreview"
-import { type AgentsView, plural } from "./view"
+import type { AgentsView } from "./view"
 
 const box = "rounded-[0.45rem] border border-line bg-app"
 
 export function PageHead({ view }: { view: AgentsView }) {
+  const m = useMessages(agentsMessages)
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">Agents</h1>
-        <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">{INTRO}</p>
+        <h1 className="font-display text-[2.1rem] font-extrabold leading-none tracking-[-0.035em]">{m.title}</h1>
+        <p className="mt-3 max-w-[70ch] text-[0.95rem] text-ink-soft">{m.intro}</p>
       </div>
       <Button
         variant="ghost"
@@ -33,32 +36,28 @@ export function PageHead({ view }: { view: AgentsView }) {
         onClick={view.checkAll}
         icon={<RefreshCw className={cx("size-[0.95rem]", view.checking && "animate-spin")} aria-hidden />}
       >
-        <StableText value={view.checking ? "Checking…" : "Check again"} variants={["Check again", "Checking…"]} />
+        <StableText value={view.checking ? m.checking : m.checkAgain} variants={[m.checkAgain, m.checking]} />
       </Button>
     </div>
   )
 }
 
-const INTRO =
-  "Give each AI agent the skill for each of your tools. A skill tells the agent which commands a tool has; with it, the agent runs them itself."
-
 export function Notices({ view }: { view: AgentsView }) {
+  const m = useMessages(agentsMessages)
   const noneFound = view.found !== null && view.found.length === 0
   return (
     <>
       {view.agentsError && (
         <ErrorNotice action={<ReportThis what="Looking for AI agents" error={view.agentsError} />}>
-          Could not look for AI agents: {view.agentsError}
+          {m.lookFailed(view.agentsError)}
         </ErrorNotice>
       )}
       {!view.agentsError && noneFound && (
-        <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">
-          No AI agent was found on this computer. Skills can still be written; an agent installed later reads them.
-        </p>
+        <p className="rounded-[0.2rem] border border-warn/40 bg-warn/10 px-4 py-3 text-[0.95rem]">{m.noAgent}</p>
       )}
       {view.toolsKnown && view.rows.length === 0 && (
         <p className="rounded-[0.2rem] border border-line-strong bg-app px-[1.3rem] py-4 text-[0.95rem] text-ink-soft">
-          No WireCat tool is installed yet. Each tool brings its own skill; install one on the Tools page first.
+          {m.noTool}
         </p>
       )}
     </>
@@ -67,29 +66,27 @@ export function Notices({ view }: { view: AgentsView }) {
 
 /** Things that belong to no agent on this list, last on the page. */
 export function Elsewhere({ view }: { view: AgentsView }) {
+  const m = useMessages(agentsMessages)
   const { pending, otherClaims, claimErrors, signedOutTasks, unknownRuns } = view.elsewhere
-  if (pending) return <Skeleton className="h-[3rem] w-full max-w-[80ch]" label="Reading tasks and run logs" />
+  if (pending) return <Skeleton className="h-[3rem] w-full max-w-[80ch]" label={m.readingElsewhere} />
   if (otherClaims.length === 0 && claimErrors.length === 0 && signedOutTasks.length === 0 && unknownRuns === 0)
     return null
   return (
     <div className="flex max-w-[80ch] flex-col gap-2 text-[0.9rem] text-ink-soft">
-      {unknownRuns > 0 && (
-        <p>
-          {plural(unknownRuns, "run")} in the logs came from older tool versions, which do not record the agent that
-          started them.
-        </p>
-      )}
+      {unknownRuns > 0 && <p>{m.unknownRuns(unknownRuns)}</p>}
       {signedOutTasks.map(({ tool, profiles }) => (
         <p key={`signed-out:${tool}`}>
-          {findTool(tool)?.name ?? tool}: {plural(profiles, "profile")} not signed in.{" "}
-          <button
-            type="button"
-            onClick={() => openManage(tool)}
-            className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
-          >
-            Sign in
-          </button>{" "}
-          to see their tasks.
+          {m.signedOutTasks(
+            findTool(tool)?.name ?? tool,
+            profiles,
+            <button
+              type="button"
+              onClick={() => openManage(tool)}
+              className="font-medium text-brand hover:text-brand-hover hover:underline hover:underline-offset-4"
+            >
+              {m.signIn}
+            </button>,
+          )}
         </p>
       ))}
       {claimErrors.map(({ key, error }) => {
@@ -101,16 +98,16 @@ export function Elsewhere({ view }: { view: AgentsView }) {
             inline
             action={<ReportThis what={`Reading the tasks of ${name} (${profile})`} tool={tool ?? null} error={error} />}
           >
-            Could not read the tasks of {name} ({profile}): {error}
+            {m.claimReadFailed(name ?? "", profile ?? "", error)}
           </ErrorNotice>
         )
       })}
       {otherClaims.length > 0 && (
-        <Disclosure summary={`Tasks held by others (${otherClaims.length})`}>
+        <Disclosure summary={m.heldByOthers(otherClaims.length)}>
           <ul className={cx(box, "divide-y divide-line")}>
             {otherClaims.map((c) => {
               const who =
-                c.holder.type === "owner" ? "You" : c.holder.type === "agent" ? agentName(c.holder.kind) : c.holder.name
+                c.holder.type === "owner" ? m.you : c.holder.type === "agent" ? agentName(c.holder.kind) : c.holder.name
               return (
                 <ClaimRow key={pairKey(c.tool.id, c.profile) + c.claim.id} c={{ ...c, session: null }} holder={who} />
               )
@@ -133,11 +130,12 @@ export function Dialogs() {
 
 export function SeenLink({ kind, name }: { kind: string; name: string }) {
   const go = useNav((s) => s.go)
+  const m = useMessages(agentsMessages)
   return (
     <Button
       size="sm"
       variant="ghost"
-      aria-label={`Show ${name} in Logs`}
+      aria-label={m.showNameInLogs(name)}
       onClick={() => {
         const logs = useLogs.getState()
         logs.setQuery(termText("agent", kind))
@@ -145,7 +143,7 @@ export function SeenLink({ kind, name }: { kind: string; name: string }) {
         go("logs")
       }}
     >
-      Show in Logs
+      {m.showInLogs}
     </Button>
   )
 }

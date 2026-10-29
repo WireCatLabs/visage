@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { agentsMessages } from "@/features/agents/messages"
 import {
   agentPathFix,
   buildCheck,
@@ -73,7 +74,9 @@ describe("connections", () => {
 })
 
 describe("buildCheck", () => {
+  const words = agentsMessages.en.check
   const base: CheckInput = {
+    words,
     agent: { id: "claude", name: "Claude Code", reads: ["claude"] },
     tools: [
       { id: "tg", name: "Telegram", bin: "tg", path: "~/.local/share/pnpm/tg" },
@@ -96,7 +99,7 @@ describe("buildCheck", () => {
       skills: { tg: { hermes: { kind: "unsupported" } }, zm: { hermes: { kind: "unsupported" } } },
     })
     const path = items.find((i) => i.id === "path:agent")
-    expect(path?.title).toBe("Hermes Agent cannot find Telegram, Zoom")
+    expect(path?.title).toBe("Hermes Agent cannot find Telegram and Zoom")
     expect(path?.detail).toMatch(/bash -l.*~\/\.profile/)
     expect(path?.fix).toEqual({
       kind: "command",
@@ -104,7 +107,7 @@ describe("buildCheck", () => {
     })
     expect(items.some((i) => i.id.endsWith(":path"))).toBe(false)
     expect(items.find((i) => i.id === "skill:unsupported")?.title).toBe(
-      "Telegram, Zoom cannot write a skill for Hermes Agent yet",
+      "Telegram and Zoom cannot write a skill for Hermes Agent yet",
     )
     expect(overall(items, base.tools)).toBe("warn")
     expect(overall(items, base.tools.slice(0, 2))).toBe("bad")
@@ -112,13 +115,13 @@ describe("buildCheck", () => {
 
   it("gives OpenClaw one pathPrepend list, since setting it replaces the list", () => {
     const openclaw = { id: "openclaw", name: "OpenClaw" }
-    const fix = agentPathFix(openclaw, base.tools.slice(0, 2))
+    const fix = agentPathFix(openclaw, base.tools.slice(0, 2), words)
     expect(fix?.command).toBe(
       `openclaw config set tools.exec.pathPrepend '["~/.local/share/pnpm","/usr/lib/node/bin"]' --strict-json`,
     )
     expect(fix?.detail).toMatch(/replaces the whole list.*gateway is stopped/)
-    expect(agentPathFix({ id: "claude", name: "Claude Code" }, base.tools)).toBeNull()
-    expect(agentPathFix(openclaw, base.tools, true)).toBeNull()
+    expect(agentPathFix({ id: "claude", name: "Claude Code" }, base.tools, words)).toBeNull()
+    expect(agentPathFix(openclaw, base.tools, words, true)).toBeNull()
   })
 
   it("lists what to fix worst first, each with its fix", () => {

@@ -14,12 +14,14 @@ import {
 import { type CatalogTool, findTool } from "@/domain/catalog"
 import { agentName } from "@/domain/runs"
 import { cellAction, type SkillCell, type SkillTarget } from "@/domain/skills"
+import { useMessages } from "@/i18n"
 import type { Agent } from "@/platform/agents-schemas"
 import { platform } from "@/platform/bridge"
 import { useLogs } from "../logs/store"
 import { useTools } from "../tools/store"
 import type { AgentClaim } from "./ClaimRow"
 import { useConnect } from "./connect"
+import { type AgentsMessages, agentsMessages } from "./messages"
 import { useSkillMatrix } from "./skill-matrix"
 import { useAgents } from "./store"
 
@@ -100,6 +102,7 @@ export function useAgentsView() {
   const toolsChecked = useTools((s) => s.checked)
   const sources = useLogs((s) => s.sources)
   const connect = useConnect()
+  const m = useMessages(agentsMessages)
 
   const foundIds = (found ?? []).map((a) => a.id).join(",")
   const installedIds = Object.keys(installs)
@@ -183,6 +186,7 @@ export function useAgentsView() {
           ),
           access: connect.access,
           windows: platform.os === "windows",
+          words: m.check,
         })
       : null
     return {
@@ -266,18 +270,14 @@ export function sharers(entries: readonly AgentEntry[], target: SkillTarget, exc
   )
 }
 
-export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
-
 /** "3 tools have no skill for Claude Code", or the old-skill wording when nothing is missing. */
-export function todoSentence(view: AgentView): string {
+export function todoSentence(view: AgentView, m: AgentsMessages): string {
   const missing = view.todo.filter((s) => s.action === "Install").length
   const old = view.todo.length - missing
   const name = view.agent.name
-  if (missing > 0 && old > 0)
-    return `${plural(view.todo.length, "skill")} to set up for ${name}: ${missing} missing, ${old} old`
-  if (missing > 0) return `${plural(missing, "tool")} ${missing === 1 ? "has" : "have"} no skill for ${name}`
-  return `${plural(old, "skill")} for ${name} ${old === 1 ? "is" : "are"} old`
+  if (missing > 0 && old > 0) return m.todoMixed(view.todo.length, name, missing, old)
+  if (missing > 0) return m.todoMissing(missing, name)
+  return m.todoOld(old, name)
 }
 
-export const todoAction = (view: AgentView) =>
-  view.todo.some((s) => s.action === "Install") ? "Install all" : "Update all"
+export const todoInstalls = (view: AgentView) => view.todo.some((s) => s.action === "Install")

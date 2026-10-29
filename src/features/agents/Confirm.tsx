@@ -1,18 +1,19 @@
 import { type ReactNode, useState } from "react"
 import { create } from "zustand"
+import { useMessages } from "@/i18n"
 import { Button } from "@/ui/Button"
 import { Dialog } from "@/ui/Dialog"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { ReportThis } from "../report/ReportThis"
+import { type AgentsMessages, agentsMessages } from "./messages"
 
 /** A change to the owner's agents or tasks, shown with the exact command before it runs. */
 export type Pending = {
-  title: string
-  body: ReactNode
+  /** Words for a language: the dialog shows the chosen one, a bug report names it in English. */
+  text: (m: AgentsMessages) => { title: string; body: ReactNode; action: string }
   command: string
   /** The catalog tool the command belongs to, so a report about it is filed with that tool. */
   tool?: string
-  action: string
   danger?: boolean
   /** Where focus goes after closing when the button that opened the dialog is gone. */
   focusAfter?: () => HTMLElement | null
@@ -32,6 +33,8 @@ export function ConfirmCommand() {
   const close = useConfirm((s) => s.close)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const m = useMessages(agentsMessages)
+  const text = pending?.text(m)
 
   const done = () => {
     const after = pending?.focusAfter
@@ -50,29 +53,29 @@ export function ConfirmCommand() {
     const ok = await pending.run()
     setRunning(false)
     if (ok) done()
-    else setError(pending.failure() ?? "It did not work, and the tool gave no reason.")
+    else setError(pending.failure() ?? m.noReason)
   }
 
   return (
     <Dialog
       open={pending !== null}
-      title={pending?.title ?? ""}
+      title={text?.title ?? ""}
       onClose={() => !running && done()}
       actions={
         <>
           <Button variant="ghost" data-autofocus disabled={running} onClick={done}>
-            {error ? "Close" : "Cancel"}
+            {error ? m.close : m.cancel}
           </Button>
           <Button variant={pending?.danger ? "danger" : "secondary"} disabled={running} onClick={run}>
-            {running ? "Running…" : error ? "Try again" : pending?.action}
+            {running ? m.running : error ? m.tryAgain : text?.action}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-3">
-        {pending?.body}
+        {text?.body}
         <div>
-          <span className="text-[0.9rem] font-medium text-ink-dim">The app runs</span>
+          <span className="text-[0.9rem] font-medium text-ink-dim">{m.appRuns}</span>
           <code className="selectable mt-1 block rounded-[0.4rem] border border-line bg-app-2 px-3 py-2 font-mono text-[0.9rem] break-all text-ink">
             {pending?.command}
           </code>
@@ -82,7 +85,7 @@ export function ConfirmCommand() {
             inline
             action={
               <ReportThis
-                what={pending.title.replace(/\?$/, "")}
+                what={pending.text(agentsMessages.en).title.replace(/\?$/, "")}
                 tool={pending.tool ?? null}
                 command={pending.command}
                 error={error}
