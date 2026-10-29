@@ -72,28 +72,76 @@ secrets would fail the build. The next tag after the script is signed and notari
 
 ### Windows (Certum)
 
+Owner, 2026-10-29: the certificate is Certum's open-source code signing in the cloud (SimplySign, NEED-128 A), and
+Windows is signed in GitHub Actions with an unofficial tool (NEED-129: path C below).
+
 What Certum documents (the
 [signtool manual](https://www.files.certum.eu/documents/manual_en/Signing_with_the_use_of_jarsigner_tool_and_signtool.pdf),
-[software page](https://support.certum.eu/en/cert-offer-software-and-libraries/)):
-
-- The key never leaves Certum: it is on a card or token, or in SimplySign, their cloud. SimplySign Desktop pretends
-  to be a card reader and logs in with a one-time code from the phone app.
-- Signing is plain `signtool sign /sha1 <thumbprint> /tr http://time.certum.pl /td sha256 /fd sha256`. In Tauri that is
-  `bundle.windows.certificateThumbprint`, `digestAlgorithm: "sha256"`, `timestampUrl: "http://time.certum.pl"`,
-  `tsp: true` ([Tauri: Windows signing](https://v2.tauri.app/distribute/sign/windows/)).
-- Nothing about CI, a headless login or an API. There is no file to export as a GitHub secret.
-
-So the paths are:
+[software page](https://support.certum.eu/en/cert-offer-software-and-libraries/)): the key stays in Certum's cloud,
+SimplySign Desktop logs in with a one-time code from the phone app, and signing is plain `signtool`. Nothing about CI,
+a headless login or an API.
 
 | Path | How | Cost |
 | --- | --- | --- |
-| **A. Sign on a Windows PC** (supported) | Log in to SimplySign Desktop (or plug in the card), then build there: `pnpm tauri build --bundles nsis --config <file>`, where the file is `tauri.release.conf.json` plus the four Windows fields, with `TAURI_SIGNING_PRIVATE_KEY` and its password in the environment. Upload `*-setup.exe` and `*-setup.exe.sig` to the draft with `gh release upload --clobber`, and put the new signature into `latest.json`'s `windows-x86_64` entry. | A manual step each release, on Windows. |
-| B. Self-hosted runner | The same PC registered as a GitHub runner for the Windows job. | Still a phone code per session. A self-hosted runner on a public repository can run code from fork pull requests unless approval is required for outside contributors. |
-| C. Unofficial TOTP tools | [ssign](https://docs.rs/crate/ssign/latest) or a community action read the SimplySign seed from its QR code and sign in Actions. | Not endorsed by Certum; the seed is a long-lived credential stored in GitHub. |
+| A. Sign on a Windows PC (supported) | Build there with SimplySign Desktop logged in, upload `*-setup.exe` and its `.sig`. | A manual step each release. |
+| B. Self-hosted runner | The same PC as a GitHub runner. | A phone code per session; fork pull requests on a public repository. |
+| **C. ssign in Actions (chosen)** | The TOTP seed in a GitHub secret; ssign computes the code. | Not endorsed by Certum; see "The seed" below. |
 
-Signing an installer after the build changes it, so its updater `.sig` must be made again: path A builds and signs in
-one go for that reason. Which path depends on NEED-128 (card or SimplySign). Until then Windows ships unsigned and
-SmartScreen warns on first run. The workflow has no Windows signing step: A needs none, B and C need one.
+**The tool: [ssign](https://github.com/Le-Syl21/ssign)**, pinned to `f7ba7b2` (v0.1.8, 2026-10-16, MIT, Rust). It was
+the most used of the options found on 2026-10-29: 19 stars, 6 forks, 550 crates.io downloads, a release every 2 to 4
+weeks since July. The others had 0 to 2 stars: [super-simply-sign](https://github.com/IvanHanloth/super-simply-sign)
+and [windows-certum-signin](https://github.com/Rumia-Channel/windows-certum-signin) drive the SimplySign Desktop
+window on a Windows runner, which broke when Certum changed its login form in October 2026
+([pixlstash#1807](https://github.com/Pikselkroken/pixlstash/pull/1807)). ssign uses no window: it speaks Certum's
+cloud API over HTTPS.
+
+What it does with the secret, read in its source at that commit:
+
+- It contacts only `cloudsign.webnotarius.pl` (Certum's cloud: OAuth login, certificate, signature) and
+  `time.certum.pl` (timestamp). No other host appears in `ssign-core/src` or `src`.
+- It reads `CERTUM_EMAIL` and `CERTUM_OTP` from the environment, computes the 6-digit code (SHA-256, 30 s;
+  `ssign-core/src/otp.rs`), and wipes the seed from memory after parsing (`src/main.rs`, `zeroize`). It never writes
+  the seed.
+- It writes the session token (valid about 30 minutes) to `session.json` in the per-user temp folder on Windows
+  (`ssign-core/src/session.rs`), so the next file reuses it within 20 minutes. One login covers the whole build.
+- It signs PE files only (`.exe`, `.dll`); MSI is not supported, so Windows stays NSIS only.
+
+**How the workflow uses it** (`release.yml`, Windows build):
+
+1. The `build` job declares `environment: release`. Only jobs that declare an environment can read its secrets
+   ([GitHub: environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)),
+   and `bin/setup-windows-signing` limits that environment to tags `v*`. A branch, and so a pull request, cannot read
+   the seed. Because of this the whole workflow runs only on a tag; by hand too, the tag must be chosen.
+2. When both `CERTUM_EMAIL` and `CERTUM_OTP` exist, the runner builds ssign from the pinned commit
+   (`cargo install --locked --git … --rev`) and adds `--config src-tauri/tauri.windows-sign.conf.json`. Otherwise
+   Windows is built unsigned, as before.
+3. That file sets Tauri's `bundle.windows.signCommand`. Tauri 2.12.4 runs it for the app `.exe`, the NSIS plugin DLLs,
+   the uninstaller and the installer (`crates/tauri-bundler/src/bundle/windows/nsis/mod.rs`), and makes the updater
+   `.sig` afterwards (`crates/tauri-cli/src/bundle.rs:230-232`), so the update signature covers the signed file.
+4. The two secrets reach only the tauri-action step, and only on Windows. Every build script inside that step can
+   still read them, the same exposure as the updater key.
+5. A last step fails the build unless Windows reports the installer's signature as `Valid`
+   (`Get-AuthenticodeSignature`).
+
+**The seed.** Once it is stored in GitHub, the phone is no longer a second factor for signing: anyone with the seed
+and the login can sign as WireCat, from anywhere, until Certum resets the seed. That is why it lives in the tag-only
+environment and nowhere else.
+
+**Where to get it.** The seed is inside the QR code that activates the SimplySign phone app; the QR code holds an
+`otpauth://` link. Certum's pages describe the QR code appearing on a web page, after opening the activation link from
+the e-mail and entering the activation code from a second e-mail
+([Certum: activating SimplySign](https://support.certum.eu/en/how-to-activate-access-to-simply-sign-application/)).
+To keep it, read the QR code with a QR reader (or save it) at the same time as scanning it with the app. If the phone
+is already activated, that QR code is gone: Certum's iOS manual describes a reset through Certum's help line, after
+which a new QR code or a 16-character code is issued, the reset link valid for 24 hours
+([SimplySign iOS manual](https://files.certum.eu/documents/manual_en/SimplySign-Instruction-manual-iOS-6-1-2.pdf)).
+No self-service re-issue is documented. The reset is also how the seed is rotated if it leaks. Not verified here: none
+of this was tried.
+
+**Setting it up:** `bin/setup-windows-signing`. It asks for the login, the seed and the code the app shows now; checks
+locally that the seed produces that code (nothing is sent); creates the `release` environment open only to `v*` tags;
+and stores `CERTUM_EMAIL` and `CERTUM_OTP` there. Optional, stricter: add yourself as a required reviewer of the
+environment (Settings → Environments → release), so each release waits for your click before it can read the seed.
 
 ## What the owner does
 
@@ -101,17 +149,24 @@ SmartScreen warns on first run. The workflow has no Windows signing step: A need
 2. Merge PR #1 into `main` once CI is green.
 3. `bin/tag-release` on `main`. It checks the branch, the versions and the key, then pushes `v0.1.0`.
 4. Check the draft (each installer, the notes, `check` green), then Publish.
-5. When ready: `bin/setup-apple-signing <file.p12>`. The next tag is signed.
-6. Windows signing: answer NEED-128 and NEED-129, then path A.
+5. When ready: `bin/setup-apple-signing <file.p12>` and `bin/setup-windows-signing`. The next tag is signed.
 
 ## If the first run fails
 
-`release.yml` first runs on the real tag, so three things are untested until then: `--config` read from the repository
-root, `latest.json` written when uploading by `releaseId`, and `check`. The draft is private, so a failure is safe:
-delete the draft and the tag (`git push origin :refs/tags/v0.1.0`), fix, and run `bin/tag-release` again. A draft
-left over is reused.
+`release.yml` first runs on the real tag, so these are untested until then: Windows signing through ssign, `--config`
+read from the repository root, `latest.json` written when uploading by `releaseId`, and `check`. The draft is private,
+so a failure is safe: delete the draft and the tag (`git push origin :refs/tags/v0.1.0`), fix, and run
+`bin/tag-release` again. A draft left over is reused.
 
 ## Risks
+
+- **ssign is unofficial.** Certum can change its cloud API without notice and break it; the build then fails at
+  signing, and dropping the two secrets ships Windows unsigned again. Each ssign process logs in once and does not
+  retry. If its session file could not be written, the next file's login would reuse the same single-use code and
+  fail: one failed login per build, not a loop. A community workflow warns that repeated bad codes can lock the Certum
+  account ([RongxinAI#1266](https://github.com/rongxinzy/RongxinAI/pull/1266)).
+- **File names that differ only in case** break the Windows and macOS builds (their file systems ignore case), while
+  Linux and the `web` job pass. `permissions.ts` beside `Permissions.tsx` did exactly that until `permission-levels.ts`.
 
 - **`latest.json` can lose a platform.** Each build downloads it, adds its own platforms and uploads it again. Two
   builds that finish together can overwrite each other. `check` catches it; re-running the build whose platform is

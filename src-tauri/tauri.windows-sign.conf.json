@@ -1,0 +1,10 @@
+{
+  "bundle": {
+    "windows": {
+      "signCommand": {
+        "cmd": "ssign",
+        "args": ["--name", "WireCat", "--url", "https://github.com/WireCatLabs/wirecat-desktop", "%1"]
+      }
+    }
+  }
+}

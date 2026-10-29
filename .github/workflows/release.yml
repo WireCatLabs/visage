@@ -32,7 +32,12 @@ jobs:
           HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         run: |
           tag="v$(jq -r .version package.json)"
-          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+          # The release environment, which holds the Windows signing secrets, admits only v* tags.
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::error::Run this workflow on the tag $tag, not on a branch."
+            exit 1
+          fi
+          if [ "$GITHUB_REF_NAME" != "$tag" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($tag)."
             exit 1
           fi
@@ -81,6 +86,7 @@ jobs:
           - os: windows-latest
             args: --bundles nsis
     runs-on: ${{ matrix.os }}
+    environment: release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -119,16 +125,43 @@ jobs:
             end="END_$(openssl rand -hex 8)"
             { echo "$name<<$end"; echo "${!name}"; echo "$end"; } >> "$GITHUB_ENV"
           done
+      # ssign signs over Certum's cloud API with the SimplySign TOTP seed: docs/dev/plans/2026-10-29-first-release.md.
+      - id: windows-sign
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          HAS_CERTUM: ${{ secrets.CERTUM_EMAIL != '' && secrets.CERTUM_OTP != '' }}
+        run: |
+          if [ "$HAS_CERTUM" != true ]; then
+            echo "::notice::CERTUM_EMAIL or CERTUM_OTP is not set in the release environment: Windows is not signed."
+            exit 0
+          fi
+          echo "config=--config src-tauri/tauri.windows-sign.conf.json" >> "$GITHUB_OUTPUT"
+      - if: steps.windows-sign.outputs.config
+        run: cargo install --locked --git https://github.com/Le-Syl21/ssign --rev f7ba7b2360a3e40bb8aa062d244d95c62a743b90 ssign
       - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Only this step and only on Windows: every build script in it can still read them.
+          CERTUM_EMAIL: ${{ runner.os == 'Windows' && secrets.CERTUM_EMAIL || '' }}
+          CERTUM_OTP: ${{ runner.os == 'Windows' && secrets.CERTUM_OTP || '' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.draft.outputs.id }}
           # Updater files only here: without the private key (a local or CI build) the build would fail on them.
-          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json ${{ steps.windows-sign.outputs.config }}
           updaterJsonPreferNsis: true
+      - if: steps.windows-sign.outputs.config
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe
+          if (-not $files) { throw "No NSIS installer found." }
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature $file.FullName
+            if ($sig.Status -ne 'Valid') { throw "$($file.Name): signature $($sig.Status). $($sig.StatusMessage)" }
+            Write-Output "$($file.Name): signed by $($sig.SignerCertificate.Subject)"
+          }
 
   # The builds each rewrite latest.json in turn, so two finishing at once can drop an entry; this catches it.
   check:
