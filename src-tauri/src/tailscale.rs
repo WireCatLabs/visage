@@ -378,7 +378,7 @@ pub fn terminal_line(what: &str) -> Result<String, String> {
 
 /// The crate denies `unsafe`, so the effective user id comes from `/proc` instead of `geteuid`.
 fn is_root() -> bool {
-    std::fs::read_to_string("/proc/self/status").ok().is_some_and(|s| {
+    std::fs::read_to_string("/proc/self/status").is_ok_and(|s| {
         s.lines().find_map(|l| l.strip_prefix("Uid:")).and_then(|ids| ids.split_whitespace().nth(1)) == Some("0")
     })
 }
