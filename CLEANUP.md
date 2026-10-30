@@ -83,3 +83,7 @@
 - `.claude/worktrees/i18n-onboarding` and branch `i18n-onboarding`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
 - `.claude/worktrees/i18n-signin` and branch `i18n-signin`: TASK-37 part 3 translation worktree; its commit is on feat/desktop-mvp (cherry-picked). 2026-10-29
 - `.claude/worktrees/release-main` (main checked out to run bin/tag-release for v0.1.0) — no longer needed after the release; 2026-10-29
+- `~/.local/share/pnpm/store` — test packages `wcat-fixture-*` probably written by the step 0 agent's local pnpm runs; `pnpm store prune` (2026-10-30)
+- worktrees `.claude/worktrees/{linux-pkg,rpm-obsoletes,apple-cert,signing-kind,signing-4b,mac-sign-check,release-012,release-013,notarize-dmg,journal-linux,journal-wcat,journal-step0,linux-package-update}` — merged work (2026-10-30)
+- `/home/leemour/Projects/AI/cli-base-wt-wcat-plan`, `/home/leemour/Projects/AI/cli-testing-wt-wcat-shared-bin`, `/home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/blog-wcat-bin`, `/home/leemour/Projects/AI/cli-docs-wt-desktop-download` — merged work (2026-10-30)
+- scratchpad `npm-clash/`, `signlog.txt` — test leftovers (2026-10-30)
