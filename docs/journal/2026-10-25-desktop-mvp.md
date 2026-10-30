@@ -247,6 +247,9 @@ memo с пометкой «About: Email»; чтение логов для отч
 
 - **ASK-42 · «in docs in general do we have desktop covered?»** (2026-10-29). Ответ: почти нет — в cli-docs есть только раздел content/docs/desktop с двумя страницами (logs, tailscale-funnel); лендинг приложение не упоминает, страницы загрузки и установки нет. Обзор и установку добавляет агент (TASK-42), он же даёт список пробелов.
 
+- **ASK-43 · «can we and should we sign the app for Linux?»** Ответ: скачанный .deb/.rpm ставится без проверки подписи (dpkg не проверяет, dnf для локального файла — `localpkg_gpgcheck` выкл. по умолчанию); GPG-подпись нужна только вместе со своим apt/dnf-репозиторием (NEED-146). Слава предложил подписывать каждую версию и проверять при обновлении — уже так: релиз 0.1.2 содержит `wirecat_0.1.2_amd64.deb.sig` и `wirecat-0.1.2-1.x86_64.rpm.sig` (ключ обновлений), latest.json — ключи `linux-x86_64-deb`/`-rpm`; `Update::download()` проверяет подпись (tauri-plugin-updater-2.14.1 updater.rs:902, прочитано в исходнике, не проверено на деле).
+- **ASK-44 · «Is it possible to teach the app to self-update on all platforms?»** Ответ: macOS, Windows, AppImage уже обновляются сами; .deb/.rpm — скачать + проверить подпись + открыть системный установщик (NEED-145), позже репозиторий (NEED-146). Встроенная установка .deb в плагине не годится: после pkexec он ловит пароль через zenity и передаёт в `sudo -S` — нарушает правило 6.
+
 ## 3. Находки
 
 **RISK-1 · zm и memo установлены дважды: npm и pnpm**
@@ -506,6 +509,9 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **IDEA-10 · Раздел «Первый запуск» на странице загрузки устареет после подписанной 0.1.2.** Он говорит, что WireCat не подписан Apple, и ведёт через Open Anyway; убрать часть macOS после 0.1.2, Windows оставить до Certum.
 
 - **RISK-52 · Tauri нотаризует .app внутри .dmg, но не сам .dmg.** Проверка подписи (PR #21, https://github.com/WireCatLabs/wirecat-desktop/actions/runs/40964008011): приложение `accepted, Notarized Developer ID`, а `.dmg` — `rejected, Unnotarized Developer ID`. Нотаризация первой сборки заняла 47 мин (22:20→23:07 UTC). Исправление — workflow `notarize-dmg.yml` между build и publish (NEED-143 A).
+
+- **UX-19 · Диалог обновления для копии из .deb/.rpm расплывчат.** «installed from a Linux package… Download the new package from GitHub» — без вида пакета, файла, шагов и кнопки. Слава: писать «ваши аккаунты и данные не будут удалены», GitHub не упоминать. В работе (NEED-145 A), ветка `feat/linux-package-update`.
+- **RISK-52 · поправка:** закрыт. `notarize-dmg.yml` (PR #25) нотаризовал .dmg 0.1.2 (https://github.com/WireCatLabs/wirecat-desktop/actions/runs/41025514800, `accepted, Notarized Developer ID`); строгая проверка установки прошла на всех 4 системах (https://github.com/WireCatLabs/wirecat-desktop/actions/runs/41025620409).
 
 ## 4. Вопросы к Славе
 
@@ -1031,3 +1037,5 @@ NEED-88 → **A** (2026-10-27): проверять curl и добавлять с
 - **NEED-141 · Дать ли сборке cli-docs токен GitHub для списка выпусков?** Сейчас: без токена 60 запросов в час; при исчерпании страница без JS показывает только ссылку на GitHub. Варианты: A `GITHUB_TOKEN` в шаг сборки deploy.yml · B оставить. Я бы A. Если не ответишь: иногда без JS видна только ссылка. Ответ (2026-10-29): **A** — `GITHUB_TOKEN: github.token` на шаге `next build` в deploy.yml, cli-docs PR #443, dac194fa.
 - **NEED-143 · Отправлять ли в Apple на проверку и сам .dmg, не только приложение внутри?** Сейчас: .dmg не нотаризован, Gatekeeper его отклоняет (RISK-52); на настоящем Mac не проверено. Варианты: A шаг в выпуске + заменить .dmg 0.1.2 · B только по жалобе. Я бы A. Ответ (2026-10-30): **A**.
 - **NEED-144 · Подписывать ли как «WireCat», а не юридическим именем?** Сейчас: индивидуальный аккаунт Apple → в сертификате «Viacheslav Ptsarev». Варианты: A пока оставить · B аккаунт организации (компания + D-U-N-S). Я бы A. Ответ (2026-10-30): **A**.
+- **NEED-145 · Скачивать ли копии из .deb/.rpm обновление самой и открывать системный установщик по кнопке?** Варианты: A кнопка «Скачать и установить» + команда с копированием + ссылка на доки · B только текст. Я бы A. Ответ (2026-10-30): **A**.
+- **NEED-146 · Держать ли свой apt/dnf-репозиторий с GPG-подписью?** Варианты: A позже, после NEED-145 · B никогда. Я бы A позже. Ответ (2026-10-30): **A**.
