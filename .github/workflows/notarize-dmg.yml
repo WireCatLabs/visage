@@ -1,0 +1,42 @@
+name: Notarize dmg
+
+# Tauri notarizes the app inside the .dmg but not the .dmg itself, so Gatekeeper rejects the disk image a user
+# downloads (RISK-52). This sends the release's .dmg to Apple, staples the ticket and puts it back in its place.
+# The updater never reads the .dmg, so replacing it in a published release changes nothing for installed copies.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release whose .dmg to notarize (e.g. v0.1.2)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  notarize:
+    runs-on: macos-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::notice::No Apple notarization secrets: the .dmg stays as it is."
+            exit 0
+          fi
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.dmg" --dir dl
+          dmg="$(ls dl/*.dmg)"
+          xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 2h
+          xcrun stapler staple "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
+          gh release upload "$TAG" "$dmg" --repo "$GITHUB_REPOSITORY" --clobber

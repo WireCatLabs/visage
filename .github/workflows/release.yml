@@ -173,8 +173,17 @@ jobs:
 
   # The builds each rewrite latest.json in turn, so two finishing at once can drop an entry; this catches it before the
   # release goes public, since a published release is what every installed copy updates to.
-  publish:
+  notarize-dmg:
     needs: [draft, build]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/notarize-dmg.yml
+    with:
+      tag: ${{ needs.draft.outputs.tag }}
+    secrets: inherit
+
+  publish:
+    needs: [draft, build, notarize-dmg]
     runs-on: ubuntu-latest
     # Only push access lists draft releases.
     permissions:

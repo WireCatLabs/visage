@@ -73,8 +73,9 @@ jobs:
           lipo -archs "$app"/Contents/MacOS/*
           codesign --display --verbose=2 "$app" 2>&1 | grep -E "^(Signature|Authority|TeamIdentifier)=" || true
           codesign --verify --deep --strict "$app"
-          # Reports what Gatekeeper tells a user who double-clicks it; unsigned builds are expected to be rejected.
-          spctl --assess --type execute -vv "$app" || true
+          # What Gatekeeper tells a user who opens the downloaded .dmg, then the app in it.
+          spctl --assess --type open --context context:primary-signature -vv dl/*.dmg
+          spctl --assess --type execute -vv "$app"
           "$app"/Contents/MacOS/* &
           pid=$!
           sleep 20
