@@ -16,7 +16,7 @@ catalog/
   tools.json    the tool list, read by both TypeScript and Rust.
 src-tauri/src/
   lib.rs        Tauri commands: the whole native surface, one function each.
-                `update_self_installs`: whether this copy can replace itself (not a Linux .deb or .rpm).
+                `update_kind`: whether this copy replaces itself (`self`) or is a Linux `deb` or `rpm`.
   catalog.rs    the same tools.json, compiled in; profile validation.
   system.rs     OS, Node.js, npm, npm's global folder and whether it is writable.
   tools.rs      finding executables, versions, profiles, doctor runs.
@@ -38,6 +38,10 @@ src-tauri/src/
   tailscale_linux.rs Tailscale's install commands for this Linux, from /etc/os-release and lists of known releases.
   cloudflare.rs  A Cloudflare tunnel on the owner's own domain: login, the tunnel and its DNS record, cloudflared run in the background.
   cloudflare_install.rs cloudflared's own release from GitHub into the app's folder, checked against GitHub's checksum.
+  package_update.rs a .deb or .rpm copy's update: the updater plugin downloads it and checks its signature, it is
+                saved in Downloads under the release's file name and opened by the system's installer when the
+                default handler is a known one (otherwise shown in the file manager), with the `apt`/`dnf` line to copy.
+                Never the plugin's own install, which asks for the password itself (rule 6).
   tasks.rs      task claims through the tool's own `tasks list` / `tasks release`, ids and holders only.
   paths.rs      the PATH a terminal would have; finding every copy of a binary.
   run.rs        running a process with a timeout; streaming lines; killing a whole process tree.

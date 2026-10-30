@@ -10,6 +10,7 @@ mod install;
 mod mcp;
 mod mcp_server;
 mod node;
+mod package_update;
 #[cfg(test)]
 mod page_loads;
 mod paths;
@@ -699,11 +700,18 @@ async fn sync_last(id: String, profile: Option<String>) -> Result<sync::LastSync
     blocking(move || sync::last(tool, profile.as_deref())).await?
 }
 
-/// A Linux .deb or .rpm copy can only be replaced with administrator rights, which the app never asks for (rule 6);
-/// the `AppImage`, the macOS app and the per-user Windows installer replace themselves.
 #[tauri::command]
-fn update_self_installs() -> bool {
-    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+fn update_kind() -> package_update::Kind {
+    package_update::current()
+}
+
+#[tauri::command]
+async fn update_download_package(
+    app: tauri::AppHandle,
+    version: String,
+    on_event: Channel<package_update::Progress>,
+) -> Result<package_update::Outcome, String> {
+    package_update::download(&app, &version, &on_event).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -716,7 +724,8 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(Arc::new(Running::default()))
         .invoke_handler(tauri::generate_handler![
-            update_self_installs,
+            update_kind,
+            update_download_package,
             readiness,
             node_offer,
             setup_node,
