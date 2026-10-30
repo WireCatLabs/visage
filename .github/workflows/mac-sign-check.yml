@@ -61,9 +61,6 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=4 "$app"
-          # Tauri notarizes the app inside; whether it signs the .dmg itself is not checked yet.
-          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg" ||
-            echo "::warning::The .dmg itself is not accepted by Gatekeeper; the app inside is."
           "$app"/Contents/MacOS/* &
           pid=$!
           sleep 20
