@@ -78,7 +78,7 @@ function Saved() {
     <div className="flex flex-col gap-3">
       <p className="text-ink">{saved.opened ? m.opened(saved.file) : m.revealed(saved.file)}</p>
       <p className="text-[0.9rem] text-ink-soft">{m.terminal}</p>
-      <CopyField value={saved.command} label={m.copyCommand} />
+      <CopyField value={saved.command} label={m.copyCommand} wrap />
     </div>
   )
 }
