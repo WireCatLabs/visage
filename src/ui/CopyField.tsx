@@ -4,7 +4,8 @@ import { useMessages } from "@/i18n"
 import { cx } from "./cx"
 import { uiMessages } from "./messages"
 
-export function CopyField({ value, label }: { value: string; label: string }) {
+/** `wrap`: a command that must be read whole before it runs wraps instead of being cut short. */
+export function CopyField({ value, label, wrap = false }: { value: string; label: string; wrap?: boolean }) {
   const m = useMessages(uiMessages)
   const [copied, setCopied] = useState(false)
 
@@ -20,7 +21,7 @@ export function CopyField({ value, label }: { value: string; label: string }) {
   }
 
   // Several lines are commands to read before running them, so none is cut short.
-  const lines = value.includes("\n")
+  const lines = wrap || value.includes("\n")
   return (
     <div
       className={cx(
