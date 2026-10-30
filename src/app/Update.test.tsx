@@ -7,12 +7,12 @@ import { useLanguage } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { App } from "./App"
 
-const offer = { version: "0.2.0", notes: "Faster Storage page.", manual: false }
+const offer = { version: "0.2.0", notes: "Faster Storage page.", kind: "self" as const }
 
 describe("App update", () => {
   beforeEach(() => {
     useOnboarding.setState({ status: "done", open: false })
-    useUpdate.setState({ update: null, open: false, phase: "available", progress: null, error: null })
+    useUpdate.setState({ update: null, open: false, phase: "available", progress: null, saved: null, error: null })
   })
   afterEach(() => vi.restoreAllMocks())
 
@@ -68,23 +68,65 @@ describe("App update", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("The download stopped: connection reset")
     expect(within(dialog).getByRole("button", { name: "Try again" })).toBeEnabled()
-    await user.click(within(dialog).getByRole("button", { name: "Open GitHub" }))
-    expect(open).toHaveBeenCalledWith("https://github.com/WireCatLabs/wirecat-desktop/releases/latest")
+    await user.click(within(dialog).getByRole("button", { name: "Open the download page" }))
+    expect(open).toHaveBeenCalledWith("https://wirecat.dev/en/download")
   })
 
-  it("sends a Linux package copy to GitHub instead of installing", async () => {
-    vi.spyOn(platform, "checkUpdate").mockResolvedValue({ ...offer, manual: true })
+  it("hands a .deb to the system's installer and says what to do next", async () => {
+    vi.spyOn(platform, "checkUpdate").mockResolvedValue({ ...offer, kind: "deb" })
     const install = vi.spyOn(platform, "installUpdate")
+    const download = vi.spyOn(platform, "downloadPackageUpdate").mockResolvedValue({
+      result: "saved",
+      file: "wirecat_0.2.0_amd64.deb",
+      path: "~/Downloads/wirecat_0.2.0_amd64.deb",
+      opened: true,
+      command: "sudo apt install ~/Downloads/wirecat_0.2.0_amd64.deb",
+    })
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole("button", { name: "Update to 0.2.0" }))
+    const dialog = await screen.findByRole("dialog", { name: "WireCat 0.2.0 is available" })
+    expect(within(dialog).getByText(/installed from a \.deb package \(Ubuntu, Debian, Linux Mint\)/)).toBeVisible()
+    expect(within(dialog).getByText(/Your accounts and data will not be deleted/)).toBeVisible()
+    await user.click(within(dialog).getByRole("button", { name: "Download and install" }))
+
+    expect(await within(dialog).findByText(/The system installer opened wirecat_0\.2\.0_amd64\.deb/)).toBeVisible()
+    expect(within(dialog).getByText("sudo apt install ~/Downloads/wirecat_0.2.0_amd64.deb")).toBeVisible()
+    expect(within(dialog).getByRole("button", { name: "Close" })).toHaveFocus()
+    expect(download).toHaveBeenCalledWith("0.2.0", expect.any(Function))
+    expect(install).not.toHaveBeenCalled()
+  })
+
+  it("says plainly when the package fails the signature check", async () => {
+    vi.spyOn(platform, "checkUpdate").mockResolvedValue({ ...offer, kind: "rpm" })
+    vi.spyOn(platform, "downloadPackageUpdate").mockResolvedValue({ result: "badSignature" })
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole("button", { name: "Update to 0.2.0" }))
+    const dialog = await screen.findByRole("dialog", { name: "WireCat 0.2.0 is available" })
+    expect(within(dialog).getByText(/\.rpm package \(Fedora\)/)).toBeVisible()
+    await user.click(within(dialog).getByRole("button", { name: "Download and install" }))
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "The download did not match WireCat's signature, so it was not opened.",
+    )
+    expect(within(dialog).getByRole("button", { name: "Try again" })).toBeEnabled()
+  })
+
+  it("keeps GitHub to the quiet links under the buttons", async () => {
+    vi.spyOn(platform, "checkUpdate").mockResolvedValue({ ...offer, kind: "deb" })
     const open = vi.spyOn(platform, "openUrl").mockResolvedValue()
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(await screen.findByRole("button", { name: "Update to 0.2.0" }))
     const dialog = await screen.findByRole("dialog", { name: "WireCat 0.2.0 is available" })
-    expect(within(dialog).queryByRole("button", { name: "Install and restart" })).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole("button", { name: "Download from GitHub" }))
-    expect(open).toHaveBeenCalledWith("https://github.com/WireCatLabs/wirecat-desktop/releases/latest")
-    expect(install).not.toHaveBeenCalled()
+    const github = within(dialog).getAllByText(/GitHub/)
+    expect(github).toHaveLength(1)
+    expect(github[0]).toHaveTextContent("All releases on GitHub")
+    await user.click(within(dialog).getByRole("button", { name: "What's new in 0.2.0" }))
+    expect(open).toHaveBeenCalledWith("https://github.com/WireCatLabs/wirecat-desktop/releases/tag/v0.2.0")
   })
 
   describe("while the app stays open", () => {

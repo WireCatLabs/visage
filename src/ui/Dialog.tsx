@@ -12,16 +12,18 @@ type Props = {
   wide?: boolean
   /** Long forms: the body scrolls between a fixed title and fixed actions, so nothing is cut off. */
   scroll?: boolean
+  /** Quiet links under the actions, for what the reader rarely needs. */
+  footer?: ReactNode
 }
 
 /** The platform's modal <dialog>: focus is trapped, Escape closes, and the page behind is inert. */
-export function Dialog({ open, title, children, actions, onClose, wide = false, scroll = false }: Props) {
+export function Dialog({ open, title, children, actions, onClose, wide = false, scroll = false, footer }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   // The content stays while the dialog fades out, so it does not go blank before it goes away.
   const [closing, setClosing] = useState(false)
-  const last = useRef({ title, children, actions })
-  if (open) last.current = { title, children, actions }
+  const last = useRef({ title, children, actions, footer })
+  if (open) last.current = { title, children, actions, footer }
 
   useEffect(() => {
     const d = ref.current
@@ -48,7 +50,7 @@ export function Dialog({ open, title, children, actions, onClose, wide = false, 
     return () => clearTimeout(t)
   }, [open])
 
-  const shown = open ? { title, children, actions } : last.current
+  const shown = open ? { title, children, actions, footer } : last.current
 
   return (
     <dialog
@@ -74,6 +76,7 @@ export function Dialog({ open, title, children, actions, onClose, wide = false, 
               {shown.children}
             </div>
             <div className="flex shrink-0 justify-end gap-2 border-line border-t px-6 pt-4 pb-5">{shown.actions}</div>
+            {shown.footer && <div className="shrink-0 px-6 pb-5">{shown.footer}</div>}
           </div>
         ) : (
           <div className="flex flex-col gap-4 p-6">
@@ -82,6 +85,7 @@ export function Dialog({ open, title, children, actions, onClose, wide = false, 
             </h2>
             <div className="text-[0.95rem] leading-relaxed text-ink-soft">{shown.children}</div>
             <div className="mt-2 flex justify-end gap-2">{shown.actions}</div>
+            {shown.footer}
           </div>
         ))}
     </dialog>

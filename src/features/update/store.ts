@@ -1,17 +1,22 @@
 import { create } from "zustand"
+import type { Lang } from "@/i18n"
 import { platform } from "@/platform/bridge"
-import type { AppUpdate, UpdateProgress } from "@/platform/types"
+import type { AppUpdate, PackageOutcome, UpdateProgress } from "@/platform/types"
 
-export const RELEASES_URL = "https://github.com/WireCatLabs/wirecat-desktop/releases/latest"
+export const downloadPage = (lang: Lang) => `https://wirecat.dev/${lang}/download`
+export const updatesSection = (lang: Lang) => `${downloadPage(lang)}#updates`
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 
-type Phase = "available" | "downloading" | "restarting" | "failed"
+/** `saved`: a .deb or .rpm is in Downloads and handed to the system; `rejected`: it failed the signature check. */
+type Phase = "available" | "downloading" | "restarting" | "saved" | "rejected" | "failed"
+type Saved = Extract<PackageOutcome, { result: "saved" }>
 
 type UpdateState = {
   update: AppUpdate | null
   open: boolean
   phase: Phase
   progress: UpdateProgress | null
+  saved: Saved | null
   error: string | null
   check(): Promise<void>
   show(): void
@@ -27,6 +32,7 @@ export const useUpdate = create<UpdateState>((set, get) => ({
   open: false,
   phase: "available",
   progress: null,
+  saved: null,
   error: null,
 
   async check() {
@@ -35,7 +41,7 @@ export const useUpdate = create<UpdateState>((set, get) => ({
     if (checking || busy()) return
     checking = true
     try {
-      // Offline, GitHub down or no release yet: nothing to offer, and nothing worth interrupting the user for.
+      // Offline, the release server down or no release yet: nothing to offer, and nothing worth interrupting for.
       const update = await platform.checkUpdate().catch(() => null)
       if (update && !busy() && update.version !== get().update?.version) set({ update })
     } finally {
@@ -47,10 +53,21 @@ export const useUpdate = create<UpdateState>((set, get) => ({
   close: () => set({ open: false }),
 
   async install() {
-    if (get().phase === "downloading" || get().phase === "restarting") return
+    const { update, phase } = get()
+    if (!update || update.kind === "other" || phase === "downloading" || phase === "restarting") return
     set({ phase: "downloading", progress: null, error: null })
+    const onProgress = (progress: UpdateProgress) => set({ progress })
+    if (update.kind !== "self") {
+      try {
+        const outcome = await platform.downloadPackageUpdate(update.version, onProgress)
+        set(outcome.result === "saved" ? { phase: "saved", saved: outcome } : { phase: "rejected" })
+      } catch (e) {
+        set({ phase: "failed", error: message(e) })
+      }
+      return
+    }
     try {
-      await platform.installUpdate((progress) => set({ progress }))
+      await platform.installUpdate(onProgress)
     } catch (e) {
       set({ phase: "failed", error: message(e) })
       return

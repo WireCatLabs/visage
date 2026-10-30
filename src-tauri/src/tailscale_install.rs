@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
 /// Tailscale's official installer, downloaded into the user's Downloads folder and handed to the system: the macOS
@@ -178,20 +178,6 @@ fn source(kind: &str) -> Result<Source, String> {
     }
 }
 
-/// `XDG_DOWNLOAD_DIR` from `user-dirs.dirs` on Linux, where Downloads may be translated; `~/Downloads` otherwise.
-fn downloads() -> Option<PathBuf> {
-    let home = paths::home()?;
-    if cfg!(target_os = "linux")
-        && let Ok(dirs) = std::fs::read_to_string(home.join(".config/user-dirs.dirs"))
-        && let Some(dir) = dirs.lines().find_map(|l| l.strip_prefix("XDG_DOWNLOAD_DIR=")).map(|v| v.trim_matches('"'))
-        && let Some(rest) = dir.strip_prefix("$HOME/")
-        && !rest.contains("..")
-    {
-        return Some(home.join(rest));
-    }
-    Some(home.join("Downloads"))
-}
-
 fn fetch(src: &Source, to: &Path, cancelled: &dyn Fn() -> bool) -> Result<(), String> {
     let partial = to.with_extension("partial");
     let result = (|| {
@@ -227,7 +213,7 @@ fn fetch(src: &Source, to: &Path, cancelled: &dyn Fn() -> bool) -> Result<(), St
 /// manager (Linux: a double-click hands it to the software app).
 pub fn download(kind: &str, cancelled: &dyn Fn() -> bool) -> Result<Downloaded, String> {
     let src = source(kind)?;
-    let dir = downloads().ok_or("no home folder")?;
+    let dir = paths::downloads().ok_or("no home folder")?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
     let to = dir.join(&src.file);
     fetch(&src, &to, cancelled)?;

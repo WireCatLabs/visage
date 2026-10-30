@@ -23,12 +23,13 @@ import type { Settings } from "./settings-schemas"
 import type { SignInEvent } from "./signin-schemas"
 import type { LastSync, SyncEvent } from "./sync-schemas"
 import type { FunnelState, TailscaleDownload, TailscaleStatus } from "./tailscale-schemas"
+import type { PackageOutcome, UpdateKind, UpdateProgress } from "./update-schemas"
 
 export type WindowAction = "minimize" | "toggleMaximize" | "close"
 
-/** A newer WireCat on GitHub Releases. `manual`: this copy cannot replace itself, so the user downloads it. */
-export type AppUpdate = { version: string; notes: string | null; manual: boolean }
-export type UpdateProgress = { downloaded: number; total: number | null }
+/** A newer WireCat release, and how this copy takes it. */
+export type AppUpdate = { version: string; notes: string | null; kind: UpdateKind }
+export type { PackageOutcome, UpdateKind, UpdateProgress }
 
 /** Everything the interface may ask of the machine. Each call names a known operation, never a command line. */
 export type Platform = {
@@ -181,6 +182,8 @@ export type Platform = {
   checkUpdate(): Promise<AppUpdate | null>
   /** Downloads and installs the update `checkUpdate` found; the app keeps running until `restart`. */
   installUpdate(onProgress: (p: UpdateProgress) => void): Promise<void>
+  /** A .deb or .rpm copy: downloads that version's package, signature checked, into Downloads and opens it. */
+  downloadPackageUpdate(version: string, onProgress: (p: UpdateProgress) => void): Promise<PackageOutcome>
   restart(): Promise<void>
   openUrl(url: string): Promise<void>
   window(action: WindowAction): Promise<void>

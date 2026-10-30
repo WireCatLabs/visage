@@ -40,6 +40,7 @@ import { SignInEventSchema } from "./signin-schemas"
 import { LastSyncSchema, SyncEventSchema } from "./sync-schemas"
 import { FunnelStateSchema, PageEventSchema, TailscaleDownloadSchema, TailscaleStatusSchema } from "./tailscale-schemas"
 import type { Platform } from "./types"
+import { PackageOutcomeSchema, UpdateKindSchema, UpdateProgressSchema } from "./update-schemas"
 
 /** A page event that does not parse is dropped: the browser has the page open anyway. */
 function pages(onPage: (url: string) => void) {
@@ -215,8 +216,8 @@ function createTauri(): Platform {
       const next = await check()
       if (!next) return null
       found = next
-      const manual = !(await invoke<boolean>("update_self_installs"))
-      return { version: found.version, notes: found.body?.trim() || null, manual }
+      const kind = await call(UpdateKindSchema, "update_kind")
+      return { version: found.version, notes: found.body?.trim() || null, kind }
     },
     installUpdate: async (onProgress) => {
       if (!found) throw new Error("No update was found to install.")
@@ -227,6 +228,11 @@ function createTauri(): Platform {
         else if (e.event === "Progress") downloaded += e.data.chunkLength
         onProgress({ downloaded, total })
       })
+    },
+    downloadPackageUpdate: (version, onProgress) => {
+      const channel = new Channel<unknown>()
+      channel.onmessage = (raw) => onProgress(v.parse(UpdateProgressSchema, raw))
+      return call(PackageOutcomeSchema, "update_download_package", { version, onEvent: channel })
     },
     restart: () => relaunch(),
     openUrl: (url) => openUrl(url),

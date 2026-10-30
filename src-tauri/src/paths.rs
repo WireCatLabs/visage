@@ -101,6 +101,20 @@ pub fn home() -> Option<PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from)
 }
 
+/// `XDG_DOWNLOAD_DIR` from `user-dirs.dirs` on Linux, where Downloads may be translated; `~/Downloads` otherwise.
+pub fn downloads() -> Option<PathBuf> {
+    let home = home()?;
+    if cfg!(target_os = "linux")
+        && let Ok(dirs) = std::fs::read_to_string(home.join(".config/user-dirs.dirs"))
+        && let Some(dir) = dirs.lines().find_map(|l| l.strip_prefix("XDG_DOWNLOAD_DIR=")).map(|v| v.trim_matches('"'))
+        && let Some(rest) = dir.strip_prefix("$HOME/")
+        && !rest.contains("..")
+    {
+        return Some(home.join(rest));
+    }
+    Some(home.join("Downloads"))
+}
+
 fn known_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if cfg!(windows) {
