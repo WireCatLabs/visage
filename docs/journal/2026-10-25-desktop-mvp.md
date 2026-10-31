@@ -104,6 +104,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-44 · раунд 2 (2026-10-31):** Слава: «the search should be improved to use autosuggests for values eg tags etc. also for date the example gives >= but then autocomplete suggests date and no options… also in dropdown the type field is not real type… the background of the website in light theme is changed a bit, it's more yellowish now» и «there are so many fields and it's not clear what they mean». Сделано в PR #34: поля по группам с описанием и примером, «Ещё поля…», значения из `chats list` / `contacts list` / `tags list` (`--offline`) и из результатов, даты, готовые запросы, тёплые фоны сайта.
 
+- **TASK-44 · раунд 3 (2026-10-31):** Слава после `pnpm app`: «chat search doesnt work, test that all fields actually do search». Сделано: кавычки по правилу парсера (BUG-34), чат и человек по id с выбором при неоднозначном имени (UX-25), `scripts/search-fields-check.mjs` прогнал 713 запросов по 18 профилям через `search_store`; исправлены BUG-35, FIND-103, FIND-104; что требует cli-core — FIND-99, 102, 105, 106. Таблица в PR #34.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
