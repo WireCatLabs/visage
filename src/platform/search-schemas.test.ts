@@ -6,7 +6,14 @@ import { SearchAnswerSchema } from "./search-schemas"
 describe("SearchAnswerSchema", () => {
   it("reads every answer search_store gives", () => {
     const answers = [
-      { kind: "hits", hits: [{ ref: "msg:1" }], hasMore: true, paged: true, notes: ["n"] },
+      {
+        kind: "hits",
+        hits: [{ ref: "msg:1" }],
+        hasMore: true,
+        paged: true,
+        notes: ["n"],
+        total: { value: 144, relation: "gte" },
+      },
       { kind: "queryError", reason: "query.invalid-syntax", message: "m", span: null },
       { kind: "queryError", reason: "r", message: "m", span: { start: 0, end: 7 } },
       { kind: "old", message: "m" },

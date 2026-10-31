@@ -144,6 +144,13 @@ export const searchMock: Pick<Platform, "searchStore" | "searchValues"> = {
       search.what === "messages" && total > 0
         ? ["searched 12,480 messages in 64 chats — 3 never fetched, 5 behind"]
         : []
-    return { kind: "hits", hits, hasMore: paged && from + limit < total, paged, notes }
+    return {
+      kind: "hits",
+      hits,
+      hasMore: paged && from + limit < total,
+      paged,
+      notes,
+      total: { value: params.get("search") === "empty" ? 0 : TOTAL, relation: "eq" },
+    }
   },
 }

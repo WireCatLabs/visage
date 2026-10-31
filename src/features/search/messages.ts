@@ -1,5 +1,5 @@
 import type { DateMeaning, ExampleId, FieldGroup, QueryReason } from "@/domain/search"
-import { type Messages, plural } from "@/i18n"
+import { formatNumber, type Messages, plural } from "@/i18n"
 
 type What = "messages" | "meetings" | "documents" | "notes" | "mail"
 
@@ -116,6 +116,8 @@ const en = {
     profile ? `Nothing matches this search in what ${tool} keeps for ${profile}.` : `Nothing matches this search.`,
   results: (n: number, page: number) =>
     `${plural("en", n, { one: "# result", other: "# results" })}${page > 1 ? ` on page ${page}` : ""}`,
+  shownOf: (from: number, to: number, total: number, atLeast: boolean) =>
+    `Showing ${from}–${to} of ${formatNumber(total, "en")}${atLeast ? "+" : ""} results`,
   bestOnly: (n: number) => `The best ${n}; this search has no further pages. Narrow the query to see others.`,
   previous: "Previous page",
   next: "Next page",
@@ -260,6 +262,7 @@ const ru: typeof en = {
     profile ? `Ничего не найдено в том, что ${tool} хранит для ${profile}.` : "Ничего не найдено.",
   results: (n, page) =>
     `${plural("ru", n, { one: "# результат", few: "# результата", many: "# результатов", other: "# результата" })}${page > 1 ? ` на странице ${page}` : ""}`,
+  shownOf: (from, to, total, atLeast) => `Показаны ${from}–${to} из ${formatNumber(total, "ru")}${atLeast ? "+" : ""}`,
   bestOnly: (n) => `Лучшие ${n}; у этого поиска нет следующих страниц. Уточните запрос, чтобы увидеть другие.`,
   previous: "Предыдущая страница",
   next: "Следующая страница",
@@ -406,6 +409,8 @@ const es: typeof en = {
       : "Nada coincide con esta búsqueda.",
   results: (n, page) =>
     `${plural("es", n, { one: "# resultado", other: "# resultados" })}${page > 1 ? ` en la página ${page}` : ""}`,
+  shownOf: (from, to, total, atLeast) =>
+    `Mostrando ${from}–${to} de ${formatNumber(total, "es")}${atLeast ? "+" : ""} resultados`,
   bestOnly: (n) => `Los ${n} mejores; esta búsqueda no tiene más páginas. Acota la consulta para ver otros.`,
   previous: "Página anterior",
   next: "Página siguiente",

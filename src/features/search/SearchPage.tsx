@@ -317,7 +317,16 @@ function resultsView(
   const node = (
     <div className="flex min-w-0 flex-col gap-[0.7rem]">
       <div aria-live="polite" className="flex flex-col gap-[0.2rem] text-[0.9rem]">
-        <p className="text-ink-soft tabular-nums">{m.results(hits.hits.length, page)}</p>
+        <p className="text-ink-soft tabular-nums">
+          {hits.total
+            ? m.shownOf(
+                (page - 1) * LIMIT + 1,
+                (page - 1) * LIMIT + hits.hits.length,
+                hits.total.value,
+                hits.total.relation === "gte",
+              )
+            : m.results(hits.hits.length, page)}
+        </p>
         {!hits.paged && hits.hits.length >= LIMIT && <p className="text-ink-dim">{m.bestOnly(LIMIT)}</p>}
         {hits.notes.map((n) => (
           <p key={n} className="selectable text-ink-dim">

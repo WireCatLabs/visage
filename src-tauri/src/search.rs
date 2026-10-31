@@ -7,7 +7,7 @@
 use crate::cache::REFUSED;
 use crate::catalog::{self, SearchShape, SearchSource, Tool, ValuesSource};
 use crate::{paths, run};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
 
@@ -16,6 +16,20 @@ const MAX_QUERY: usize = 1000;
 const SEARCH: &str = "search";
 // Longer than the `--timeout 60s` in the templates, so the tool's own time-limit answer comes back, not a kill.
 const TIMEOUT: Duration = Duration::from_secs(90);
+
+/// Elasticsearch's `hits.total`: `gte` means the tool stopped counting at `value`.
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Total {
+    value: u64,
+    relation: Relation,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Relation {
+    Eq,
+    Gte,
+}
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -28,6 +42,8 @@ pub enum Answer {
         paged: bool,
         /// What the tool says it did not cover (`missing[].why`) and its other notes on stderr.
         notes: Vec<String>,
+        /// Every match, not only this page (cli-core 0.501.0+); older tools print none.
+        total: Option<Total>,
     },
     /// A closed `query.*` reason; `span` counts UTF-16 units of the query as typed, as JavaScript does.
     #[serde(rename_all = "camelCase")]
@@ -200,12 +216,12 @@ fn read(src: &SearchSource, out: &run::Output, limit: u32) -> Answer {
     let Some(body) = out.json() else {
         return Answer::Failed { message: last_line(&out.stderr, &out.stdout), candidates: Vec::new() };
     };
-    let hits = match src.shape {
-        SearchShape::Items => body["items"].as_array(),
-        SearchShape::ItemHits => body["item"]["hits"].as_array(),
-    }
-    .cloned()
-    .unwrap_or_default();
+    let (hits, total) = match src.shape {
+        SearchShape::Items => (&body["items"], &body["page"]["total"]),
+        SearchShape::ItemHits => (&body["item"]["hits"], &body["item"]["total"]),
+    };
+    let hits = hits.as_array().cloned().unwrap_or_default();
+    let total = Total::deserialize(total).ok();
     // zm reports a query its meeting search refused as a note and an incomplete, empty answer with exit 0.
     if hits.is_empty() && body["meta"]["complete"] == Value::Bool(false) {
         if let Some(refused) = notes.iter().find_map(|n| refused_note(n)) {
@@ -232,7 +248,7 @@ fn read(src: &SearchSource, out: &run::Output, limit: u32) -> Answer {
             all.push(note);
         }
     }
-    Answer::Hits { hits, has_more, paged: paged(src), notes: all }
+    Answer::Hits { hits, has_more, paged: paged(src), notes: all, total }
 }
 
 /// Plain lines on stderr are the tool's notes to the reader; its JSON error line is not one.
@@ -429,8 +445,19 @@ mod tests {
                 has_more: true,
                 paged: true,
                 notes: vec!["searched 3 chats".into(), "no serve keeps it".into()],
+                total: None,
             }
         );
+    }
+
+    #[test]
+    fn reads_the_total_under_page_or_under_item_for_drive() {
+        let body = r#"{"items":[],"page":{"has_more":false,"total":{"value":10000,"relation":"gte"}}}"#;
+        let Answer::Hits { total, .. } = read(src("wa"), &output(0, body, ""), 50) else { panic!() };
+        assert_eq!(total, Some(Total { value: 10000, relation: Relation::Gte }));
+        let body = r#"{"item":{"hits":[],"total":{"value":144,"relation":"eq"}}}"#;
+        let Answer::Hits { total, .. } = read(src("drive"), &output(0, body, ""), 20) else { panic!() };
+        assert_eq!(total, Some(Total { value: 144, relation: Relation::Eq }));
     }
 
     #[test]
@@ -517,11 +544,17 @@ mod tests {
     #[test]
     fn answers_serialize_as_the_interface_reads_them() {
         use serde_json::json;
-        let hits =
-            Answer::Hits { hits: vec![json!({"ref": "msg:1"})], has_more: true, paged: true, notes: vec!["n".into()] };
+        let hits = Answer::Hits {
+            hits: vec![json!({"ref": "msg:1"})],
+            has_more: true,
+            paged: true,
+            notes: vec!["n".into()],
+            total: Some(Total { value: 144, relation: Relation::Gte }),
+        };
         assert_eq!(
             serde_json::to_value(hits).unwrap(),
-            json!({"kind": "hits", "hits": [{"ref": "msg:1"}], "hasMore": true, "paged": true, "notes": ["n"]})
+            json!({"kind": "hits", "hits": [{"ref": "msg:1"}], "hasMore": true, "paged": true, "notes": ["n"],
+                "total": {"value": 144, "relation": "gte"}})
         );
         let error = Answer::QueryError { reason: "query.invalid-syntax".into(), message: "m".into(), span: None };
         assert_eq!(

@@ -33,7 +33,7 @@ describe("Search", () => {
 
     await choose(user, "Profile", "personal")
     await user.click(screen.getByRole("button", { name: "Search" }))
-    expect(await screen.findByText("50 results", {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText("Showing 1–50 of 128 results", {}, { timeout: 3000 })).toBeInTheDocument()
     expect(search).toHaveBeenLastCalledWith("tg", "personal", "invoice", 50, 1)
     expect(screen.getByText(/searched 12,480 messages/)).toBeInTheDocument()
 
@@ -43,7 +43,7 @@ describe("Search", () => {
     ).toHaveTextContent("chat_title")
 
     await user.click(screen.getByRole("button", { name: "Next page" }))
-    expect(await screen.findByText("50 results on page 2", {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText("Showing 51–100 of 128 results", {}, { timeout: 3000 })).toBeInTheDocument()
     expect(search).toHaveBeenLastCalledWith("tg", "personal", "invoice", 50, 2)
     expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled()
   }, 15000)
@@ -71,7 +71,7 @@ describe("Search", () => {
     await choose(user, "Tool", "Memo")
     expect(screen.queryByRole("combobox", { name: "Profile" })).not.toBeInTheDocument()
     await user.type(screen.getByRole("combobox", { name: "Search notes" }), "plan{Enter}")
-    expect(await screen.findByText("50 results", {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText("Showing 1–50 of 128 results", {}, { timeout: 3000 })).toBeInTheDocument()
     expect(search).toHaveBeenLastCalledWith("memo", null, "plan", 50, 1)
   }, 15000)
 

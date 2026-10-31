@@ -13,6 +13,7 @@ export const SearchAnswerSchema = v.variant("kind", [
     hasMore: v.boolean(),
     paged: v.boolean(),
     notes: v.array(v.string()),
+    total: v.nullable(v.object({ value: v.number(), relation: v.picklist(["eq", "gte"]) })),
   }),
   v.object({
     kind: v.literal("queryError"),
