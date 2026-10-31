@@ -19,6 +19,7 @@ import type {
   StorageFolder,
   ToolState,
 } from "./schemas"
+import type { SearchAnswer, ValueItem } from "./search-schemas"
 import type { Settings } from "./settings-schemas"
 import type { SignInEvent } from "./signin-schemas"
 import type { LastSync, SyncEvent } from "./sync-schemas"
@@ -171,6 +172,13 @@ export type Platform = {
   /** `query` is the CLI's own filter (exact `field:value` terms); `page` starts at 1. */
   listRuns(id: string, query: string | null, limit: number, page: number): Promise<RunsPage>
   showRun(id: string, run: string): Promise<RunDetail>
+  /**
+   * The tool's own search of what it stored on this computer, for the profile the owner chose (null for a tool
+   * without profiles). Never asks the provider. A query the tool refuses is an answer, not a rejection.
+   */
+  searchStore(id: string, profile: string | null, query: string, limit: number, page: number): Promise<SearchAnswer>
+  /** The values one of the tool's own read-only lists names (`search.values` in the catalog), such as chat titles. */
+  searchValues(id: string, profile: string | null, source: string): Promise<ValueItem[]>
   /** `profile: null` is the defaults every profile gets, or the one file a tool without per-profile settings keeps. */
   settingsShow(id: string, profile: string | null): Promise<Settings>
   /** `defaults` changes what every profile gets instead of one profile. Rejects with the tool's own message. */

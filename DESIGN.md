@@ -2,15 +2,15 @@
 name: WireCat Desktop
 description: The machine as a patch rack. A calm control window onto the WireCat CLI tools.
 colors:
-  light-wall: "#f1f4f2"
+  light-wall: "#f1efed"
   light-app: "#ffffff"
-  light-app-2: "#f6f8f7"
-  light-app-3: "#e5ece7"
-  light-line: "#d6dfd9"
-  light-line-strong: "#ccd7cf"
+  light-app-2: "#f3f1ef"
+  light-app-3: "#e9e8e1"
+  light-line: "#dedbd4"
+  light-line-strong: "#d4d1c8"
   light-ink: "#182822"
   light-ink-soft: "#4c5e55"
-  light-ink-dim: "#63746a"
+  light-ink-dim: "#5a6a61"
   light-brand: "#4b53f0"
   light-brand-hover: "#3a42dc"
   light-brand-soft: "#e8e9fd"
@@ -21,12 +21,12 @@ colors:
   light-idle: "#a9b5ae"
   light-on-status: "#ffffff"
   brand-ink: "#ffffff"
-  dark-wall: "#131718"
-  dark-app: "#181c1e"
-  dark-app-2: "#1c2023"
-  dark-app-3: "#23292c"
-  dark-line: "#262c30"
-  dark-line-strong: "#2f373b"
+  dark-wall: "#171614"
+  dark-app: "#1b1a18"
+  dark-app-2: "#201f1c"
+  dark-app-3: "#282723"
+  dark-line: "#2c2b27"
+  dark-line-strong: "#36352f"
   dark-ink: "#e9eeec"
   dark-ink-soft: "#a7b1ae"
   dark-ink-dim: "#87928e"
@@ -202,7 +202,7 @@ components:
 
 The machine is a patch rack. Each tool is one module row: a status lamp, an icon, the name and command, the installed version, and one action. The window shows readiness first, the user scans six rows, acts on the one that is not green, and watches it verify inline under its row. The design refuses the card grid and the sidebar-plus-detail split.
 
-The world is the WireCat brand from wirecat.dev, made into a desktop tool. A green-tinted wall carries one white rack panel with hairline row dividers. Round lamps carry state. Versions, commands and paths are set in mono, because they are what the machine reports. Purple is the brand and the "do something" colour, so it appears on the logo, the active section marker, text links and at most one primary action per row. Unbounded is the page title and nothing else; Onest does the rest.
+The world is the WireCat brand from wirecat.dev, made into a desktop tool. A warm, slightly yellow wall (the site's grounds since 2026-10-29) carries one white rack panel with hairline row dividers. Round lamps carry state. Versions, commands and paths are set in mono, because they are what the machine reports. Purple is the brand and the "do something" colour, so it appears on the logo, the active section marker, text links and at most one primary action per row. Unbounded is the page title and nothing else; Onest does the rest.
 
 The interface scales with the window, as a native app's content does on different displays: the root font size is fluid and every size is in rem. The surface is flat and quiet. Depth exists only where something floats above the page (a dialog) or is picked out of a group (the selected theme option).
 
@@ -219,7 +219,7 @@ These words come from the surface's direction contract ([the Tools surface brief
 
 ## Colors
 
-Green-tinted neutrals with one purple, plus a small status set; each token has a light and a dark value, bound through CSS variables on `:root` and `:root[data-theme="dark"]` in [src/styles/index.css](src/styles/index.css).
+Warm neutral grounds and green-tinted text greys (both as on wirecat.dev), with one purple, plus a small status set; each token has a light and a dark value, bound through CSS variables on `:root` and `:root[data-theme="dark"]` in [src/styles/index.css](src/styles/index.css).
 
 ### Primary
 

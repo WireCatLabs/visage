@@ -17,6 +17,28 @@ const ToolSchema = v.object({
   profiles: v.nullable(v.object({ args: v.array(v.string()), shape: v.string() })),
   doctor: v.array(v.string()),
   runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
+  /**
+   * The tool's own Lucene search of its local store; Rust fills the slots. `fields` are what the query bar suggests:
+   * `top` ones first, the rest behind "More fields"; `values` is a fixed list, or the name of a `values` list that the
+   * tool's own read-only command gives.
+   */
+  search: v.nullable(
+    v.object({
+      args: v.array(v.string()),
+      shape: v.picklist(["items", "item.hits"]),
+      what: v.picklist(["messages", "meetings", "documents", "notes", "mail"]),
+      fields: v.array(
+        v.object({
+          name: v.string(),
+          group: v.picklist(["who", "where", "when", "what", "files"]),
+          example: v.string(),
+          top: v.boolean(),
+          values: v.nullable(v.union([v.string(), v.array(v.string())])),
+        }),
+      ),
+      values: v.record(v.string(), v.object({ args: v.array(v.string()), key: v.string() })),
+    }),
+  ),
   setup: v.nullable(v.array(v.string())),
   signIn: v.nullable(
     v.object({
@@ -101,6 +123,7 @@ const CatalogSchema = v.object({
 })
 
 export type CatalogTool = v.InferOutput<typeof ToolSchema>
+export type SearchField = NonNullable<CatalogTool["search"]>["fields"][number]
 
 const catalog = v.parse(CatalogSchema, raw)
 

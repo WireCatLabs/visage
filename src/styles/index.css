@@ -5,18 +5,19 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* WireCat brand (wirecat.dev): purple identity, green-tinted neutrals, Unbounded / Onest / JetBrains Mono. */
+/* WireCat brand (wirecat.dev): purple identity, warm neutral grounds (the site's, 2026-10-29), Unbounded / Onest /
+   JetBrains Mono. Text keeps its green-tinted greys, as the site's does. */
 :root {
   color-scheme: light;
-  --wall: #f1f4f2;
+  --wall: #f1efed;
   --app: #ffffff;
-  --app-2: #f6f8f7;
-  --app-3: #e5ece7;
-  --line: #d6dfd9;
-  --line-strong: #ccd7cf;
+  --app-2: #f3f1ef;
+  --app-3: #e9e8e1;
+  --line: #dedbd4;
+  --line-strong: #d4d1c8;
   --ink: #182822;
   --ink-soft: #4c5e55;
-  --ink-dim: #63746a;
+  --ink-dim: #5a6a61;
   --brand: #4b53f0;
   --brand-hover: #3a42dc;
   --brand-ink: #ffffff;
@@ -32,12 +33,12 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --wall: #131718;
-  --app: #181c1e;
-  --app-2: #1c2023;
-  --app-3: #23292c;
-  --line: #262c30;
-  --line-strong: #2f373b;
+  --wall: #171614;
+  --app: #1b1a18;
+  --app-2: #201f1c;
+  --app-3: #282723;
+  --line: #2c2b27;
+  --line-strong: #36352f;
   --ink: #e9eeec;
   --ink-soft: #a7b1ae;
   --ink-dim: #87928e;
@@ -400,4 +401,12 @@ dialog[data-closing]::backdrop {
 :root[data-input="pointer"] :focus-visible ~ *,
 :root[data-input="pointer"] :has(:focus-visible) {
   outline: none;
+}
+
+/* JetBrains Mono joins >= into ≥; a query must show the characters the tool reads. */
+@utility no-ligatures {
+  font-variant-ligatures: none;
+  font-feature-settings:
+    "liga" 0,
+    "calt" 0;
 }

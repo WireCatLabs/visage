@@ -22,6 +22,176 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--backend",
+          "archive",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          {
+            "name": "from",
+            "group": "who",
+            "example": "from:\"Ana Ruiz\"",
+            "top": true,
+            "values": "contacts"
+          },
+          {
+            "name": "chat",
+            "group": "where",
+            "example": "chat:\"Design crit\"",
+            "top": true,
+            "values": "chats"
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=7d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "has",
+            "group": "what",
+            "example": "has:photo",
+            "top": true,
+            "values": [
+              "photo",
+              "file",
+              "link",
+              "voice",
+              "video",
+              "audio",
+              "image",
+              "attachment",
+              "sticker",
+              "contact",
+              "location",
+              "poll",
+              "text"
+            ]
+          },
+          {
+            "name": "tag",
+            "group": "what",
+            "example": "tag:work",
+            "top": true,
+            "values": "tags"
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "transcript",
+            "group": "what",
+            "example": "transcript:contract",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "kind",
+            "group": "where",
+            "example": "kind:group",
+            "top": false,
+            "values": ["private", "group", "channel", "bot", "saved", "service"]
+          },
+          {
+            "name": "in",
+            "group": "where",
+            "example": "in:bots",
+            "top": false,
+            "values": ["personal", "bots", "all"]
+          },
+          {
+            "name": "email",
+            "group": "who",
+            "example": "email:\"ana@example.com\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "phone",
+            "group": "who",
+            "example": "phone:\"+34600000000\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "filename",
+            "group": "files",
+            "example": "filename:report.pdf",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "content",
+            "group": "files",
+            "example": "content:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "url",
+            "group": "files",
+            "example": "url:\"github.com/wirecat\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "link",
+            "group": "files",
+            "example": "link:docs.google.com",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "domain",
+            "group": "files",
+            "example": "domain:github.com",
+            "top": false,
+            "values": null
+          }
+        ],
+        "values": {
+          "chats": {
+            "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
+          },
+          "contacts": {
+            "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "name",
+            "detail": "username"
+          },
+          "tags": {
+            "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
+            "key": "tag",
+            "label": null,
+            "detail": null
+          }
+        }
+      },
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -85,15 +255,42 @@
       "permissions": {
         "commands": ["{profile}", "commands", "--json"],
         "groups": [
-          { "key": "messages", "label": "Messages" },
-          { "key": "reactions", "label": "Reactions" },
-          { "key": "polls", "label": "Polls" },
-          { "key": "topics", "label": "Topics" },
-          { "key": "chats", "label": "Chats and groups" },
-          { "key": "contacts", "label": "Contacts" },
-          { "key": "account", "label": "Account" },
-          { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" }
+          {
+            "key": "messages",
+            "label": "Messages"
+          },
+          {
+            "key": "reactions",
+            "label": "Reactions"
+          },
+          {
+            "key": "polls",
+            "label": "Polls"
+          },
+          {
+            "key": "topics",
+            "label": "Topics"
+          },
+          {
+            "key": "chats",
+            "label": "Chats and groups"
+          },
+          {
+            "key": "contacts",
+            "label": "Contacts"
+          },
+          {
+            "key": "account",
+            "label": "Account"
+          },
+          {
+            "key": "attachments",
+            "label": "Files"
+          },
+          {
+            "key": "tasks",
+            "label": "Tasks"
+          }
         ]
       },
       "signIn": {
@@ -130,6 +327,176 @@
       "runs": {
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
+      },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--backend",
+          "archive",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          {
+            "name": "from",
+            "group": "who",
+            "example": "from:\"Ana Ruiz\"",
+            "top": true,
+            "values": "contacts"
+          },
+          {
+            "name": "chat",
+            "group": "where",
+            "example": "chat:\"Design crit\"",
+            "top": true,
+            "values": "chats"
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=7d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "has",
+            "group": "what",
+            "example": "has:photo",
+            "top": true,
+            "values": [
+              "photo",
+              "file",
+              "link",
+              "voice",
+              "video",
+              "audio",
+              "image",
+              "attachment",
+              "sticker",
+              "contact",
+              "location",
+              "poll",
+              "text"
+            ]
+          },
+          {
+            "name": "tag",
+            "group": "what",
+            "example": "tag:work",
+            "top": true,
+            "values": "tags"
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "transcript",
+            "group": "what",
+            "example": "transcript:contract",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "kind",
+            "group": "where",
+            "example": "kind:group",
+            "top": false,
+            "values": ["private", "group", "channel", "bot", "saved", "service"]
+          },
+          {
+            "name": "in",
+            "group": "where",
+            "example": "in:bots",
+            "top": false,
+            "values": ["personal", "bots", "all"]
+          },
+          {
+            "name": "email",
+            "group": "who",
+            "example": "email:\"ana@example.com\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "phone",
+            "group": "who",
+            "example": "phone:\"+34600000000\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "filename",
+            "group": "files",
+            "example": "filename:report.pdf",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "content",
+            "group": "files",
+            "example": "content:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "url",
+            "group": "files",
+            "example": "url:\"github.com/wirecat\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "link",
+            "group": "files",
+            "example": "link:docs.google.com",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "domain",
+            "group": "files",
+            "example": "domain:github.com",
+            "top": false,
+            "values": null
+          }
+        ],
+        "values": {
+          "chats": {
+            "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
+          },
+          "contacts": {
+            "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "name",
+            "detail": "username"
+          },
+          "tags": {
+            "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
+            "key": "tag",
+            "label": null,
+            "detail": null
+          }
+        }
       },
       "setup": ["{profile}", "setup"],
       "skill": {
@@ -194,14 +561,38 @@
       "permissions": {
         "commands": ["{profile}", "commands", "--json"],
         "groups": [
-          { "key": "messages", "label": "Messages" },
-          { "key": "reactions", "label": "Reactions" },
-          { "key": "polls", "label": "Polls" },
-          { "key": "chats", "label": "Chats and groups" },
-          { "key": "contacts", "label": "Contacts" },
-          { "key": "account", "label": "Account" },
-          { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" }
+          {
+            "key": "messages",
+            "label": "Messages"
+          },
+          {
+            "key": "reactions",
+            "label": "Reactions"
+          },
+          {
+            "key": "polls",
+            "label": "Polls"
+          },
+          {
+            "key": "chats",
+            "label": "Chats and groups"
+          },
+          {
+            "key": "contacts",
+            "label": "Contacts"
+          },
+          {
+            "key": "account",
+            "label": "Account"
+          },
+          {
+            "key": "attachments",
+            "label": "Files"
+          },
+          {
+            "key": "tasks",
+            "label": "Tasks"
+          }
         ]
       },
       "signIn": {
@@ -233,6 +624,181 @@
       "runs": {
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
+      },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          {
+            "name": "from",
+            "group": "who",
+            "example": "from:\"Ana Ruiz\"",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "chat",
+            "group": "where",
+            "example": "chat:\"Design crit\"",
+            "top": true,
+            "values": "chats"
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=7d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "has",
+            "group": "what",
+            "example": "has:photo",
+            "top": true,
+            "values": [
+              "photo",
+              "file",
+              "link",
+              "voice",
+              "video",
+              "audio",
+              "image",
+              "attachment",
+              "sticker",
+              "contact",
+              "location",
+              "poll",
+              "text"
+            ]
+          },
+          {
+            "name": "tag",
+            "group": "what",
+            "example": "tag:work",
+            "top": true,
+            "values": "tags"
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "transcript",
+            "group": "what",
+            "example": "transcript:contract",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "kind",
+            "group": "where",
+            "example": "kind:group",
+            "top": false,
+            "values": ["private", "group", "channel", "bot", "saved", "service"]
+          },
+          {
+            "name": "is",
+            "group": "what",
+            "example": "is:starred",
+            "top": false,
+            "values": ["starred"]
+          },
+          {
+            "name": "in",
+            "group": "where",
+            "example": "in:bots",
+            "top": false,
+            "values": ["personal", "bots", "all"]
+          },
+          {
+            "name": "email",
+            "group": "who",
+            "example": "email:\"ana@example.com\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "phone",
+            "group": "who",
+            "example": "phone:\"+34600000000\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "filename",
+            "group": "files",
+            "example": "filename:report.pdf",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "content",
+            "group": "files",
+            "example": "content:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "url",
+            "group": "files",
+            "example": "url:\"github.com/wirecat\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "link",
+            "group": "files",
+            "example": "link:docs.google.com",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "domain",
+            "group": "files",
+            "example": "domain:github.com",
+            "top": false,
+            "values": null
+          }
+        ],
+        "values": {
+          "chats": {
+            "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
+          },
+          "contacts": {
+            "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
+            "key": "id",
+            "label": "name",
+            "detail": "username"
+          },
+          "tags": {
+            "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
+            "key": "tag",
+            "label": null,
+            "detail": null
+          }
+        }
       },
       "setup": ["{profile}", "setup"],
       "skill": {
@@ -297,20 +863,50 @@
       "permissions": {
         "commands": ["{profile}", "commands", "--json"],
         "groups": [
-          { "key": "messages", "label": "Messages" },
-          { "key": "reactions", "label": "Reactions" },
-          { "key": "polls", "label": "Polls" },
-          { "key": "chats", "label": "Chats and groups" },
-          { "key": "contacts", "label": "Contacts" },
-          { "key": "account", "label": "Account" },
-          { "key": "attachments", "label": "Files" },
-          { "key": "tasks", "label": "Tasks" }
+          {
+            "key": "messages",
+            "label": "Messages"
+          },
+          {
+            "key": "reactions",
+            "label": "Reactions"
+          },
+          {
+            "key": "polls",
+            "label": "Polls"
+          },
+          {
+            "key": "chats",
+            "label": "Chats and groups"
+          },
+          {
+            "key": "contacts",
+            "label": "Contacts"
+          },
+          {
+            "key": "account",
+            "label": "Account"
+          },
+          {
+            "key": "attachments",
+            "label": "Files"
+          },
+          {
+            "key": "tasks",
+            "label": "Tasks"
+          }
         ]
       },
       "signIn": {
         "gives": "Lets your agent read and search your WhatsApp chats, and send messages when you ask.",
         "asks": "A QR code to scan in WhatsApp: Settings → Linked devices → Link a device.",
-        "methods": [{ "id": "qr", "label": "QR code", "words": ["{profile}", "session", "start", "qr", "--json"] }]
+        "methods": [
+          {
+            "id": "qr",
+            "label": "QR code",
+            "words": ["{profile}", "session", "start", "qr", "--json"]
+          }
+        ]
       }
     },
     {
@@ -330,6 +926,32 @@
       "runs": {
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
+      },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "all",
+          "--only",
+          "meetings",
+          "--max-meetings",
+          "all",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "meetings",
+        "fields": [],
+        "values": {}
       },
       "setup": ["{profile}", "session", "start"],
       "skill": {
@@ -406,6 +1028,71 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "item.hits",
+        "what": "documents",
+        "fields": [
+          {
+            "name": "title",
+            "group": "what",
+            "example": "title:plan",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "tag",
+            "group": "what",
+            "example": "tag:work",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=30d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "author",
+            "group": "who",
+            "example": "author:\"Ana Ruiz\"",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:budget",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "site",
+            "group": "files",
+            "example": "site:github.com",
+            "top": false,
+            "values": null
+          }
+        ],
+        "values": {},
+        "exactBelow": "0.51.0"
+      },
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -455,7 +1142,13 @@
       "signIn": {
         "gives": "Lets your agent find and read your Google Drive files. It cannot change them.",
         "asks": "Your browser opens Google: choose the account and allow read-only access to Drive.",
-        "methods": [{ "id": "browser", "label": "Browser", "words": ["{profile}", "session", "start", "--json"] }]
+        "methods": [
+          {
+            "id": "browser",
+            "label": "Browser",
+            "words": ["{profile}", "session", "start", "--json"]
+          }
+        ]
       }
     },
     {
@@ -472,6 +1165,64 @@
       "runs": {
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
+      },
+      "search": {
+        "args": ["search", "notes", "--limit", "{limit}", "--page", "{page}", "--no-record", "--json", "--", "{query}"],
+        "shape": "items",
+        "what": "notes",
+        "fields": [
+          {
+            "name": "title",
+            "group": "what",
+            "example": "title:plan",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "tag",
+            "group": "what",
+            "example": "tag:work",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=30d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "author",
+            "group": "who",
+            "example": "author:\"Ana Ruiz\"",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:budget",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "site",
+            "group": "files",
+            "example": "site:github.com",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "source",
+            "group": "where",
+            "example": "source:internal",
+            "top": false,
+            "values": ["internal", "file"]
+          }
+        ],
+        "values": {},
+        "exactBelow": "0.125.0"
       },
       "setup": null,
       "skill": {
@@ -529,6 +1280,102 @@
       },
       "doctor": ["mail", "check", "{profile}", "--json"],
       "runs": null,
+      "search": {
+        "args": [
+          "search",
+          "mail",
+          "--source",
+          "email:{profile}",
+          "--limit",
+          "{limit}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "mail",
+        "fields": [
+          {
+            "name": "from",
+            "group": "who",
+            "example": "from:\"ana@example.com\"",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "date",
+            "group": "when",
+            "example": "date>=7d",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "mailbox",
+            "group": "where",
+            "example": "mailbox:important",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "label",
+            "group": "where",
+            "example": "label:work",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "filename",
+            "group": "files",
+            "example": "filename:invoice.pdf",
+            "top": true,
+            "values": null
+          },
+          {
+            "name": "to",
+            "group": "who",
+            "example": "to:\"ana@example.com\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "email",
+            "group": "who",
+            "example": "email:\"ana@example.com\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "text",
+            "group": "what",
+            "example": "text:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "content",
+            "group": "files",
+            "example": "content:invoice",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "url",
+            "group": "files",
+            "example": "url:\"github.com/wirecat\"",
+            "top": false,
+            "values": null
+          },
+          {
+            "name": "domain",
+            "group": "files",
+            "example": "domain:github.com",
+            "top": false,
+            "values": null
+          }
+        ],
+        "values": {}
+      },
       "setup": null,
       "skill": null,
       "mcp": null,

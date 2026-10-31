@@ -1,5 +1,5 @@
 import { ArrowUp, ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
 import { tools } from "@/domain/catalog"
 import {
   CONVERSATION,
@@ -16,6 +16,7 @@ import {
   RANGES,
   type RangeId,
   type Run,
+  suggest,
   toggleTerm,
   unknownFields,
   withConversations,
@@ -29,18 +30,32 @@ import { Lamp } from "@/ui/Lamp"
 import { reducedMotion } from "@/ui/motion"
 import { Select } from "@/ui/Select"
 import { Skeleton, StableText } from "@/ui/Skeleton"
+import { QueryBar } from "../query/QueryBar"
 import { ReportThis } from "../report/ReportThis"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
 import { KeepRuns } from "./KeepRuns"
 import { useLive } from "./live"
 import { logsMessages } from "./messages"
-import { fieldLabel, LOGS_DOCS, type LogsWords, toolName } from "./names"
-import { QueryBar } from "./QueryBar"
+import { fieldLabel, LOGS_DOCS, type LogsWords, problemText, toolName } from "./names"
 import { RunsTable } from "./RunsTable"
 import { runKey, type Source, timing, useLogs, useShownLogs } from "./store"
 
 const STEP = 100
+const FIELDS = [
+  ...Object.keys(logsMessages.en.fields),
+  "run_id",
+  "operations",
+  "codes",
+  "duration_ms",
+  "requests",
+  "provider_error",
+  "partial.failures.error_code",
+  "unknown_command",
+  "error.code",
+  "error.provider.key",
+  "error.http.endpoint_template",
+]
 const NONE = new Set<string>()
 
 export function LogsPage() {
@@ -98,6 +113,13 @@ export function LogsPage() {
   const ranged = useMemo(() => inRange(keyed, range, loadedAt ?? Date.now()), [keyed, range, loadedAt])
   const parsed = useMemo(() => parseQuery(deferred), [deferred])
   const problems = useMemo(() => [...parsed.problems, ...unknownFields(parsed, all)], [parsed, all])
+  const suggestRuns = useCallback(
+    (q: string, at: number) => {
+      const found = suggest(q, at, ranged, FIELDS, m.fields)
+      return { ...found, items: found.items.map((i) => ({ label: i.label, insert: i.insert, note: i.hint })) }
+    },
+    [ranged, m],
+  )
   const matched = useMemo(() => {
     const rows = ranged.filter(matcher(parsed.terms))
     rows.sort(newestFirst)
@@ -197,7 +219,16 @@ export function LogsPage() {
       ) : (
         <>
           <div className="flex flex-wrap items-start gap-[0.7rem]">
-            <QueryBar query={query} parsed={parsed} problems={problems} runs={ranged} onChange={setQuery} />
+            <QueryBar
+              query={query}
+              parsed={parsed}
+              problems={problems}
+              problem={problems[0] ? problemText(m, problems[0]) : null}
+              suggest={suggestRuns}
+              words={{ label: m.searchRuns, placeholder: m.placeholder, hint: m.searchHint }}
+              docs={LOGS_DOCS}
+              onChange={setQuery}
+            />
             <Range value={range} onChange={setRange} />
             <GroupBy value={groupBy} onChange={setGroupBy} />
             <Button

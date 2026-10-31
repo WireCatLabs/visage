@@ -1,0 +1,45 @@
+import * as v from "valibot"
+
+// Owned by the Search feature: `search_store`'s answer (`src-tauri/src/search.rs`). A hit is whatever the tool
+// printed for it; `src/domain/search.ts` picks what the table shows.
+const SpanSchema = v.object({ start: v.number(), end: v.number() })
+
+export const SearchHitSchema = v.record(v.string(), v.unknown())
+
+export const SearchAnswerSchema = v.variant("kind", [
+  v.object({
+    kind: v.literal("hits"),
+    hits: v.array(SearchHitSchema),
+    hasMore: v.boolean(),
+    paged: v.boolean(),
+    notes: v.array(v.string()),
+    total: v.nullable(v.object({ value: v.number(), relation: v.picklist(["eq", "gte"]) })),
+  }),
+  v.object({
+    kind: v.literal("queryError"),
+    reason: v.string(),
+    message: v.string(),
+    span: v.nullable(SpanSchema),
+  }),
+  v.object({ kind: v.literal("old"), message: v.string() }),
+  v.object({
+    kind: v.literal("failed"),
+    message: v.string(),
+    candidates: v.optional(
+      v.array(
+        v.object({ id: v.string(), label: v.nullable(v.string()), field: v.nullable(v.picklist(["chat", "from"])) }),
+      ),
+      [],
+    ),
+  }),
+])
+
+export type SearchHit = v.InferOutput<typeof SearchHitSchema>
+export type SearchAnswer = v.InferOutput<typeof SearchAnswerSchema>
+
+export const ValueItemSchema = v.object({
+  value: v.string(),
+  label: v.nullable(v.string()),
+  detail: v.nullable(v.string()),
+})
+export type ValueItem = v.InferOutput<typeof ValueItemSchema>

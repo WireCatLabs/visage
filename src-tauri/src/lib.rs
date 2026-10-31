@@ -21,6 +21,7 @@ mod redact;
 mod report;
 mod run;
 mod runs;
+mod search;
 mod settings;
 mod signin;
 mod signin_steps;
@@ -543,6 +544,24 @@ async fn list_runs(id: String, query: Option<String>, limit: u32, page: u32) -> 
 }
 
 #[tauri::command]
+async fn search_store(
+    id: String,
+    profile: Option<String>,
+    query: String,
+    limit: u32,
+    page: u32,
+) -> Result<search::Answer, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || search::search(tool, profile.as_deref(), &query, limit, page)).await?
+}
+
+#[tauri::command]
+async fn search_values(id: String, profile: Option<String>, source: String) -> Result<Vec<search::ValueItem>, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || search::values(tool, profile.as_deref(), &source)).await?
+}
+
+#[tauri::command]
 async fn show_run(id: String, run: String) -> Result<serde_json::Value, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || runs::show(tool, &run)).await?
@@ -792,6 +811,8 @@ pub fn run() {
             send_report,
             list_runs,
             show_run,
+            search_store,
+            search_values,
             settings_show,
             settings_set,
             settings_unset,
