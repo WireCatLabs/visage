@@ -100,6 +100,7 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 - **TASK-42 · 0.1.1, проверка установки, страница загрузки (2026-10-29):** Слава: «ok fix that, lets check the installations and so on … create a download page on landing and display all versions and autodetect … in docs in general do we have desktop covered?». Пакет Linux `wirecat` (src-tauri/tauri.linux.conf.json: productName `wirecat`, Name=WireCat в .desktop, deb Conflicts/Replaces `wire-cat`, rpm Obsoletes `WireCat`); workflow `install-check.yml` ставит релиз на чистых Windows, macOS, Ubuntu (с 0.1.0 поверх), Fedora и проверяет запуск; страница /download и документация — агентом в cli-docs (PR, без слияния).
 
 - **TASK-43 · Страница поиска в приложении (2026-10-31):** Слава: «how hard would it be to add a search page to desktop where users can search the database using SQL and lucene syntax» → «let's do just lucene then, it can look similar to the log search. can you implement it». Только Lucene (NEED-161 C), один инструмент и профиль (NEED-162 A), команда поиска самого инструмента, только локальные данные. Агент в `.claude/worktrees/search-page`, PR без слияния.
+- **TASK-44 · Страница «Поиск» (2026-10-31, реализация TASK-43, PR #34):** Lucene-поиск по локальному хранилищу одного инструмента для одного профиля (NEED-161 = C, NEED-162 = A), «как поиск в журнале». Сделано: `search_store` + шаблон `search` в каталоге, общий `QueryBar` в `src/features/query/`, страница `src/features/search/`, моки `?search…`. PR WireCatLabs/wirecat-desktop#34, без слияния.
 
 ## 2. Вопросы Славы
 
@@ -535,6 +536,11 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **FIND-94 · Исправление keyring (cli-base #407) вышло отдельно как 0.65.5 другой сессией** до `wcat`; вопрос агента «отдельно или в 0.66.0» отпал. cli-base 0.66.0 выпущен: PR #404 → `858e9e0`, прогон 41151276554, npm 0.66.0. cli-core всё ещё `<0.66.0` — шаг 2.
 - **DEBT-7 · Workflow проверки на трёх системах в cli-testing по умолчанию берёт старый коммит cli-base `9785e6c`;** следующие прогоны передают `cli_base_ref` вручную.
 - **RISK-56 · SQL привязал бы пользователей к внутренней схеме, которая меняется с миграциями; общего Lucene-поиска по всем инструментам нет.** Поэтому только Lucene и один инструмент (NEED-161, NEED-162).
+
+- **FIND-95 · Поиск сообщений не сообщает свои поля (2026-10-31).** `commands --json` даёт `query.fields` только у list-команд; у `search messages|notes|all` их нет, а `details.fields` в ошибке `query.unknown-field` — весь словарь парсера, одинаковый у всех. Поэтому поля для подсказок лежат в каталоге (TASK-44). Нужна правка в cli-core.
+- **FIND-96 · memo и drive сдвигают span ошибки запроса (2026-10-31).** `bogus:x` → 0..9, `hello bogus:x` → 7..14 (у tg и wa 0..7 и 6..13). Страница обрезает span по длине запроса. Баг cli-core.
+- **FIND-97 · zm `search all` отказывает в запросе только заметкой (2026-10-31).** Выход 0, `complete: false`, пустые `items`, причина в stderr («meetings support letter/digit words joined by AND…» или «query.invalid-syntax at position 8»). `search.rs` читает это как ошибку. Встречи Zoom ищутся только по словам.
+- **FIND-98 · `max personal` не ищет с `--offline` (2026-10-31).** «nothing recorded for profile "personal" yet»: у профиля нет записанного аккаунта. Страница показывает отказ как есть; `--offline` не убираем. Профиль `mila` ищет нормально.
 
 ## 4. Вопросы к Славе
 
