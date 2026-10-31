@@ -3,6 +3,7 @@ import { findTool, usesProfiles } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
 import type { SearchAnswer } from "@/platform/search-schemas"
+import { useTools } from "../tools/store"
 
 export const LIMIT = 50
 
@@ -24,6 +25,8 @@ type SearchState = {
   /** The call itself failed (the tool is missing, a bad argument), as opposed to an answer the tool gave. */
   error: string | null
   expanded: string | null
+  /** Tools that answered "too old" to search, by the version that said so; an update brings the tool back. */
+  old: Record<string, string | null>
   chooseTool(id: string): void
   chooseProfile(name: string): void
   setQuery(query: string): void
@@ -52,6 +55,7 @@ export const useSearch = create<SearchState>((set, get) => {
     loading: false,
     error: null,
     expanded: null,
+    old: {},
     chooseTool(id) {
       if (id === get().tool) return
       const t = findTool(id)
@@ -90,6 +94,10 @@ export const useSearch = create<SearchState>((set, get) => {
         const answer = await platform.searchStore(asked.tool, asked.profile, asked.query, LIMIT, page)
         if (call !== seq) return
         set({ answer, asked, loading: false, expanded: null })
+        if (answer.kind === "old") {
+          const version = useTools.getState().installs[asked.tool]?.[0]?.version ?? null
+          set((st) => ({ old: { ...st.old, [asked.tool]: version } }))
+        }
       } catch (e) {
         if (call !== seq) return
         set({ error: message(e), asked, answer: null, loading: false })

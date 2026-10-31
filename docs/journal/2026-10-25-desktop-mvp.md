@@ -542,6 +542,9 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **FIND-97 · zm `search all` отказывает в запросе только заметкой (2026-10-31).** Выход 0, `complete: false`, пустые `items`, причина в stderr («meetings support letter/digit words joined by AND…» или «query.invalid-syntax at position 8»). `search.rs` читает это как ошибку. Встречи Zoom ищутся только по словам.
 - **FIND-98 · `max personal` не ищет с `--offline` (2026-10-31).** «nothing recorded for profile "personal" yet»: у профиля нет записанного аккаунта. Страница показывает отказ как есть; `--offline` не убираем. Профиль `mila` ищет нормально.
 
+- **FIND-99 · Хиты WhatsApp без чата (2026-10-31).** Настоящий `wa search messages` отдаёт `ref, timestamp, sender_name, excerpt…`, но не `chat_title`, поэтому колонка «Где» на странице поиска — «—» в каждой строке wa. Из `ref` не вытаскиваем (правило 1). Нужна правка в wa/cli-core.
+- **FIND-100 · `memo search notes` возвращает документы Drive (2026-10-31).** Среди хитов `provider: drive, kind: document`; `--source notes` этого не меняет (проверено на memo 0.122.0). Страница показывает всё, что вернул инструмент; фильтр не добавлен, раз он не действует.
+
 ## 4. Вопросы к Славе
 
 **NEED-1 · Можно ли отступить от одобренного макета: Cancel вместо Install во время установки и настоящие описания?**

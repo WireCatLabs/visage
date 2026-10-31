@@ -384,6 +384,34 @@ mod tests {
         );
     }
 
+    /// The interface parses these exact shapes (`src/platform/search-schemas.test.ts`); a renamed key breaks every search.
+    #[test]
+    fn answers_serialize_as_the_interface_reads_them() {
+        use serde_json::json;
+        let hits =
+            Answer::Hits { hits: vec![json!({"ref": "msg:1"})], has_more: true, paged: true, notes: vec!["n".into()] };
+        assert_eq!(
+            serde_json::to_value(hits).unwrap(),
+            json!({"kind": "hits", "hits": [{"ref": "msg:1"}], "hasMore": true, "paged": true, "notes": ["n"]})
+        );
+        let error = Answer::QueryError { reason: "query.invalid-syntax".into(), message: "m".into(), span: None };
+        assert_eq!(
+            serde_json::to_value(error).unwrap(),
+            json!({"kind": "queryError", "reason": "query.invalid-syntax", "message": "m", "span": null})
+        );
+        let spanned =
+            Answer::QueryError { reason: "r".into(), message: "m".into(), span: Some(Span { start: 0, end: 7 }) };
+        assert_eq!(serde_json::to_value(spanned).unwrap()["span"], json!({"start": 0, "end": 7}));
+        assert_eq!(
+            serde_json::to_value(Answer::Old { message: "m".into() }).unwrap(),
+            json!({"kind": "old", "message": "m"})
+        );
+        assert_eq!(
+            serde_json::to_value(Answer::Failed { message: "m".into() }).unwrap(),
+            json!({"kind": "failed", "message": "m"})
+        );
+    }
+
     /// `cargo test -- --ignored real_search` against the installed tools; prints shapes and counts, never values.
     #[test]
     #[ignore = "needs the tools installed and signed in"]

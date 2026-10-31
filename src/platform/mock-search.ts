@@ -115,7 +115,7 @@ export const searchMock: Pick<Platform, "searchStore"> = {
     )
     const notes =
       search.what === "messages" && total > 0
-        ? ["searched 207,391 messages in 1,380 chats — 27 never fetched, 332 behind"]
+        ? ["searched 12,480 messages in 64 chats — 3 never fetched, 5 behind"]
         : []
     return { kind: "hits", hits, hasMore: paged && from + limit < total, paged, notes }
   },

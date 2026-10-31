@@ -35,7 +35,7 @@ describe("Search", () => {
     await user.click(screen.getByRole("button", { name: "Search" }))
     expect(await screen.findByText("50 results", {}, { timeout: 3000 })).toBeInTheDocument()
     expect(search).toHaveBeenLastCalledWith("tg", "personal", "invoice", 50, 1)
-    expect(screen.getByText(/searched 207,391 messages/)).toBeInTheDocument()
+    expect(screen.getByText(/searched 12,480 messages/)).toBeInTheDocument()
 
     await user.click(screen.getAllByRole("button", { name: "Show the whole result: Harbour flat" })[0] as HTMLElement)
     expect(
@@ -83,5 +83,12 @@ describe("Search", () => {
     await choose(user, "Profile", "personal")
     await user.type(screen.getByRole("combobox", { name: "Search messages" }), "x{Enter}")
     expect(await screen.findByText(/MAX 0\.74\.0 can't search its local data yet/)).toBeInTheDocument()
+
+    await choose(user, "Tool", "Telegram")
+    await user.click(screen.getByRole("combobox", { name: "Tool" }))
+    expect(await screen.findByRole("option", { name: "MAX — update to search" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
   }, 15000)
 })

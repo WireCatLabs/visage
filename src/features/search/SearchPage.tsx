@@ -7,6 +7,7 @@ import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { SearchAnswer, SearchHit } from "@/platform/search-schemas"
 import { Button } from "@/ui/Button"
+import { Crossfade } from "@/ui/Crossfade"
 import { cx } from "@/ui/cx"
 import { ErrorNotice } from "@/ui/ErrorNotice"
 import { Select } from "@/ui/Select"
@@ -78,11 +79,15 @@ export function SearchPage() {
                   value={s.tool ?? ""}
                   placeholder={m.chooseTool}
                   onChange={(v) => v && s.chooseTool(v)}
-                  options={installed.map((t) => ({
-                    value: t.id,
-                    label: t.name,
-                    icon: <ToolIcon id={t.id} className="size-[1rem] text-ink-soft" />,
-                  }))}
+                  options={installed.map((t) => {
+                    const old = s.old[t.id] === (installs[t.id]?.[0]?.version ?? null)
+                    return {
+                      value: t.id,
+                      label: old ? `${t.name} — ${m.tooOldShort}` : t.name,
+                      disabled: old && t.id !== s.tool,
+                      icon: <ToolIcon id={t.id} className="size-[1rem] text-ink-soft" />,
+                    }
+                  })}
                   className="min-w-[12rem]"
                 />
               )}
@@ -157,23 +162,35 @@ function Results({ m, version, toolName }: { m: Words; version: string | null; t
   const s = useSearch()
   // biome-ignore lint/correctness/useExhaustiveDependencies: each answer's times are told from when it came
   const now = useMemo(() => new Date(), [s.answer])
+  const { view, node } = resultsView(m, s, now, version, toolName)
+  return <Crossfade swap={view}>{node}</Crossfade>
+}
+
+function resultsView(
+  m: Words,
+  s: ReturnType<typeof useSearch.getState>,
+  now: Date,
+  version: string | null,
+  toolName: string,
+): { view: string; node: ReactNode } {
   const answer = s.answer
   const page = s.asked?.page ?? 1
-
-  if (s.error) return <ErrorNotice detail={s.error}>{m.failed}</ErrorNotice>
-  if (answer?.kind === "old") return <ErrorNotice detail={answer.message}>{m.tooOld(toolName, version)}</ErrorNotice>
-  if (answer?.kind === "failed") return <ErrorNotice detail={answer.message}>{m.failed}</ErrorNotice>
-
-  if (answer?.kind === "queryError") return <Empty busy={s.loading}>{m.fixQuery}</Empty>
+  if (s.error) return { view: "error", node: <ErrorNotice detail={s.error}>{m.failed}</ErrorNotice> }
+  if (answer?.kind === "old")
+    return { view: "old", node: <ErrorNotice detail={answer.message}>{m.tooOld(toolName, version)}</ErrorNotice> }
+  if (answer?.kind === "failed")
+    return { view: "failed", node: <ErrorNotice detail={answer.message}>{m.failed}</ErrorNotice> }
+  if (answer?.kind === "queryError") return { view: "queryError", node: <Empty busy={s.loading}>{m.fixQuery}</Empty> }
   const hits = answer?.kind === "hits" ? answer : null
   if (!hits) {
-    if (s.loading) return <Table hits={[]} placeholders={8} now={now} busy />
-    return <Empty>{s.profiles === null ? m.startNoProfile : m.start}</Empty>
+    if (s.loading) return { view: "loading", node: <Table hits={[]} placeholders={8} now={now} busy /> }
+    return { view: "start", node: <Empty>{s.profiles === null ? m.startNoProfile : m.start}</Empty> }
   }
-  if (hits.hits.length === 0) return <Empty busy={s.loading}>{m.noHits(toolName, s.asked?.profile ?? null)}</Empty>
+  if (hits.hits.length === 0)
+    return { view: "empty", node: <Empty busy={s.loading}>{m.noHits(toolName, s.asked?.profile ?? null)}</Empty> }
 
   const pager = hits.paged && (page > 1 || hits.hasMore)
-  return (
+  const node = (
     <div className="flex min-w-0 flex-col gap-[0.7rem]">
       <div aria-live="polite" className="flex flex-col gap-[0.2rem] text-[0.9rem]">
         <p className="text-ink-soft tabular-nums">{m.results(hits.hits.length, page)}</p>
@@ -204,6 +221,7 @@ function Results({ m, version, toolName }: { m: Words; version: string | null; t
       )}
     </div>
   )
+  return { view: "hits", node }
 }
 
 function Table(props: { hits: SearchHit[]; placeholders?: number; now: Date; busy: boolean }) {
