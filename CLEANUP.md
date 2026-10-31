@@ -87,3 +87,4 @@
 - worktrees `.claude/worktrees/{linux-pkg,rpm-obsoletes,apple-cert,signing-kind,signing-4b,mac-sign-check,release-012,release-013,notarize-dmg,journal-linux,journal-wcat,journal-step0,linux-package-update}` — merged work (2026-10-30)
 - `/home/leemour/Projects/AI/cli-base-wt-wcat-plan`, `/home/leemour/Projects/AI/cli-testing-wt-wcat-shared-bin`, `/home/leemour/Projects/AI/max-cli/docs_ai/.worktrees/blog-wcat-bin`, `/home/leemour/Projects/AI/cli-docs-wt-desktop-download` — merged work (2026-10-30)
 - scratchpad `npm-clash/`, `signlog.txt` — test leftovers (2026-10-30)
+- `/home/leemour/Projects/AI/cli-base-wt-wcat-step1`, `/home/leemour/Projects/AI/cli-testing-wt-wcat-cross-os`, `.claude/worktrees/journal-search` — merged work (2026-10-31)
