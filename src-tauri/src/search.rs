@@ -5,7 +5,7 @@
 //! are never logged or put in a report.
 
 use crate::cache::REFUSED;
-use crate::catalog::{self, SearchShape, SearchSource, Tool};
+use crate::catalog::{self, SearchShape, SearchSource, Tool, ValuesSource};
 use crate::{paths, run};
 use serde::Serialize;
 use serde_json::Value;
@@ -112,6 +112,45 @@ pub fn search(tool: &Tool, profile: Option<&str>, query: &str, limit: u32, page:
         REFUSED.remember(&tool.id, SEARCH, &bin, message);
     }
     Ok(answer)
+}
+
+const MAX_VALUES: usize = 2000;
+
+fn values_args(src: &ValuesSource, profile: Option<&str>) -> Result<Vec<String>, String> {
+    let wants_profile = src.args.iter().any(|a| a.contains("{profile}"));
+    match (wants_profile, profile) {
+        (true, Some(p)) => catalog::validate_profile(p)?,
+        (true, None) => return Err("these values need a profile".into()),
+        (false, _) => {}
+    }
+    Ok(src.args.iter().map(|a| a.replace("{profile}", profile.unwrap_or_default())).collect())
+}
+
+/// The values a field takes, from one of the tool's own read-only lists (`search.values` in the catalog): only the
+/// named field of each item leaves, deduplicated, in the tool's order. A tool that cannot list them gives none.
+pub fn values(tool: &Tool, profile: Option<&str>, source: &str) -> Result<Vec<String>, String> {
+    let src = self::source(tool)?.values.get(source).ok_or_else(|| format!("no value list named {source}"))?;
+    let args = values_args(src, profile)?;
+    let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = run::run(&bin, &refs, Some(&paths::search_path()), Duration::from_mins(1)).map_err(|e| e.to_string())?;
+    if out.code != Some(0) {
+        return Ok(Vec::new());
+    }
+    Ok(out.json().map(|body| pick(&body, &src.key)).unwrap_or_default())
+}
+
+fn pick(body: &Value, key: &str) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    body["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item[key].as_str().map(str::trim))
+        .filter(|v| !v.is_empty() && seen.insert(v.to_string()))
+        .take(MAX_VALUES)
+        .map(str::to_string)
+        .collect()
 }
 
 fn read(src: &SearchSource, out: &run::Output, limit: u32) -> Answer {
@@ -410,6 +449,42 @@ mod tests {
             serde_json::to_value(Answer::Failed { message: "m".into() }).unwrap(),
             json!({"kind": "failed", "message": "m"})
         );
+    }
+
+    #[test]
+    fn value_lists_read_only_the_local_store() {
+        for tool in &catalog::catalog().tools {
+            for (name, src) in &source(tool).unwrap().values {
+                let a = &src.args;
+                let id = &tool.id;
+                assert!(a.iter().any(|x| x == "--offline"), "{id} {name}: --offline");
+                assert!(a.iter().any(|x| x == "--no-record") && a.iter().any(|x| x == "--json"), "{id} {name}");
+            }
+        }
+        let chats = &source(catalog::tool("tg").unwrap()).unwrap().values["chats"];
+        assert_eq!(values_args(chats, Some("personal")).unwrap()[0], "personal");
+        assert!(values_args(chats, None).is_err());
+        assert!(values_args(chats, Some("-x")).is_err());
+    }
+
+    #[test]
+    fn picks_one_field_once_in_the_tools_order() {
+        let body =
+            serde_json::json!({"items": [{"tag": "work"}, {"tag": " home "}, {"tag": "work"}, {"tag": ""}, {"x": 1}]});
+        assert_eq!(pick(&body, "tag"), ["work", "home"]);
+    }
+
+    /// `cargo test -- --ignored real_values` against the installed tools; prints counts, never values.
+    #[test]
+    #[ignore = "needs the tools installed and signed in"]
+    fn real_values() {
+        for (id, profile) in [("tg", "personal"), ("wa", "personal"), ("max", "mila")] {
+            let tool = catalog::tool(id).unwrap();
+            for name in ["chats", "contacts", "tags"] {
+                let found = values(tool, Some(profile), name).unwrap();
+                println!("{id} {name}: {}", found.len());
+            }
+        }
     }
 
     /// `cargo test -- --ignored real_search` against the installed tools; prints shapes and counts, never values.

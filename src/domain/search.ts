@@ -69,3 +69,216 @@ export function errorDetail(message: string): string | null {
   const dash = message.lastIndexOf(" — ")
   return dash >= 0 ? message.slice(dash + 3).trim() || null : null
 }
+
+/** One row of the query bar's list. `whole` replaces the whole query; `open` keeps typing after it, no space. */
+export type QueryOption = {
+  label: string
+  insert: string
+  note?: string | null
+  example?: string | null
+  group?: string | null
+  whole?: boolean
+  open?: boolean
+  /** The "More fields" row: shows the fields hidden at first, and inserts nothing. */
+  more?: boolean
+}
+export type QueryOptions = { from: number; to: number; items: QueryOption[] }
+
+export type FieldGroup = "who" | "where" | "when" | "what" | "files"
+export const GROUPS: readonly FieldGroup[] = ["who", "where", "when", "what", "files"]
+
+export type SearchFieldInfo = {
+  name: string
+  group: FieldGroup
+  example: string
+  top: boolean
+}
+
+export type SuggestWords = {
+  group: Record<FieldGroup, string>
+  describe: (field: string) => string | null
+  more: string
+  examplesHeading: string
+  datesHeading: string
+  valuesHeading: (field: string) => string
+}
+
+const pad = (n: number) => String(n).padStart(2, "0")
+const day = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+export type DateMeaning = "last7" | "last30" | "today" | "yesterday" | "thisMonth" | "since" | "between"
+
+/** Each form checked against the installed tools: messages, notes, documents and mail take all of them. */
+export function dateOptions(now: Date): { query: string; meaning: DateMeaning }[] {
+  const first = new Date(now.getFullYear(), now.getMonth(), 1)
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return [
+    { query: "date>=7d", meaning: "last7" },
+    { query: "date>=30d", meaning: "last30" },
+    { query: "date:today", meaning: "today" },
+    { query: "date:yesterday", meaning: "yesterday" },
+    { query: `date>=${day(first)}`, meaning: "thisMonth" },
+    { query: `date:[${day(first)} TO *]`, meaning: "since" },
+    { query: `date:[${day(first)} TO ${day(last)}]`, meaning: "between" },
+  ]
+}
+
+export type ExampleId =
+  | "photosWeek"
+  | "filesMonth"
+  | "links30"
+  | "voice30"
+  | "mailWeek"
+  | "important30"
+  | "invoice30"
+  | "changed30"
+  | "titled"
+  | "words"
+
+/** Ready queries the empty bar offers, each run against an installed tool's real data before it was listed. */
+export function examples(what: string, now: Date): { query: string; id: ExampleId }[] {
+  const first = day(new Date(now.getFullYear(), now.getMonth(), 1))
+  if (what === "messages")
+    return [
+      { query: "has:photo date>=7d", id: "photosWeek" },
+      { query: `has:file date:[${first} TO *]`, id: "filesMonth" },
+      { query: "has:link date>=30d", id: "links30" },
+      { query: "has:voice date>=30d", id: "voice30" },
+    ]
+  if (what === "mail")
+    return [
+      { query: "date>=7d", id: "mailWeek" },
+      { query: "mailbox:important date>=30d", id: "important30" },
+      { query: "invoice date>=30d", id: "invoice30" },
+    ]
+  if (what === "notes" || what === "documents")
+    return [
+      { query: "date>=30d", id: "changed30" },
+      { query: "title:plan", id: "titled" },
+    ]
+  return [{ query: "demo", id: "words" }]
+}
+
+/** A value with anything but plain word characters is quoted, so `chat:"Design crit"` stays one term. */
+export const quoteValue = (value: string) =>
+  /^[\p{L}\p{N}_@.+/-]+$/u.test(value) ? value : `"${value.replace(/"/g, "")}"`
+
+type Token = { start: number; end: number; raw: string }
+
+// Whitespace ends a term except inside quotes or a [a TO b] range, so a value being typed stays one token.
+function tokenAt(query: string, cursor: number): Token {
+  let start = 0
+  let quote = false
+  let range = 0
+  for (let i = 0; i <= query.length; i++) {
+    const c = query[i]
+    if (i === query.length || (/\s/.test(c ?? "") && !quote && range === 0)) {
+      if (cursor >= start && cursor <= i) return { start, end: i, raw: query.slice(start, i) }
+      start = i + 1
+      continue
+    }
+    if (c === '"') quote = !quote
+    else if (c === "[" && !quote) range++
+    else if (c === "]" && !quote && range > 0) range--
+  }
+  return { start: cursor, end: cursor, raw: "" }
+}
+
+const fieldRow = (f: SearchFieldInfo, sign: string, words: SuggestWords): QueryOption => ({
+  label: f.name === "date" ? "date" : `${f.name}:`,
+  insert: f.name === "date" ? `${sign}date` : `${sign}${f.name}:`,
+  note: words.describe(f.name),
+  example: f.example,
+  group: words.group[f.group],
+  open: true,
+})
+
+const byGroup = (fields: SearchFieldInfo[]) =>
+  [...fields].sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group))
+
+export type SuggestContext = {
+  fields: SearchFieldInfo[]
+  /** Every value a field can be given here: its fixed list, the tool's own list, and what the results show. */
+  values: Readonly<Record<string, readonly string[]>>
+  /** "More fields" was chosen: every field, not only the first few. */
+  all: boolean
+  now: Date
+  words: SuggestWords
+  dateWords: Record<DateMeaning, string>
+  exampleWords: Record<ExampleId, string>
+  what: string
+}
+
+export function suggestSearch(query: string, cursor: number, ctx: SuggestContext): QueryOptions {
+  if (query.trim() === "") {
+    const items = examples(ctx.what, ctx.now).map((e) => ({
+      label: e.query,
+      insert: e.query,
+      note: ctx.exampleWords[e.id],
+      group: ctx.words.examplesHeading,
+      whole: true,
+    }))
+    return { from: 0, to: query.length, items }
+  }
+  const tok = tokenAt(query, cursor)
+  const sign = /^[-+]/.test(tok.raw) ? (tok.raw[0] as string) : ""
+  const body = tok.raw.slice(sign.length)
+  const hasDate = ctx.fields.some((f) => f.name === "date")
+  const at = { from: tok.start, to: tok.end }
+
+  if (hasDate && /^date/i.test(body) && body.length >= 4) {
+    const typed = body.toLowerCase()
+    const items = dateOptions(ctx.now)
+      .filter((o) => typed === "date" || typed === "date:" || (o.query.startsWith(typed) && o.query !== typed))
+      .map((o) => ({
+        label: o.query,
+        insert: sign + o.query,
+        note: ctx.dateWords[o.meaning],
+        group: ctx.words.datesHeading,
+      }))
+    return { ...at, items }
+  }
+
+  const colon = body.indexOf(":")
+  if (colon > 0) {
+    const field = body.slice(0, colon).toLowerCase()
+    const typed = body
+      .slice(colon + 1)
+      .replace(/^"/, "")
+      .replace(/"$/, "")
+      .toLowerCase()
+    const all = ctx.values[field] ?? []
+    const starts = all.filter((v) => v.toLowerCase().startsWith(typed))
+    const contains = all.filter((v) => !v.toLowerCase().startsWith(typed) && v.toLowerCase().includes(typed))
+    const items = [...starts, ...contains]
+      .filter((v) => v.toLowerCase() !== typed)
+      .slice(0, 40)
+      .map((v) => ({ label: v, insert: `${sign}${field}:${quoteValue(v)}`, group: ctx.words.valuesHeading(field) }))
+    return { ...at, items }
+  }
+
+  const prefix = body.toLowerCase()
+  if (prefix === "") {
+    const shown = byGroup(ctx.all ? ctx.fields : ctx.fields.filter((f) => f.top))
+    const items: QueryOption[] = shown.map((f) => fieldRow(f, sign, ctx.words))
+    if (!ctx.all && shown.length < ctx.fields.length)
+      items.push({ label: ctx.words.more, insert: "", more: true, group: null })
+    return { ...at, items }
+  }
+  const items = byGroup(ctx.fields.filter((f) => f.name.startsWith(prefix) && f.name !== prefix)).map((f) =>
+    fieldRow(f, sign, ctx.words),
+  )
+  return { ...at, items }
+}
+
+/** Values the shown hits carry for a field, so a chat or a sender seen in the results can be picked. */
+export function valuesInHits(hits: readonly Record<string, unknown>[]): Record<string, string[]> {
+  const seen: Record<string, Set<string>> = { chat: new Set(), from: new Set(), title: new Set() }
+  for (const hit of hits) {
+    const row = hitRow(hit, 0)
+    if (typeof hit.chat_title === "string" && hit.chat_title.trim()) seen.chat?.add(hit.chat_title.trim())
+    if (row.who && !row.fromMe) seen.from?.add(row.who)
+    if (typeof hit.title === "string" && hit.title.trim()) seen.title?.add(hit.title.trim())
+  }
+  return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]]))
+}

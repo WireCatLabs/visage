@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react"
-import { type ReactNode, useEffect, useId, useMemo } from "react"
+import { type ReactNode, useCallback, useEffect, useId, useMemo } from "react"
 import { findTool, tools } from "@/domain/catalog"
 import { parseQuery } from "@/domain/runs"
-import { clampSpan, errorDetail, queryReason } from "@/domain/search"
+import { clampSpan, errorDetail, queryReason, suggestSearch, valuesInHits } from "@/domain/search"
 import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { SearchAnswer, SearchHit } from "@/platform/search-schemas"
@@ -17,7 +17,7 @@ import { useTools } from "../tools/store"
 import { ToolIcon } from "../tools/ToolIcon"
 import { HitsTable } from "./HitsTable"
 import { searchMessages } from "./messages"
-import { LIMIT, ready, useSearch } from "./store"
+import { LIMIT, listKey, ready, useSearch } from "./store"
 
 export const SEARCH_DOCS = "https://github.com/WireCatLabs/cli-core/blob/main/docs/search/query-language.md"
 
@@ -40,8 +40,8 @@ export function SearchPage() {
   const tool = s.tool ? findTool(s.tool) : undefined
   const version = s.tool ? (installs[s.tool]?.[0]?.version ?? null) : null
   const what = tool?.search?.what ?? "messages"
-  const fields = tool?.search?.fields ?? []
   const parsed = useMemo(() => parseQuery(s.query), [s.query])
+  const suggest = useSuggest(m, version)
 
   // A query error belongs to the text it was given for; one keystroke later it points at the wrong place.
   const answer = s.answer
@@ -122,7 +122,7 @@ export function SearchPage() {
               parsed={parsed}
               problems={span ? [span] : []}
               problem={queryError ? problemText(m, queryError) : null}
-              fields={fields}
+              suggest={suggest}
               words={{
                 label: m.searchLabel[what],
                 placeholder: m.placeholder[what],
@@ -148,6 +148,58 @@ export function SearchPage() {
         </>
       )}
     </div>
+  )
+}
+
+const NO_FIELDS: NonNullable<NonNullable<ReturnType<typeof findTool>>["search"]>["fields"] = []
+
+/** What the bar offers: the tool's fields, their values from its own lists and the results, dates and examples. */
+function useSuggest(m: Words, version: string | null) {
+  const tool = useSearch((s) => s.tool)
+  const profile = useSearch((s) => s.profile)
+  const profiles = useSearch((s) => s.profiles)
+  const answer = useSearch((s) => s.answer)
+  const lists = useSearch((s) => s.lists)
+  const search = tool ? findTool(tool)?.search : null
+  const fields = search?.fields ?? NO_FIELDS
+  const what = search?.what ?? "messages"
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new tool, profile or version asks for its lists
+  useEffect(() => useSearch.getState().loadLists(), [tool, profile, profiles, version])
+
+  const values = useMemo(() => {
+    const seen = valuesInHits(answer?.kind === "hits" ? answer.hits : [])
+    const out: Record<string, string[]> = {}
+    for (const f of fields) {
+      const fixed = Array.isArray(f.values) ? f.values : []
+      const listed =
+        typeof f.values === "string" && tool ? (lists[listKey(tool, profile, version, f.values)] ?? []) : []
+      out[f.name] = [...new Set([...fixed, ...(seen[f.name] ?? []), ...listed])]
+    }
+    return out
+  }, [fields, answer, lists, tool, profile, version])
+
+  const area = what === "documents" ? "notes" : what
+  return useCallback(
+    (query: string, cursor: number, all: boolean) =>
+      suggestSearch(query, cursor, {
+        fields,
+        values,
+        all,
+        now: new Date(),
+        what,
+        dateWords: m.dates,
+        exampleWords: m.examples,
+        words: {
+          group: m.groups,
+          describe: (field) => m.fields[`${area}:${field}`] ?? null,
+          more: m.moreFields,
+          examplesHeading: m.tryHeading,
+          datesHeading: m.datesHeading,
+          valuesHeading: m.valuesHeading,
+        },
+      }),
+    [fields, values, what, area, m],
   )
 }
 

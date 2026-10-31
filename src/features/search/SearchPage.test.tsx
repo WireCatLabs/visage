@@ -91,4 +91,24 @@ describe("Search", () => {
       "true",
     )
   }, 15000)
+
+  it("offers ready queries, then the tool's own values after a field", async () => {
+    const user = userEvent.setup()
+    const values = vi.spyOn(platform, "searchValues")
+    render(<SearchPage />)
+    await waitFor(() => expect(useTools.getState().checked).toBe(true), { timeout: 4000 })
+    await choose(user, "Tool", "Telegram")
+    await choose(user, "Profile", "personal")
+    await waitFor(() => expect(values).toHaveBeenCalledWith("tg", "personal", "chats"))
+    await waitFor(() => expect(Object.values(useSearch.getState().lists).some((l) => l.length > 0)).toBe(true))
+    const bar = screen.getByRole("combobox", { name: "Search messages" })
+
+    await user.click(bar)
+    await user.click(await screen.findByRole("option", { name: /has:photo date>=7d/ }))
+    expect(bar).toHaveValue("has:photo date>=7d ")
+
+    await user.type(bar, "chat:des")
+    await user.click(await screen.findByRole("option", { name: /Design crit/ }))
+    expect(bar).toHaveValue('has:photo date>=7d chat:"Design crit" ')
+  }, 15000)
 })

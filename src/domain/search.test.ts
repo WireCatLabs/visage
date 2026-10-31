@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { clampSpan, errorDetail, hitRow, queryReason } from "./search"
+import { clampSpan, errorDetail, hitRow, queryReason, suggestSearch } from "./search"
 
 describe("hitRow", () => {
   it("reads a message hit by its chat, sender and excerpt", () => {
@@ -48,5 +48,97 @@ describe("queryReason", () => {
   it("takes the part of the message after the dash as the tool's detail", () => {
     expect(errorDetail('search: query.unknown-field at position 1 — no field "bogus"')).toBe('no field "bogus"')
     expect(errorDetail("search: query.invalid-syntax at position 12")).toBeNull()
+  })
+})
+
+describe("suggestSearch", () => {
+  const words = {
+    group: { who: "Who", where: "Where", when: "When", what: "What", files: "Files and links" },
+    describe: (f: string) => `about ${f}`,
+    more: "More fields…",
+    examplesHeading: "Try",
+    datesHeading: "Dates",
+    valuesHeading: (f: string) => `Values for ${f}`,
+  } as const
+  const fields = [
+    { name: "from", group: "who", example: 'from:"Ana Ruiz"', top: true },
+    { name: "chat", group: "where", example: "chat:x", top: true },
+    { name: "date", group: "when", example: "date>=7d", top: true },
+    { name: "transcript", group: "what", example: "transcript:x", top: false },
+  ] as const
+  const ctx = {
+    fields: [...fields],
+    values: { chat: ["Design crit", "Family", "Accountant"], from: [] },
+    all: false,
+    now: new Date(2026, 9, 31),
+    words,
+    dateWords: {
+      last7: "7",
+      last30: "30",
+      today: "t",
+      yesterday: "y",
+      thisMonth: "m",
+      since: "s",
+      between: "b",
+    },
+    exampleWords: Object.fromEntries(
+      [
+        "photosWeek",
+        "filesMonth",
+        "links30",
+        "voice30",
+        "mailWeek",
+        "important30",
+        "invoice30",
+        "changed30",
+        "titled",
+        "words",
+      ].map((k) => [k, k]),
+    ) as Record<import("./search").ExampleId, string>,
+    what: "messages",
+  }
+  const labels = (q: string, at = q.length, all = false) =>
+    suggestSearch(q, at, { ...ctx, all }).items.map((i) => i.label)
+
+  it("offers ready queries in an empty box, each replacing the whole query", () => {
+    const found = suggestSearch("", 0, ctx)
+    expect(found.items[1]).toMatchObject({ label: "has:file date:[2026-10-01 TO *]", whole: true })
+  })
+
+  it("shows the first fields by group, the rest behind More fields, and finds a hidden one by name", () => {
+    expect(labels("x ")).toEqual(["from:", "chat:", "date", "More fields…"])
+    expect(labels("x ", 2, true)).toContain("transcript:")
+    expect(labels("x tr")).toEqual(["transcript:"])
+    expect(suggestSearch("x ", 2, ctx).items[0]).toMatchObject({
+      note: "about from",
+      example: 'from:"Ana Ruiz"',
+      group: "Who",
+    })
+  })
+
+  it("offers dates the tools accept after date, narrowed as typed", () => {
+    expect(labels("date")).toEqual([
+      "date>=7d",
+      "date>=30d",
+      "date:today",
+      "date:yesterday",
+      "date>=2026-10-01",
+      "date:[2026-10-01 TO *]",
+      "date:[2026-10-01 TO 2026-10-31]",
+    ])
+    expect(labels("date>=")).toEqual(["date>=7d", "date>=30d", "date>=2026-10-01"])
+    expect(labels("-date:to")).toEqual(["date:today"])
+    expect(suggestSearch("-date:to", 8, ctx).items[0]?.insert).toBe("-date:today")
+  })
+
+  it("offers values after a field, quoting the ones with spaces", () => {
+    const found = suggestSearch('invoice chat:"des', 17, ctx)
+    expect(found.items.map((i) => i.insert)).toEqual(['chat:"Design crit"'])
+    expect(found.from).toBe(8)
+    expect(labels("chat:a")).toEqual(["Accountant", "Family"])
+  })
+
+  it("keeps a quoted value with spaces as one term while it is typed", () => {
+    expect(suggestSearch('chat:"Design c', 14, ctx).items.map((i) => i.label)).toEqual(["Design crit"])
   })
 })

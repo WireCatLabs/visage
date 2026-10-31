@@ -25,6 +25,9 @@ type SearchState = {
   /** The call itself failed (the tool is missing, a bad argument), as opposed to an answer the tool gave. */
   error: string | null
   expanded: string | null
+  /** The tool's own lists of values, by `tool|profile|version|list`, read once each. */
+  lists: Record<string, string[]>
+  loadLists(): void
   /** Tools that answered "too old" to search, by the version that said so; an update brings the tool back. */
   old: Record<string, string | null>
   chooseTool(id: string): void
@@ -35,6 +38,9 @@ type SearchState = {
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+export const listKey = (tool: string, profile: string | null, version: string | null, list: string) =>
+  `${tool}|${profile ?? ""}|${version ?? ""}|${list}`
 
 export const ready = (s: Pick<SearchState, "tool" | "profile" | "profiles" | "query">) =>
   s.tool !== null && s.query.trim() !== "" && (s.profiles === null || s.profile !== null)
@@ -56,6 +62,22 @@ export const useSearch = create<SearchState>((set, get) => {
     error: null,
     expanded: null,
     old: {},
+    lists: {},
+    loadLists() {
+      const { tool, profile, profiles } = get()
+      const search = tool ? findTool(tool)?.search : null
+      if (!tool || !search || (profiles !== null && !profile)) return
+      const version = useTools.getState().installs[tool]?.[0]?.version ?? null
+      for (const name of Object.keys(search.values)) {
+        const key = listKey(tool, profile, version, name)
+        if (get().lists[key]) continue
+        set((st) => ({ lists: { ...st.lists, [key]: [] } }))
+        platform.searchValues(tool, profiles === null ? null : profile, name).then(
+          (values) => set((st) => ({ lists: { ...st.lists, [key]: values } })),
+          () => {},
+        )
+      }
+    },
     chooseTool(id) {
       if (id === get().tool) return
       const t = findTool(id)

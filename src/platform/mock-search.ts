@@ -77,7 +77,7 @@ function refusal(id: string, query: string): SearchAnswer | null {
       message: `search: query.invalid-syntax at position ${query.length + 1}`,
       span: { start: query.length, end: query.length },
     }
-  const fields = findTool(id)?.search?.fields ?? []
+  const fields = (findTool(id)?.search?.fields ?? []).map((f) => f.name)
   for (const m of query.matchAll(/(^|[\s(])-?([a-z_]+):/g)) {
     const field = m[2] ?? ""
     if (fields.includes(field)) continue
@@ -93,7 +93,18 @@ function refusal(id: string, query: string): SearchAnswer | null {
   return null
 }
 
-export const searchMock: Pick<Platform, "searchStore"> = {
+const VALUES: Record<string, string[]> = {
+  chats: CHATS,
+  contacts: PEOPLE.filter((p) => p !== "You"),
+  tags: ["work", "family", "receipts"],
+}
+
+export const searchMock: Pick<Platform, "searchStore" | "searchValues"> = {
+  async searchValues(id, _profile, source) {
+    await delay(300)
+    if (!findTool(id)?.search?.values[source]) throw new Error(`no value list named ${source}`)
+    return VALUES[source] ?? []
+  },
   async searchStore(id, _profile, query, limit, page) {
     await delay(700)
     const tool = findTool(id)

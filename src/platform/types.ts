@@ -177,6 +177,8 @@ export type Platform = {
    * without profiles). Never asks the provider. A query the tool refuses is an answer, not a rejection.
    */
   searchStore(id: string, profile: string | null, query: string, limit: number, page: number): Promise<SearchAnswer>
+  /** The values one of the tool's own read-only lists names (`search.values` in the catalog), such as chat titles. */
+  searchValues(id: string, profile: string | null, source: string): Promise<string[]>
   /** `profile: null` is the defaults every profile gets, or the one file a tool without per-profile settings keeps. */
   settingsShow(id: string, profile: string | null): Promise<Settings>
   /** `defaults` changes what every profile gets instead of one profile. Rejects with the tool's own message. */

@@ -556,6 +556,12 @@ async fn search_store(
 }
 
 #[tauri::command]
+async fn search_values(id: String, profile: Option<String>, source: String) -> Result<Vec<String>, String> {
+    let tool = catalog::tool(&id)?;
+    blocking(move || search::values(tool, profile.as_deref(), &source)).await?
+}
+
+#[tauri::command]
 async fn show_run(id: String, run: String) -> Result<serde_json::Value, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || runs::show(tool, &run)).await?
@@ -806,6 +812,7 @@ pub fn run() {
             list_runs,
             show_run,
             search_store,
+            search_values,
             settings_show,
             settings_set,
             settings_unset,

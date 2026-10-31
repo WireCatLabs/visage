@@ -126,6 +126,15 @@ pub struct RunsSource {
 pub struct SearchSource {
     pub args: Vec<String>,
     pub shape: SearchShape,
+    /// Read-only lists whose items name a field's values, such as chats for `chat:`; `key` is the item's field.
+    #[serde(default)]
+    pub values: std::collections::BTreeMap<String, ValuesSource>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ValuesSource {
+    pub args: Vec<String>,
+    pub key: String,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]

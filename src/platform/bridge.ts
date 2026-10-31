@@ -206,6 +206,7 @@ function createTauri(): Platform {
     listRuns: (id, query, limit, page) => call(RunsPageSchema, "list_runs", { id, query, limit, page }),
     searchStore: (id, profile, query, limit, page) =>
       call(SearchAnswerSchema, "search_store", { id, profile, query, limit, page }),
+    searchValues: (id, profile, source) => call(v.array(v.string()), "search_values", { id, profile, source }),
     showRun: (id, run) => call(RunDetailSchema, "show_run", { id, run }),
     reportContext: () => call(ReportContextSchema, "report_context"),
     sendReport: (draft, context) => call(ReportSentSchema, "send_report", { draft, context }),

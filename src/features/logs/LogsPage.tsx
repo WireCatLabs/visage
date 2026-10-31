@@ -1,5 +1,5 @@
 import { ArrowUp, ExternalLink, RefreshCw, SlidersHorizontal } from "lucide-react"
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react"
 import { tools } from "@/domain/catalog"
 import {
   CONVERSATION,
@@ -16,6 +16,7 @@ import {
   RANGES,
   type RangeId,
   type Run,
+  suggest,
   toggleTerm,
   unknownFields,
   withConversations,
@@ -112,6 +113,13 @@ export function LogsPage() {
   const ranged = useMemo(() => inRange(keyed, range, loadedAt ?? Date.now()), [keyed, range, loadedAt])
   const parsed = useMemo(() => parseQuery(deferred), [deferred])
   const problems = useMemo(() => [...parsed.problems, ...unknownFields(parsed, all)], [parsed, all])
+  const suggestRuns = useCallback(
+    (q: string, at: number) => {
+      const found = suggest(q, at, ranged, FIELDS, m.fields)
+      return { ...found, items: found.items.map((i) => ({ label: i.label, insert: i.insert, note: i.hint })) }
+    },
+    [ranged, m],
+  )
   const matched = useMemo(() => {
     const rows = ranged.filter(matcher(parsed.terms))
     rows.sort(newestFirst)
@@ -216,9 +224,7 @@ export function LogsPage() {
               parsed={parsed}
               problems={problems}
               problem={problems[0] ? problemText(m, problems[0]) : null}
-              fields={FIELDS}
-              labels={m.fields}
-              runs={ranged}
+              suggest={suggestRuns}
               words={{ label: m.searchRuns, placeholder: m.placeholder, hint: m.searchHint }}
               docs={LOGS_DOCS}
               onChange={setQuery}

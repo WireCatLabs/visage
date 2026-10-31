@@ -1,6 +1,7 @@
 import { ExternalLink, Search, X } from "lucide-react"
-import { type KeyboardEvent, useId, useMemo, useRef, useState } from "react"
-import { type Parsed, type Run, type Suggestion, suggest } from "@/domain/runs"
+import { Fragment, type KeyboardEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
+import type { Parsed } from "@/domain/runs"
+import type { QueryOption, QueryOptions } from "@/domain/search"
 import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { cx } from "@/ui/cx"
@@ -15,43 +16,56 @@ type Props = {
   /** Spans to underline; an empty one marks a place, such as where a query ends too early. */
   problems: Span[]
   problem: string | null
-  fields: readonly string[]
-  labels?: Readonly<Record<string, string>>
-  /** Values to suggest after `field:`, counted from these runs. */
-  runs?: Run[]
+  /** The rows for the term at `cursor`; `all` once the owner chose "More fields". */
+  suggest: (query: string, cursor: number, all: boolean) => QueryOptions
   words: { label: string; placeholder: string; hint: string }
   docs: string
   onChange: (query: string) => void
-  /** Enter with no suggestion open. */
+  /** Enter with no row chosen. Without it, Enter takes the first row, as the Logs filter does. */
   onSubmit?: () => void
   disabled?: boolean
 }
 
-const NO_RUNS: Run[] = []
-
 export function QueryBar(props: Props) {
-  const { query, parsed, problems, problem, fields, labels, runs = NO_RUNS, words, docs, onChange, onSubmit } = props
+  const { query, parsed, problems, problem, suggest, words, docs, onChange, onSubmit } = props
   const m = useMessages(queryMessages)
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const mirror = useRef<HTMLDivElement>(null)
+  // With a submit, nothing is chosen until an arrow key moves, so Enter searches instead of taking a row.
+  const none = onSubmit ? -1 : 0
   const [cursor, setCursor] = useState(0)
   const [open, setOpen] = useState(false)
-  const [active, setActive] = useState(0)
+  const [active, setActive] = useState(none)
+  const [all, setAll] = useState(false)
+  // Placed as the new text commits, not a frame later, when keys typed meanwhile would land behind it.
+  const caret = useRef<number | null>(null)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the caret moves once the accepted text is in the box
+  useLayoutEffect(() => {
+    if (caret.current === null) return
+    input.current?.setSelectionRange(caret.current, caret.current)
+    caret.current = null
+  }, [query])
 
-  const suggestions = useMemo(() => suggest(query, cursor, runs, fields, labels), [query, cursor, runs, fields, labels])
+  const suggestions = useMemo(() => suggest(query, cursor, all), [suggest, query, cursor, all])
   const showList = open && suggestions.items.length > 0
 
-  const accept = (s: Suggestion) => {
-    const before = query.slice(0, suggestions.from)
-    const after = query.slice(suggestions.to)
-    const spacer = s.insert.endsWith(":") ? "" : " "
+  const accept = (s: QueryOption) => {
+    setActive(none)
+    if (s.more) {
+      setAll(true)
+      input.current?.focus()
+      return
+    }
+    const before = s.whole ? "" : query.slice(0, suggestions.from)
+    const after = s.whole ? "" : query.slice(suggestions.to)
+    const spacer = s.open || s.insert.endsWith(":") ? "" : " "
     const next = `${before}${s.insert}${spacer}${after.trimStart()}`
     const at = before.length + s.insert.length + spacer.length
     onChange(next)
     setCursor(at)
-    setActive(0)
-    requestAnimationFrame(() => input.current?.setSelectionRange(at, at))
+    setOpen(true)
+    caret.current = at
   }
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -60,23 +74,22 @@ export function QueryBar(props: Props) {
       else if (query) onChange("")
       return
     }
-    if (!showList) {
-      if (e.key === "Enter" && onSubmit) {
-        e.preventDefault()
-        onSubmit()
-      }
+    const n = suggestions.items.length
+    if (showList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault()
+      setActive((a) => (a < 0 ? (e.key === "ArrowDown" ? 0 : n - 1) : (a + (e.key === "ArrowDown" ? 1 : n - 1)) % n))
       return
     }
-    const n = suggestions.items.length
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    const chosen = showList ? suggestions.items[active < 0 && e.key === "Tab" ? 0 : active] : undefined
+    if ((e.key === "Enter" || e.key === "Tab") && chosen) {
       e.preventDefault()
-      setActive((a) => (a + (e.key === "ArrowDown" ? 1 : n - 1)) % n)
-    } else if (e.key === "Enter" || e.key === "Tab") {
-      const s = suggestions.items[active]
-      if (s) {
-        e.preventDefault()
-        accept(s)
-      }
+      accept(chosen)
+      return
+    }
+    if (e.key === "Enter" && onSubmit) {
+      e.preventDefault()
+      setOpen(false)
+      onSubmit()
     }
   }
 
@@ -100,7 +113,7 @@ export function QueryBar(props: Props) {
         <div
           ref={mirror}
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-[2.6rem] left-[2.5rem] flex items-center overflow-hidden whitespace-pre font-mono text-[1.02rem]"
+          className="pointer-events-none absolute inset-y-0 right-[2.6rem] left-[2.5rem] flex items-center overflow-hidden whitespace-pre font-mono text-[1.02rem] no-ligatures"
         >
           <Highlight query={query} parsed={parsed} problems={problems} />
         </div>
@@ -122,7 +135,7 @@ export function QueryBar(props: Props) {
           onChange={(e) => {
             onChange(e.target.value)
             setOpen(true)
-            setActive(0)
+            setActive(none)
             setCursor(e.target.selectionStart ?? e.target.value.length)
           }}
           onKeyDown={onKey}
@@ -130,8 +143,11 @@ export function QueryBar(props: Props) {
           onClick={sync}
           onScroll={sync}
           onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
-          className="selectable h-full min-w-0 flex-1 bg-transparent pr-[2.6rem] pl-[2.5rem] font-mono text-[1.02rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
+          onBlur={() => {
+            setOpen(false)
+            setAll(false)
+          }}
+          className="selectable h-full min-w-0 flex-1 bg-transparent no-ligatures pr-[2.6rem] pl-[2.5rem] font-mono text-[1.02rem] text-transparent caret-ink outline-none placeholder:font-sans placeholder:text-ink-dim"
         />
         {query && (
           <button
@@ -153,29 +169,54 @@ export function QueryBar(props: Props) {
           id={`${id}-list`}
           role="listbox"
           aria-label={m.suggestions}
-          className="absolute top-[calc(100%+0.3rem)] left-0 z-20 max-h-[18rem] w-[min(26rem,100%)] overflow-y-auto rounded-[0.45rem] border border-line bg-app p-1 shadow-panel"
+          className="absolute top-[calc(100%+0.3rem)] left-0 z-20 max-h-[22rem] w-[min(40rem,100%)] overflow-y-auto rounded-[0.45rem] border border-line bg-app p-1 shadow-panel"
         >
-          {suggestions.items.map((s, i) => (
-            <div
-              key={s.insert}
-              id={`${id}-${i}`}
-              role="option"
-              aria-selected={i === active}
-              tabIndex={-1}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                accept(s)
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={cx(
-                "flex cursor-pointer items-center justify-between gap-3 rounded-[0.35rem] px-[0.6rem] py-[0.3rem]",
-                i === active && "bg-app-3",
-              )}
-            >
-              <span className="truncate font-mono text-[0.95rem] text-ink">{s.label}</span>
-              <span className="shrink-0 text-[0.9rem] text-ink-dim tabular-nums">{s.hint ?? m.fieldHint}</span>
-            </div>
-          ))}
+          {suggestions.items.map((s, i) => {
+            const heading = s.group && s.group !== suggestions.items[i - 1]?.group ? s.group : null
+            return (
+              <Fragment key={`${s.group ?? ""}:${s.label}`}>
+                {heading && (
+                  <div
+                    role="presentation"
+                    className="px-[0.6rem] pt-[0.55rem] pb-[0.2rem] font-medium text-[0.8rem] text-ink-dim uppercase tracking-[0.04em] first:pt-[0.25rem]"
+                  >
+                    {heading}
+                  </div>
+                )}
+                <div
+                  id={`${id}-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  tabIndex={-1}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    accept(s)
+                  }}
+                  onMouseEnter={() => setActive(i)}
+                  className={cx(
+                    "flex cursor-pointer items-baseline gap-3 rounded-[0.35rem] px-[0.6rem] py-[0.3rem]",
+                    i === active && "bg-app-3",
+                    s.more && "mt-1 border-line border-t pt-[0.45rem] text-brand",
+                  )}
+                >
+                  <span
+                    className={cx(
+                      "shrink-0 text-[0.95rem] no-ligatures",
+                      s.more ? "font-medium font-sans" : "font-mono text-ink",
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                  {s.note && <span className="min-w-0 flex-1 truncate text-[0.9rem] text-ink-soft">{s.note}</span>}
+                  {s.example && (
+                    <span className="ml-auto shrink-0 font-mono text-[0.85rem] text-ink-dim no-ligatures">
+                      {s.example}
+                    </span>
+                  )}
+                </div>
+              </Fragment>
+            )
+          })}
         </div>
       )}
       <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.9rem]">
@@ -220,7 +261,7 @@ function Highlight({ query, parsed, problems }: Pick<Props, "query" | "parsed" |
           {raw}
         </span>,
       )
-    } else if (s.term.kind === "field") {
+    } else if (s.term.kind === "field" && raw.includes(":")) {
       const neg = s.term.negate ? 1 : 0
       const colon = raw.indexOf(":")
       parts.push(
