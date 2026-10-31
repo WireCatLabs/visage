@@ -9,6 +9,7 @@ import { mcpServerMock } from "./mock-mcp"
 import { permissionsMock } from "./mock-permissions"
 import { reportMock } from "./mock-report"
 import { runsMock } from "./mock-runs"
+import { searchMock } from "./mock-search"
 import { settingsMock } from "./mock-settings"
 import { linkedProfiles, signInMock } from "./mock-signin"
 import { syncMock } from "./mock-sync"
@@ -502,6 +503,7 @@ export function createMock(os: Platform["os"]): Platform {
     ...reportMock,
     ...updateMock,
     ...runsMock,
+    ...searchMock,
     ...settingsMock,
     ...permissionsMock(settingsMock),
     async openUrl(url) {

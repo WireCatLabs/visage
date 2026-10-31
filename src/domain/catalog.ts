@@ -17,6 +17,15 @@ const ToolSchema = v.object({
   profiles: v.nullable(v.object({ args: v.array(v.string()), shape: v.string() })),
   doctor: v.array(v.string()),
   runs: v.nullable(v.object({ list: v.array(v.string()), show: v.array(v.string()) })),
+  /** The tool's own Lucene search of its local store; Rust fills the slots. `fields` are suggested as typed. */
+  search: v.nullable(
+    v.object({
+      args: v.array(v.string()),
+      shape: v.picklist(["items", "item.hits"]),
+      what: v.picklist(["messages", "meetings", "documents", "notes", "mail"]),
+      fields: v.array(v.string()),
+    }),
+  ),
   setup: v.nullable(v.array(v.string())),
   signIn: v.nullable(
     v.object({

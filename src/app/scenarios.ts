@@ -1,6 +1,7 @@
 import { findTool, syncNeedsProfile } from "@/domain/catalog"
 import { useNav } from "@/features/nav"
 import { STEPS, useOnboarding } from "@/features/onboarding/store"
+import { useSearch } from "@/features/search/store"
 import { useSignIn } from "@/features/signin/store"
 import { useTools } from "@/features/tools/store"
 import { useSync } from "@/features/tools/sync-store"
@@ -50,10 +51,31 @@ export async function runMockScenario() {
     useTools.getState().toggle(syncing.id)
     useSync.getState().start(syncing.id, syncNeedsProfile(syncing) ? "personal" : null)
   }
+  await searchScenario(params)
   const id = params.get("install")
   if (!id) return
   await useTools.getState().refresh()
   useTools.getState().install(id)
+}
+
+// `?search=<tool>` opens Search on that tool's hits, `?search=empty` on a query nothing matches, `?search-fail=query`
+// on a query error with a span, `?search-fail=tool` on the tool's refusal, `?search-old=<tool>` on a tool too old to
+// search (`src/platform/mock-search.ts`). Profile personal, else the first, is chosen here as the owner would; the page
+// never chooses one.
+async function searchScenario(params: URLSearchParams) {
+  const asked = params.get("search") ?? params.get("search-old") ?? (params.has("search-fail") ? "tg" : null)
+  if (!asked) return
+  const tool = findTool(asked) ? asked : "tg"
+  useNav.getState().go("search")
+  const search = useSearch.getState()
+  search.chooseTool(tool)
+  while (useSearch.getState().profiles === undefined) await new Promise((r) => setTimeout(r, 50))
+  const profiles = useSearch.getState().profiles ?? []
+  const profile = profiles.find((p) => p.name === "personal") ?? profiles[0]
+  if (profile) search.chooseProfile(profile.name)
+  const fail = params.get("search-fail")
+  search.setQuery(fail === "query" ? "invoice bogus:x date>=30d" : tool === "zm" ? "budget review" : "invoice")
+  await search.search(1)
 }
 
 export function CrashScenario({ section }: { section: string }): null {

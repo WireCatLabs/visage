@@ -1,8 +1,9 @@
-import { Bot, Brain, HardDrive, ScrollText, Settings, UserRound, Wrench } from "lucide-react"
+import { Bot, Brain, HardDrive, ScrollText, Search, Settings, UserRound, Wrench } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
 import { AgentsPage } from "@/features/agents/AgentsPage"
 import { ConfigPage } from "@/features/config/ConfigPage"
 import { LogsPage } from "@/features/logs/LogsPage"
+import { SearchPage } from "@/features/search/SearchPage"
 import { StoragePage } from "@/features/storage/StoragePage"
 import { ToolsPage } from "@/features/tools/ToolsPage"
 
@@ -19,6 +20,7 @@ export type Section = {
 export const sections: readonly Section[] = [
   { id: "tools", icon: Wrench, page: ToolsPage },
   { id: "agents", icon: Bot, page: AgentsPage },
+  { id: "search", icon: Search, page: SearchPage },
   { id: "accounts", icon: UserRound },
   { id: "memory", icon: Brain },
   { id: "storage", icon: HardDrive, page: StoragePage, group: "system" },

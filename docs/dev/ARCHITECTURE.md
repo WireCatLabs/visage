@@ -8,7 +8,7 @@ the machine and runs the tools. Nothing here duplicates what a CLI already does.
 ```text
 src/
   app/          shell: window frame, sidebar, sections, theme. May import everything below.
-  features/     one folder per area (tools/, agents/, system/, logs/, config/, settings/, storage/, onboarding/, report/, signin/, update/).
+  features/     one folder per area (tools/, agents/, system/, logs/, search/, query/ (the query bar Logs and Search share), config/, settings/, storage/, onboarding/, report/, signin/, update/).
   ui/           presentational parts: Button, Lamp, Stepper… Props in, events out.
   platform/     the only door to Rust. Validates every answer with valibot. Has a browser mock.
   domain/       plain TypeScript: catalog, tool status, doctor summaries. No React, no Tauri.
@@ -24,6 +24,9 @@ src-tauri/src/
   runs.rs       run logs, read through each tool's own `runs list` / `runs show`; shown unmasked, an exception
                 to rule 4: the tool already hid secrets and phone numbers, and the ids and paths are the owner's
                 to read (NEED-115). report.rs filters them again before anything is sent.
+  search.rs     one tool's own Lucene search of its local store for one profile (`search` in the catalog); hits shown
+                unmasked on the page, an exception to rule 4 like runs.rs: they are the owner's own data, and they are
+                never logged or put in a report.
   settings.rs   tool settings: `config show`, and saving only through `config set` / `config unset`.
   storage.rs    each tool's data folders, their sizes and entries (names only); deleting them once unused.
   archive.rs    what the shared archive holds, from a tool's `store info`; the database is never opened.
@@ -202,6 +205,30 @@ update checks run once per package and report it for every part. Storage, bug re
 count packages, not rows. A part has no skill of its own (`skill: null`) and stays out of the skills matrix. With
 no interactive `setup` in the CLI, its `signIn.command` is shown to copy and never run. The owner's run logs are read once;
 runs whose command starts with the part's `commandPrefix` (memo's `mail …`) are filed under Email on the Logs page.
+
+## Searching what a tool stored
+
+The Search page (`src/features/search/`) asks one installed tool, for one profile the owner picks, to search what it
+keeps on this computer: `search_store(id, profile, query, limit, page)` runs the catalog's `search` template
+(`search.rs`). Nothing is picked for the owner: the profile list starts empty, and memo, which has no profiles, gets
+none. Each template reads the local store only, checked in cli-core: tg and max `search messages --offline --backend
+archive` (`searchServer` returns before any server call for `archive`, and `--offline` makes the connection throw),
+wa `search messages --offline` (it has no server search), zm `search all --only meetings --max-meetings all
+--offline` (words only: meetings refuse fields, phrases and OR), drive `search --offline`, memo `search notes` and
+Email memo's `search mail --source email:<account>` (memo has no `--offline`; it never connects to search). All pass
+`--no-record` and put the query after `--`, so `-chat:x` is a NOT term and never a flag. memo's `search mail` has no
+`--page`: the page shows its best 50 and no pager.
+
+The query is the tool's to parse. A refusal comes back as `queryError` with the closed `query.*` reason and the
+tool's span, drawn in the query bar until the text changes; memo and drive count the span one or two places past the
+text, so it is kept inside the query. zm prints its refusal as a note beside an empty, incomplete answer, read the
+same way. "unknown option" or "unknown command" means the tool is too old (remembered per program, like `runs.rs`),
+and any other refusal is shown in the tool's words. The tool's notes (`missing[].why`, what it did not cover, and its
+stderr lines) are shown as text; its suggested next steps are never run.
+
+Which fields the bar suggests is static, in the catalog: `commands --json` gives `query.fields` for list commands
+only, not for `search messages`, `search notes` or `search all`, and a refused field's `details.fields` lists the
+whole parser's vocabulary, the same for every tool. The lists were checked against the installed tools' answers.
 
 ## Profiles and diagnostics
 
