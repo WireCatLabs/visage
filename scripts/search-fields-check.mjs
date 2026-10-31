@@ -91,7 +91,7 @@ for (const { tool, profile } of plan) {
   const add = (form, query, check = null) => cases.push({ tool: tool.id, profile, form, query, check })
   for (const field of tool.search.fields) {
     if (field.name === "date") {
-      for (const d of dateOptions(now)) add(`date: ${d.meaning}`, d.query)
+      for (const d of dateOptions(now)) add(`date: ${d.meaning}`, d.query, { date: d.meaning })
       continue
     }
     if (Array.isArray(field.values)) {
@@ -152,6 +152,31 @@ runnable.forEach((c, i) => {
   c.answer = answers[i]
 })
 
+// A day of slack each side: the tools count days in the owner's time zone, the hits carry UTC.
+function inRange(iso, meaning) {
+  if (typeof iso !== "string") return false
+  const t = Date.parse(iso)
+  const day = 86_400_000
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const month = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+  const from = {
+    last7: now - 7 * day,
+    last30: now - 30 * day,
+    today: start,
+    yesterday: start - day,
+    thisMonth: month,
+    since: month,
+    between: month,
+  }[meaning]
+  const to =
+    meaning === "yesterday"
+      ? start
+      : meaning === "between"
+        ? new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime()
+        : Infinity
+  return t >= from - day && t <= to + day
+}
+
 const lower = (s) => (typeof s === "string" ? s.trim().toLowerCase() : null)
 function verdict(c) {
   if (c.query === null) return { result: "no value list", hits: "", match: "" }
@@ -181,6 +206,10 @@ function verdict(c) {
     match = named.length
       ? `${named.filter((h) => lower(h.sender_name) === lower(c.check.label)).length}/${named.length} from that person`
       : "hits carry no sender"
+  }
+  if (c.check?.date && hits.length) {
+    const inside = hits.filter((h) => inRange(h.timestamp ?? h.updated_at, c.check.date)).length
+    match = `${inside}/${hits.length} in that time`
   }
   return { result: "accepted", hits: String(hits.length) + (a.hasMore ? "+" : ""), match }
 }

@@ -115,13 +115,6 @@
             "values": ["private", "group", "channel", "bot", "saved", "service"]
           },
           {
-            "name": "is",
-            "group": "what",
-            "example": "is:unread",
-            "top": false,
-            "values": ["unread", "read", "starred"]
-          },
-          {
             "name": "in",
             "group": "where",
             "example": "in:bots",
@@ -428,13 +421,6 @@
             "values": ["private", "group", "channel", "bot", "saved", "service"]
           },
           {
-            "name": "is",
-            "group": "what",
-            "example": "is:unread",
-            "top": false,
-            "values": ["unread", "read", "starred"]
-          },
-          {
             "name": "in",
             "group": "where",
             "example": "in:bots",
@@ -664,7 +650,7 @@
             "group": "who",
             "example": "from:\"Ana Ruiz\"",
             "top": true,
-            "values": "contacts"
+            "values": null
           },
           {
             "name": "chat",
@@ -732,9 +718,9 @@
           {
             "name": "is",
             "group": "what",
-            "example": "is:unread",
+            "example": "is:starred",
             "top": false,
-            "values": ["unread", "read", "starred"]
+            "values": ["starred"]
           },
           {
             "name": "in",
@@ -1053,6 +1039,7 @@
           "{limit}",
           "--page",
           "{page}",
+          "--exact",
           "--no-record",
           "--json",
           "--",
@@ -1180,7 +1167,19 @@
         "show": ["runs", "show", "{run}", "--json"]
       },
       "search": {
-        "args": ["search", "notes", "--limit", "{limit}", "--page", "{page}", "--no-record", "--json", "--", "{query}"],
+        "args": [
+          "search",
+          "notes",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--exact",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
         "shape": "items",
         "what": "notes",
         "fields": [

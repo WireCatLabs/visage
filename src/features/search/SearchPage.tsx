@@ -188,6 +188,12 @@ function useSuggest(m: Words, version: string | null) {
       const listed =
         typeof f.values === "string" && tool ? (lists[listKey(tool, profile, version, f.values)] ?? []) : []
       const inResults = new Set(seen[f.name] ?? [])
+      // Without a list the tool can give (wa's contacts are not the people its search knows), the names the results
+      // show; a name two people share comes back as a choice of both.
+      if (listed.length === 0) {
+        out[f.name] = [...inResults].map((value) => ({ value }))
+        continue
+      }
       out[f.name] = [
         ...listed.filter((v) => v.label && inResults.has(v.label)),
         ...listed.filter((v) => !(v.label && inResults.has(v.label))),
