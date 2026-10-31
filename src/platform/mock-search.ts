@@ -1,6 +1,6 @@
 import { findTool } from "@/domain/catalog"
 import { delay } from "./mock-delay"
-import type { SearchAnswer, SearchHit } from "./search-schemas"
+import type { SearchAnswer, SearchHit, ValueItem } from "./search-schemas"
 import type { Platform } from "./types"
 
 // Fictional stores for the browser build. `?search=<tool>` opens the page on that tool's hits, `?search=empty` on a
@@ -93,10 +93,15 @@ function refusal(id: string, query: string): SearchAnswer | null {
   return null
 }
 
-const VALUES: Record<string, string[]> = {
-  chats: CHATS,
-  contacts: PEOPLE.filter((p) => p !== "You"),
-  tags: ["work", "family", "receipts"],
+// Two chats share a title, and one's title is another's username, as on a real account.
+const VALUES: Record<string, ValueItem[]> = {
+  chats: [
+    ...CHATS.map((title, i) => ({ value: `-100${1000 + i}`, label: title, detail: null })),
+    { value: "-1001762030832", label: "kyrillic", detail: "kyrillic" },
+    { value: "-1001334573228", label: "kyrillic", detail: null },
+  ],
+  contacts: PEOPLE.filter((p) => p !== "You").map((name, i) => ({ value: String(500 + i), label: name, detail: null })),
+  tags: ["work", "family", "receipts"].map((value) => ({ value, label: null, detail: null })),
 }
 
 export const searchMock: Pick<Platform, "searchStore" | "searchValues"> = {
@@ -114,7 +119,18 @@ export const searchMock: Pick<Platform, "searchStore" | "searchValues"> = {
     if (params.get("search-fail") === "tool")
       return {
         kind: "failed",
+        candidates: [],
         message: `nothing recorded for profile "personal" yet — log in with \`${tool.bin} personal setup\``,
+      }
+    if (/(^|\s)-?chat:kyrillic(\s|$)/.test(query))
+      return {
+        kind: "failed",
+        message:
+          '"kyrillic" matches 2 chats — name one by its id:\n  -1001762030832  @kyrillic\n  -1001334573228  kyrillic',
+        candidates: [
+          { id: "-1001762030832", label: "@kyrillic", field: "chat" },
+          { id: "-1001334573228", label: "kyrillic", field: "chat" },
+        ],
       }
     const refused = refusal(id, query)
     if (refused) return refused

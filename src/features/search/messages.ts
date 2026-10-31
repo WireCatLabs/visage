@@ -108,6 +108,10 @@ const en = {
     `${tool}${version ? ` ${version}` : ""} can't search its local data yet. Update it on the Tools page.`,
   failed: "The search did not run.",
   fixQuery: "Fix the marked part of the query, then press Enter.",
+  pickOne: (field: string): string =>
+    field === "chat"
+      ? "This name fits several chats. Pick the one you meant below."
+      : "This name fits several people. Pick the one you meant below.",
   noHits: (tool: string, profile: string | null) =>
     profile ? `Nothing matches this search in what ${tool} keeps for ${profile}.` : `Nothing matches this search.`,
   results: (n: number, page: number) =>
@@ -248,6 +252,10 @@ const ru: typeof en = {
     `${tool}${version ? ` ${version}` : ""} пока не умеет искать по локальным данным. Обновите его на странице «Инструменты».`,
   failed: "Поиск не выполнен.",
   fixQuery: "Исправьте отмеченную часть запроса и нажмите Enter.",
+  pickOne: (field) =>
+    field === "chat"
+      ? "Это имя подходит нескольким чатам. Выберите нужный ниже."
+      : "Это имя подходит нескольким людям. Выберите нужного ниже.",
   noHits: (tool, profile) =>
     profile ? `Ничего не найдено в том, что ${tool} хранит для ${profile}.` : "Ничего не найдено.",
   results: (n, page) =>
@@ -388,6 +396,10 @@ const es: typeof en = {
     `${tool}${version ? ` ${version}` : ""} aún no puede buscar en sus datos locales. Actualízala en la página Herramientas.`,
   failed: "La búsqueda no se ejecutó.",
   fixQuery: "Corrige la parte marcada de la consulta y pulsa Intro.",
+  pickOne: (field) =>
+    field === "chat"
+      ? "Este nombre encaja con varios chats. Elige el que querías abajo."
+      : "Este nombre encaja con varias personas. Elige la que querías abajo.",
   noHits: (tool, profile) =>
     profile
       ? `Nada coincide con esta búsqueda en lo que ${tool} guarda para ${profile}.`

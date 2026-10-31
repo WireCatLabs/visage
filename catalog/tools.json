@@ -131,14 +131,14 @@
           {
             "name": "email",
             "group": "who",
-            "example": "email:ana@example.com",
+            "example": "email:\"ana@example.com\"",
             "top": false,
             "values": null
           },
           {
             "name": "phone",
             "group": "who",
-            "example": "phone:+34600000000",
+            "example": "phone:\"+34600000000\"",
             "top": false,
             "values": null
           },
@@ -159,7 +159,7 @@
           {
             "name": "url",
             "group": "files",
-            "example": "url:github.com/wirecat",
+            "example": "url:\"github.com/wirecat\"",
             "top": false,
             "values": null
           },
@@ -181,15 +181,21 @@
         "values": {
           "chats": {
             "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "title"
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
           },
           "contacts": {
             "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "name"
+            "key": "id",
+            "label": "name",
+            "detail": "username"
           },
           "tags": {
             "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
-            "key": "tag"
+            "key": "tag",
+            "label": null,
+            "detail": null
           }
         }
       },
@@ -438,14 +444,14 @@
           {
             "name": "email",
             "group": "who",
-            "example": "email:ana@example.com",
+            "example": "email:\"ana@example.com\"",
             "top": false,
             "values": null
           },
           {
             "name": "phone",
             "group": "who",
-            "example": "phone:+34600000000",
+            "example": "phone:\"+34600000000\"",
             "top": false,
             "values": null
           },
@@ -466,7 +472,7 @@
           {
             "name": "url",
             "group": "files",
-            "example": "url:github.com/wirecat",
+            "example": "url:\"github.com/wirecat\"",
             "top": false,
             "values": null
           },
@@ -488,15 +494,21 @@
         "values": {
           "chats": {
             "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "title"
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
           },
           "contacts": {
             "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "name"
+            "key": "id",
+            "label": "name",
+            "detail": "username"
           },
           "tags": {
             "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
-            "key": "tag"
+            "key": "tag",
+            "label": null,
+            "detail": null
           }
         }
       },
@@ -734,14 +746,14 @@
           {
             "name": "email",
             "group": "who",
-            "example": "email:ana@example.com",
+            "example": "email:\"ana@example.com\"",
             "top": false,
             "values": null
           },
           {
             "name": "phone",
             "group": "who",
-            "example": "phone:+34600000000",
+            "example": "phone:\"+34600000000\"",
             "top": false,
             "values": null
           },
@@ -762,7 +774,7 @@
           {
             "name": "url",
             "group": "files",
-            "example": "url:github.com/wirecat",
+            "example": "url:\"github.com/wirecat\"",
             "top": false,
             "values": null
           },
@@ -784,15 +796,21 @@
         "values": {
           "chats": {
             "args": ["{profile}", "chats", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "title"
+            "key": "id",
+            "label": "title",
+            "detail": "/provider_metadata/username"
           },
           "contacts": {
             "args": ["{profile}", "contacts", "list", "--offline", "--limit", "1000", "--no-record", "--json"],
-            "key": "name"
+            "key": "id",
+            "label": "name",
+            "detail": "username"
           },
           "tags": {
             "args": ["{profile}", "tags", "list", "--offline", "--no-record", "--json"],
-            "key": "tag"
+            "key": "tag",
+            "label": null,
+            "detail": null
           }
         }
       },
@@ -1293,7 +1311,7 @@
           {
             "name": "from",
             "group": "who",
-            "example": "from:ana@example.com",
+            "example": "from:\"ana@example.com\"",
             "top": true,
             "values": null
           },
@@ -1328,14 +1346,14 @@
           {
             "name": "to",
             "group": "who",
-            "example": "to:ana@example.com",
+            "example": "to:\"ana@example.com\"",
             "top": false,
             "values": null
           },
           {
             "name": "email",
             "group": "who",
-            "example": "email:ana@example.com",
+            "example": "email:\"ana@example.com\"",
             "top": false,
             "values": null
           },
@@ -1356,7 +1374,7 @@
           {
             "name": "url",
             "group": "files",
-            "example": "url:github.com/wirecat",
+            "example": "url:\"github.com/wirecat\"",
             "top": false,
             "values": null
           },

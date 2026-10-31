@@ -131,10 +131,14 @@ pub struct SearchSource {
     pub values: std::collections::BTreeMap<String, ValuesSource>,
 }
 
+/// `key` is the item field a query names the value by (a chat's id names exactly one chat); `label` and `detail`
+/// (JSON pointers) are what the row shows, such as the chat's title and @username.
 #[derive(Debug, Deserialize)]
 pub struct ValuesSource {
     pub args: Vec<String>,
     pub key: String,
+    pub label: Option<String>,
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]

@@ -21,8 +21,24 @@ export const SearchAnswerSchema = v.variant("kind", [
     span: v.nullable(SpanSchema),
   }),
   v.object({ kind: v.literal("old"), message: v.string() }),
-  v.object({ kind: v.literal("failed"), message: v.string() }),
+  v.object({
+    kind: v.literal("failed"),
+    message: v.string(),
+    candidates: v.optional(
+      v.array(
+        v.object({ id: v.string(), label: v.nullable(v.string()), field: v.nullable(v.picklist(["chat", "from"])) }),
+      ),
+      [],
+    ),
+  }),
 ])
 
 export type SearchHit = v.InferOutput<typeof SearchHitSchema>
 export type SearchAnswer = v.InferOutput<typeof SearchAnswerSchema>
+
+export const ValueItemSchema = v.object({
+  value: v.string(),
+  label: v.nullable(v.string()),
+  detail: v.nullable(v.string()),
+})
+export type ValueItem = v.InferOutput<typeof ValueItemSchema>

@@ -2,7 +2,16 @@ import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from "react"
 import { findTool, tools } from "@/domain/catalog"
 import { parseQuery } from "@/domain/runs"
-import { clampSpan, errorDetail, queryReason, suggestSearch, valuesInHits } from "@/domain/search"
+import {
+  ambiguousTerm,
+  clampSpan,
+  errorDetail,
+  queryReason,
+  quoteValue,
+  suggestSearch,
+  type ValueOption,
+  valuesInHits,
+} from "@/domain/search"
 import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import type { SearchAnswer, SearchHit } from "@/platform/search-schemas"
@@ -48,6 +57,7 @@ export function SearchPage() {
   const current = s.asked !== null && s.asked.query === s.query
   const queryError = answer?.kind === "queryError" && current ? answer : null
   const span = queryError ? clampSpan(queryError.span, s.query.length) : null
+  const ambiguous = answer?.kind === "failed" && current ? choicesFor(s.query, answer.candidates) : null
 
   return (
     <div className="flex flex-col gap-[1.5rem] px-[2.1rem] pt-[1.6rem] pb-[2.2rem]">
@@ -120,8 +130,8 @@ export function SearchPage() {
             <QueryBar
               query={s.query}
               parsed={parsed}
-              problems={span ? [span] : []}
-              problem={queryError ? problemText(m, queryError) : null}
+              problems={span ? [span] : ambiguous ? [ambiguous.term] : []}
+              problem={queryError ? problemText(m, queryError) : ambiguous ? m.pickOne(ambiguous.field) : null}
               suggest={suggest}
               words={{
                 label: m.searchLabel[what],
@@ -169,12 +179,19 @@ function useSuggest(m: Words, version: string | null) {
 
   const values = useMemo(() => {
     const seen = valuesInHits(answer?.kind === "hits" ? answer.hits : [])
-    const out: Record<string, string[]> = {}
+    const out: Record<string, ValueOption[]> = {}
     for (const f of fields) {
-      const fixed = Array.isArray(f.values) ? f.values : []
+      if (Array.isArray(f.values)) {
+        out[f.name] = f.values.map((value) => ({ value }))
+        continue
+      }
       const listed =
         typeof f.values === "string" && tool ? (lists[listKey(tool, profile, version, f.values)] ?? []) : []
-      out[f.name] = [...new Set([...fixed, ...(seen[f.name] ?? []), ...listed])]
+      const inResults = new Set(seen[f.name] ?? [])
+      out[f.name] = [
+        ...listed.filter((v) => v.label && inResults.has(v.label)),
+        ...listed.filter((v) => !(v.label && inResults.has(v.label))),
+      ]
     }
     return out
   }, [fields, answer, lists, tool, profile, version])
@@ -201,6 +218,25 @@ function useSuggest(m: Words, version: string | null) {
       }),
     [fields, values, what, area, m],
   )
+}
+
+type Candidate = { id: string; label: string | null; field: "chat" | "from" | null }
+
+/** Each candidate as the query with the refused term naming it by id, for a refusal that lists them. */
+function choicesFor(query: string, candidates: readonly Candidate[]) {
+  const field = candidates.find((c) => c.field)?.field
+  if (!field) return null
+  const term = ambiguousTerm(
+    query,
+    field,
+    candidates.map((c) => c.label),
+  )
+  if (!term) return null
+  const options = candidates.map((c) => ({
+    ...c,
+    query: `${query.slice(0, term.start)}${term.sign}${field}:${quoteValue(c.id)}${query.slice(term.end)}`,
+  }))
+  return { field, term, options }
 }
 
 function problemText(m: Words, e: Extract<SearchAnswer, { kind: "queryError" }>): string {
@@ -230,8 +266,38 @@ function resultsView(
   if (s.error) return { view: "error", node: <ErrorNotice detail={s.error}>{m.failed}</ErrorNotice> }
   if (answer?.kind === "old")
     return { view: "old", node: <ErrorNotice detail={answer.message}>{m.tooOld(toolName, version)}</ErrorNotice> }
-  if (answer?.kind === "failed")
-    return { view: "failed", node: <ErrorNotice detail={answer.message}>{m.failed}</ErrorNotice> }
+  if (answer?.kind === "failed") {
+    const choices = s.asked?.query === s.query ? choicesFor(s.query, answer.candidates) : null
+    return {
+      view: "failed",
+      node: (
+        <ErrorNotice
+          detail={<span className="whitespace-pre-line">{answer.message}</span>}
+          action={
+            choices && (
+              <span className="flex flex-wrap gap-2">
+                {choices.options.map((c) => (
+                  <Button
+                    key={c.id}
+                    size="sm"
+                    onClick={() => {
+                      s.setQuery(c.query)
+                      s.search(1)
+                    }}
+                  >
+                    {c.label ?? c.id}
+                    <span className="font-mono text-[0.85rem] text-ink-dim">{c.id}</span>
+                  </Button>
+                ))}
+              </span>
+            )
+          }
+        >
+          {m.failed}
+        </ErrorNotice>
+      ),
+    }
+  }
   if (answer?.kind === "queryError") return { view: "queryError", node: <Empty busy={s.loading}>{m.fixQuery}</Empty> }
   const hits = answer?.kind === "hits" ? answer : null
   if (!hits) {

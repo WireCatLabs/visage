@@ -109,6 +109,23 @@ describe("Search", () => {
 
     await user.type(bar, "chat:des")
     await user.click(await screen.findByRole("option", { name: /Design crit/ }))
-    expect(bar).toHaveValue('has:photo date>=7d chat:"Design crit" ')
+    expect(bar).toHaveValue('has:photo date>=7d chat:"-1001001" ')
+  }, 15000)
+
+  it("turns a chat name that fits two chats into a choice that names one by id", async () => {
+    const user = userEvent.setup()
+    const search = vi.spyOn(platform, "searchStore")
+    render(<SearchPage />)
+    await choose(user, "Tool", "Telegram")
+    await choose(user, "Profile", "personal")
+    const bar = screen.getByRole("combobox", { name: "Search messages" })
+    await user.type(bar, "date>=3d chat:kyrillic{Enter}")
+
+    expect(await screen.findByText("This name fits several chats. Pick the one you meant below.")).toBeInTheDocument()
+    await user.click(await screen.findByRole("button", { name: /^@kyrillic/ }))
+    expect(bar).toHaveValue('date>=3d chat:"-1001762030832"')
+    await waitFor(() =>
+      expect(search).toHaveBeenLastCalledWith("tg", "personal", 'date>=3d chat:"-1001762030832"', 50, 1),
+    )
   }, 15000)
 })

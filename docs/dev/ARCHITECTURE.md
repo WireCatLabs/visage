@@ -226,6 +226,14 @@ same way. "unknown option" or "unknown command" means the tool is too old (remem
 and any other refusal is shown in the tool's words. The tool's notes (`missing[].why`, what it did not cover, and its
 stderr lines) are shown as text; its suggested next steps are never run.
 
+Values come from the tool's own read-only lists (`search_values`, `search.values` in the catalog, with
+`--offline`): tg, max and wa `chats list`, `contacts list` and `tags list`. A chat or a person goes into the query by its
+id, which names exactly one (`chat:"-1001762030832"`); the row shows the title and @username. Every value is quoted by
+the rule of cli-base's parser (`quoteValue` in `src/domain/search.ts`). A name that fits several chats or people is
+refused with `details.candidates`; the page offers each as a button that puts its id in place of that term.
+`scripts/search-fields-check.mjs` runs every field, value form, date and example against the installed tools through
+the same Rust code (`cargo test real_batch`).
+
 Which fields the bar suggests is static, in the catalog: `commands --json` gives `query.fields` for list commands
 only, not for `search messages`, `search notes` or `search all`, and a refused field's `details.fields` lists the
 whole parser's vocabulary, the same for every tool. The lists were checked against the installed tools' answers.

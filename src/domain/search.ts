@@ -159,9 +159,19 @@ export function examples(what: string, now: Date): { query: string; id: ExampleI
   return [{ query: "demo", id: "words" }]
 }
 
-/** A value with anything but plain word characters is quoted, so `chat:"Design crit"` stays one term. */
+/**
+ * A value as the tools' query parser reads it (cli-base `src/query/parser.ts`): a bare term stops at whitespace and at
+ * its reserved characters (`+ - ! ( ) : = ^ @ < > [ ] " { } ~ \\ /`), a leading one is an operator, `*` and `?` make
+ * a wildcard, and AND, OR and NOT are words of the language. Anything but letters, digits, `_` and inner dots is
+ * therefore quoted, with `"` and `\\` escaped inside.
+ */
 export const quoteValue = (value: string) =>
-  /^[\p{L}\p{N}_@.+/-]+$/u.test(value) ? value : `"${value.replace(/"/g, "")}"`
+  /^[\p{L}\p{N}_](?:[\p{L}\p{N}_.]*[\p{L}\p{N}_])?$/u.test(value) && !/^(AND|OR|NOT)$/.test(value)
+    ? value
+    : `"${value.replace(/[\\"]/g, (c) => `\\${c}`)}"`
+
+/** One value a field can take: `value` goes in the query; `label` and `detail` (an @username) are what the row shows. */
+export type ValueOption = { value: string; label?: string | null; detail?: string | null }
 
 type Token = { start: number; end: number; raw: string }
 
@@ -199,7 +209,7 @@ const byGroup = (fields: SearchFieldInfo[]) =>
 export type SuggestContext = {
   fields: SearchFieldInfo[]
   /** Every value a field can be given here: its fixed list, the tool's own list, and what the results show. */
-  values: Readonly<Record<string, readonly string[]>>
+  values: Readonly<Record<string, readonly ValueOption[]>>
   /** "More fields" was chosen: every field, not only the first few. */
   all: boolean
   now: Date
@@ -248,12 +258,22 @@ export function suggestSearch(query: string, cursor: number, ctx: SuggestContext
       .replace(/"$/, "")
       .toLowerCase()
     const all = ctx.values[field] ?? []
-    const starts = all.filter((v) => v.toLowerCase().startsWith(typed))
-    const contains = all.filter((v) => !v.toLowerCase().startsWith(typed) && v.toLowerCase().includes(typed))
+    const texts = (v: ValueOption) =>
+      [v.label, v.detail, v.detail ? `@${v.detail}` : null, v.value]
+        .filter(Boolean)
+        .map((t) => (t as string).toLowerCase())
+    const starts = all.filter((v) => texts(v).some((t) => t.startsWith(typed)))
+    const contains = all.filter((v) => !starts.includes(v) && texts(v).some((t) => t.includes(typed)))
     const items = [...starts, ...contains]
-      .filter((v) => v.toLowerCase() !== typed)
+      .filter((v) => v.value.toLowerCase() !== typed)
       .slice(0, 40)
-      .map((v) => ({ label: v, insert: `${sign}${field}:${quoteValue(v)}`, group: ctx.words.valuesHeading(field) }))
+      .map((v) => ({
+        label: v.label ?? v.value,
+        insert: `${sign}${field}:${quoteValue(v.value)}`,
+        note: v.detail ? `@${v.detail.replace(/^@/, "")}` : null,
+        example: v.label && v.label !== v.value ? v.value : null,
+        group: ctx.words.valuesHeading(field),
+      }))
     return { ...at, items }
   }
 
@@ -271,7 +291,10 @@ export function suggestSearch(query: string, cursor: number, ctx: SuggestContext
   return { ...at, items }
 }
 
-/** Values the shown hits carry for a field, so a chat or a sender seen in the results can be picked. */
+/**
+ * The chat titles and sender names the shown hits carry. They only move matching list entries up: a title can name
+ * two chats, so what goes in the query is always the list entry's id.
+ */
 export function valuesInHits(hits: readonly Record<string, unknown>[]): Record<string, string[]> {
   const seen: Record<string, Set<string>> = { chat: new Set(), from: new Set(), title: new Set() }
   for (const hit of hits) {
@@ -281,4 +304,33 @@ export function valuesInHits(hits: readonly Record<string, unknown>[]): Record<s
     if (typeof hit.title === "string" && hit.title.trim()) seen.title?.add(hit.title.trim())
   }
   return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]]))
+}
+
+/**
+ * The `field:` term an ambiguous name came from, so a choice can replace it. With several such terms, the one whose
+ * value appears in a candidate's label; this reads the owner's own query, never the tool's answer.
+ */
+export function ambiguousTerm(
+  query: string,
+  field: string,
+  labels: readonly (string | null)[],
+): { start: number; end: number; sign: string } | null {
+  const terms: Token[] = []
+  for (let at = 0; at <= query.length; ) {
+    const tok = tokenAt(query, at)
+    if (tok.raw) terms.push(tok)
+    at = tok.end + 1
+  }
+  const ofField = terms
+    .map((t) => ({ ...t, sign: /^[-+]/.test(t.raw) ? (t.raw[0] as string) : "" }))
+    .filter((t) => t.raw.slice(t.sign.length).toLowerCase().startsWith(`${field}:`))
+  const typedIn = (t: Token & { sign: string }) =>
+    t.raw
+      .slice(t.sign.length + field.length + 1)
+      .replace(/^"|"$/g, "")
+      .replace(/^@/, "")
+      .toLowerCase()
+  const named = labels.filter((l): l is string => Boolean(l)).map((l) => l.toLowerCase())
+  const found = ofField.find((t) => typedIn(t) !== "" && named.some((l) => l.includes(typedIn(t)))) ?? ofField[0]
+  return found ? { start: found.start, end: found.end, sign: found.sign } : null
 }

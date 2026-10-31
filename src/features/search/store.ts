@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { findTool, usesProfiles } from "@/domain/catalog"
 import { platform } from "@/platform/bridge"
 import type { Profile } from "@/platform/schemas"
-import type { SearchAnswer } from "@/platform/search-schemas"
+import type { SearchAnswer, ValueItem } from "@/platform/search-schemas"
 import { useTools } from "../tools/store"
 
 export const LIMIT = 50
@@ -26,7 +26,7 @@ type SearchState = {
   error: string | null
   expanded: string | null
   /** The tool's own lists of values, by `tool|profile|version|list`, read once each. */
-  lists: Record<string, string[]>
+  lists: Record<string, ValueItem[]>
   loadLists(): void
   /** Tools that answered "too old" to search, by the version that said so; an update brings the tool back. */
   old: Record<string, string | null>

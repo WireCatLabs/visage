@@ -11,7 +11,11 @@ describe("SearchAnswerSchema", () => {
       { kind: "queryError", reason: "r", message: "m", span: { start: 0, end: 7 } },
       { kind: "old", message: "m" },
       { kind: "failed", message: "m" },
+      { kind: "failed", message: "m", candidates: [{ id: "-1001", label: "@kyrillic", field: "chat" }] },
     ]
-    for (const answer of answers) expect(v.parse(SearchAnswerSchema, answer)).toEqual(answer)
+    for (const answer of answers)
+      expect(v.parse(SearchAnswerSchema, answer)).toEqual(
+        answer.kind === "failed" ? { candidates: [], ...answer } : answer,
+      )
   })
 })

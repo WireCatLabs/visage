@@ -556,7 +556,7 @@ async fn search_store(
 }
 
 #[tauri::command]
-async fn search_values(id: String, profile: Option<String>, source: String) -> Result<Vec<String>, String> {
+async fn search_values(id: String, profile: Option<String>, source: String) -> Result<Vec<search::ValueItem>, String> {
     let tool = catalog::tool(&id)?;
     blocking(move || search::values(tool, profile.as_deref(), &source)).await?
 }

@@ -31,18 +31,30 @@ pub enum Answer {
     },
     /// A closed `query.*` reason; `span` counts UTF-16 units of the query as typed, as JavaScript does.
     #[serde(rename_all = "camelCase")]
-    QueryError {
-        reason: String,
-        message: String,
-        span: Option<Span>,
-    },
+    QueryError { reason: String, message: String, span: Option<Span> },
     /// The installed version has no such search, or no `--offline`: the answer is "update it".
-    Old {
-        message: String,
-    },
+    Old { message: String },
+    /// `candidates` are what an ambiguous name could mean (`details.candidates`), each named by its id.
     Failed {
         message: String,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        candidates: Vec<Candidate>,
     },
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub struct Candidate {
+    pub id: String,
+    pub label: Option<String>,
+    /// `chat` for a chat (it has a title), `from` for a person (a name or username).
+    pub field: Option<&'static str>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub struct ValueItem {
+    pub value: String,
+    pub label: Option<String>,
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone, Copy)]
@@ -128,7 +140,7 @@ fn values_args(src: &ValuesSource, profile: Option<&str>) -> Result<Vec<String>,
 
 /// The values a field takes, from one of the tool's own read-only lists (`search.values` in the catalog): only the
 /// named field of each item leaves, deduplicated, in the tool's order. A tool that cannot list them gives none.
-pub fn values(tool: &Tool, profile: Option<&str>, source: &str) -> Result<Vec<String>, String> {
+pub fn values(tool: &Tool, profile: Option<&str>, source: &str) -> Result<Vec<ValueItem>, String> {
     let src = self::source(tool)?.values.get(source).ok_or_else(|| format!("no value list named {source}"))?;
     let args = values_args(src, profile)?;
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
@@ -137,19 +149,34 @@ pub fn values(tool: &Tool, profile: Option<&str>, source: &str) -> Result<Vec<St
     if out.code != Some(0) {
         return Ok(Vec::new());
     }
-    Ok(out.json().map(|body| pick(&body, &src.key)).unwrap_or_default())
+    Ok(out.json().map(|body| pick(&body, src)).unwrap_or_default())
 }
 
-fn pick(body: &Value, key: &str) -> Vec<String> {
+fn text_at(item: &Value, pointer: &str) -> Option<String> {
+    let v = if pointer.starts_with('/') { item.pointer(pointer)? } else { item.get(pointer)? };
+    let s = match v {
+        Value::String(s) => s.trim().to_string(),
+        Value::Number(n) => n.to_string(),
+        _ => return None,
+    };
+    (!s.is_empty()).then_some(s)
+}
+
+fn pick(body: &Value, src: &ValuesSource) -> Vec<ValueItem> {
     let mut seen = std::collections::HashSet::new();
     body["items"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|item| item[key].as_str().map(str::trim))
-        .filter(|v| !v.is_empty() && seen.insert(v.to_string()))
+        .filter_map(|item| {
+            let value = text_at(item, &src.key)?;
+            seen.insert(value.clone()).then(|| ValueItem {
+                label: src.label.as_deref().and_then(|p| text_at(item, p)),
+                detail: src.detail.as_deref().and_then(|p| text_at(item, p)),
+                value,
+            })
+        })
         .take(MAX_VALUES)
-        .map(str::to_string)
         .collect()
 }
 
@@ -159,7 +186,7 @@ fn read(src: &SearchSource, out: &run::Output, limit: u32) -> Answer {
         return error_of(&out.stderr, &out.stdout);
     }
     let Some(body) = out.json() else {
-        return Answer::Failed { message: last_line(&out.stderr, &out.stdout) };
+        return Answer::Failed { message: last_line(&out.stderr, &out.stdout), candidates: Vec::new() };
     };
     let hits = match src.shape {
         SearchShape::Items => body["items"].as_array(),
@@ -173,7 +200,7 @@ fn read(src: &SearchSource, out: &run::Output, limit: u32) -> Answer {
             return refused;
         }
         if let Some(note) = notes.first() {
-            return Answer::Failed { message: note.clone() };
+            return Answer::Failed { message: note.clone(), candidates: Vec::new() };
         }
     }
     let has_more = paged(src)
@@ -215,7 +242,11 @@ fn error_of(stderr: &str, stdout: &str) -> Answer {
         .find_map(|l| serde_json::from_str::<Value>(l.trim()).ok().filter(|v| v["error"].is_object()));
     let Some(error) = error else {
         let message = last_line(stderr, stdout);
-        return if too_old(&message) { Answer::Old { message } } else { Answer::Failed { message } };
+        return if too_old(&message) {
+            Answer::Old { message }
+        } else {
+            Answer::Failed { message, candidates: Vec::new() }
+        };
     };
     let e = &error["error"];
     let reason = e["reason"].as_str().unwrap_or_default();
@@ -224,7 +255,34 @@ fn error_of(stderr: &str, stdout: &str) -> Answer {
         let span = span_of(&e["details"]["span"]);
         return Answer::QueryError { reason: reason.to_string(), message, span };
     }
-    if too_old(&message) { Answer::Old { message } } else { Answer::Failed { message } }
+    if too_old(&message) {
+        Answer::Old { message }
+    } else {
+        Answer::Failed { message, candidates: candidates_of(&e["details"]["candidates"]) }
+    }
+}
+
+fn candidates_of(v: &Value) -> Vec<Candidate> {
+    v.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let id = match &c["id"] {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                _ => return None,
+            };
+            let text = |k: &str| c[k].as_str().map(str::trim).filter(|t| !t.is_empty()).map(str::to_string);
+            let username = text("username").map(|u| format!("@{}", u.trim_start_matches('@')));
+            let (label, field) = match (text("title"), text("name"), username) {
+                (Some(t), _, _) => (Some(t), Some("chat")),
+                (None, Some(n), u) => (Some(u.map_or(n.clone(), |u| format!("{n} · {u}"))), Some("from")),
+                (None, None, Some(u)) => (Some(u), Some("from")),
+                _ => (None, None),
+            };
+            Some(Candidate { id, label, field })
+        })
+        .collect()
 }
 
 fn span_of(v: &Value) -> Option<Span> {
@@ -403,7 +461,10 @@ mod tests {
     fn zm_words_only_refusal_is_its_own_note() {
         let body = r#"{"items":[],"meta":{"complete":false}}"#;
         let note = "meetings not searched: meetings support letter/digit words joined by AND";
-        assert_eq!(read(src("zm"), &output(0, body, note), 50), Answer::Failed { message: note.into() });
+        assert_eq!(
+            read(src("zm"), &output(0, body, note), 50),
+            Answer::Failed { message: note.into(), candidates: vec![] }
+        );
     }
 
     #[test]
@@ -419,7 +480,7 @@ mod tests {
         let err = r#"{"error":{"code":"not_found","reason":"item.not-found","message":"nothing recorded for profile \"personal\" yet"}}"#;
         assert_eq!(
             read(src("max"), &output(6, "", err), 50),
-            Answer::Failed { message: "nothing recorded for profile \"personal\" yet".into() }
+            Answer::Failed { message: "nothing recorded for profile \"personal\" yet".into(), candidates: vec![] }
         );
     }
 
@@ -446,8 +507,16 @@ mod tests {
             json!({"kind": "old", "message": "m"})
         );
         assert_eq!(
-            serde_json::to_value(Answer::Failed { message: "m".into() }).unwrap(),
+            serde_json::to_value(Answer::Failed { message: "m".into(), candidates: vec![] }).unwrap(),
             json!({"kind": "failed", "message": "m"})
+        );
+        let ambiguous = Answer::Failed {
+            message: "m".into(),
+            candidates: vec![Candidate { id: "-1001".into(), label: Some("@kyrillic".into()), field: Some("chat") }],
+        };
+        assert_eq!(
+            serde_json::to_value(ambiguous).unwrap(),
+            json!({"kind": "failed", "message": "m", "candidates": [{"id": "-1001", "label": "@kyrillic", "field": "chat"}]})
         );
     }
 
@@ -471,7 +540,39 @@ mod tests {
     fn picks_one_field_once_in_the_tools_order() {
         let body =
             serde_json::json!({"items": [{"tag": "work"}, {"tag": " home "}, {"tag": "work"}, {"tag": ""}, {"x": 1}]});
-        assert_eq!(pick(&body, "tag"), ["work", "home"]);
+        let src = ValuesSource { args: vec![], key: "tag".into(), label: None, detail: None };
+        let got: Vec<_> = pick(&body, &src).into_iter().map(|v| v.value).collect();
+        assert_eq!(got, ["work", "home"]);
+    }
+
+    #[test]
+    fn a_chat_is_named_by_its_id_and_shown_by_title_and_username() {
+        let body = serde_json::json!({"items": [
+            {"id": "-1001762030832", "title": "kyrillic", "provider_metadata": {"username": "kyrillic"}},
+            {"id": "-1001334573228", "title": "kyrillic", "provider_metadata": {}},
+        ]});
+        let src = &source(catalog::tool("tg").unwrap()).unwrap().values["chats"];
+        let item = |v: &str, d: Option<&str>| ValueItem {
+            value: v.into(),
+            label: Some("kyrillic".into()),
+            detail: d.map(str::to_string),
+        };
+        assert_eq!(pick(&body, src), [item("-1001762030832", Some("kyrillic")), item("-1001334573228", None)]);
+    }
+
+    #[test]
+    fn an_ambiguous_chat_carries_its_candidates() {
+        let err = r#"{"error":{"code":"validation_error","reason":"input.invalid","message":"2 chats","details":{"candidates":[{"id":"-1001762030832","title":"@kyrillic"},{"id":"-1001334573228","title":"kyrillic"}]}}}"#;
+        let Answer::Failed { candidates, .. } = read(src("tg"), &output(2, "", err), 50) else { panic!() };
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(
+            candidates[0],
+            Candidate { id: "-1001762030832".into(), label: Some("@kyrillic".into()), field: Some("chat") }
+        );
+        let people = serde_json::json!([{"id": "7", "name": "Ana", "username": "ana"}, {"id": 8, "name": "Ana B"}]);
+        let got = candidates_of(&people);
+        assert_eq!(got[0].label.as_deref(), Some("Ana · @ana"));
+        assert_eq!(got[1], Candidate { id: "8".into(), label: Some("Ana B".into()), field: Some("from") });
     }
 
     /// `cargo test -- --ignored real_values` against the installed tools; prints counts, never values.
@@ -484,6 +585,34 @@ mod tests {
                 let found = values(tool, Some(profile), name).unwrap();
                 println!("{id} {name}: {}", found.len());
             }
+        }
+    }
+
+    /// The engine of `scripts/search-fields-check.mjs`: runs each request in `SEARCH_BATCH_IN` (JSON lines of
+    /// `{kind: "values" | "search", tool, profile, source | query}`) through `values` or `search` and writes one
+    /// answer per line to `SEARCH_BATCH_OUT`. Run by the script only; it reads the owner's real stores.
+    #[test]
+    #[ignore = "run by scripts/search-fields-check.mjs"]
+    fn real_batch() {
+        use std::io::Write;
+        let (Ok(input), Ok(output)) = (std::env::var("SEARCH_BATCH_IN"), std::env::var("SEARCH_BATCH_OUT")) else {
+            return;
+        };
+        let mut out = std::fs::File::create(output).unwrap();
+        for line in std::fs::read_to_string(input).unwrap().lines().filter(|l| !l.trim().is_empty()) {
+            let req: Value = serde_json::from_str(line).unwrap();
+            let tool = catalog::tool(req["tool"].as_str().unwrap()).unwrap();
+            let profile = req["profile"].as_str();
+            let answer = if req["kind"] == "values" {
+                values(tool, profile, req["source"].as_str().unwrap()).map(|v| serde_json::to_value(v).unwrap())
+            } else {
+                search(tool, profile, req["query"].as_str().unwrap(), 20, 1).map(|a| serde_json::to_value(a).unwrap())
+            };
+            let row = match answer {
+                Ok(v) => serde_json::json!({"ok": v}),
+                Err(e) => serde_json::json!({"err": e}),
+            };
+            writeln!(out, "{row}").unwrap();
         }
     }
 
