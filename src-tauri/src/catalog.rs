@@ -19,6 +19,8 @@ pub struct Tool {
     pub profiles: Option<ProfileSource>,
     pub doctor: Vec<String>,
     pub runs: Option<RunsSource>,
+    /// The tool's own Lucene search of its local store for one profile (`search.rs`).
+    pub search: Option<SearchSource>,
     pub setup: Option<Vec<String>>,
     pub sign_in: Option<SignInSource>,
     pub storage: Storage,
@@ -117,6 +119,22 @@ pub struct TasksSource {
 pub struct RunsSource {
     pub list: Vec<String>,
     pub show: Vec<String>,
+}
+
+/// `{profile}`, `{query}`, `{limit}` and `{page}` are filled in `search.rs`; a template without `{page}` does not page.
+#[derive(Debug, Deserialize)]
+pub struct SearchSource {
+    pub args: Vec<String>,
+    pub shape: SearchShape,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum SearchShape {
+    #[serde(rename = "items")]
+    Items,
+    /// drive: `item.hits`, and no word on further pages.
+    #[serde(rename = "item.hits")]
+    ItemHits,
 }
 
 /// The tool's own settings commands; saving always goes through `set`/`unset` so the CLI validates each value.

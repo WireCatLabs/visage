@@ -22,6 +22,50 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--backend",
+          "archive",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          "text",
+          "exact",
+          "chat",
+          "from",
+          "date",
+          "has",
+          "is",
+          "kind",
+          "in",
+          "filename",
+          "content",
+          "transcript",
+          "mime",
+          "url",
+          "link",
+          "domain",
+          "phone",
+          "email",
+          "lang",
+          "tag"
+        ]
+      },
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -131,6 +175,50 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--backend",
+          "archive",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          "text",
+          "exact",
+          "chat",
+          "from",
+          "date",
+          "has",
+          "is",
+          "kind",
+          "in",
+          "filename",
+          "content",
+          "transcript",
+          "mime",
+          "url",
+          "link",
+          "domain",
+          "phone",
+          "email",
+          "lang",
+          "tag"
+        ]
+      },
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -234,6 +322,48 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "messages",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "messages",
+        "fields": [
+          "text",
+          "exact",
+          "chat",
+          "from",
+          "date",
+          "has",
+          "is",
+          "kind",
+          "in",
+          "filename",
+          "content",
+          "transcript",
+          "mime",
+          "url",
+          "link",
+          "domain",
+          "phone",
+          "email",
+          "lang",
+          "tag"
+        ]
+      },
       "setup": ["{profile}", "setup"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -331,6 +461,31 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "all",
+          "--only",
+          "meetings",
+          "--max-meetings",
+          "all",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "meetings",
+        "fields": []
+      },
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -406,6 +561,26 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": [
+          "{profile}",
+          "search",
+          "--offline",
+          "--timeout",
+          "60s",
+          "--limit",
+          "{limit}",
+          "--page",
+          "{page}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "item.hits",
+        "what": "documents",
+        "fields": ["text", "exact", "title", "date", "in", "tag", "author", "keyword", "site", "lang"]
+      },
       "setup": ["{profile}", "session", "start"],
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -473,6 +648,12 @@
         "list": ["runs", "list", "{query}", "--limit", "{limit}", "--page", "{page}", "--json"],
         "show": ["runs", "show", "{run}", "--json"]
       },
+      "search": {
+        "args": ["search", "notes", "--limit", "{limit}", "--page", "{page}", "--no-record", "--json", "--", "{query}"],
+        "shape": "items",
+        "what": "notes",
+        "fields": ["text", "exact", "title", "date", "in", "tag", "author", "keyword", "site", "lang"]
+      },
       "setup": null,
       "skill": {
         "status": ["skill", "status", "--json"],
@@ -529,6 +710,37 @@
       },
       "doctor": ["mail", "check", "{profile}", "--json"],
       "runs": null,
+      "search": {
+        "args": [
+          "search",
+          "mail",
+          "--source",
+          "email:{profile}",
+          "--limit",
+          "{limit}",
+          "--no-record",
+          "--json",
+          "--",
+          "{query}"
+        ],
+        "shape": "items",
+        "what": "mail",
+        "fields": [
+          "text",
+          "exact",
+          "from",
+          "to",
+          "date",
+          "mailbox",
+          "label",
+          "filename",
+          "content",
+          "mime",
+          "url",
+          "domain",
+          "email"
+        ]
+      },
       "setup": null,
       "skill": null,
       "mcp": null,
