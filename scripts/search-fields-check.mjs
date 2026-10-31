@@ -23,6 +23,7 @@ const tools = catalog.tools.filter((t) => t.search && (!only || only.includes(t.
 const dir = mkdtempSync(join(tmpdir(), "search-fields-"))
 
 function batch(requests) {
+  if (requests.length === 0) return []
   const input = join(dir, "in.jsonl")
   const output = join(dir, "out.jsonl")
   writeFileSync(input, requests.map((r) => JSON.stringify(r)).join("\n"))
@@ -82,6 +83,10 @@ for (const tool of tools) {
     plan.push({ tool, profile })
   }
 }
+const versions = batch(tools.map((t) => ({ kind: "version", tool: t.id, profile: null })))
+tools.forEach((t, i) => {
+  console.error(`${t.id}: ${versions[i].ok ?? "version unknown"}`)
+})
 console.error(`reading ${valueRequests.length} value lists…`)
 const valueAnswers = batch(valueRequests)
 const lists = new Map(valueRequests.map((r, i) => [`${r.tool}|${r.profile}|${r.source}`, valueAnswers[i].ok ?? []]))
@@ -211,6 +216,8 @@ function verdict(c) {
     const inside = hits.filter((h) => inRange(h.timestamp ?? h.updated_at, c.check.date)).length
     match = `${inside}/${hits.length} in that time`
   }
+  const meaning = hits.filter((h) => Array.isArray(h.found_by) && h.found_by.includes("meaning")).length
+  if (meaning) match = `${match ? `${match}; ` : ""}${meaning} by meaning`
   return { result: "accepted", hits: String(hits.length) + (a.hasMore ? "+" : ""), match }
 }
 

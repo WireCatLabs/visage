@@ -106,6 +106,17 @@ pub fn args(
         .collect())
 }
 
+/// `--exact` for a version older than `below`, or one that cannot say: a filter that does not hold is worse than no
+/// search by meaning.
+fn with_exact(mut args: Vec<String>, below: Option<&str>, version: Option<&str>) -> Vec<String> {
+    let Some(below) = below.and_then(|b| semver::Version::parse(b).ok()) else { return args };
+    let old = version.and_then(|v| semver::Version::parse(v).ok()).is_none_or(|v| v < below);
+    if old && let Some(at) = args.iter().position(|a| a == "--no-record") {
+        args.insert(at, "--exact".into());
+    }
+    args
+}
+
 pub fn paged(src: &SearchSource) -> bool {
     src.args.iter().any(|a| a == "{page}")
 }
@@ -114,6 +125,7 @@ pub fn search(tool: &Tool, profile: Option<&str>, query: &str, limit: u32, page:
     let src = source(tool)?;
     let args = args(src, profile, query, limit, page)?;
     let bin = paths::find(&tool.bin).ok_or("the tool is not installed")?;
+    let args = with_exact(args, src.exact_below.as_deref(), crate::tools::version_of(&bin).as_deref());
     if let Some(message) = REFUSED.known(&tool.id, SEARCH, &bin) {
         return Ok(Answer::Old { message });
     }
@@ -344,6 +356,23 @@ mod tests {
             let at = a.iter().position(|x| x == "--backend").unwrap();
             assert_eq!(a[at + 1], "archive", "{id}");
         }
+    }
+
+    #[test]
+    fn search_by_meaning_only_where_its_filters_hold() {
+        for (id, below, fixed) in [("drive", "0.50.9", "0.51.0"), ("memo", "0.124.3", "0.125.0")] {
+            let src = src(id);
+            let profile = (id == "drive").then_some("personal");
+            let plain = args(src, profile, "x", 10, 1).unwrap();
+            assert!(!plain.iter().any(|a| a == "--exact"), "{id}");
+            let gate = src.exact_below.as_deref();
+            assert!(with_exact(plain.clone(), gate, Some(below)).iter().any(|a| a == "--exact"), "{id} {below}");
+            assert!(with_exact(plain.clone(), gate, None).iter().any(|a| a == "--exact"), "{id} unknown");
+            assert!(!with_exact(plain.clone(), gate, Some(fixed)).iter().any(|a| a == "--exact"), "{id} {fixed}");
+            assert!(!with_exact(plain, gate, Some("1.0.0")).iter().any(|a| a == "--exact"), "{id} 1.0.0");
+        }
+        let tg = args(src("tg"), Some("p"), "x", 10, 1).unwrap();
+        assert_eq!(with_exact(tg.clone(), None, Some("0.1.0")), tg);
     }
 
     #[test]
@@ -603,7 +632,9 @@ mod tests {
             let req: Value = serde_json::from_str(line).unwrap();
             let tool = catalog::tool(req["tool"].as_str().unwrap()).unwrap();
             let profile = req["profile"].as_str();
-            let answer = if req["kind"] == "values" {
+            let answer = if req["kind"] == "version" {
+                Ok(serde_json::json!(paths::find(&tool.bin).and_then(|b| crate::tools::version_of(&b))))
+            } else if req["kind"] == "values" {
                 values(tool, profile, req["source"].as_str().unwrap()).map(|v| serde_json::to_value(v).unwrap())
             } else {
                 search(tool, profile, req["query"].as_str().unwrap(), 20, 1).map(|a| serde_json::to_value(a).unwrap())

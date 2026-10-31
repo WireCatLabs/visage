@@ -1039,7 +1039,6 @@
           "{limit}",
           "--page",
           "{page}",
-          "--exact",
           "--no-record",
           "--json",
           "--",
@@ -1091,7 +1090,8 @@
             "values": null
           }
         ],
-        "values": {}
+        "values": {},
+        "exactBelow": "0.51.0"
       },
       "setup": ["{profile}", "session", "start"],
       "skill": {
@@ -1167,19 +1167,7 @@
         "show": ["runs", "show", "{run}", "--json"]
       },
       "search": {
-        "args": [
-          "search",
-          "notes",
-          "--limit",
-          "{limit}",
-          "--page",
-          "{page}",
-          "--exact",
-          "--no-record",
-          "--json",
-          "--",
-          "{query}"
-        ],
+        "args": ["search", "notes", "--limit", "{limit}", "--page", "{page}", "--no-record", "--json", "--", "{query}"],
         "shape": "items",
         "what": "notes",
         "fields": [
@@ -1233,7 +1221,8 @@
             "values": ["internal", "file"]
           }
         ],
-        "values": {}
+        "values": {},
+        "exactBelow": "0.125.0"
       },
       "setup": null,
       "skill": {

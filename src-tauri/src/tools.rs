@@ -105,6 +105,11 @@ impl Versions {
     }
 }
 
+/// The version a program answers, from the same cache as the Tools page.
+pub fn version_of(path: &Path) -> Option<String> {
+    VERSIONS.inspect(path, false).version
+}
+
 fn inspect(path: &Path) -> Install {
     let shown = paths::tilde(&path.to_string_lossy());
     let manager = paths::manager_for(path);

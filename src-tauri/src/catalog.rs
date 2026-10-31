@@ -123,8 +123,11 @@ pub struct RunsSource {
 
 /// `{profile}`, `{query}`, `{limit}` and `{page}` are filled in `search.rs`; a template without `{page}` does not page.
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchSource {
     pub args: Vec<String>,
+    /// Before this version the tool's search by meaning ignored field filters, so `--exact` keeps it off (BUG-35).
+    pub exact_below: Option<String>,
     pub shape: SearchShape,
     /// Read-only lists whose items name a field's values, such as chats for `chat:`; `key` is the item's field.
     #[serde(default)]

@@ -214,7 +214,8 @@ keeps on this computer: `search_store(id, profile, query, limit, page)` runs the
 none. Each template reads the local store only, checked in cli-core: tg and max `search messages --offline --backend
 archive` (`searchServer` returns before any server call for `archive`, and `--offline` makes the connection throw),
 wa `search messages --offline` (it has no server search), zm `search all --only meetings --max-meetings all
---offline` (words only: meetings refuse fields, phrases and OR), drive `search --offline`, memo `search notes` and
+--offline` (words only: meetings refuse fields, phrases and OR), drive `search --offline`, memo `search notes` (with `--exact` before drive 0.51.0 and memo 0.125.0, whose search by meaning ignored
+field filters; `search.exactBelow` in the catalog, read against the installed version) and
 Email memo's `search mail --source email:<account>` (memo has no `--offline`; it never connects to search). All pass
 `--no-record` and put the query after `--`, so `-chat:x` is a NOT term and never a flag. memo's `search mail` has no
 `--page`: the page shows its best 50 and no pager.
