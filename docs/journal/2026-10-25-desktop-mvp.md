@@ -102,6 +102,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 - **TASK-43 · Страница поиска в приложении (2026-10-31):** Слава: «how hard would it be to add a search page to desktop where users can search the database using SQL and lucene syntax» → «let's do just lucene then, it can look similar to the log search. can you implement it». Только Lucene (NEED-161 C), один инструмент и профиль (NEED-162 A), команда поиска самого инструмента, только локальные данные. Агент в `.claude/worktrees/search-page`, PR без слияния.
 - **TASK-44 · Страница «Поиск» (2026-10-31, реализация TASK-43, PR #34):** Lucene-поиск по локальному хранилищу одного инструмента для одного профиля (NEED-161 = C, NEED-162 = A), «как поиск в журнале». Сделано: `search_store` + шаблон `search` в каталоге, общий `QueryBar` в `src/features/query/`, страница `src/features/search/`, моки `?search…`. PR WireCatLabs/wirecat-desktop#34, без слияния.
 
+- **TASK-44 · раунд 2 (2026-10-31):** Слава: «the search should be improved to use autosuggests for values eg tags etc. also for date the example gives >= but then autocomplete suggests date and no options… also in dropdown the type field is not real type… the background of the website in light theme is changed a bit, it's more yellowish now» и «there are so many fields and it's not clear what they mean». Сделано в PR #34: поля по группам с описанием и примером, «Ещё поля…», значения из `chats list` / `contacts list` / `tags list` (`--offline`) и из результатов, даты, готовые запросы, тёплые фоны сайта.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -544,6 +546,14 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 
 - **FIND-99 · Хиты WhatsApp без чата (2026-10-31).** Настоящий `wa search messages` отдаёт `ref, timestamp, sender_name, excerpt…`, но не `chat_title`, поэтому колонка «Где» на странице поиска — «—» в каждой строке wa. Из `ref` не вытаскиваем (правило 1). Нужна правка в wa/cli-core.
 - **FIND-100 · `memo search notes` возвращает документы Drive (2026-10-31).** Среди хитов `provider: drive, kind: document`; `--source notes` этого не меняет (проверено на memo 0.122.0). Страница показывает всё, что вернул инструмент; фильтр не добавлен, раз он не действует.
+
+- **UX-21 · Поле запроса рисовало `>=` как `≥`** (лигатуры JetBrains Mono). Исправлено: класс `no-ligatures` на поле, его зеркале и списке; общий бар, значит и Logs.
+- **UX-22 · После ошибки запроса область результатов писала «Выберите инструмент и профиль…»**, хотя оба выбраны. Исправлено в первом раунде: «Исправьте отмеченную часть запроса…».
+- **UX-23 · В списке подсказок справа стояло слово «field» вместо примера.** Теперь у поля описание словами и пример (`from:"Ana Ruiz"`).
+- **UX-24 · Двадцать полей подряд без объяснений.** Теперь 5–6 главных по группам «Кто/Где/Когда/Что/Файлы и ссылки», остальные за «Ещё поля…»; `exact`, `mime`, `lang`, `keyword` убраны из каталога.
+- **BUG-33 · Каретка после выбранной подсказки ставилась через кадр**, и быстро набранные буквы попадали перед ней («hat:desc»). Исправлено: ставится в `useLayoutEffect`, когда текст уже в поле. Нашёл тест.
+- **FIND-101 · `memo search mail` отвечает `query.too-large` на один открытый диапазон дат** (`date:[2026-10-01 TO *]` без слов); со словом работает. Готовые запросы для почты поэтому со словами или `date>=7d`.
+- **FIND-102 · Не у всех полей есть список значений.** `memo tags list` — теги сообщений, не заметок; `drive tags list` требует документ; у memo нет списка ярлыков и папок почты. Эти поля подсказываются только по имени.
 
 ## 4. Вопросы к Славе
 
