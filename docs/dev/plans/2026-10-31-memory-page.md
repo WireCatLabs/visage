@@ -28,14 +28,14 @@ cli-memo's `main` (2b547a5). The checks ran read-only commands with `--no-record
 | No longer true | `memo memories invalidate memory:<id>` (status → `stale`); `memo facts reverse fact:<id>` (accepted decisions only) | the record | exists |
 | One source, whole | `memo messages show <msg:…>`, `memo notes show <note:…\|document:…>` | message: `sender_name`, `timestamp`, `text`, `chat_id`…; note: `title`, `path`, `text`… | exists, one call per ref (0.23 s each, measured) |
 | Correct | `memo memories add <text> --kind --scope --evidence … --supersedes memory:<id>` | the new memory; the old one becomes `superseded` | **CLI work**: the store takes `supersedes` (cli-core `store/sqlite/memories.js`), the command does not offer it |
-| Forget | `memo memories remove memory:<id>`, `memo facts remove fact:<id>` | `{ ref, removed: true, links: <n> }` | **CLI work**: the store has `deleted_at` and every list hides deleted rows, but no command sets it |
+| Forget | `memo memories remove memory:<id>`, `memo facts remove fact:<id>` | `{ ref, removed: true, links: <n> }` | **CLI work**: no command removes a record. The store has a `deleted_at` column, but a row marked that way keeps its text in the file and in the word index (`memory_words`). Forget must erase the row, its evidence links and its index entry |
 | Reject a proposed fact | `memo facts reject fact:<id>` | the fact, status `rejected` | **CLI work**: a proposed fact can only be confirmed today; `reverse` refuses anything but an accepted decision |
-| Who an entry is about | `subject_name` beside `subject` in `memories list` and `facts list` | `"Kai Sample"`, `"Project Harbour"`, `"You"` | **CLI work**: today only `person:2835`, and no command turns an id into a name without a full `memo context` |
+| Who an entry is about | `subject_name` beside `subject` in `memories list` and `facts list` | `"Kai Sample"`, `"Project Harbour"`, `"You"` | **CLI work**: today only `person:42`, and no command turns an id into a name without a full `memo context` |
 | Sources in one answer | `memo memories show memory:<id> --sources`, the same on `facts show` | `sources[]`: `{ ref, kind, title or sender, at, excerpt, tool, missing }` | **CLI work**: saves one process per source and handles every ref kind, including a source deleted since |
 | Who wrote it | `author.name` (`claude-code`, `hermes`, `memo-mcp`), `model` | in the lists above | exists |
 | Agent activity | `memo agents list [agent:… tool:…] --json` | `id`, `actor {type, id, name}`, `tool`, `tier` (read, write), `target`, `status`, `error`, `started_at`, `finished_at`; never the arguments | exists, but it is one log shared by tg, max and memo, not a memory log (NEED-168) |
 | People | `memo search people <name>` needs a name; there is no list | `ref`, `name`, `identities[]` | no list command; the page uses people only as a filter built from `subject_name` |
-| Note folders, what is indexed | `memo folders list` (`id`, `path`, `format`), `memo store info` | — | exists, but folders belong to Memo's details on the Tools page and the store to the Storage page; this page does not repeat them |
+| Note folders, what is indexed | `memo folders list` (`id`, `path`, `format`), `memo store info` | — | exists. The store already has the Storage page; note folders appear nowhere in the app today, and the first version of this page leaves them out |
 
 Agent-written records start `proposed`; owner-written ones start `confirmed` or `accepted` (cli-memo
 `src/memories/memories.ts:19`). Memo decides the author from `AI_AGENT` and `CLAUDECODE` (cli-memo `src/author.ts`).
@@ -62,19 +62,21 @@ between it and the two other structures is NEED-167.
 - **The row opens in place** (`Collapse`): left, "What it rests on": each source with its tool icon, sender or title,
   date in mono and the quoted line; a link "Search for Kai Sample" opens the Search page (PR #34) with the tool and
   `from:"Kai Sample"` filled in and the profile left for the owner to choose (rule 3). Right: written by, through
-  what, saved when, kind and scope, state; then Correct, No longer true, Forget….
+  what, saved when, kind and scope, state; then Correct and Forget…, plus No longer true on a kept row only ("stale"
+  means it was true once, so it does not fit a proposal).
 - **Correct** opens a text box under the details, filled with the current text. "Save correction" writes the owner's
   memory with `--supersedes`; the agent's version moves to No longer hold as "Replaced". Facts get the same through
   `facts add --supersedes` (it exists for facts).
 - **Forget…** opens a dialog: ghost "Keep it" (focused) and outlined danger "Forget". It lists exactly what goes: the
-  record with its ref and the first words of its text, and its N links to sources. It says the messages, notes and
-  meetings themselves stay, and that Correct keeps a record of the mistake.
+  record with its ref and the first words of its text, its N links to sources, and its entry in Memo's search. It says
+  the messages, notes and meetings themselves stay, that backups made before today still hold it, and that Correct
+  keeps a record of the mistake.
 - **Rule 9.** Confirming a row under Waiting for you turns its lamp green in place; it leaves the filter only when the
   owner changes the filter or reads again. Correct and Forget keep the row where it is until their own animation ends.
   Counts update at once.
-- **Footer line.** Where agent activity lives (NEED-168).
+- **Agent activity** is not on this page until NEED-168 is answered.
 
-Mock-ups: [.impeccable/mocks/memory/](../../../.impeccable/mocks/memory/), made from a prototype that uses the app's own
+Mock-ups (the sidebar there already lacks Accounts, per NEED-165): [.impeccable/mocks/memory/](../../../.impeccable/mocks/memory/), made from a prototype that uses the app's own
 components ([prototype/MemoryPage.tsx](../../../.impeccable/mocks/memory/prototype/MemoryPage.tsx), outside `src`, not
 built).
 
@@ -83,7 +85,7 @@ built).
 | Waiting, one row open, 1280×840 | `desktop-light.png` | `desktop-dark.png` |
 | The same at the 960×640 minimum | `narrow-light.png` | `narrow-dark.png` |
 | Correct | — | `correct-dark.png` |
-| Forget dialog | `forget-light.png` | — |
+| Forget dialog | `forget-light.png` | `forget-dark.png` |
 | Kept · empty · Memo missing · Memo too old · read failed | `state-kept-light.png`, `state-empty-light.png`, `state-missing-light.png`, `state-old-light.png`, `state-error-light.png` | `state-missing-dark.png` |
 
 ## Privacy
@@ -129,7 +131,7 @@ Rule 1: the CLI work goes first, in cli-memo, and the app waits for its release.
 
 | # | Step | Where | Estimate |
 | --- | --- | --- | --- |
-| 1 | `memories add --supersedes`, `memories remove`, `facts remove`, `facts reject`, with contract tests | cli-memo (+ cli-core store if `reject` needs a status) | 0.5–1 day |
+| 1 | `memories add --supersedes`, `memories remove` and `facts remove` (erase the row, its links and its index entry), `facts reject`, with contract tests | cli-memo + cli-core store | 1 day |
 | 2 | `subject_name` in `memories list` and `facts list` | cli-memo, cli-core store join | 2–3 h |
 | 3 | `memories show --sources` / `facts show --sources`: every ref resolved, excerpt, `missing` | cli-memo | 0.5 day |
 | 4 | Release memo; record the minimum version in the catalog | cli-memo release, `catalog/tools.json` | 1 h |
@@ -139,7 +141,7 @@ Rule 1: the CLI work goes first, in cli-memo, and the app waits for its release.
 | 8 | Search link: open Search with tool and query filled | `src/features/search/` (after PR #34 merges) | 1–2 h |
 | 9 | Checks: tests, both themes and 960 width with the capture script, rule 9 script, keyboard, reduced motion; `pnpm check` | — | 3–4 h |
 
-About 4–5 working days in all, about one of them in cli-memo.
+About 5 working days in all, about 1.5 of them in cli-memo and cli-core.
 
 ## Open questions for the owner
 
@@ -150,9 +152,10 @@ About 4–5 working days in all, about one of them in cli-memo.
 - **NEED-168 · Where should the agent activity log (`memo agents list`) appear?** A a section on the Memory page · B
   per agent on the Agents page · C only in Logs. I recommend **B**: the log covers tg and max calls too, not only
   memory, and the Agents page is already about one agent at a time.
-- **NEED-169 · Should Forget delete a record, or only mark it "no longer true"?** A both: Forget (deleted, new
-  `memo memories remove`) and No longer true (kept as stale) · B only No longer true, nothing is deleted. I recommend
-  **A**: a wrong conclusion about a person should be removable, and Correct still keeps a trail when the owner wants one.
+- **NEED-169 · Should Forget erase a record from Memo's store, or only mark it "no longer true"?** A both: Forget erases
+  the text, its source links and its search entry (new `memo memories remove`; older backups still hold it), and No
+  longer true keeps it as stale · B only No longer true, nothing is erased. I recommend **A**: a wrong conclusion about
+  a person should be removable for real, and Correct still keeps a trail when the owner wants one.
 - **NEED-170 · Should agents' proposed actions (`memo actions`) and project or meeting findings wait on this page too?**
   A not in the first version · B yes, as more rows under "Waiting for you". I recommend **A**: approving an action
   makes a task, which belongs to a future Tasks page; the Memory page stays about what is remembered.

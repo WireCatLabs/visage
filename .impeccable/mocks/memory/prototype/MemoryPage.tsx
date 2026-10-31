@@ -295,13 +295,6 @@ export function MemoryPage() {
               ))}
             </div>
           )}
-          <p className="text-[0.9rem] text-ink-dim">
-            Agents read memory through Memo's MCP server. What each one called is on the{" "}
-            <a href="#x" className="font-medium text-brand hover:text-brand-hover">
-              Logs page
-            </a>
-            .
-          </p>
         </>
       )}
 
@@ -321,15 +314,19 @@ export function MemoryPage() {
         }
       >
         <div className="flex flex-col gap-3 text-[0.95rem] text-ink-soft">
-          <p>Memo deletes this from its store. Agents stop finding it.</p>
+          <p>Memo erases this from its store and its search. Agents stop finding it.</p>
           <ul className="flex flex-col gap-1 rounded-[0.45rem] border border-line bg-app-2 px-4 py-3">
             <li className="text-ink">
               The memory <span className="font-mono text-[0.85rem]">memory:41</span>: "Kai Sample prefers calls on Friday
               afternoons…"
             </li>
             <li>Its 3 links to the messages and the meeting it rests on</li>
+            <li>Its entry in Memo's search</li>
           </ul>
-          <p>The messages, notes and meetings themselves stay. To keep a record that it was wrong, use Correct instead.</p>
+          <p>
+            The messages, notes and meetings themselves stay. Backups made before today still hold it. To keep a record
+            that it was wrong, use Correct instead.
+          </p>
         </div>
       </Dialog>
     </div>
@@ -475,7 +472,7 @@ function Details({ e, status, onForget, correcting }: Parameters<typeof Row>[0])
             <Button size="sm" variant="ghost" icon={<Pencil className="size-4" aria-hidden />}>
               Correct
             </Button>
-            {status !== "stale" && (
+            {(status === "confirmed" || status === "accepted") && (
               <Button size="sm" variant="ghost">
                 No longer true
               </Button>
