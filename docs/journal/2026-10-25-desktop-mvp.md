@@ -99,6 +99,8 @@ worktree. Отправка репортов — `report.rs` и `src/features/rep
 
 - **TASK-42 · 0.1.1, проверка установки, страница загрузки (2026-10-29):** Слава: «ok fix that, lets check the installations and so on … create a download page on landing and display all versions and autodetect … in docs in general do we have desktop covered?». Пакет Linux `wirecat` (src-tauri/tauri.linux.conf.json: productName `wirecat`, Name=WireCat в .desktop, deb Conflicts/Replaces `wire-cat`, rpm Obsoletes `WireCat`); workflow `install-check.yml` ставит релиз на чистых Windows, macOS, Ubuntu (с 0.1.0 поверх), Fedora и проверяет запуск; страница /download и документация — агентом в cli-docs (PR, без слияния).
 
+- **TASK-43 · Страница поиска в приложении (2026-10-31):** Слава: «how hard would it be to add a search page to desktop where users can search the database using SQL and lucene syntax» → «let's do just lucene then, it can look similar to the log search. can you implement it». Только Lucene (NEED-161 C), один инструмент и профиль (NEED-162 A), команда поиска самого инструмента, только локальные данные. Агент в `.claude/worktrees/search-page`, PR без слияния.
+
 ## 2. Вопросы Славы
 
 **ASK-1 · «the size of everything is too large… let's make stuff much smaller»**
@@ -251,6 +253,7 @@ memo с пометкой «About: Email»; чтение логов для отч
 - **ASK-44 · «Is it possible to teach the app to self-update on all platforms?»** Ответ: macOS, Windows, AppImage уже обновляются сами; .deb/.rpm — скачать + проверить подпись + открыть системный установщик (NEED-145), позже репозиторий (NEED-146). Встроенная установка .deb в плагине не годится: после pkexec он ловит пароль через zenity и передаёт в `sudo -S` — нарушает правило 6.
 
 - **ASK-45 · «we need to cover situations when the cli doesnt work on the machine as there's an existing name registered»** и «how and who would it explain if another app calls drive and gets another program?» Ответ: объяснение в приложении не доходит до того, кто вызвал не ту программу; нужны уникальные имена в каждом месте вызова, а короткие — ярлыки только при свободном имени. Приложение сейчас считает любой `tg` в PATH нашим и запускает его с `--version` (`src-tauri/src/tools.rs:111`). Проверка, отказывает ли npm при занятом имени, была заблокирована — не подтверждено. План: cli-base PR #402, `docs/dev/plans/2026-10-30-wcat-umbrella.md`.
+- **ASK-46 · «how hard would it be to add a search page to desktop where users can search the database using SQL and lucene syntax (then converted to SQL)?»** Ответ: средне, около недели. Lucene→SQL уже есть в командах поиска инструментов (cli-core `src/services/messages-search.ts`, `src/cli/messenger/history-query.ts`), хранилище SQLite открывается только на чтение (`query_only`, cli-core `src/store/sqlite/open.ts:33`). Нет: команды `store sql` в CLI (1–2 дня) и страницы (2–3 дня). Запуском Lucene-поиска на настоящем хранилище не проверено.
 
 ## 3. Находки
 
@@ -525,6 +528,13 @@ https://pnpm.io/settings#minimumreleaseage). tg 0.86…0.91 вышли за по
 - **RISK-55 · Без JavaScript на странице загрузки видны только шаги macOS** (общий компонент вкладок скрывает остальные). Слава принял (NEED-157 A).
 - **DEBT-6 · Три неиспользуемые строки в `lib/download.ts`** после перехода на вкладки — удалены в PR #458.
 - **IDEA-12 · `wcat app` (start/stop/status WireCat Desktop или ссылки на скачивание, если не установлен).** Идея Славы. Имя `app` зарезервировано как встроенная команда в cli-base PR #404; строить позже.
+- **FIND-93 · `wcat` на Linux, macOS, Windows с npm, pnpm, bun — все проверки прошли** (23/23, Windows 35–36 в cmd и PowerShell 7). cli-testing PR #270 (`d639439`), `performance/cli/wcat-umbrella/cross-os.md`, прогоны 41150114335 и после rebase 41150999561. Не проверено: PowerShell 5.1, Git Bash, zsh, fish, Volta, Yarn, обновление инструмента.
+- **BUG-30 · pnpm 12 держит глобальные команды в `$PNPM_HOME/bin`, `wcat` не создавался.** Исправлено в cli-base PR #404.
+- **BUG-31 · PowerShell передавал аргументы в `.cmd` без кавычек: `a&b` запускал команду `b`.** Лаунчер и ярлык теперь запускают `.ps1`. PR #404, прогон 41149717651.
+- **BUG-32 · bun на Windows оставляет `.exe` удалённого инструмента, `wcat` не чинился.** `.exe` без скрипта считается удалённым. PR #404.
+- **FIND-94 · Исправление keyring (cli-base #407) вышло отдельно как 0.65.5 другой сессией** до `wcat`; вопрос агента «отдельно или в 0.66.0» отпал. cli-base 0.66.0 выпущен: PR #404 → `858e9e0`, прогон 41151276554, npm 0.66.0. cli-core всё ещё `<0.66.0` — шаг 2.
+- **DEBT-7 · Workflow проверки на трёх системах в cli-testing по умолчанию берёт старый коммит cli-base `9785e6c`;** следующие прогоны передают `cli_base_ref` вручную.
+- **RISK-56 · SQL привязал бы пользователей к внутренней схеме, которая меняется с миграциями; общего Lucene-поиска по всем инструментам нет.** Поэтому только Lucene и один инструмент (NEED-161, NEED-162).
 
 ## 4. Вопросы к Славе
 
@@ -1066,3 +1076,5 @@ NEED-88 → **A** (2026-10-27): проверять curl и добавлять с
 - **NEED-158 · Какой инструмент запускает `wcat`, когда у установленных разные версии cli-base?** Варианты: A тот, кто записал файл · B сравнивать все при каждом старте · C файл хранит версию, более новый перехватывает. Я бы C (иначе новые команды вроде `wcat app` застрянут за самым старым инструментом). Ответ (2026-10-30): **A**.
 - **NEED-159 · Проверка установки на настоящих Windows/macOS до шага 2?** Ответ: да (вместе с NEED-160).
 - **NEED-160 · После проверки слить PR #404 и выпустить cli-base 0.66.0?** Ответ (2026-10-30): **A**.
+- **NEED-161 · Первая версия страницы поиска: только Lucene, или Lucene и SQL?** Варианты: A Lucene, SQL позже · B оба · C только Lucene. Я бы A. Ответ (2026-10-31): **C** («let's do just lucene then»).
+- **NEED-162 · Поиск по одному инструменту и профилю, или по всем сразу?** Варианты: A один · B все. Я бы A. Ответа нет — по умолчанию A.
