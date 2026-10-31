@@ -1,37 +1,37 @@
 import { ExternalLink, Search, X } from "lucide-react"
 import { type KeyboardEvent, useId, useMemo, useRef, useState } from "react"
-import { type Parsed, type QueryProblem, type Run, type Suggestion, suggest } from "@/domain/runs"
+import { type Parsed, type Run, type Suggestion, suggest } from "@/domain/runs"
 import { useMessages } from "@/i18n"
 import { platform } from "@/platform/bridge"
 import { cx } from "@/ui/cx"
-import { logsMessages } from "./messages"
-import { LOGS_DOCS, problemText } from "./names"
+import { queryMessages } from "./messages"
 
-const FIELDS = [
-  ...Object.keys(logsMessages.en.fields),
-  "run_id",
-  "operations",
-  "codes",
-  "duration_ms",
-  "requests",
-  "provider_error",
-  "partial.failures.error_code",
-  "unknown_command",
-  "error.code",
-  "error.provider.key",
-  "error.http.endpoint_template",
-]
+export type Span = { start: number; end: number }
 
 type Props = {
   query: string
+  /** Only for colouring the terms; whether the query is valid is the caller's to say, in `problem`. */
   parsed: Parsed
-  problems: QueryProblem[]
-  runs: Run[]
+  /** Spans to underline; an empty one marks a place, such as where a query ends too early. */
+  problems: Span[]
+  problem: string | null
+  fields: readonly string[]
+  labels?: Readonly<Record<string, string>>
+  /** Values to suggest after `field:`, counted from these runs. */
+  runs?: Run[]
+  words: { label: string; placeholder: string; hint: string }
+  docs: string
   onChange: (query: string) => void
+  /** Enter with no suggestion open. */
+  onSubmit?: () => void
+  disabled?: boolean
 }
 
-export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
-  const m = useMessages(logsMessages)
+const NO_RUNS: Run[] = []
+
+export function QueryBar(props: Props) {
+  const { query, parsed, problems, problem, fields, labels, runs = NO_RUNS, words, docs, onChange, onSubmit } = props
+  const m = useMessages(queryMessages)
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const mirror = useRef<HTMLDivElement>(null)
@@ -39,7 +39,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
 
-  const suggestions = useMemo(() => suggest(query, cursor, runs, FIELDS, m.fields), [query, cursor, runs, m])
+  const suggestions = useMemo(() => suggest(query, cursor, runs, fields, labels), [query, cursor, runs, fields, labels])
   const showList = open && suggestions.items.length > 0
 
   const accept = (s: Suggestion) => {
@@ -60,7 +60,13 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
       else if (query) onChange("")
       return
     }
-    if (!showList) return
+    if (!showList) {
+      if (e.key === "Enter" && onSubmit) {
+        e.preventDefault()
+        onSubmit()
+      }
+      return
+    }
     const n = suggestions.items.length
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault()
@@ -80,8 +86,6 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
     setCursor(el.selectionStart ?? el.value.length)
     if (mirror.current) mirror.current.scrollLeft = el.scrollLeft
   }
-
-  const problem = problems[0]
 
   return (
     <div className="relative min-w-0 flex-1 basis-[26rem]">
@@ -103,7 +107,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
         <input
           ref={input}
           role="combobox"
-          aria-label={m.searchRuns}
+          aria-label={words.label}
           aria-autocomplete="list"
           aria-expanded={showList}
           aria-controls={`${id}-list`}
@@ -113,7 +117,8 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
           spellCheck={false}
           autoComplete="off"
           value={query}
-          placeholder={m.placeholder}
+          placeholder={words.placeholder}
+          disabled={props.disabled}
           onChange={(e) => {
             onChange(e.target.value)
             setOpen(true)
@@ -175,11 +180,11 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
       )}
       <div className="mt-[0.35rem] flex items-baseline justify-between gap-3 text-[0.9rem]">
         <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={problem ? "text-bad" : "text-ink-dim"}>
-          {problem ? problemText(m, problem) : m.searchHint}
+          {problem ?? words.hint}
         </p>
         <button
           type="button"
-          onClick={() => platform.openUrl(LOGS_DOCS)}
+          onClick={() => platform.openUrl(docs)}
           className="inline-flex shrink-0 items-center gap-[0.2rem] font-medium text-brand hover:text-brand-hover"
         >
           {m.searchSyntax}
@@ -190,7 +195,7 @@ export function QueryBar({ query, parsed, problems, runs, onChange }: Props) {
   )
 }
 
-function Highlight({ query, parsed, problems }: Omit<Props, "runs" | "onChange">) {
+function Highlight({ query, parsed, problems }: Pick<Props, "query" | "parsed" | "problems">) {
   const parts: React.ReactNode[] = []
   let at = 0
   const spans = [
@@ -201,6 +206,14 @@ function Highlight({ query, parsed, problems }: Omit<Props, "runs" | "onChange">
     if (s.start < at) continue
     parts.push(query.slice(at, s.start))
     const raw = query.slice(s.start, s.end)
+    if (s.bad && s.start === s.end) {
+      parts.push(
+        <span key={`at-${s.start}`} className="relative">
+          <span className="absolute -bottom-[0.55em] -left-[0.3em] text-[0.8em] text-bad leading-none">▲</span>
+        </span>,
+      )
+      continue
+    }
     if (s.bad || !s.term) {
       parts.push(
         <span key={s.start} className="text-ink underline decoration-bad decoration-wavy underline-offset-4">

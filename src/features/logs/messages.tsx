@@ -30,7 +30,6 @@ const en = {
     "Nothing recorded. An empty log means none of these tools has run lately, or failed if it keeps failed runs only.",
   noMatch: "No run matches this search in the chosen time range.",
   clearSearch: "Clear the search",
-  clear: "Clear",
   lookAtAll: "Look at all loaded runs",
   newRuns: (n: number) => plural("en", n, { one: "# new run", other: "# new runs" }),
   showingConversations: (shown: number, total: number) => `Showing ${shown} of ${total} conversations`,
@@ -106,7 +105,6 @@ const en = {
     "error.http.status": "HTTP status",
     cli_version: "Version",
   } as Record<string, string>,
-  fieldHint: "field",
   via: {
     cli: "Terminal",
     "mcp-stdio": "MCP on this computer",
@@ -244,9 +242,7 @@ const en = {
 
   searchRuns: "Search runs",
   placeholder: "status:failed command:sync* -profile:work timeout",
-  suggestions: "Suggestions",
   searchHint: "field:value to filter, * matches anything, a leading - excludes. Two values of one field match either.",
-  searchSyntax: "Search syntax",
   unclosedQuote: "A quote is not closed.",
   needsValue: (field: string) => `${field}: needs a value, like ${field}:something.`,
   notANumber: (op: string, value: string) => `${op} compares numbers; "${value}" is not one.`,
@@ -313,7 +309,6 @@ const ru: typeof en = {
     "Ничего не записано. Пустой журнал значит, что эти инструменты давно не запускались, или не было ошибок, если инструмент хранит только неудачные запуски.",
   noMatch: "За выбранный период ни один запуск не подходит под этот поиск.",
   clearSearch: "Очистить поиск",
-  clear: "Очистить",
   lookAtAll: "Посмотреть все загруженные запуски",
   newRuns: (n) =>
     plural("ru", n, {
@@ -402,7 +397,6 @@ const ru: typeof en = {
     "error.http.status": "HTTP-статус",
     cli_version: "Версия",
   },
-  fieldHint: "поле",
   via: {
     cli: "Терминал",
     "mcp-stdio": "MCP на этом компьютере",
@@ -541,10 +535,8 @@ const ru: typeof en = {
 
   searchRuns: "Поиск по запускам",
   placeholder: "status:failed command:sync* -profile:work timeout",
-  suggestions: "Подсказки",
   searchHint:
     "поле:значение — фильтр, * — что угодно, минус в начале исключает. Два значения одного поля — подходит любое из них.",
-  searchSyntax: "Синтаксис поиска",
   unclosedQuote: "Кавычка не закрыта.",
   needsValue: (field) => `После ${field}: нужно значение, например ${field}:что-то.`,
   notANumber: (op, value) => `${op} сравнивает числа, а «${value}» — не число.`,
@@ -607,7 +599,6 @@ const es: typeof en = {
     "No hay nada registrado. Un registro vacío significa que ninguna de estas herramientas se ha ejecutado últimamente, o que no ha fallado si solo guarda las ejecuciones fallidas.",
   noMatch: "Ninguna ejecución coincide con esta búsqueda en el periodo elegido.",
   clearSearch: "Borrar la búsqueda",
-  clear: "Borrar",
   lookAtAll: "Ver todas las ejecuciones cargadas",
   newRuns: (n) => plural("es", n, { one: "# ejecución nueva", other: "# ejecuciones nuevas" }),
   showingConversations: (shown, total) =>
@@ -683,7 +674,6 @@ const es: typeof en = {
     "error.http.status": "Estado HTTP",
     cli_version: "Versión",
   },
-  fieldHint: "campo",
   via: {
     cli: "Terminal",
     "mcp-stdio": "MCP en este ordenador",
@@ -818,10 +808,8 @@ const es: typeof en = {
 
   searchRuns: "Buscar ejecuciones",
   placeholder: "status:failed command:sync* -profile:work timeout",
-  suggestions: "Sugerencias",
   searchHint:
     "campo:valor para filtrar, * coincide con cualquier cosa, un - delante excluye. Dos valores del mismo campo coinciden con cualquiera de ellos.",
-  searchSyntax: "Sintaxis de búsqueda",
   unclosedQuote: "Hay unas comillas sin cerrar.",
   needsValue: (field) => `${field}: necesita un valor, como ${field}:algo.`,
   notANumber: (op, value) => `${op} compara números; «${value}» no lo es.`,

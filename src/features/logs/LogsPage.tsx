@@ -29,18 +29,32 @@ import { Lamp } from "@/ui/Lamp"
 import { reducedMotion } from "@/ui/motion"
 import { Select } from "@/ui/Select"
 import { Skeleton, StableText } from "@/ui/Skeleton"
+import { QueryBar } from "../query/QueryBar"
 import { ReportThis } from "../report/ReportThis"
 import { Facets } from "./Facets"
 import { Groups } from "./Groups"
 import { KeepRuns } from "./KeepRuns"
 import { useLive } from "./live"
 import { logsMessages } from "./messages"
-import { fieldLabel, LOGS_DOCS, type LogsWords, toolName } from "./names"
-import { QueryBar } from "./QueryBar"
+import { fieldLabel, LOGS_DOCS, type LogsWords, problemText, toolName } from "./names"
 import { RunsTable } from "./RunsTable"
 import { runKey, type Source, timing, useLogs, useShownLogs } from "./store"
 
 const STEP = 100
+const FIELDS = [
+  ...Object.keys(logsMessages.en.fields),
+  "run_id",
+  "operations",
+  "codes",
+  "duration_ms",
+  "requests",
+  "provider_error",
+  "partial.failures.error_code",
+  "unknown_command",
+  "error.code",
+  "error.provider.key",
+  "error.http.endpoint_template",
+]
 const NONE = new Set<string>()
 
 export function LogsPage() {
@@ -197,7 +211,18 @@ export function LogsPage() {
       ) : (
         <>
           <div className="flex flex-wrap items-start gap-[0.7rem]">
-            <QueryBar query={query} parsed={parsed} problems={problems} runs={ranged} onChange={setQuery} />
+            <QueryBar
+              query={query}
+              parsed={parsed}
+              problems={problems}
+              problem={problems[0] ? problemText(m, problems[0]) : null}
+              fields={FIELDS}
+              labels={m.fields}
+              runs={ranged}
+              words={{ label: m.searchRuns, placeholder: m.placeholder, hint: m.searchHint }}
+              docs={LOGS_DOCS}
+              onChange={setQuery}
+            />
             <Range value={range} onChange={setRange} />
             <GroupBy value={groupBy} onChange={setGroupBy} />
             <Button
