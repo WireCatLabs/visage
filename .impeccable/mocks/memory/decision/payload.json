@@ -1,0 +1,41 @@
+{
+  "title": "Memory page: choose the structure",
+  "question": "The world is the WireCat patch rack. Which arrangement should the Memory page take? Keep the roll, take another, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "The ledger",
+      "kicker": "THE ROLL",
+      "lineage": "an account ledger: one line per entry, newest on top, grouped by day",
+      "thesis": "Everything agents and you wrote into memory, as one dated ledger. A proposed entry carries an amber lamp and waits for Confirm; a confirmed one turns green in place.",
+      "palette": ["#f1f4f2", "#ffffff", "#4b53f0", "#d08a12", "#1f9a55"],
+      "materials": ["one rack per day", "lamps", "mono refs"],
+      "viewport": "Title Memory, a one-line count of what waits for you, a segmented filter (Waiting / Kept / Past / All), then the rack: Today, Yesterday, Oct 28... Each row: lamp, kind, the memory text, who wrote it, one action.",
+      "risk": "Time order hides what a person is about; a long history becomes a scroll."
+    },
+    {
+      "id": "review-first",
+      "label": "Waiting, then kept",
+      "lineage": "an inbox above a shelf",
+      "thesis": "Two racks: what waits for your decision on top, what is kept below, grouped by kind. Trust comes from clearing the top rack.",
+      "palette": ["#f1f4f2", "#ffffff", "#4b53f0", "#d08a12"],
+      "materials": ["two racks", "lamps", "evidence under the row"],
+      "viewport": "Title, then a 'Waiting for you' rack with amber rows and Confirm buttons, then a 'Kept' rack.",
+      "risk": "Two racks break the one-rack-per-page rule; a confirmed row has to move between racks, which rule 9 forbids."
+    },
+    {
+      "id": "query-facets",
+      "label": "Query and facets",
+      "lineage": "the Logs page",
+      "thesis": "A query bar in memo's own query language with facets for status, kind, scope and author, over one table, exactly like Logs.",
+      "palette": ["#f1f4f2", "#ffffff", "#4b53f0"],
+      "materials": ["query bar", "facet column", "table"],
+      "viewport": "Title, query bar, facets on the left, a table of records on the right.",
+      "risk": "Built for an expert with thousands of rows; the owner has a handful and needs a decision, not a search."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code", "toggle": false },
+  "canon": false,
+  "steer": true
+}
